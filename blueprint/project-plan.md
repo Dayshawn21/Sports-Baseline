@@ -354,4 +354,8 @@ git, so a deploy needs no separate artifacts.
 **CI (37c):** `verify.yml` runs the Verify command and a pinned gitleaks secret
 scan on pull requests and pushes to `master`.
 
+**Repository (37e):** public at `github.com/Dayshawn21/Sports-Baseline`, from a
+one-commit snapshot; CI, the scheduled ingest and both Render services run from
+it. Pre-37e history is kept in the archived private `SportAppV2`.
+
 **Host:** Render (decided 2026-10-15, live 2026-10-16).

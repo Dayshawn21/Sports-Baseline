@@ -12,7 +12,9 @@
 > check on `/nba/model`, every slice accruing); WNBA and soccer follow. NFL best line (item 36) is complete: each side's
 > best Bet365 or DraftKings price beside a Pinnacle fair price, on the game
 > page and slate card. Tennis model validation (item 26) found the market unbeaten, so
-> tennis now serves a market-anchored ensemble with moneyline picks off.
+> tennis now serves a market-anchored ensemble with moneyline picks off. The
+> public read-only demo (item 37) is complete: live on Render, with the code
+> public at `github.com/Dayshawn21/Sports-Baseline`.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
@@ -574,7 +576,7 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
-**Next: public read-only demo (item 37, added 2026-10-15)**
+**Shipped: public read-only demo (item 37, added 2026-10-15, complete 2026-10-16)**
 
 A hosted portfolio demo: anonymous visitors browse every sport page, only the
 owner reaches the admin surface, and the code is public. The 2026-10-15 fixes
@@ -585,7 +587,21 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
 37b. **How it works page** *(shipped 2026-10-15)* - public `/how-it-works`, linked from the nav for everyone: what the app is, how data flows, one card per sport (model today, shown as a pick, reference only, status, with slate and track record links), and how a model earns a pick, with a color legend. Static text, no live numbers.
 37c. **CI and secret scanning** *(shipped 2026-10-15)* - one Verify command (`npm --prefix web run verify && cd api && python -m pytest`) run locally and by `.github/workflows/verify.yml` on pull requests and pushes to `master`, beside a pinned gitleaks scan of the tracked tree and the commits each event adds. A failing check does not block a push; GitHub push protection would, as an owner setting after 37e.
 37d. **Deploy to Render** *(shipped 2026-10-16)* - `render.yaml` defines the API (`sportapp-api`, always-on `0.5c-512mb`, Virginia beside Neon, `--proxy-headers`) and the static web (`sportapp-web`, built with `VITE_API_BASE_URL`); ingest stays on GitHub Actions; the NFL slate and NFL line grading are precomputed into `report_snapshots`, so production never builds them; a live smoke test passed (production settings, CORS, admin sign-in, per-client rate limits, every page).
-37e. **Public repo and README** *(next)* - a fresh public snapshot with no private history, and a README covering what the app does, how to run it, and the live demo link.
+37e. **Public repo and README** *(shipped 2026-10-16)* - public `Dayshawn21/Sports-Baseline` from a one-commit snapshot (`2312f3a`), with a README (live links, screenshots, the validation findings, local setup); CI, the crons and both Render services moved to it, and the private `SportAppV2` is archived. It also took tennis prediction and best-picks CPU work off the event loop (a cold build had frozen the API for 5.2 s).
+
+**What 37e fixed as load-bearing:**
+- **The public repo `Dayshawn21/Sports-Baseline` is the working repo**
+  (remote `origin`); Render, CI and every cron run from its `master`.
+  Pre-37e history, and every pre-37e archive's commit hash, lives only in the
+  archived private `SportAppV2` (remote `private`).
+- **Workflows register only when a push changes their file;** GitHub pauses
+  public-repo schedules after 60 days with no commit.
+- **The interview guide is local and untracked;** never stage it.
+- **The tennis prediction path is off the event loop:** single-row LightGBM
+  predicts use `num_threads=1` under a lock; the history index build, the
+  predict loop and the best-picks assembly run in worker threads. Output is
+  byte-identical.
+- **`sportapp-api` needs no provider keys** (`ODDS_API_KEY` left `render.yaml`).
 
 **What 37d fixed as load-bearing:**
 - **Service names `sportapp-api` and `sportapp-web`** and their URLs
@@ -625,9 +641,9 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
 - **`.gitleaks.toml`** is the one place scan exceptions live, one path each
   with a reason; today only a saved TennisAbstract page (Cloudflare's public
   beacon token).
-- **History is not scanned:** this private repo's history still holds the
-  rotated-out credentials (open question 47); 37e's fresh public snapshot
-  clears it.
+- **History is not scanned:** the public repo starts from 37e's clean
+  snapshot; the archived private repo's history still holds the
+  rotated-out credentials.
 
 **What 37b fixed as load-bearing:**
 - **Route `/how-it-works`** is public and stable; 37e's README links to it.
@@ -1361,7 +1377,7 @@ with the Tuesday ELO recompute, so they can be a week stale in between.
 
 ## Deployment
 
-Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml`; still runnable locally.
+Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in the public repo `Dayshawn21/Sports-Baseline` (37e); still runnable locally.
 
 - **API:** Render web service `sportapp-api` (always-on `0.5c-512mb`, 512 MB, Virginia); locally `uvicorn app.main:app` on port 8000
 - **Web:** Render static site `sportapp-web`; locally the Vite dev server on 3001, proxying `/api` and `/health` to the API
@@ -1679,10 +1695,9 @@ the request path the same way.
     `project-plan.md` §2 and §8 now record the owner-only login, the Neon
     database and Render as the host.
 
-47. **Owner actions left by `remove-committed-secrets`:** rotate the Neon
-    database password and the Odds-API.io key (both remain in this private
-    repo's history), then update `api/app/.env`, the GitHub secrets and the
-    local `.claude/settings.local.json` MCP connection.
+47. **Resolved (2026-10-16, 37e):** the owner rotated the Neon password and
+    the Odds-API.io key, and updated Render, the GitHub secrets, `.env` and
+    the local MCP settings before the code went public.
 
 48. **Resolved (2026-10-16):** `project-plan.md` §8 now records CI and the
-    secret scan. The first GitHub run is still pending a push of `master`.
+    secret scan, which run green on the public repo.

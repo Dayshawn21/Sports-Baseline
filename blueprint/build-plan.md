@@ -118,12 +118,12 @@ works, not because the loop produced them.
 
 ## Portfolio demo
 
-- [ ] 37. **Public read-only demo** - publish the app as a hosted, read-only portfolio demo: anonymous visitors browse every sport page, only the owner can reach the admin surface, and the code is public
+- [x] 37. **Public read-only demo** - publish the app as a hosted, read-only portfolio demo: anonymous visitors browse every sport page, only the owner can reach the admin surface, and the code is public
   - [x] 37a. **Admin-only login** - one owner credential signs in on the web, and the Admin page sends it, so admin routes work with `ADMIN_API_KEY` set; no sign-up, no other accounts, no per-user data
   - [x] 37b. **How it works page** - a public page explaining the pipeline, the models, and what validation found (which outputs are picks and which are reference only), linked from the nav
   - [x] 37c. **CI and secret scanning** - one Verify command and GitHub checks on pull requests and pushes (via `/ci`), plus a secret scan that fails a push carrying a credential
   - [x] 37d. **Deploy to Render** - API, web and scheduled-job wiring on Render against the existing Neon database, with production settings, model artifacts, `--proxy-headers`, and a smoke test (via `/release render`)
-  - [ ] 37e. **Public repo and README** - a fresh public snapshot with no private history, and a README covering what the app does, how to run it, and the live demo link
+  - [x] 37e. **Public repo and README** - a fresh public snapshot with no private history, and a README covering what the app does, how to run it, and the live demo link
 - [x] 20. **NBA support** - ingest, model, and surface NBA, reusing the NFL team-sport patterns
   - [x] 20a. **NBA data sourcing** - evaluate free schedule, box-score, and injury sources, probe PrizePicks' NBA league and The Odds API `basketball_nba` credit cost, define NBA's prop period, and decide whether NBA reuses the NFL team tables; document the choice before any ingest is written
   - [x] 20b. **NBA schedule and box-score ingest** - seed `nba` in `sports`; teams, players and games into the `sport_*` tables; per-game player box scores in an NBA stat table; 2025-26 backfill plus a daily refresh

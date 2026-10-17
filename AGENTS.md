@@ -126,8 +126,7 @@ with a password-free dummy `DATABASE_URL`, since no test connects) and
 and the commits the push or pull request adds). The secret scan was a deliberate
 build-plan choice for the public demo, not a default. Rename neither job without
 updating any ruleset that requires it. A failing check does not stop a push;
-GitHub push protection does, and is an owner setting best enabled once the repo
-is public (37e).
+GitHub push protection does, and is on since the repo went public (37e).
 
 ## Employer interview guide maintenance
 
@@ -248,6 +247,20 @@ Things that are easy to get wrong:
   Neon database. `alembic.ini` is untracked, so pass one with `-c`: it needs
   `[alembic] script_location = <repo>/api/app/db/migrations` plus logging
   sections, because `env.py` calls `fileConfig`.
+
+### Repository (37e)
+
+- **Public:** `Dayshawn21/Sports-Baseline` (remote `origin`). Render, CI and
+  every cron run from its `master`.
+- **History:** it starts from one snapshot commit (`2312f3a`). Everything
+  before 37e lives in the archived private `Dayshawn21/SportAppV2` (remote
+  `private`), so the commit hashes in pre-37e archives resolve only there.
+  `/rollback` of a pre-37e feature reads its commit from that repo.
+- **Workflows register only when a push changes their file.** A new
+  workflow that runs only on a schedule or by hand does not appear in
+  Actions until a commit touches it.
+- **GitHub pauses schedules in a public repo after 60 days with no
+  commit.** After a quiet spell, re-enable them in Actions or push a commit.
 
 **Testing is on.** Both `npm run test` and `pytest` are real, so the test gate
 applies: a step that adds logic ships a passing test in the same diff. See the
