@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SportApp - split view</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--card:#0d0d0f;--raised:#1a1a1e;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--t1:#f5f5f7;--t2:#9a9aa3;--t3:#85858f;--pos:#00c805;--neg:#ff5000;--cau:#e8b931}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--t1);font:400 13px/1.4 'DM Sans',sans-serif;display:grid;grid-template-columns:200px 420px 1fr}
+.rail{border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+.logo{font:800 22px 'Barlow Condensed';padding:0 8px 16px}.logo b{color:var(--pos)}
+.sport{padding:8px;border-radius:8px;color:var(--t2);font-weight:700}.sport.on{color:var(--t1)}
+.sub{padding:6px 8px 6px 20px;border-radius:7px;color:var(--t2)}.sub.on{background:var(--raised);color:var(--t1);font-weight:700}
+.rail .foot{margin-top:auto;color:var(--t3);font-size:12px;padding:8px}
+.list{border-right:1px solid var(--line);padding:18px 16px;overflow:hidden}
+.list h1{font:800 30px/1 'Barlow Condensed'}.list .sub2{color:var(--t2);margin:4px 0 14px}
+.label{font:700 11px 'Barlow Condensed';letter-spacing:.16em;color:var(--t2);text-transform:uppercase;margin:12px 0 6px}
+.pin{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:6px;display:flex;justify-content:space-between}
+.pin b{font-weight:700}.pin small{display:block;color:var(--t3);font-size:11px}.pin .v{font:500 13px 'JetBrains Mono';text-align:right}
+.row{display:grid;grid-template-columns:62px 1fr auto;gap:8px;padding:9px 8px;border-top:1px solid var(--line);align-items:center;border-radius:8px}
+.row.on{background:var(--raised);border-color:transparent}
+.row .t{font:400 11px 'JetBrains Mono';color:var(--t3)}.row .g{font-weight:700}.row .g small{display:block;font:400 11px 'JetBrains Mono';color:var(--t3)}
+.row .l{font:500 12px 'JetBrains Mono';text-align:right}.row .l small{display:block;color:var(--t3)}
+.detail{padding:22px 32px;overflow:hidden}
+.hero{display:flex;align-items:center;gap:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.hero .tm{font:800 40px/1 'Barlow Condensed'}.hero .rec{font:400 12px 'JetBrains Mono';color:var(--t3)}
+.hero .mid{flex:1;text-align:center;color:var(--t2)}.hero .mid b{display:block;color:var(--t1);font:700 15px 'Barlow Condensed';letter-spacing:.08em}
+.open{font-weight:700;border:1px solid var(--line2);border-radius:8px;padding:7px 12px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.big{font:500 22px 'JetBrains Mono';margin-top:6px}.big small{display:block;font:400 11px 'JetBrains Mono';color:var(--t3);margin-top:3px}
+.model{color:var(--t3);font:400 12px 'JetBrains Mono';margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-top:10px}
+svg{display:block;margin-top:10px}
+.prop{display:grid;grid-template-columns:1fr 1fr 60px 60px;padding:8px 0;border-top:1px solid var(--line);font:400 13px 'JetBrains Mono'}.prop b{font:700 13px 'DM Sans'}.prop span:nth-child(n+3){text-align:right}
+.inj{padding:8px 0;border-top:1px solid var(--line)}.inj b{font-weight:700}.inj small{display:block;color:var(--t3)}
+.tag{float:right;font:700 11px 'DM Sans';padding:1px 7px;border-radius:6px;border:1px solid rgba(255,80,0,.5);color:var(--neg)}
+.tag.c{border-color:rgba(232,185,49,.5);color:var(--cau)}
+</style></head><body>
+<nav class="rail"><div class="logo">Sport<b>App</b></div>
+  <div class="sport">Tennis</div><div class="sport on">NFL</div><div class="sub on">Slate</div><div class="sub">Props</div><div class="sub">Model</div><div class="sport">NBA</div>
+  <div class="foot">How it works</div></nav>
+<section class="list">
+  <h1>NFL week 6</h1><div class="sub2">14 games · odds Fri 3:40 PM CT</div>
+  <div class="label">Biggest gaps · reference</div>
+  <div class="pin"><div><b>Kirk Cousins</b><small>Passing yards · BUF @ LV</small></div><div class="v">247.5<small>model 195.0</small></div></div>
+  <div class="pin"><div><b>Matthew Stafford</b><small>Passing yards · ARI @ LA</small></div><div class="v">281.5<small>model 318.1</small></div></div>
+  <div class="label">Sunday 8:30 AM</div>
+  <div class="row on"><span class="t">8:30 AM</span><span class="g">HOU @ JAX<small>wind 14 mph</small></span><span class="l">JAX -2.5<small>o/u 42.5</small></span></div>
+  <div class="label">Sunday 12:00 PM</div>
+  <div class="row"><span class="t">12:00 PM</span><span class="g">BAL @ CLE<small>QB change: BAL</small></span><span class="l">BAL -3.0<small>o/u 39.5</small></span></div>
+  <div class="row"><span class="t">12:00 PM</span><span class="g">CAR @ PHI<small>2-2 · 2-3</small></span><span class="l">CAR -3.5<small>o/u 39.5</small></span></div>
+  <div class="row"><span class="t">12:00 PM</span><span class="g">CHI @ ATL<small>QB change: CHI</small></span><span class="l">CHI -1.5<small>o/u 51.5</small></span></div>
+  <div class="row"><span class="t">12:00 PM</span><span class="g">NYJ @ NE<small>1-4 · 3-2</small></span><span class="l">NE -6.5<small>o/u 41.0</small></span></div>
+  <div class="row"><span class="t">12:00 PM</span><span class="g">TEN @ IND<small>1-4 · 3-2</small></span><span class="l">IND -6.0<small>o/u 43.5</small></span></div>
+  <div class="label">Sunday 3:05 PM</div>
+  <div class="row"><span class="t">3:05 PM</span><span class="g">ARI @ LA<small>2-3 · 4-1</small></span><span class="l">LA -7.5<small>o/u 47.5</small></span></div>
+</section>
+<section class="detail">
+  <div class="hero"><div><div class="tm">HOU</div><div class="rec">1-4 · rest 7</div></div>
+    <div class="mid"><b>SUN, OCT 18, 8:30 AM CT</b>Outdoor · 55°F · wind 14 mph</div>
+    <div style="text-align:right"><div class="tm">JAX</div><div class="rec">4-1 · rest 7</div></div><span class="open">Full game page</span></div>
+  <div class="grid">
+    <div class="card"><div class="label" style="margin:0">Spread</div><div class="big">JAX -2.5<small>opened JAX -3.0 · best HOU +2.5 LV</small></div><div class="model">model JAX -6.0 · not a pick</div></div>
+    <div class="card"><div class="label" style="margin:0">Total</div><div class="big">42.5<small>opened 43.5</small></div><div class="model">model 42.4 · not a pick</div></div>
+    <div class="card"><div class="label" style="margin:0">Win probability</div><div class="big">JAX 57%<small>JAX -148 / HOU +124 de-vigged</small></div><div class="model">model JAX 70.4% · not a pick</div></div>
+  </div>
+  <div class="two">
+    <div class="card"><div class="label" style="margin:0">Top props · ranks from the board</div>
+      <div class="prop"><b>C.J. Stroud</b><span>Pass attempts</span><span>36.0</span><span>-10.2%</span></div>
+      <div class="prop"><b>Trevor Lawrence</b><span>Pass attempts</span><span>31.5</span><span>+9.8%</span></div>
+      <div class="prop"><b>Nico Collins</b><span>Receiving yards</span><span>74.5</span><span>-12.2%</span></div>
+      <div class="prop"><b>Travis Etienne</b><span>Rushing yards</span><span>68.5</span><span>+7.1%</span></div></div>
+    <div class="card"><div class="label" style="margin:0">Injuries and movement</div>
+      <div class="inj"><span class="tag c">Questionable</span><b>Tank Dell</b><small>WR · HOU · knee · limited practice</small></div>
+      <div class="inj"><span class="tag">Out</span><b>Evan Engram</b><small>TE · JAX · hamstring</small></div>
+      <svg width="100%" height="60" viewBox="0 0 300 60"><polyline fill="none" stroke="#f5f5f7" stroke-width="2" points="0,20 120,20 120,32 300,32"/><text x="0" y="56" fill="#85858f" font-size="11" font-family="JetBrains Mono">Tue 11 AM</text><text x="232" y="56" fill="#85858f" font-size="11" font-family="JetBrains Mono">Sat 8 PM</text></svg></div>
+  </div>
+</section>
+</body></html>

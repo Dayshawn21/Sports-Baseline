@@ -1,5 +1,7 @@
 # Project Plan
 
+**Product name:** Lineform (formerly SportApp V2; renamed 2026-10-16).
+
 > Adopted from an existing codebase via `/adopt`. Sections 1, 2, 6, and parts of 7
 > came from the user interview; sections 3, 4, 5, and 8 were read from the code.
 > Items marked `> TODO (confirm)` are inferences that need your review.
@@ -294,6 +296,13 @@ cards, low-contrast borders, green (`#00c805`) only for a positive signal, and r
 (`#ff5000`) only for negatives, with everything else grayscale. Tour accent colors
 still carry meaning (ATP blue `#3b82f6`, WTA pink `#f43f7b`, Challenger teal
 `#14b8a6`). Green follows the rule below: an unvalidated number never gets it.
+
+In 2026-10 the app was renamed Lineform and restructured (build-plan item 38):
+one command-bar shell across every page (sport tabs, Slate / Props / Model, a
+`/` search that jumps to any game, team or player), a table-first slate shared
+by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
+expand inline instead of a side panel), and props shown as table rows instead
+of cards. The palette, fonts and signal rules above are unchanged.
 
 Typography is deliberately three-part: Barlow Condensed for display, DM Sans for
 body, JetBrains Mono for numbers. Numeric alignment matters here because the whole

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Select } from 'antd'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
 import ModelCalibrationChart from '~/components/tennis/model/ModelCalibrationChart'
 import ModelClv from '~/components/tennis/model/ModelClv'
 import ModelComponentTable from '~/components/tennis/model/ModelComponentTable'
 import ModelPrizePicksTable from '~/components/tennis/model/ModelPrizePicksTable'
 import ModelSection from '~/components/shared/ModelSection'
+import PageHead from '~/components/shared/PageHead'
 import ModelTierCards from '~/components/tennis/model/ModelTierCards'
 import ModelVerdictCards from '~/components/tennis/model/ModelVerdictCards'
 import { useModelPredictions, useModelPrizePicksLines, useModelPropTiers } from '~/hooks/useModelTrackRecord'
@@ -23,16 +23,10 @@ export default function TennisModelPage() {
 
   return (
     <div className="page-shell tennis-model"><div className="page-container is-wide">
-      <header className="page-head unified-page-head">
-        <div>
-          <div className="unified-eyebrow">Tennis · Model</div>
-          <h1 className="unified-page-title">Model track record</h1>
-          <p className="unified-page-subtitle">
-            Graded on settled matches only{gradedAt && <> · last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}
-          </p>
-        </div>
-        <SportViewSwitch sport="tennis" />
-      </header>
+      <PageHead
+        title="Track record"
+        meta={<>Settled matches{gradedAt && <> · last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
+      />
 
       {predictions.data && (
         <div className="tennis-model-version">

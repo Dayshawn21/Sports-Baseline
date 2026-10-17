@@ -5,6 +5,7 @@ import { useBestPicks } from '~/hooks/useBestPicks'
 import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import TennisCommandCenter from '~/components/tennis/TennisCommandCenter'
 import LoadingState from '~/components/shared/LoadingState'
+import PageHead from '~/components/shared/PageHead'
 import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
 import TennisPickCards from '~/components/tennis/TennisPickCards'
 import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
@@ -15,7 +16,7 @@ import {
   composeUnifiedMatches,
 } from '~/utils/unifiedTennis'
 import { featuredPicks, isGroupedSort } from '~/utils/tennisSlate'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
+import { slateDateLabel } from '~/utils/nbaSlate'
 import '~/components/tennis/tennis-slate.css'
 
 type PropSource = 'prizepicks' | 'dk' | 'bet'
@@ -138,23 +139,18 @@ export default function TennisIntelligencePage() {
   return (
     <div className="page-shell">
       <div className="page-container is-wide unified-tennis-page">
-        <header className="page-head unified-page-head">
-          <div>
-            <div className="unified-eyebrow">Tennis · Daily intelligence</div>
-            <h1 className="unified-page-title">Best Opportunities</h1>
-            <p className="unified-page-subtitle">Predictions, props, and model-backed picks in one place.</p>
-          </div>
-          <SportViewSwitch sport="tennis" />
-        </header>
-
-        {!primaryLoading && (
-          <TennisSlateSummary
-            matches={matches.length}
-            props={counts.props}
-            locks={counts.locks}
-            strongOrBetter={counts.strongOrBetter}
-          />
-        )}
+        <PageHead
+          title="Tennis slate"
+          meta={date ? slateDateLabel(date) : 'Today and tomorrow'}
+          stats={!primaryLoading && (
+            <TennisSlateSummary
+              matches={matches.length}
+              props={counts.props}
+              locks={counts.locks}
+              strongOrBetter={counts.strongOrBetter}
+            />
+          )}
+        />
 
         <>
           <div className="page-toolbar unified-toolbar">

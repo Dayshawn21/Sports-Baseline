@@ -1,19 +1,6 @@
 /* Tennis slate (build-plan 31b), after prototypes/tennis-slate.html.
-   Scoped to .unified-tennis-page: the unified-* head and toolbar classes are
-   shared with the NFL and prop-board pages. */
-
-.unified-tennis-page .unified-page-title {
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: none;
-}
-
-.unified-tennis-page .unified-page-head {
-  border-bottom: 0;
-  padding-bottom: 0;
-  margin-bottom: var(--space-5);
-}
+   Scoped to .unified-tennis-page: the unified-* toolbar classes are shared
+   with the NFL and prop-board pages. The head is the shared PageHead (38a). */
 
 /* ── Summary strip ── */
 
@@ -21,7 +8,6 @@
   display: grid;
   grid-template-columns: 1.4fr repeat(3, 1fr);
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
 }
 
 .tennis-slate-stat {

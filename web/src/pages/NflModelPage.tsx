@@ -5,7 +5,7 @@ import { NflOverProbabilityFit, NflOverProbabilityForward } from '~/components/n
 import NflRankingSlices from '~/components/nfl/model/NflRankingSlices'
 import LoadingState from '~/components/shared/LoadingState'
 import ModelSection from '~/components/shared/ModelSection'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
+import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useNflCurrentWeek } from '~/hooks/useNfl'
 import { useNflModelClv, useNflModelFit, useNflModelPropLines, useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
@@ -40,21 +40,14 @@ export default function NflModelPage() {
 
   if (currentWeek.isLoading) return <LoadingState message="Finding the NFL season..." />
   return <div className="page-shell nfl-model"><div className="page-container is-wide">
-    <header className="nfl-model__head">
-      <div>
-        <div className="unified-eyebrow">NFL · Model{season !== null && <> · {season}</>}</div>
-        <h1 className="unified-page-title">Track Record</h1>
-        <p className="unified-page-subtitle">
-          How the NFL models grade against the lines they have to beat. Gray unless a result clears its baseline by 2 SE.
-          {gradedAt && <> Last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}.</>}
-        </p>
-      </div>
-      <SportViewSwitch sport="nfl" />
-    </header>
+    <PageHead
+      title="Track record"
+      meta={season !== null && <>{season} season{gradedAt && <> · last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
+      stats={season !== null && <Summary ranking={ranking.data} clv={clv.data} />}
+    />
     {season === null
       ? <div className="model-section-empty nfl-model__none">No NFL regular-season games are loaded, so there is no season to grade.</div>
       : <>
-        <Summary ranking={ranking.data} clv={clv.data} />
         <Heading title="Forward ranking check">27j · frozen pre-kickoff predictions · decides 27h</Heading>
         <ModelSection query={ranking} loading="Grading frozen predictions...">
           {(data) => <NflRankingSlices data={data} />}

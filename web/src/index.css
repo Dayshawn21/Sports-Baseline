@@ -288,10 +288,6 @@ body {
   text-align: left;
 }
 
-.unified-page-head {
-  align-items: flex-end;
-}
-
 .unified-eyebrow {
   margin-bottom: 6px;
   color: var(--text-secondary);
@@ -311,12 +307,6 @@ body {
   letter-spacing: 0.03em;
   line-height: 1;
   text-transform: uppercase;
-}
-
-.unified-page-subtitle {
-  margin: 8px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
 }
 
 .unified-toolbar {
@@ -910,10 +900,6 @@ body {
 
 
 @media (max-width: 768px) {
-  .unified-page-head {
-    align-items: flex-start;
-  }
-
   .unified-toolbar-summary {
     width: 100%;
   }
@@ -1013,6 +999,137 @@ body {
   font-weight: 700;
 }
 
-.app-nav .ant-menu-item-selected {
-  font-weight: 600;
+.shell-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: normal;
+}
+
+.shell-tabs--end {
+  margin-left: auto;
+}
+
+.shell-tabs a {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: 500 14px var(--font-body);
+  white-space: nowrap;
+}
+
+.shell-tabs a:hover {
+  color: var(--text-primary);
+}
+
+.shell-tabs a.is-active {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.lf-page-head {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.lf-page-head__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+
+.lf-page-head__text {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  min-width: 0;
+}
+
+/* The chosen sketch's 34px title keeps the status line readable beside it. */
+.lf-page-head .unified-page-title {
+  font-size: 34px;
+}
+
+.lf-page-head__meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font: 500 16px var(--font-body);
+}
+
+.lf-page-head__controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lf-page-head__controls .ant-select {
+  min-width: 142px;
+}
+
+.lf-page-head__stats {
+  margin-top: 18px;
+}
+
+.page-head-period {
+  display: flex;
+  gap: 10px;
+}
+
+.page-head-period__link {
+  padding: 5px 14px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: 500 14px var(--font-body);
+  white-space: nowrap;
+}
+
+.page-head-period__link:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.page-head-period__link[aria-disabled='true'] {
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .lf-page-head__row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lf-page-head__controls {
+    width: 100%;
+  }
+
+  .lf-page-head__controls .ant-select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.shell-mobile-sport {
+  margin-right: auto;
+  color: var(--text-secondary);
+  font: 700 15px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shell-views-row {
+  margin: 10px 0 0 max(16px, env(safe-area-inset-left, 0px));
+}
+
+.shell-tabs a:focus-visible,
+.sport-view-switch a:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
 }

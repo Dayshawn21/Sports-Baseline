@@ -1,34 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NAV_ITEMS, SPORTS, navKeyForPath, sportViewForPath, sportViews, visibleNavItems } from '~/utils/sportNav'
-
-describe('navKeyForPath', () => {
-  it('highlights the sport on both of its views', () => {
-    expect(navKeyForPath('/')).toBe('/')
-    expect(navKeyForPath('/tennis/board')).toBe('/')
-    expect(navKeyForPath('/tennis/model')).toBe('/')
-    expect(navKeyForPath('/nfl')).toBe('/nfl')
-    expect(navKeyForPath('/nfl/board')).toBe('/nfl')
-    expect(navKeyForPath('/nfl/model')).toBe('/nfl')
-    expect(navKeyForPath('/nba')).toBe('/nba')
-  })
-
-  it('highlights the sport on its detail pages', () => {
-    expect(navKeyForPath('/nfl/game/52')).toBe('/nfl')
-    expect(navKeyForPath('/nba/game/21320')).toBe('/nba')
-    expect(navKeyForPath('/tennis/match/82864')).toBe('/')
-    expect(navKeyForPath('/tennis/player/7')).toBe('/')
-  })
-
-  it('keeps the other entries as they are', () => {
-    expect(navKeyForPath('/how-it-works')).toBe('/how-it-works')
-    expect(navKeyForPath('/admin')).toBe('/admin')
-  })
-
-  it('falls back to Tennis for unknown paths', () => {
-    expect(navKeyForPath('/parlays')).toBe('/')
-    expect(navKeyForPath('/nope')).toBe('/')
-  })
-})
+import { SPORTS, documentTitle, menuSections, shellNav, sportViewForPath, sportViews, visibleNavItems } from '~/utils/sportNav'
 
 describe('sportViewForPath', () => {
   it('maps each sport route to its view', () => {
@@ -63,16 +34,6 @@ describe('sportViews', () => {
 })
 
 describe('SPORTS registry', () => {
-  it('builds the nav entries, in order', () => {
-    expect(NAV_ITEMS).toEqual([
-      { key: '/', label: 'Tennis' },
-      { key: '/nfl', label: 'NFL' },
-      { key: '/nba', label: 'NBA' },
-      { key: '/how-it-works', label: 'How it works' },
-      { key: '/admin', label: 'Admin' },
-    ])
-  })
-
   it('never gives two views the same path', () => {
     const paths = SPORTS.flatMap(sport => sportViews(sport.code).map(entry => entry.path))
     expect(new Set(paths).size).toBe(paths.length)
@@ -94,15 +55,96 @@ describe('NBA', () => {
 })
 
 describe('visibleNavItems', () => {
+  const items = [{ key: '/nfl' }, { key: '/how-it-works' }, { key: '/admin' }]
+
   it('hides Admin from visitors', () => {
-    expect(visibleNavItems(NAV_ITEMS, false).map(item => item.key)).toEqual(['/', '/nfl', '/nba', '/how-it-works'])
+    expect(visibleNavItems(items, false).map(item => item.key)).toEqual(['/nfl', '/how-it-works'])
   })
 
   it('shows Admin to the signed-in owner', () => {
-    expect(visibleNavItems(NAV_ITEMS, true)).toEqual(NAV_ITEMS)
+    expect(visibleNavItems(items, true)).toEqual(items)
+  })
+})
+
+describe('shellNav', () => {
+  const active = <T extends { active: boolean }>(items: T[]) => items.filter(item => item.active)
+
+  it('marks the sport and view of each sport route', () => {
+    const nfl = shellNav('/nfl/board', false)
+    expect(nfl.sports.map(sport => [sport.label, sport.path, sport.active])).toEqual([
+      ['Tennis', '/', false], ['NFL', '/nfl', true], ['NBA', '/nba', false],
+    ])
+    expect(nfl.views).toEqual([
+      { view: 'slate', label: 'Slate', path: '/nfl', active: false },
+      { view: 'props', label: 'Props', path: '/nfl/board', active: true },
+      { view: 'model', label: 'Model', path: '/nfl/model', active: false },
+    ])
+    expect(active(shellNav('/', false).sports).map(sport => sport.code)).toEqual(['tennis'])
+    expect(active(shellNav('/', false).views).map(view => view.view)).toEqual(['slate'])
   })
 
-  it('keeps highlighting /admin while the entry is hidden', () => {
-    expect(navKeyForPath('/admin')).toBe('/admin')
+  it('lists only the views a sport has', () => {
+    expect(shellNav('/nba/model', false).views.map(view => view.label)).toEqual(['Slate', 'Model'])
+  })
+
+  it('keeps the sport but no view on a detail page', () => {
+    const game = shellNav('/nfl/game/52', false)
+    expect(active(game.sports).map(sport => sport.code)).toEqual(['nfl'])
+    expect(game.views).toHaveLength(3)
+    expect(active(game.views)).toEqual([])
+    expect(active(shellNav('/tennis/match/82864', false).sports).map(sport => sport.code)).toEqual(['tennis'])
+  })
+
+  it('shows no views off the sport pages', () => {
+    for (const path of ['/how-it-works', '/admin', '/parlays']) {
+      const nav = shellNav(path, true)
+      expect(nav.views).toEqual([])
+      expect(active(nav.sports)).toEqual([])
+    }
+    expect(active(shellNav('/how-it-works', false).links).map(link => link.key)).toEqual(['/how-it-works'])
+  })
+
+  it('hides Admin from visitors and shows it to the owner', () => {
+    expect(shellNav('/', false).links.map(link => link.label)).toEqual(['How it works'])
+    expect(shellNav('/', true).links.map(link => link.label)).toEqual(['How it works', 'Admin'])
+  })
+})
+
+describe('documentTitle', () => {
+  it('names each sport view', () => {
+    expect(documentTitle('/')).toBe('Tennis slate · Lineform')
+    expect(documentTitle('/tennis/board')).toBe('Tennis props · Lineform')
+    expect(documentTitle('/nfl')).toBe('NFL slate · Lineform')
+    expect(documentTitle('/nfl/model')).toBe('NFL model · Lineform')
+    expect(documentTitle('/nba/model')).toBe('NBA model · Lineform')
+  })
+
+  it('names detail pages by kind', () => {
+    expect(documentTitle('/nfl/game/52')).toBe('NFL game · Lineform')
+    expect(documentTitle('/nba/game/21320')).toBe('NBA game · Lineform')
+    expect(documentTitle('/tennis/match/82864')).toBe('Tennis match · Lineform')
+    expect(documentTitle('/tennis/player/7')).toBe('Tennis player · Lineform')
+  })
+
+  it('names the other pages and falls back to the app name', () => {
+    expect(documentTitle('/how-it-works')).toBe('How it works · Lineform')
+    expect(documentTitle('/admin')).toBe('Admin · Lineform')
+    expect(documentTitle('/parlays')).toBe('Lineform')
+    expect(documentTitle('/nope')).toBe('Lineform')
+  })
+})
+
+describe('menuSections', () => {
+  it('nests each sport\'s views under it, then the other links', () => {
+    expect(menuSections(false)).toEqual([
+      { label: 'Tennis', items: [{ key: '/', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
+      { label: 'NFL', items: [{ key: '/nfl', label: 'Slate' }, { key: '/nfl/board', label: 'Props' }, { key: '/nfl/model', label: 'Model' }] },
+      { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/model', label: 'Model' }] },
+      { label: null, items: [{ key: '/how-it-works', label: 'How it works' }] },
+    ])
+  })
+
+  it('adds Admin for the owner', () => {
+    expect(menuSections(true).at(-1)?.items.map(item => item.label)).toEqual(['How it works', 'Admin'])
   })
 })

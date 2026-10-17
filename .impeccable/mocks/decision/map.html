@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SportApp - disagreement map</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--card:#0d0d0f;--raised:#1a1a1e;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--t1:#f5f5f7;--t2:#9a9aa3;--t3:#85858f;--pos:#00c805;--mid:#6b6b75;--low:#3a3a42}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--t1);font:400 13px/1.4 'DM Sans',sans-serif}
+.top{height:56px;display:flex;align-items:center;gap:26px;padding:0 40px;border-bottom:1px solid var(--line)}
+.logo{font:800 22px 'Barlow Condensed'}.logo b{color:var(--pos)}
+.top a{color:var(--t2);font-weight:500}.top a.on{color:var(--t1);font-weight:700}
+.views{margin-left:auto;display:flex;gap:4px;padding:3px;border:1px solid var(--line2);border-radius:10px}.views span{padding:5px 12px;border-radius:7px;color:var(--t2)}.views .on{background:var(--raised);color:var(--t1)}
+main{padding:24px 40px;display:grid;grid-template-columns:560px 1fr;gap:28px}
+.head{grid-column:1/-1;display:flex;align-items:baseline;gap:14px}
+.head h1{font:800 34px/1 'Barlow Condensed'}.head span{color:var(--t2)}
+.chips{margin-left:auto;display:flex;gap:6px}.chips span{padding:5px 11px;border:1px solid var(--line2);border-radius:999px;color:var(--t2);font-size:12px}.chips .on{background:var(--t1);color:#000;font-weight:700}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.label{font:700 11px 'Barlow Condensed';letter-spacing:.16em;color:var(--t2);text-transform:uppercase}
+.map{position:relative;width:520px;height:520px;margin-top:12px;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.diag{position:absolute;left:0;bottom:0;width:735px;height:1px;background:var(--line2);transform-origin:0 0;transform:rotate(-45deg)}
+.band{position:absolute;left:0;bottom:0;width:735px;height:60px;background:rgba(255,255,255,.03);transform-origin:0 0;transform:rotate(-45deg) translateY(-30px)}
+.ax{position:absolute;font:500 11px 'JetBrains Mono';color:var(--t3)}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--mid);transform:translate(-50%,50%)}
+.dot.pick{background:var(--pos);width:13px;height:13px;box-shadow:0 0 0 4px rgba(0,200,5,.15)}
+.dot.sel{outline:2px solid var(--t1);outline-offset:3px}
+.tip{position:absolute;font:500 11px 'DM Sans';color:var(--t1);white-space:nowrap}
+.legend{display:flex;gap:16px;margin-top:12px;color:var(--t2);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{font:700 11px 'Barlow Condensed';letter-spacing:.14em;color:var(--t3);text-align:left;padding:6px 8px;text-transform:uppercase}
+th.s::after{content:" \2193";color:var(--t1)}
+td{padding:9px 8px;border-top:1px solid var(--line);font:400 13px 'JetBrains Mono'}
+td.n{font:700 13px 'DM Sans'}td.n small{display:block;font:400 11px 'DM Sans';color:var(--t3)}
+td.r,th.r{text-align:right}.g{color:var(--pos);font-weight:700}.mu{color:var(--t3)}
+tr.sel td{background:var(--raised)}
+.badge{font:700 11px 'JetBrains Mono';padding:2px 7px;border-radius:6px;border:1px solid rgba(0,200,5,.5);color:var(--pos)}
+</style></head><body>
+<header class="top"><div class="logo">Sport<b>App</b></div><a class="on">Tennis</a><a>NFL</a><a>NBA</a><a>How it works</a>
+  <div class="views"><span class="on">Slate</span><span>Props</span><span>Model</span></div></header>
+<main>
+  <div class="head"><h1>Tennis slate</h1><span>Fri Oct 16 · 28 matches · Osaka, Ningbo, Shanghai, Jinan</span>
+    <div class="chips"><span class="on">All</span><span>ATP</span><span>WTA</span><span>Challenger</span></div></div>
+  <section class="panel">
+    <div class="label">Model against market · each dot is a priced pick</div>
+    <div class="map">
+      <div class="band"></div><div class="diag"></div>
+      <span class="ax" style="left:12px;top:8px">model 100%</span><span class="ax" style="right:10px;bottom:10px">market 100%</span>
+      <span class="ax" style="left:300px;top:250px;transform:rotate(-45deg)">model and market agree</span>
+      <div class="dot pick sel" style="left:260px;bottom:428px"></div><span class="tip" style="left:276px;bottom:430px">Zverev -3.5 games · +50.8% EV</span>
+      <div class="dot pick" style="left:280px;bottom:426px"></div><span class="tip" style="left:296px;bottom:404px">Bellucci -3.5 · +41.0%</span>
+      <div class="dot pick" style="left:267px;bottom:320px"></div><span class="tip" style="left:283px;bottom:312px">Landaluce -2.5 · +10.9%</span>
+      <div class="dot" style="left:440px;bottom:445px"></div><div class="dot" style="left:449px;bottom:455px"></div>
+      <div class="dot" style="left:458px;bottom:458px"></div><div class="dot" style="left:330px;bottom:340px"></div>
+      <div class="dot" style="left:210px;bottom:214px"></div><div class="dot" style="left:180px;bottom:200px"></div>
+      <div class="dot" style="left:395px;bottom:415px"></div><div class="dot" style="left:268px;bottom:279px"></div>
+      <div class="dot" style="left:125px;bottom:160px"></div><div class="dot" style="left:503px;bottom:500px"></div>
+      <div class="dot" style="left:232px;bottom:252px"></div><div class="dot" style="left:350px;bottom:362px"></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--pos)"></i>Priced pick, positive EV</span><span><i style="background:var(--mid)"></i>Reference only</span><span class="mu">Distance from the line is the gap</span></div>
+  </section>
+  <section class="panel">
+    <div class="label">Best opportunities · linked to the map</div>
+    <table>
+      <thead><tr><th>Start</th><th>Pick</th><th class="r">Model</th><th class="r">Market</th><th class="r s">EV</th><th class="r">Tier</th></tr></thead>
+      <tbody>
+        <tr class="sel"><td class="mu">3:30 AM</td><td class="n">Zverev -3.5 games<small>vs Davidovich Fokina · Shanghai</small></td><td class="r">82.2%</td><td class="r">50.0%</td><td class="r g">+50.8%</td><td class="r"><span class="badge">LOCK</span></td></tr>
+        <tr><td class="mu">2:30 AM</td><td class="n">Bellucci -3.5 games<small>vs Mochizuki · Jinan</small></td><td class="r">82.0%</td><td class="r">53.8%</td><td class="r g">+41.0%</td><td class="r"><span class="badge">LOCK</span></td></tr>
+        <tr><td class="mu">4:00 AM</td><td class="n">Landaluce -2.5 games<small>vs Draxl · Jinan</small></td><td class="r">61.6%</td><td class="r">51.4%</td><td class="r g">+10.9%</td><td class="r"><span class="badge">STRONG</span></td></tr>
+        <tr><td class="mu">12:30 AM</td><td class="n">Taylah Preston · Total games<small>vs Haruka Kaji · Osaka</small></td><td class="r">79.7%</td><td class="r mu">PrizePicks</td><td class="r">+70.9%</td><td class="r mu">LEAN</td></tr>
+        <tr><td class="mu">9:30 PM</td><td class="n">Maya Joint · Total games won<small>vs Kyoka Okamura · Osaka</small></td><td class="r">69.0%</td><td class="r mu">PrizePicks</td><td class="r">+52.4%</td><td class="r mu">LEAN</td></tr>
+        <tr><td class="mu">1:00 AM</td><td class="n">Kenin wins 2-0<small>vs Mei Yamaguchi · Osaka</small></td><td class="r">65.2%</td><td class="r mu">-</td><td class="r mu">-</td><td class="r mu">STRONG</td></tr>
+        <tr><td class="mu">11:00 PM</td><td class="n">Dart wins 2-0<small>vs Rina Saigo · Osaka</small></td><td class="r">63.1%</td><td class="r mu">-</td><td class="r mu">-</td><td class="r mu">LEAN</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body></html>

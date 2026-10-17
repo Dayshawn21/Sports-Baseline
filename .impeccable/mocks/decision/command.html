@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SportApp - command bar</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--card:#0d0d0f;--raised:#1a1a1e;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--t1:#f5f5f7;--t2:#9a9aa3;--t3:#85858f;--pos:#00c805;--neg:#ff5000;--cau:#e8b931}
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--t1);font:400 13px/1.4 'DM Sans',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.top{height:64px;display:flex;align-items:center;gap:28px;padding:0 40px;border-bottom:1px solid var(--line)}
+.logo{font:800 22px 'Barlow Condensed'}.logo b{color:var(--pos)}
+.tabs{display:flex;gap:4px}.tabs a{padding:7px 14px;border-radius:8px;color:var(--t2);font-weight:500}.tabs a.on{background:var(--raised);color:var(--t1)}
+.cmd{flex:1;max-width:620px;height:40px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--t2)}
+.cmd kbd{margin-left:auto;font:500 11px 'JetBrains Mono';padding:2px 6px;border:1px solid var(--line2);border-radius:5px;color:var(--t3)}
+.views{margin-left:auto;display:flex;gap:16px;color:var(--t2)}.views .on{color:var(--t1);font-weight:700}
+main{padding:22px 40px}
+.head{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.head h1{font:800 34px/1 'Barlow Condensed';letter-spacing:.02em}
+.head span{color:var(--t2)}
+.head .wk{margin-left:auto;display:flex;gap:8px}.wk a{padding:6px 12px;border:1px solid var(--line2);border-radius:8px;color:var(--t2)}
+.label{font:700 11px 'Barlow Condensed';letter-spacing:.16em;color:var(--t2);text-transform:uppercase;margin-bottom:8px}
+.digest{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+.play{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.play .who{font-weight:700}.play .what{color:var(--t2);font-size:12px}
+.play .num{display:flex;justify-content:space-between;margin-top:8px;font:500 15px 'JetBrains Mono'}
+.play .gap{color:var(--t1)}.play .ref{font:500 11px 'DM Sans';color:var(--t3)}
+.win{display:flex;align-items:center;gap:10px;margin:14px 0 6px}.win .label{margin:0}.win i{flex:1;height:1px;background:var(--line)}
+table{width:100%;border-collapse:collapse}
+th{font:700 11px 'Barlow Condensed';letter-spacing:.14em;color:var(--t3);text-align:left;padding:6px 10px;text-transform:uppercase}
+td{padding:9px 10px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:13px}
+td.m{font:700 14px 'DM Sans'}td.m small{display:block;font:400 11px 'JetBrains Mono';color:var(--t3)}
+td.r{text-align:right}.muted{color:var(--t3)}
+tr.sel td{background:var(--card)}
+.tag{font:500 11px 'DM Sans';padding:2px 7px;border-radius:6px;border:1px solid var(--line2);color:var(--t2)}
+.tag.out{border-color:rgba(255,80,0,.5);color:var(--neg)}.tag.qb{border-color:rgba(232,185,49,.5);color:var(--cau)}
+</style></head><body>
+<header class="top">
+  <div class="logo">Sport<b>App</b></div>
+  <nav class="tabs"><a>Tennis</a><a class="on">NFL</a><a>NBA</a></nav>
+  <div class="cmd">Jump to a game, team or player... <span class="muted">try "JAX" or "Stroud"</span><kbd>/</kbd></div>
+  <nav class="views"><span class="on">Slate</span><span>Props</span><span>Model</span><span>How it works</span></nav>
+</header>
+<main>
+  <div class="head"><h1>NFL slate</h1><span>2026 week 6 · 14 games · odds updated Fri 3:40 PM CT</span>
+    <div class="wk"><a>Week 5</a><a>Week 7</a></div></div>
+  <div class="label">Biggest gaps this week · reference, not picks</div>
+  <section class="digest">
+    <div class="play"><div class="who">Kirk Cousins</div><div class="what">Passing yards · BUF @ LV</div><div class="num"><span>247.5</span><span class="gap">model 195.0</span></div><div class="ref">-22.3% · under</div></div>
+    <div class="play"><div class="who">Matthew Stafford</div><div class="what">Passing yards · ARI @ LA</div><div class="num"><span>281.5</span><span class="gap">model 318.1</span></div><div class="ref">+15.6% · over</div></div>
+    <div class="play"><div class="who">Geno Smith</div><div class="what">Passing yards · NYJ @ NE</div><div class="num"><span>221.5</span><span class="gap">model 186.4</span></div><div class="ref">-14.9% · under</div></div>
+    <div class="play"><div class="who">Nico Collins</div><div class="what">Receiving yards · HOU @ JAX</div><div class="num"><span>74.5</span><span class="gap">model 65.4</span></div><div class="ref">-12.2% · under</div></div>
+  </section>
+  <table>
+    <thead><tr><th>Kickoff</th><th>Game</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Model</th><th class="r">Props</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="muted">Thu 7:15 PM</td><td class="m">SEA 14 · DEN 17<small>final</small></td><td>SEA -2.5</td><td>40.5</td><td class="muted">closed</td><td class="muted">DEN -0.5</td><td class="r">200</td><td><span class="tag out">1 out</span></td></tr>
+      <tr class="sel"><td class="muted">Sun 8:30 AM</td><td class="m">HOU @ JAX<small>1-4 · 4-1</small></td><td>JAX -2.5</td><td>42.5</td><td>JAX -148</td><td class="muted">JAX -6.0 · 42.4</td><td class="r">171</td><td><span class="tag">wind 14</span></td></tr>
+      <tr><td class="muted">Sun 12:00 PM</td><td class="m">BAL @ CLE<small>4-1 · 3-2</small></td><td>BAL -3.0</td><td>39.5</td><td>BAL -166</td><td class="muted">BAL -4.1 · 41.0</td><td class="r">158</td><td><span class="tag qb">QB change: BAL</span></td></tr>
+      <tr><td class="muted">Sun 12:00 PM</td><td class="m">CAR @ PHI<small>2-2 · 2-3</small></td><td>CAR -3.5</td><td>39.5</td><td>CAR -175</td><td class="muted">PHI -1.0 · 44.2</td><td class="r">149</td><td></td></tr>
+      <tr><td class="muted">Sun 12:00 PM</td><td class="m">CHI @ ATL<small>3-2 · 2-3</small></td><td>CHI -1.5</td><td>51.5</td><td>CHI -118</td><td class="muted">ATL -0.5 · 47.8</td><td class="r">162</td><td><span class="tag qb">QB change: CHI</span></td></tr>
+      <tr><td class="muted">Sun 12:00 PM</td><td class="m">NYJ @ NE<small>1-4 · 3-2</small></td><td>NE -6.5</td><td>41.0</td><td>NE -290</td><td class="muted">NE -5.2 · 40.1</td><td class="r">140</td><td></td></tr>
+      <tr><td class="muted">Sun 3:05 PM</td><td class="m">ARI @ LA<small>2-3 · 4-1</small></td><td>LA -7.5</td><td>47.5</td><td>LA -380</td><td class="muted">LA -6.8 · 48.3</td><td class="r">166</td><td></td></tr>
+      <tr><td class="muted">Sun 3:25 PM</td><td class="m">BUF @ LV<small>4-1 · 1-4</small></td><td>BUF -8.0</td><td>44.5</td><td>BUF -420</td><td class="muted">BUF -9.4 · 45.0</td><td class="r">170</td><td><span class="tag">dome</span></td></tr>
+    </tbody>
+  </table>
+</main>
+</body></html>

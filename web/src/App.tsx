@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { ConfigProvider, Layout, Menu, Drawer, Button } from 'antd'
+import { ConfigProvider, Layout, Menu, Drawer, Button, type MenuProps } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
-import { HashRouter, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import ParlaysPage from '~/pages/ParlaysPage'
 import AdminPage from '~/pages/AdminPage'
 import HowItWorksPage from '~/pages/HowItWorksPage'
@@ -9,7 +9,7 @@ import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { APP_ANTD_THEME } from '~/theme/antdTheme'
 import { useAdminKey } from '~/hooks/useAdmin'
-import { NAV_ITEMS, navKeyForPath, visibleNavItems } from '~/utils/sportNav'
+import { documentTitle, menuSections, shellNav, type ShellNav } from '~/utils/sportNav'
 
 const { Header, Content } = Layout
 
@@ -30,8 +30,51 @@ const HEADER_STYLE: CSSProperties = {
 function Wordmark() {
   return (
     <span className="app-wordmark">
-      Sport<b>App</b>
+      Line<b>form</b>
     </span>
+  )
+}
+
+function ViewTabs({ nav, className = '' }: { nav: ShellNav, className?: string }) {
+  if (nav.views.length === 0) return null
+  return (
+    <nav className={`sport-view-switch ${className}`} aria-label="Views">
+      {nav.views.map(view => (
+        <Link key={view.view} to={view.path} className={view.active ? 'is-selected' : ''} aria-current={view.active ? 'page' : undefined}>
+          {view.label}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+/** Each sport is a labeled group of its views; a divider sets the unlabeled section's links apart from the last sport. */
+function drawerItems(adminVisible: boolean): MenuProps['items'] {
+  return menuSections(adminVisible).flatMap(section => section.label
+    ? [{ type: 'group' as const, key: section.label, label: section.label, children: section.items }]
+    : [{ type: 'divider' as const, key: 'links-divider' }, ...section.items])
+}
+
+function TopBar({ nav }: { nav: ShellNav }) {
+  return (
+    <Header style={{ ...HEADER_STYLE, padding: '0 clamp(20px, 3.2vw, 56px)', gap: 24 }}>
+      <Wordmark />
+      <nav className="shell-tabs" aria-label="Sports">
+        {nav.sports.map(sport => (
+          <Link key={sport.code} to={sport.path} className={sport.active ? 'is-active' : ''} aria-current={sport.active ? 'true' : undefined}>
+            {sport.label}
+          </Link>
+        ))}
+      </nav>
+      <ViewTabs nav={nav} />
+      <nav className="shell-tabs shell-tabs--end" aria-label="More">
+        {nav.links.map(link => (
+          <Link key={link.key} to={link.key} className={link.active ? 'is-active' : ''} aria-current={link.active ? 'page' : undefined}>
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+    </Header>
   )
 }
 
@@ -40,18 +83,20 @@ function Nav() {
   const { pathname } = useLocation()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const selectedKey = navKeyForPath(pathname)
-  const navItems = visibleNavItems(NAV_ITEMS, useAdminKey() !== null || import.meta.env.DEV)
+  const adminVisible = useAdminKey() !== null || import.meta.env.DEV
+  const nav = shellNav(pathname, adminVisible)
 
   useEffect(() => {
     setDrawerOpen(false)
+    document.title = documentTitle(pathname)
   }, [pathname])
 
   if (isMobile) {
     return (
       <>
-        <Header style={{ ...HEADER_STYLE, justifyContent: 'space-between', padding: '0 12px', gap: 8 }}>
+        <Header style={{ ...HEADER_STYLE, padding: '0 20px', gap: 10 }}>
           <Wordmark />
+          <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
           <Button
             type="text"
             icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}
@@ -59,6 +104,7 @@ function Nav() {
             aria-label="Open navigation menu"
           />
         </Header>
+        <ViewTabs nav={nav} className="shell-views-row" />
 
         <Drawer
           title="Menu"
@@ -73,8 +119,8 @@ function Nav() {
           <Menu
             theme="dark"
             mode="inline"
-            selectedKeys={[selectedKey]}
-            items={navItems}
+            selectedKeys={[pathname]}
+            items={drawerItems(adminVisible)}
             onClick={({ key }) => {
               navigate(key)
               setDrawerOpen(false)
@@ -86,26 +132,7 @@ function Nav() {
     )
   }
 
-  return (
-    <Header style={{ ...HEADER_STYLE, padding: '0 24px', gap: 24 }}>
-      <Wordmark />
-      <div className="mobile-scroll-x app-nav" style={{ flex: 1, minWidth: 0 }}>
-        <Menu
-          theme="dark"
-          mode="horizontal"
-          selectedKeys={[selectedKey]}
-          items={navItems}
-          onClick={({ key }) => navigate(key)}
-          style={{
-            borderBottom: 'none',
-            width: '100%',
-            minWidth: 0,
-            fontSize: 14,
-          }}
-        />
-      </div>
-    </Header>
-  )
+  return <TopBar nav={nav} />
 }
 
 export default function App() {

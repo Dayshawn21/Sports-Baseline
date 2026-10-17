@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import PageHead from '~/components/shared/PageHead'
 import { SPORTS } from '~/utils/sportNav'
 import { SPORT_STATUS } from './howItWorksContent'
 import './nfl-model.css'
@@ -68,14 +69,8 @@ function ColorLegend() {
 }
 
 export default function HowItWorksPage() {
-  return <div className="page-shell"><div className="page-container">
-    <header className="hiw__head">
-      <div className="unified-eyebrow">SportApp · How it works</div>
-      <h1 className="unified-page-title">How it works</h1>
-      <p className="unified-page-subtitle">
-        What the app does, where its numbers come from, and which of them are picks.
-      </p>
-    </header>
+  return <div className="page-shell"><div className="page-container is-wide">
+    <PageHead title="How it works" />
 
     <Section title="What it is">
       <div className="nfl-model-card hiw-card">

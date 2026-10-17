@@ -7,7 +7,7 @@ this file, so there is a single source of truth.
 
 ## What this is
 
-**SportApp V2** is a tennis betting intelligence app. It ingests ATP and WTA
+**Lineform** (formerly SportApp V2) is a tennis betting intelligence app. It ingests ATP and WTA
 matches, book odds, player stats, and props on a schedule, blends ELO, LightGBM,
 and de-vigged market probabilities into a calibrated ensemble, and surfaces the
 plays where the model disagrees with the market by enough to be worth a bet. It

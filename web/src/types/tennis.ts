@@ -1,4 +1,4 @@
-// All TypeScript types for the SportApp V2 API.
+// All TypeScript types for the Lineform API.
 // Field names are camelCase — the FastAPI backend uses alias_generator=to_camel.
 
 export interface MatchPrediction {

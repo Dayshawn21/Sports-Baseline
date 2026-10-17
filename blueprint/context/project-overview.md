@@ -1,4 +1,6 @@
-# SportApp V2 - Project Overview
+# Lineform - Project Overview
+
+**Product name:** Lineform (formerly SportApp V2; renamed 2026-10-16).
 
 > Multi-sport betting intelligence, tennis first: ingest matches, odds, stats, and
 > props on a schedule, blend ELO + LightGBM + market into a calibrated ensemble,
@@ -14,7 +16,9 @@
 > page and slate card. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
 > public read-only demo (item 37) is complete: live on Render, with the code
-> public at `github.com/Dayshawn21/Sports-Baseline`.
+> public at `github.com/Dayshawn21/Sports-Baseline`. Next is the Lineform
+> structural redesign (item 38): one command-bar shell, table-first slates
+> and props as rows instead of cards, keeping the palette and signal rules.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
@@ -676,6 +680,51 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
 - **No server key (dev):** `keyRequired` is false and the page opens with no
   card; production cannot start without a key.
 
+**Next: Lineform structural redesign (item 38, added 2026-10-16)**
+
+The app is renamed Lineform and restructured so every sport shares one shape.
+**Display only:** no page changes a probability, edge, rank, sort or pick, and
+the palette, fonts, gray-signal rules and 11px floor are unchanged. The
+structure was chosen in an Impeccable surface round: the direction contract is
+`.impeccable/surfaces/web-src-pages-nflintelligencepage-tsx.md`, the chosen
+sketch `.impeccable/mocks/decision/command.html`, and product context
+`PRODUCT.md` at the repo root.
+
+38a. **Lineform shell** *(shipped 2026-10-17)* - finish the rename from SportApp to Lineform in the UI and README; a top bar with logo, sport tabs and Slate / Props / Model / How it works on every page (replacing each page's own view switch); one shared page head (title, period, previous and next); per-route tab titles; phone menu.
+38b. **Table-first NFL slate** - a plays digest of the week's largest gaps (gray, labeled reference) above one dense row per game grouped by kickoff window, each row opening the game page; two-line rows on phones.
+38c. **Tennis and NBA slates on the same shape** - tennis's digest holds its priced picks (green under the existing rule) above a match table whose rows expand inline (best opportunity, model breakdown, serve and return, link to the match page), replacing the side panel; NBA's digest holds its largest gaps (gray).
+38d. **Props as tables** - the NFL game page and prop board, the tennis prop board and the NBA game page show props as dense rows (player, market, line, model, gap, last-5 mini bars, rank) instead of cards, with each prop's detail in a drawer; ranks, edges and colors unchanged.
+38e. **Command field** - a search in the top bar, focused with `/`, that filters the current slate as you type and jumps to a game, team or player from data the page already loaded; Enter opens the top match; a search button that expands on phones.
+38f. **Shape consistency pass** - model, game, match and player pages take the shared page head; game pages get an `h1`; times read `CT` everywhere; the defects from the 2026-10-16 polish captures that survive the new shape.
+
+**What 38a fixed as load-bearing:**
+- **One top bar,** driven by `shellNav(pathname, adminVisible)` in
+  `web/src/utils/sportNav.ts` (sport tabs, the active sport's view tabs,
+  then How it works and Admin through `visibleNavItems`); the phone drawer
+  reads `menuSections`. No page carries its own view switch:
+  `SportViewSwitch`, `NAV_ITEMS` and `navKeyForPath` are deleted. 38e's
+  command field sits in this bar.
+- **Tab titles** come from `documentTitle(pathname)` (`<Page> · Lineform`;
+  detail pages read generic until 38f).
+- **`PageHead`** (`web/src/components/shared/PageHead.tsx`) is the one page
+  head: `title`, `meta` (a status line beside the title naming the period
+  only, never counts the stats strip shows), `period` (previous and next
+  paths), `actions`, `stats`. There is **no eyebrow and no subtitle**
+  (decided at owner review, 2026-10-17); the head title is 34px. Every
+  slate, prop board, model page and How it works uses it; 38b to 38f add
+  pages to it rather than writing their own heads.
+- **Gutter:** the bar pads with the `is-wide` container's
+  `clamp(20px, 3.2vw, 56px)` on desktop and 20px on phones, so the
+  wordmark and page content share one left edge.
+
+- **Still load-bearing through the redesign:** the `.nfl-slate` gray-signal
+  scope and board parity on game-page props (33a), `SPORT_STATUS` on How it
+  works (37b), the `SPORTS` and `SPORT_PAGES` registries (17d), and
+  `visibleNavItems` hiding Admin from visitors (37a).
+- **Not part of the rename:** the Render service names `sportapp-api` and
+  `sportapp-web`, their URLs and the public repo name, which feed
+  `CORS_ORIGINS` and `VITE_API_BASE_URL` (37d).
+
 **Next: tennis depth (item 16 stays open)**
 
 16e. **Prop stat expansion** *(shipped 2026-09-27)* - 1st Set Total Games and 1st Set Total Games Won are projected by an exact first-set chain on the two holds (`app/core/tennis_first_set.py`), flagged `ungraded_stat`, capped at LEAN, and skipped by best picks until 26f grades them. Snapshots moved to `props-v2`. The chain runs about +0.35 games high on 2026 first sets (`python -m app.backtest.tennis_first_set_level`); nothing was fitted. 1st Set Aces stays unsupported.
@@ -1304,6 +1353,13 @@ because 27a graded the model at 48.1% against a 57.7% break-even (decided
 2026-09-30; shipped by 33b). **No UI text below 11px**, including
 micro-labels, tags and table cells.
 
+**Structure (item 38, 2026-10):** the app is renamed Lineform and restructured:
+one command-bar shell across every page (sport tabs, Slate / Props / Model, a
+`/` search that jumps to any game, team or player), a table-first slate shared
+by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
+expand inline instead of a side panel), and props shown as table rows instead
+of cards. The theme above is unchanged.
+
 Mobile is a real target: `useIsMobile` swaps the nav to a drawer.
 
 **Guiding principle:** the user should scan a slate and see the actionable plays
@@ -1701,3 +1757,11 @@ the request path the same way.
 
 48. **Resolved (2026-10-16):** `project-plan.md` §8 now records CI and the
     secret scan, which run green on the public repo.
+
+49. **`project-plan.md` records the Lineform rename and item 38 only in its
+    header line and §7.** §3 (features) and §8 (deployment) still describe the
+    app without the new shell, and §8 keeps the `sportapp-*` service names,
+    which item 38 deliberately leaves unchanged. Decide whether §3 should name
+    the shared shell and table-first pages, and whether the Render services
+    are ever renamed (that would change `CORS_ORIGINS` and
+    `VITE_API_BASE_URL`).

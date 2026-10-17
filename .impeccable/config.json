@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/map.html"
+        ],
+        "createdAt": "2026-10-17T02:11:03.713Z",
+        "reason": "project rule: blueprint/context/project-overview.md sets an 11px floor for micro-labels and tags in this dense data UI; sketch chart labels follow it"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/map.html"
+        ],
+        "createdAt": "2026-10-17T02:35:26.889Z",
+        "reason": "throwaway decision sketch for the unchosen option 2 (user picked option 1 on 2026-10-16); never shipped or built"
+      }
+    ]
+  }
+}

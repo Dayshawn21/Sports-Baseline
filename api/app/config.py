@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
     database_url: str
-    api_title: str = "SportApp V2"
+    api_title: str = "Lineform"
     api_env: str = "dev"
     odds_api_key: str = ""
     the_odds_api_key: str = ""

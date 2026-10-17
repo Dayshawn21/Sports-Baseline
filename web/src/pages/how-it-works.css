@@ -1,5 +1,6 @@
 /* The public explainer (37b). Gray by default; color only in the legend's swatches. */
-.hiw__head { padding-bottom: 18px; border-bottom: 1px solid var(--border-card); }
+/* Running prose stays near 75 characters a line on the wide container; the sport cards use the full width. */
+.hiw-card p, .hiw-flow, .hiw-rules, .hiw-legend { max-width: 75ch; }
 .hiw-card { padding: 16px 18px; }
 .hiw-card p { margin: 0; color: var(--text-primary); font-size: 14px; line-height: 1.6; }
 .hiw-card p + p { margin-top: 10px; }

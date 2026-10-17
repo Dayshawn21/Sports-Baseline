@@ -1,23 +1,17 @@
 import { Switch } from 'antd'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
+import PageHead from '~/components/shared/PageHead'
 import type { TennisBoardCategory, TennisPropSource, TennisTourFilter } from '~/utils/tennisPropBoard'
 import { TENNIS_PROP_SOURCES, TENNIS_TOUR_FILTERS } from '~/utils/tennisPropBoard'
 
 export function PropBoardHead({ lines, rateable, markets }: { lines: number, rateable: number, markets: number }) {
-  return <header className="tennis-prop-board__head">
-    <div>
-      <div className="unified-eyebrow">Tennis · Prop board</div>
-      <h1 className="unified-page-title">Best picks by category</h1>
-      <p className="unified-page-subtitle">Current player and match lines, grouped by market and ranked by priced model EV.</p>
-    </div>
-    <div className="tennis-prop-board__aside">
-      <SportViewSwitch sport="tennis" />
-      <section className="tennis-prop-summary" aria-label="Prop board summary">
-        <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">current 24-hour slate</span></div>
-        <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rateable</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">across {markets} markets</span></div>
-      </section>
-    </div>
-  </header>
+  return <PageHead
+    title="Tennis props"
+    meta="Next 24 hours"
+    stats={<section className="tennis-prop-summary" aria-label="Prop board summary">
+      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">current 24-hour slate</span></div>
+      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rateable</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">across {markets} markets</span></div>
+    </section>}
+  />
 }
 
 export function MarketPills({ categories, selected, onSelect }: { categories: TennisBoardCategory[], selected: string, onSelect: (market: string) => void }) {

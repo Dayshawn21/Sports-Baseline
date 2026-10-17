@@ -4,7 +4,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { NflSlateGameCard } from '~/components/nfl/NflSlateGameCard'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
+import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
@@ -71,20 +71,16 @@ export default function NflIntelligencePage() {
   if (activeSeason === null || activeWeek === null || slate.isLoading) return <LoadingState message="Loading NFL slate..." />
   if (slate.isError) return <ErrorState error={slate.error} onRetry={() => slate.refetch()} />
   return <div className="page-shell nfl-slate"><div className="page-container is-wide">
-    <header className="nfl-slate__head">
-      <div>
-        <div className="unified-eyebrow">NFL · {activeSeason} Week {activeWeek}</div>
-        <h1 className="unified-page-title">NFL Slate</h1>
-        <p className="unified-page-subtitle">Every game this week. Open a game for its props, injuries and line history.</p>
-      </div>
-      <div className="nfl-slate__controls">
-        <SportViewSwitch sport="nfl" />
+    <PageHead
+      title="NFL slate"
+      meta={`${activeSeason} · Week ${activeWeek}`}
+      actions={<>
         <Select aria-label="Season" value={activeSeason} onChange={value => { setSeason(value); setWeek(activeWeek) }} options={NFL_SEASON_OPTIONS} />
         <Select aria-label="Week" value={activeWeek} onChange={value => { setSeason(activeSeason); setWeek(value) }} options={NFL_WEEK_OPTIONS} />
-      </div>
-    </header>
+      </>}
+      stats={games.length > 0 && <Summary games={games} notes={notes} />}
+    />
     {games.length === 0 ? <div className="nfl-empty">No games loaded for this season and week.</div> : <>
-      <Summary games={games} notes={notes} />
       <Legend />
       {windows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
         <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>

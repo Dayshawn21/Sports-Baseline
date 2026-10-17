@@ -1,37 +1,5 @@
 /* NFL prop board (build-plan 31d), after prototypes/nfl-prop-board.html. */
 
-.nfl-prop-board__head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-5);
-  padding-bottom: var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.nfl-prop-board .unified-page-title {
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: none;
-}
-
-.nfl-prop-board__aside {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-3);
-}
-
-.nfl-prop-board__controls {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.nfl-prop-board__controls .ant-select {
-  min-width: 120px;
-}
-
 .nfl-prop-summary {
   display: flex;
   gap: var(--space-3);
@@ -204,19 +172,6 @@
     position: static;
     max-height: none;
     overflow: visible;
-  }
-
-  .nfl-prop-board__head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .nfl-prop-board__aside {
-    align-items: flex-start;
-  }
-
-  .nfl-prop-board__controls {
-    flex-wrap: wrap;
   }
 
   .nfl-prop-stat {

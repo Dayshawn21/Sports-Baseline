@@ -1,0 +1,43 @@
+{
+  "title": "Choose the slate structure",
+  "question": "Same colors, fonts and gray-signal rules; only the structure changes. The roll led with the command bar. Lock one, steer, or re-roll.",
+  "options": [
+    {
+      "id": "command",
+      "kind": "assigned",
+      "label": "Command bar + plays digest",
+      "kicker": "THE ROLL",
+      "thesis": "Jump anywhere by typing; the slate below is one dense row per game.",
+      "palette": ["#000000", "#0d0d0f", "#f5f5f7", "#00c805", "#9a9aa3"],
+      "materials": ["one search field that filters rows live", "dense game rows grouped by start window"],
+      "viewport": "Top bar: sport tabs and a wide 'Jump to a game, team or player' field. Below: a plays digest strip, then one row per game by kickoff window.",
+      "risk": "Leans on typing; on a phone the rows lose columns and the command field is less natural.",
+      "html": ".impeccable/mocks/decision/command.html"
+    },
+    {
+      "id": "map",
+      "kind": "dealt",
+      "label": "Disagreement map + table",
+      "thesis": "Every game and prop plotted model against market; the dots far off the line are the plays.",
+      "palette": ["#000000", "#0d0d0f", "#f5f5f7", "#6b6b75", "#00c805"],
+      "materials": ["model-vs-market scatter with a 'they agree' diagonal", "sortable table linked to the dots"],
+      "viewport": "Left: a square map of model probability against market, gaps measured off the diagonal. Right: the same items as a sortable table; hovering one highlights the other.",
+      "risk": "The map is new to visitors and needs one line of explanation; NFL and NBA dots stay gray, so only tennis picks pop.",
+      "html": ".impeccable/mocks/decision/map.html"
+    },
+    {
+      "id": "split",
+      "kind": "dealt",
+      "label": "Split view: list + game",
+      "thesis": "Find the play and read the game on one screen: a compact list on the left opens the game inline on the right.",
+      "palette": ["#000000", "#0d0d0f", "#1a1a1e", "#f5f5f7", "#00c805"],
+      "materials": ["side rail for sport and view", "compact event list with plays pinned", "inline game detail pane"],
+      "viewport": "Side rail (Tennis, NFL, NBA; Slate, Props, Model). Middle: plays pinned above a compact game list. Right: the selected game's market, model, movement, props and injuries.",
+      "risk": "The most familiar shape (mail-client layout); on a phone it becomes list then full-screen game.",
+      "html": ".impeccable/mocks/decision/split.html"
+    }
+  ],
+  "reroll": true,
+  "buildPath": { "value": "code" },
+  "steer": true
+}

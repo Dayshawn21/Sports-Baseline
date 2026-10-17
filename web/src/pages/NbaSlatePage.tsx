@@ -1,10 +1,9 @@
-import { Button } from 'antd'
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { NbaSlateGameCard } from '~/components/nba/NbaSlateGameCard'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import SportViewSwitch from '~/components/shared/SportViewSwitch'
+import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useNbaSlate } from '~/hooks/useNba'
 import type { NbaSlateGame } from '~/types/nba'
@@ -32,7 +31,7 @@ function Legend() {
 }
 
 export default function NbaSlatePage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   // A malformed link falls back to the API's choice rather than an error page.
   const requested = parseSlateDate(searchParams.get('date'))
   const slate = useNbaSlate(requested)
@@ -44,22 +43,15 @@ export default function NbaSlatePage() {
   if (slate.isLoading) return <LoadingState message="Loading NBA slate..." />
   if (slate.isError || !slate.data) return <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />
   const { date, previousDate, nextDate, games } = slate.data
-  const goTo = (target: string) => setSearchParams({ date: target })
+  const datePath = (target: string | null) => target && `/nba?date=${target}`
   return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
-    <header className="nfl-slate__head">
-      <div>
-        <div className="unified-eyebrow">NBA · {slateDateLabel(date)}</div>
-        <h1 className="unified-page-title">NBA Slate</h1>
-        <p className="unified-page-subtitle">Every game on this date, with the market and stored prop lines.</p>
-      </div>
-      <div className="nfl-slate__controls">
-        <SportViewSwitch sport="nba" />
-        <Button disabled={previousDate === null} onClick={() => previousDate && goTo(previousDate)}>← Previous</Button>
-        <Button disabled={nextDate === null} onClick={() => nextDate && goTo(nextDate)}>Next →</Button>
-      </div>
-    </header>
+    <PageHead
+      title="NBA slate"
+      meta={slateDateLabel(date)}
+      period={{ label: 'Slate date', previous: datePath(previousDate), next: datePath(nextDate) }}
+      stats={games.length > 0 && <Summary games={games} />}
+    />
     {games.length === 0 ? <div className="nfl-empty">No NBA games on this date.</div> : <>
-      <Summary games={games} />
       <Legend />
       <section className="nfl-slate-window" aria-label="Games">
         <div className="nfl-slate-grid">{cards.map(card => <NbaSlateGameCard key={card.gameId} card={card} />)}</div>
