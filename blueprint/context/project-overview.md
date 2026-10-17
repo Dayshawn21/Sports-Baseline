@@ -734,8 +734,11 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 - **Columns:** Kickoff (Central weekday and clock, since Prime time spans
   Sunday and Monday), Game, Spread, Total, Moneyline, Model (muted, "not a
   pick"), Props (`groupNflPropRows`, so the column sums to the strip's prop
-  lines), Notes. Fixed pixel widths line windows up; at 1000px and below rows
-  go to two lines, hiding the opened moves, the model total and conditions.
+  lines), Notes. Every column has a fixed pixel width, so windows line up and
+  wider screens spread spare room across all eight (Notes 220px, fix
+  2026-10-17); at 1100px and below rows go to two lines, hiding the opened
+  moves, the model total and conditions. A final shows "Final" in Kickoff
+  only; its Game cell keeps the records.
 
 - **Still load-bearing through the redesign:** the `.nfl-slate` gray-signal
   scope and board parity on game-page props (33a), `SPORT_STATUS` on How it

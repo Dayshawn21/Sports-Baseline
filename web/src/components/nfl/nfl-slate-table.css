@@ -2,7 +2,8 @@
    take a warning color, from the card's tag classes. */
 .nfl-slate-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 /* Fixed widths, sized to the longest value each column holds, so every kickoff window's table lines up with the
-   others; Notes takes the rest. Below 1000px they no longer fit and the rows go to two lines. */
+   others. Every column has a width, so wider screens spread the spare room across all eight instead of handing
+   it to Notes. Below 1100px they no longer fit and the rows go to two lines. */
 .nfl-slate-table col.is-kickoff { width: 116px; }
 .nfl-slate-table col.is-game { width: 144px; }
 .nfl-slate-table col.is-spread { width: 128px; }
@@ -10,6 +11,7 @@
 .nfl-slate-table col.is-moneyline { width: 100px; }
 .nfl-slate-table col.is-model { width: 144px; }
 .nfl-slate-table col.is-props { width: 64px; }
+.nfl-slate-table col.is-notes { width: 220px; }
 .nfl-slate-table th {
   padding: 6px 10px; color: var(--text-muted); text-align: left; white-space: nowrap;
   font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
@@ -33,7 +35,7 @@
 
 /* Phones and narrow tablets: each game is two lines, kickoff, game and props, then the lines. The header
    hides, so the total, moneyline and model carry short labels; the spread reads as "BUF -4.5" unaided. */
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .nfl-slate-table, .nfl-slate-table tbody { display: block; }
   .nfl-slate-table colgroup, .nfl-slate-table thead { display: none; }
   .nfl-slate-table tbody tr {

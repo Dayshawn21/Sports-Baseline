@@ -15,7 +15,7 @@ function Game({ row }: { row: NflSlateRowModel }) {
     {scored
       ? <><span className={away.lost ? 'is-loser' : ''}>{away.code} {away.score}</span> · <span className={home.lost ? 'is-loser' : ''}>{home.code} {home.score}</span></>
       : `${away.code} @ ${home.code}`}
-    <small>{row.state === 'final' ? 'final' : `${away.record} · ${home.record}`}</small>
+    <small>{away.record} · {home.record}</small>
   </Link>
 }
 

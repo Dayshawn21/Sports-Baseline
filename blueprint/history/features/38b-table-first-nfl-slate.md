@@ -4,6 +4,10 @@
 **Branch:** `feature/38b-table-first-nfl-slate`
 **Status:** complete (2026-10-17)
 
+> **Follow-up fix (2026-10-17, after merge):** Notes got a fixed 220px so spare width spreads across every
+> column (it had taken 544px at 1440), the two-line breakpoint moved from 1000px to 1100px so the eight fixed
+> columns still fit, and a final's Game cell shows the records instead of a second "final".
+
 ## Goal
 
 Replace the NFL slate's card grid with the shape the chosen sketch locks for
