@@ -1,7 +1,8 @@
 import { Select } from 'antd'
 import { useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { NflSlateGameCard } from '~/components/nfl/NflSlateGameCard'
+import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
+import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
@@ -10,7 +11,8 @@ import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS } from '~/utils/nflLabels'
-import { kickoffWindows, nflSlateCard, nflSlateSummary, slateBoards } from '~/utils/nflSlate'
+import { buildNflPropBoard } from '~/utils/nflPropBoard'
+import { kickoffWindows, nflSlateRow, nflSlateSummary, slateDigest } from '~/utils/nflSlate'
 import './nfl-slate.css'
 
 const MISSING = '--'
@@ -37,9 +39,9 @@ function Summary({ games, notes }: { games: NflSlateGame[], notes: NflGameNotes[
 
 function Legend() {
   return <p className="nfl-slate__legend">
-    <span><b>Market</b> is DraftKings when stored, else the latest book; win probability is de-vigged.</span>
+    <span><b>Market</b> is DraftKings when stored, else the latest book.</span>
     <span><b>Model</b> is nfl-elo-v1, shown for context. It is not a pick: the closing line beat it on the 2022-25 holdout.</span>
-    <span><b>Edge</b> is gray until the ranking check (27j) adopts a slice.</span>
+    <span><b>Gaps</b> are reference, not picks: they stay gray until the ranking check (27j) adopts a slice.</span>
   </p>
 }
 
@@ -57,12 +59,13 @@ export default function NflIntelligencePage() {
   const gameNotes = useNflGameNotes(activeSeason, activeWeek)
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
   const notes = gameNotes.data?.games
-  const cards = useMemo(() => {
+  const rows = useMemo(() => {
     const now = new Date()
-    const boards = slateBoards(games, now)
     const notesById = new Map((notes ?? []).map(item => [item.gameId, item]))
-    return new Map(games.map(game => [game.gameId, nflSlateCard(game, notesById.get(game.gameId), boards.get(game.gameId) ?? [], now)]))
+    return new Map(games.map(game => [game.gameId, nflSlateRow(game, notesById.get(game.gameId), now)]))
   }, [games, notes])
+  // As of now, so only games not yet kicked off can reach the digest.
+  const digest = useMemo(() => slateDigest(buildNflPropBoard(games, 'all', new Date())), [games])
   const windows = useMemo(() => kickoffWindows(games), [games])
 
   // The old slate opened one game from ?gameId=; that game now has its own page.
@@ -81,15 +84,11 @@ export default function NflIntelligencePage() {
       stats={games.length > 0 && <Summary games={games} notes={notes} />}
     />
     {games.length === 0 ? <div className="nfl-empty">No games loaded for this season and week.</div> : <>
+      <NflSlateDigest items={digest} />
       <Legend />
       {windows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
         <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
-        <div className="nfl-slate-grid">
-          {window.games.map(game => {
-            const card = cards.get(game.gameId)
-            return card ? <NflSlateGameCard key={game.gameId} card={card} /> : null
-          })}
-        </div>
+        <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />
       </section>)}
     </>}
   </div></div>

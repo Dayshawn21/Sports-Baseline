@@ -1,0 +1,65 @@
+/* The NFL slate as rows (38b). Numbers read in the primary color, the model muted; only injury and QB tags
+   take a warning color, from the card's tag classes. */
+.nfl-slate-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+/* Fixed widths, sized to the longest value each column holds, so every kickoff window's table lines up with the
+   others; Notes takes the rest. Below 1000px they no longer fit and the rows go to two lines. */
+.nfl-slate-table col.is-kickoff { width: 116px; }
+.nfl-slate-table col.is-game { width: 144px; }
+.nfl-slate-table col.is-spread { width: 128px; }
+.nfl-slate-table col.is-total { width: 108px; }
+.nfl-slate-table col.is-moneyline { width: 100px; }
+.nfl-slate-table col.is-model { width: 144px; }
+.nfl-slate-table col.is-props { width: 64px; }
+.nfl-slate-table th {
+  padding: 6px 10px; color: var(--text-muted); text-align: left; white-space: nowrap;
+  font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.nfl-slate-table th small { font: inherit; letter-spacing: 0.08em; text-transform: none; }
+.nfl-slate-table td {
+  padding: 9px 10px; border-top: 1px solid var(--border-subtle); vertical-align: top;
+  color: var(--text-primary); font: 400 13px/1.35 var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nfl-slate-table td small { display: block; color: var(--text-muted); font: 400 11px/1.35 var(--font-mono); }
+.nfl-slate-table tbody tr { cursor: pointer; }
+.nfl-slate-table tbody tr:hover td { background: var(--bg-card); }
+.nfl-slate-table .is-num { text-align: right; }
+.nfl-slate-table .is-muted, .nfl-slate-table .nfl-slate-table__kickoff { color: var(--text-muted); }
+.nfl-slate-table__game a { color: var(--text-primary); font: 700 14px/1.35 var(--font-body); }
+.nfl-slate-table__game a:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
+.nfl-slate-table__game .is-loser { color: var(--text-muted); }
+.nfl-slate-table__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: normal; }
+.nfl-slate-table__conditions { color: var(--text-muted); font: 400 11px var(--font-body); }
+.nfl-slate-table__unit { display: none; }
+
+/* Phones and narrow tablets: each game is two lines, kickoff, game and props, then the lines. The header
+   hides, so the total, moneyline and model carry short labels; the spread reads as "BUF -4.5" unaided. */
+@media (max-width: 1000px) {
+  .nfl-slate-table, .nfl-slate-table tbody { display: block; }
+  .nfl-slate-table colgroup, .nfl-slate-table thead { display: none; }
+  .nfl-slate-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    padding: 9px 0; border-top: 1px solid var(--border-subtle);
+  }
+  .nfl-slate-table tbody tr::before { content: ''; order: 3; flex-basis: 100%; }
+  .nfl-slate-table td { padding: 0; border: 0; font-size: 12px; overflow: visible; }
+  .nfl-slate-table tbody tr:hover td { background: none; }
+  .nfl-slate-table__kickoff { order: 1; }
+  .nfl-slate-table .nfl-slate-table__kickoff small { display: inline; margin-left: 6px; }
+  .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
+  .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
+  .nfl-slate-table__props { order: 2; color: var(--text-muted); }
+  .nfl-slate-table__unit { display: inline; }
+  .nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline, .nfl-slate-table__model { order: 4; }
+  .nfl-slate-table td[data-label]::before { content: attr(data-label) ' '; color: var(--text-muted); font: 400 11px var(--font-body); }
+  .nfl-slate-table .nfl-slate-table__spread small, .nfl-slate-table .nfl-slate-table__total small, .nfl-slate-table .nfl-slate-table__moneyline small { display: none; }
+  .nfl-slate-table__notes { order: 5; flex-basis: 100%; }
+  .nfl-slate-table__notes:not(:has(.nfl-slate-card__tag)) { display: none; }
+  .nfl-slate-table__conditions { display: none; }
+  /* Line 2 holds four values only with the model's spread; its total stays on the game page. */
+  .nfl-slate-table__model-total { display: none; }
+  /* A final keeps its graded result in place of the moneyline and the pre-game model. */
+  .nfl-slate-table tr.is-final .nfl-slate-table__spread small,
+  .nfl-slate-table tr.is-final .nfl-slate-table__total small { display: inline; margin-left: 6px; }
+  .nfl-slate-table tr.is-final .nfl-slate-table__moneyline,
+  .nfl-slate-table tr.is-final .nfl-slate-table__model { display: none; }
+}

@@ -691,7 +691,7 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 `PRODUCT.md` at the repo root.
 
 38a. **Lineform shell** *(shipped 2026-10-17)* - finish the rename from SportApp to Lineform in the UI and README; a top bar with logo, sport tabs and Slate / Props / Model / How it works on every page (replacing each page's own view switch); one shared page head (title, period, previous and next); per-route tab titles; phone menu.
-38b. **Table-first NFL slate** - a plays digest of the week's largest gaps (gray, labeled reference) above one dense row per game grouped by kickoff window, each row opening the game page; two-line rows on phones.
+38b. **Table-first NFL slate** *(shipped 2026-10-17)* - a plays digest of the week's largest gaps (gray, labeled reference) above one dense row per game grouped by kickoff window, each row opening the game page; two-line rows on phones.
 38c. **Tennis and NBA slates on the same shape** - tennis's digest holds its priced picks (green under the existing rule) above a match table whose rows expand inline (best opportunity, model breakdown, serve and return, link to the match page), replacing the side panel; NBA's digest holds its largest gaps (gray).
 38d. **Props as tables** - the NFL game page and prop board, the tennis prop board and the NBA game page show props as dense rows (player, market, line, model, gap, last-5 mini bars, rank) instead of cards, with each prop's detail in a drawer; ranks, edges and colors unchanged.
 38e. **Command field** - a search in the top bar, focused with `/`, that filters the current slate as you type and jumps to a game, team or player from data the page already loaded; Enter opens the top match; a search button that expands on phones.
@@ -716,6 +716,26 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 - **Gutter:** the bar pads with the `is-wide` container's
   `clamp(20px, 3.2vw, 56px)` on desktop and 20px on phones, so the
   wordmark and page content share one left edge.
+
+**What 38b fixed as load-bearing:**
+- **One row model per game.** `nflSlateRow(game, notes, now)` in
+  `web/src/utils/nflSlate.ts` (`NflSlateRowModel`, display strings keyed by
+  `gameId`) feeds `NflSlateTable`; 38e's command field filters these rows.
+  The NFL slate card (`NflSlateGameCard`, `nflSlateCard`, `topGameProps`,
+  `slateBoards`) is deleted; `nfl-slate-card.css` stays for the NBA card and
+  the row tags until 38c.
+- **The digest order is the board's.** `slateDigest(categories, limit = 4)`
+  ranks a board built as of now (started games already dropped) by
+  `compareBoardTiers`, then |edge share|, one line per player: the old card's
+  top-props order widened to the week. Changing it is a ranking change.
+  `NflSlateDigestItem` (`gameId`, `playerName`, `market`, `matchup`, `line`,
+  `model`, `gap`) is the strip 38c reuses for tennis and NBA. Hidden when no
+  upcoming line is rateable.
+- **Columns:** Kickoff (Central weekday and clock, since Prime time spans
+  Sunday and Monday), Game, Spread, Total, Moneyline, Model (muted, "not a
+  pick"), Props (`groupNflPropRows`, so the column sums to the strip's prop
+  lines), Notes. Fixed pixel widths line windows up; at 1000px and below rows
+  go to two lines, hiding the opened moves, the model total and conditions.
 
 - **Still load-bearing through the redesign:** the `.nfl-slate` gray-signal
   scope and board parity on game-page props (33a), `SPORT_STATUS` on How it
@@ -1372,7 +1392,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 - `/tennis/match/:matchId` - Match detail page (32a)
 - `/tennis/model` - Model track record page (32b)
 - `/tennis/player/:playerId` - Player page (32c)
-- `/nfl` - NFL slate (33b), opening on the current week (`/nfl/current-week`): a summary strip and one card per game grouped by kickoff window (market, muted model, conditions, injury counts, line movement, top three props by edge), each linking to the game page; `?gameId=` redirects there
+- `/nfl` - NFL slate (38b), opening on the current week (`/nfl/current-week`): a summary strip, a gray plays digest of the week's four largest prop gaps, and one table row per game grouped by kickoff window (market with line movement, muted model, prop count, injury, QB and short-week tags, conditions), each row opening the game page; `?gameId=` redirects there
 - `/nfl/board` - NFL prop board: every player in one market across the week, ranked, with the prop detail drawer (recent form, opponent history, alternates, depth chart, injury report, snap share on RB/TE anytime TD, sportsbook anytime-TD consensus)
 - `/nfl/game/:gameId` - NFL game page (33a)
 - `/nfl/player/:playerId` - NFL player page (33c)

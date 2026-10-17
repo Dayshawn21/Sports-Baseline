@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { NflGameNotes, NflLineMove, NflNoteInjury, NflSlateGame, NflSlateLine, NflTeamStat, NflTeamStats } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, nflSlateCard, nflSlateSummary, slateBoards, topGameProps } from '~/utils/nflSlate'
+import { kickoffWindows, nflSlateRow, nflSlateSummary, slateDigest } from '~/utils/nflSlate'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NO_STAT: NflTeamStat = { value: null, rank: null }
@@ -142,74 +142,50 @@ describe('nflSlateSummary', () => {
   })
 })
 
-describe('topGameProps', () => {
+describe('slateDigest', () => {
   const NOW = new Date('2026-10-04T12:00:00Z')
   const rushing = { market: 'rushing_yards', line: 50 }
   const week = [
     game(1, '2026-10-04T17:00:00Z', {
       lines: [
-        line(11, { edge: 10 }), // 10 / 60 = 17%
+        line(11, { edge: 10 }), // 17%
         line(12, { edge: 20, qualityFlags: ['injury_out'] }), // 33%, but ruled out
         line(13, { edge: -15 }), // 25%, same player as line 15
-        line(14, { ...rushing, edge: 20 }), // 40%
         line(15, { ...rushing, playerId: 13, playerName: 'Player 13', edge: 30 }), // 60%
-        line(16, { edge: 50, oddsType: 'goblin', line: 45 }), // an alternate payout is never rateable
-        line(17, { edge: 50, segment: 'first_half' }), // nor is a partial game
+        line(16, { edge: 50, oddsType: 'goblin', line: 45 }), // never rateable
+        line(17, { market: 'anytime_touchdown', line: 0.5, edge: 0.4 }), // never rateable until 25c
       ],
     }),
-    game(2, '2026-10-04T20:25:00Z', { lines: [line(21, { edge: 40 })] }),
+    game(2, '2026-10-04T20:25:00Z', { lines: [line(21, { edge: 40, projection: 100 }), line(22, { ...rushing, edge: -20, projection: 30 })] }), // 67%, 40%
+    game(3, '2026-10-04T11:00:00Z', { lines: [line(31, { edge: 59 })] }), // already kicked off
   ]
 
-  it('ranks across markets by edge share, sinks an out player, and keeps one row per player', () => {
-    const board = buildNflPropBoard(week, 'all', NOW)
+  it('ranks the week by board tier then edge share, one per player, without started games or unrateable lines', () => {
+    const digest = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(topGameProps(board, 1).map(item => item.row.lineId)).toEqual([15, 14, 11])
-    expect(topGameProps(board, 1, 10).map(item => item.row.lineId)).toEqual([15, 14, 11, 12])
-    expect(topGameProps(board, 1)[0].edgeShare).toBeCloseTo(0.6)
+    expect(digest.map(item => item.lineId)).toEqual([21, 15, 22, 11])
+    expect(slateDigest(buildNflPropBoard(week, 'all', NOW), 10).map(item => item.lineId)).toEqual([21, 15, 22, 11, 12])
   })
 
-  it('reads a started game as of kickoff, so its props survive the board dropping it', () => {
-    const afterKickoff = new Date('2026-10-04T18:00:00Z')
+  it('carries display strings for a box', () => {
+    const [first, second] = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(buildNflPropBoard(week, 'all', afterKickoff).flatMap(category => category.rateable).some(row => row.gameId === 1)).toBe(false)
-    expect(topGameProps(slateBoards(week, afterKickoff).get(1) ?? [], 1).map(item => item.row.lineId)).toEqual([15, 14, 11])
+    expect(first).toEqual({ lineId: 21, gameId: 2, playerName: 'Player 21', market: 'Receiving yards', matchup: 'A2 @ H2', line: '60.0', model: '100.0', gap: '+66.7%' })
+    expect([second.matchup, second.market, second.gap]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%'])
   })
 
-  it('returns nothing for a game without rateable lines', () => {
-    expect(topGameProps(buildNflPropBoard(week, 'all', NOW), 3)).toEqual([])
-  })
-})
-
-describe('slateBoards', () => {
-  it('builds the board once for a week of upcoming games', () => {
-    const build = vi.fn(buildNflPropBoard)
-    const week = [game(1, '2026-10-04T17:00:00Z'), game(2, '2026-10-04T20:25:00Z'), game(3, null)]
-
-    const boards = slateBoards(week, new Date('2026-10-04T12:00:00Z'), build)
-
-    expect(build).toHaveBeenCalledTimes(1)
-    expect([...boards.keys()]).toEqual([1, 2, 3])
-  })
-
-  it('adds one build per started game, each as of just before its kickoff', () => {
-    const build = vi.fn(buildNflPropBoard)
-    const week = [game(1, '2026-10-04T17:00:00Z'), game(2, '2026-10-04T20:25:00Z'), game(3, '2026-10-05T00:20:00Z')]
-
-    slateBoards(week, new Date('2026-10-04T21:00:00Z'), build)
-
-    expect(build.mock.calls.map(call => call[2]?.toISOString())).toEqual([
-      '2026-10-04T16:59:59.999Z',
-      '2026-10-04T20:24:59.999Z',
-      '2026-10-04T21:00:00.000Z',
-    ])
+  it('is empty when nothing upcoming is rateable', () => {
+    expect(slateDigest(buildNflPropBoard(week, 'all', new Date('2026-10-05T12:00:00Z')))).toEqual([])
+    expect(slateDigest([])).toEqual([])
   })
 })
 
-describe('nflSlateCard', () => {
+describe('nflSlateRow', () => {
   const BEFORE = new Date('2026-10-04T12:00:00Z')
   const DURING = new Date('2026-10-04T18:00:00Z')
   const ODDS = { book: 'draftkings', homeMoneyline: -142, awayMoneyline: 120, homeSpread: -2.5, total: 48.5 }
   const MODEL = { modelVersion: 'nfl-elo-v1', homeElo: 1550, awayElo: 1500, homeWinProbability: 0.57, homeSpread: -1, total: 46.9, marketHomeWinProbability: 0.58 }
+  const DOME = { venueType: 'dome' as const, forecastFor: null, temperatureF: null, windMph: null, windGustMph: null, precipitationProbability: null, fetchedAt: null }
 
   function lineMove(market: 'spread' | 'total', openLine: number, currentLine: number, change: number | null): NflLineMove {
     return { market, book: 'draftkings', openLine, openFetchedAt: '2026-09-29T14:00:00Z', currentLine, currentFetchedAt: '2026-10-03T14:00:00Z', move: change }
@@ -218,7 +194,7 @@ describe('nflSlateCard', () => {
   function final(homeLine: number, totalLine: number, awayScore: number, homeScore: number) {
     const played = game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS })
     const gameNotes = notes(1, { awayScore, homeScore, lineMovement: [lineMove('spread', homeLine, homeLine, 0), lineMove('total', totalLine, totalLine, 0)] })
-    return nflSlateCard(played, gameNotes, [], DURING)
+    return nflSlateRow(played, gameNotes, DURING)
   }
 
   it.each([
@@ -228,7 +204,7 @@ describe('nflSlateCard', () => {
     [2.5, 21, 17, 'A1 covered'],
     [2.5, 19, 17, 'H1 covered'],
   ])('grades a home line of %d on a %d-%d final as %s', (homeLine, awayScore, homeScore, result) => {
-    expect(final(homeLine, 44.5, awayScore, homeScore).final?.[0]?.detail).toBe(result)
+    expect(final(homeLine, 44.5, awayScore, homeScore).spread.detail).toBe(result)
   })
 
   it.each([
@@ -236,32 +212,7 @@ describe('nflSlateCard', () => {
     [37.5, 17, 24, 'over by 3.5'],
     [41, 17, 24, 'push'],
   ])('grades a total of %d against %d-%d as %s', (totalLine, awayScore, homeScore, result) => {
-    expect(final(-3, totalLine, awayScore, homeScore).final?.[1]?.detail).toBe(result)
-  })
-
-  it('shows a final with its score, the loser marked, and no props or model teaser', () => {
-    const card = final(-3.5, 44.5, 17, 24)
-
-    expect(card.state).toBe('final')
-    expect([card.away.score, card.away.lost, card.home.score, card.home.lost]).toEqual([17, true, 24, false])
-    expect(card.final?.map(cell => [cell.label, cell.value])).toEqual([['Close spread', 'H1 -3.5'], ['Close total', '44.5'], ['Props', '0']])
-    expect(card.topProps).toEqual([])
-  })
-
-  it('leaves a final without a stored score ungraded', () => {
-    const card = nflSlateCard(game(1, '2026-10-04T17:00:00Z', { status: 'completed' }), notes(1), [], DURING)
-
-    expect(card.state).toBe('final')
-    expect(card.final).toBeNull()
-    expect([card.away.score, card.home.score]).toEqual([null, null])
-  })
-
-  it('counts injuries by report status only', () => {
-    const card = nflSlateCard(game(1, null), notes(1, {
-      injuries: [injury('Out'), injury('Out'), injury('Doubtful'), injury('Questionable'), injury(null, 'Limited Participation')],
-    }), [], BEFORE)
-
-    expect(card.injuries).toEqual({ out: 2, doubtful: 1, questionable: 1 })
+    expect(final(-3, totalLine, awayScore, homeScore).total.detail).toBe(result)
   })
 
   it.each([
@@ -269,73 +220,77 @@ describe('nflSlateCard', () => {
     [130, -150, 'A1 -150', 'H1 +130'],
     [-110, -110, 'H1 -110', 'A1 -110'],
   ])('names the moneyline favorite for home %d, away %d', (homeMoneyline, awayMoneyline, value, detail) => {
-    const card = nflSlateCard(game(1, null, { odds: { ...ODDS, homeMoneyline, awayMoneyline } }), undefined, [], BEFORE)
-
-    expect(card.market?.[2]).toEqual({ label: 'Moneyline', value, detail })
+    expect(nflSlateRow(game(1, null, { odds: { ...ODDS, homeMoneyline, awayMoneyline } }), undefined, BEFORE).moneyline).toEqual({ value, detail })
   })
 
-  it('builds an upcoming card from the market, the muted model, movement, rest and the top props', () => {
-    const upcoming = game(1, '2026-10-04T17:00:00Z', {
-      odds: ODDS, model: MODEL, lines: [line(11, { edge: 12 }), line(12, { edge: 6, oddsType: 'goblin' })],
-      awayContext: { games: 3, wins: 2, losses: 1, pointsForPerGame: 24, pointsAllowedPerGame: 20 },
-    })
-    const gameNotes = notes(1, {
-      lineMovement: [lineMove('spread', -1.5, -2.5, -1), lineMove('total', 48.5, 48.5, 0)],
-      awayForm: { team: 'A1', restDays: 4, shortWeek: true, recent: [] },
-      homeForm: { team: 'H1', restDays: 7, shortWeek: false, recent: [] },
-    })
-
-    const card = nflSlateCard(upcoming, gameNotes, buildNflPropBoard([upcoming], 'all', BEFORE), BEFORE)
-
-    expect(card.state).toBe('upcoming')
-    expect([card.away.record, card.away.rest, card.home.rest]).toEqual(['2-1', 'rest 4', 'rest 7'])
-    expect(card.shortWeek).toEqual(['A1'])
-    expect(card.qbChange).toEqual([])
-    expect(card.winBar).toEqual({ away: 44, home: 56 })
-    expect(card.market?.map(cell => [cell.value, cell.detail])).toEqual([['H1 -2.5', 'opened H1 -1.5'], ['48.5', 'no move'], ['H1 -142', 'A1 +120']])
-    expect(card.model).toEqual({ spread: 'H1 -1.0', total: '46.9', winProbability: 'H1 57.0%' })
-    expect(card.topProps).toEqual([{ lineId: 11, playerName: 'Player 11', market: 'Receiving yards', line: '60.0', edge: '+20.0%' }])
-    expect([card.rateableCount, card.otherCount]).toEqual([1, 1])
-  })
-
-  it('marks a kicked-off game live and keeps its props as of kickoff', () => {
-    const started = game(1, '2026-10-04T17:00:00Z', { lines: [line(11)] })
-
-    const card = nflSlateCard(started, undefined, slateBoards([started], DURING).get(1) ?? [], DURING)
-
-    expect(card.state).toBe('live')
-    expect(card.topProps.map(prop => prop.lineId)).toEqual([11])
-  })
-
-  it('shows the best spread per side and its short book on an upcoming card only', () => {
-    const side = (which: 'home' | 'away', line: number, book: string) => ({
-      side: which, line, odds: -110, book, provider: 'odds_api_io', fetchedAt: '2026-10-04T15:00:00Z', evPct: null, pointsVsFair: null,
-    })
-    const bestLine = { maxAgeHours: 36, markets: [{ market: 'spread' as const, fair: null, sides: [side('home', -8.5, 'draftkings'), side('away', -9.5, 'bet365')] }] }
-    const gameNotes = notes(1, { bestLine })
-
-    expect(nflSlateCard(game(1, '2026-10-04T17:00:00Z'), gameNotes, [], BEFORE).bestSpread).toBe('Best H1 -8.5 DK · A1 +9.5 B365')
-    expect(nflSlateCard(game(1, '2026-10-04T17:00:00Z'), gameNotes, [], DURING).bestSpread).toBeNull()
-    expect(nflSlateCard(game(1, '2026-10-04T17:00:00Z'), notes(1), [], BEFORE).bestSpread).toBeNull()
-  })
-
-  it('tags each team whose QB changed, away first', () => {
+  it('counts injuries by report status only, and tags each team whose QB changed, away first', () => {
     const change = (team: string) => ({
       team, usualStarter: 'Starter', reasons: ['backup_started' as const], injuryStatus: null, injuryWeek: null,
       lastGameQb: 'Backup', lastGameWeek: 4, previousQb1: null,
     })
-    const gameNotes = notes(1, { awayQbChange: change('A1'), homeQbChange: change('H1') })
+    const row = nflSlateRow(game(1, null), notes(1, {
+      injuries: [injury('Out'), injury('Out'), injury('Doubtful'), injury('Questionable'), injury(null, 'Limited Participation')],
+      awayQbChange: change('A1'), homeQbChange: change('H1'),
+    }), BEFORE)
 
-    const card = nflSlateCard(game(1, '2026-10-04T17:00:00Z'), gameNotes, [], BEFORE)
-
-    expect(card.qbChange).toEqual(['A1', 'H1'])
+    expect(row.injuries).toEqual({ out: 2, doubtful: 1, questionable: 1 })
+    expect(row.qbChange).toEqual(['A1', 'H1'])
   })
 
-  it('degrades without odds, model or notes', () => {
-    const card = nflSlateCard(game(1, null), undefined, [], BEFORE)
-    expect(card.qbChange).toEqual([])
+  it('builds an upcoming row from the market, its moves, the muted model and the prop count', () => {
+    const upcoming = game(1, '2026-10-04T17:00:00Z', {
+      odds: ODDS, model: MODEL, weather: DOME, lines: [line(11), line(12, { playerId: 11, oddsType: 'goblin', line: 45 }), line(13, { market: 'rushing_yards' })],
+      awayContext: { games: 3, wins: 2, losses: 1, pointsForPerGame: 24, pointsAllowedPerGame: 20 },
+    })
+    const gameNotes = notes(1, {
+      lineMovement: [lineMove('spread', -1.5, -2.5, -1), lineMove('total', 48.5, 48.5, 0)],
+      injuries: [injury('Out'), injury('Questionable')],
+      awayForm: { team: 'A1', restDays: 4, shortWeek: true, recent: [] },
+    })
 
-    expect([card.market, card.winBar, card.model, card.injuries, card.final]).toEqual([null, null, null, null, null])
-    expect([card.away.record, card.away.rest, card.kickoff, card.shortWeek]).toEqual(['No games yet', null, 'Kickoff time not set', []])
+    const row = nflSlateRow(upcoming, gameNotes, BEFORE)
+
+    expect([row.state, row.kickoff, row.away.record, row.home.record]).toEqual(['upcoming', 'Sun 12:00 PM', '2-1', 'No games yet'])
+    expect([row.spread, row.total, row.moneyline]).toEqual([
+      { value: 'H1 -2.5', detail: 'opened H1 -1.5' }, { value: '48.5', detail: 'no move' }, { value: 'H1 -142', detail: 'A1 +120' },
+    ])
+    expect(row.model).toEqual({ spread: 'H1 -1.0', total: '46.9' })
+    expect(row.props).toBe(2)
+    expect([row.conditions, row.injuries, row.shortWeek, row.qbChange]).toEqual(['Indoor', { out: 1, doubtful: 0, questionable: 1 }, ['A1'], []])
+  })
+
+  it('marks a kicked-off game live and keeps its market', () => {
+    const row = nflSlateRow(game(1, '2026-10-04T17:00:00Z', { odds: ODDS }), undefined, DURING)
+
+    expect([row.state, row.kickoff, row.spread.value]).toEqual(['live', 'Sun 12:00 PM', 'H1 -2.5'])
+  })
+
+  it('grades a final against its close and drops the pre-game tags', () => {
+    const played = game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS, lines: [line(11)] })
+    const gameNotes = notes(1, {
+      awayScore: 17, homeScore: 24, injuries: [injury('Out')],
+      lineMovement: [lineMove('spread', -3.5, -3.5, 0), lineMove('total', 44.5, 44.5, 0)],
+    })
+
+    const row = nflSlateRow(played, gameNotes, DURING)
+
+    expect([row.state, row.kickoff]).toEqual(['final', 'Final'])
+    expect([row.away.score, row.away.lost, row.home.score, row.home.lost]).toEqual([17, true, 24, false])
+    expect([row.spread, row.total, row.moneyline]).toEqual([
+      { value: 'H1 -3.5', detail: 'H1 covered' }, { value: '44.5', detail: 'under by 3.5' }, { value: '--', detail: null },
+    ])
+    expect([row.injuries, row.shortWeek, row.props]).toEqual([null, [], 1])
+  })
+
+  it('leaves a final without a stored score ungraded', () => {
+    const row = nflSlateRow(game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS }), notes(1), DURING)
+
+    expect([row.kickoff, row.away.score, row.home.score, row.spread.value, row.total.value]).toEqual(['Final', null, null, '--', '--'])
+  })
+
+  it('degrades without a kickoff, odds, model or notes', () => {
+    const row = nflSlateRow(game(1, null), undefined, BEFORE)
+
+    expect([row.kickoff, row.spread.value, row.total.value, row.moneyline.value, row.model, row.injuries, row.props]).toEqual(['--', '--', '--', '--', null, null, 0])
   })
 })

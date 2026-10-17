@@ -1,12 +1,10 @@
-import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamContext, NflTeamForm } from '~/types/nfl'
-import { conditionsLabel, hasKickedOff, kickoffLabel, recordLabel } from '~/utils/nflGame'
-import { bookLabel, sideLabel } from '~/utils/nflBestLine'
+import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamContext } from '~/types/nfl'
+import { conditionsLabel, hasKickedOff, recordLabel } from '~/utils/nflGame'
 import { nflGameModelSummary, qbChanges, spreadLabel } from '~/utils/nflGameModel'
-import { gameBoardAsOf } from '~/utils/nflGameProps'
 import { marketLabel } from '~/utils/nflLabels'
 import { edgePctLabel } from '~/utils/nflSignal'
-import { devigP1, fmtAmerican } from '~/utils/odds'
-import { buildNflPropBoard, compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
+import { fmtAmerican } from '~/utils/odds'
+import { compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
 const CENTRAL = 'America/Chicago'
@@ -18,6 +16,7 @@ const PRIME_TIME_KEY = 'prime-time'
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'long' })
 const HOUR_24 = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', hourCycle: 'h23' })
 const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
+const DAY_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
 const UPDATED = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 export interface NflKickoffWindow {
@@ -104,43 +103,21 @@ export function nflSlateSummary(games: NflSlateGame[], notes: NflGameNotes[] | u
   }
 }
 
-export interface NflTopProp {
+interface RankedProp {
   row: NflBoardLine
-  /** Edge over the category's reference line, as on the prop cards. */
   edgeShare: number | null
 }
 
-type BoardBuilder = (games: NflSlateGame[], position: 'all', now: Date) => NflBoardCategory[]
-
-/**
- * Each game's week-wide board, read as the game page reads it: now for an upcoming game, just
- * before kickoff for a started one. Games sharing an as-of instant share one build, so an
- * all-upcoming week builds the board once rather than once per card.
- */
-export function slateBoards(games: NflSlateGame[], now: Date, build: BoardBuilder = buildNflPropBoard): Map<number, NflBoardCategory[]> {
-  const builds = new Map<number, NflBoardCategory[]>()
-  const boards = new Map<number, NflBoardCategory[]>()
-  for (const game of games) {
-    const asOf = gameBoardAsOf(game, now)
-    const board = builds.get(asOf.getTime()) ?? build(games, 'all', asOf)
-    builds.set(asOf.getTime(), board)
-    boards.set(game.gameId, board)
-  }
-  return boards
-}
-
-/** A game's strongest rateable lines, ranked by the board's tiers then edge share, one per player. */
-export function topGameProps(categories: NflBoardCategory[], gameId: number, limit = 3): NflTopProp[] {
+/** Ranks rateable lines by the board's tiers then edge share, one per player: the old slate card's top-props order. */
+function rankTopProps(categories: NflBoardCategory[], limit: number): RankedProp[] {
   const ranked = categories
-    .flatMap(category => category.rateable
-      .filter(row => row.gameId === gameId)
-      .map(row => ({ row, edgeShare: edgeShare(row, category.referenceLine) })))
+    .flatMap(category => category.rateable.map(row => ({ row, edgeShare: edgeShare(row, category.referenceLine) })))
     .sort((left, right) => compareBoardTiers(left.row, right.row)
       || Math.abs(right.edgeShare ?? 0) - Math.abs(left.edgeShare ?? 0)
       || left.row.playerName.localeCompare(right.row.playerName)
       || left.row.lineId - right.row.lineId)
   const players = new Set<number>()
-  const top: NflTopProp[] = []
+  const top: RankedProp[] = []
   for (const item of ranked) {
     if (top.length === limit) break
     if (players.has(item.row.playerId)) continue
@@ -152,72 +129,82 @@ export function topGameProps(categories: NflBoardCategory[], gameId: number, lim
 
 const MISSING = '--'
 
-export type NflSlateCardState = 'upcoming' | 'live' | 'final'
+/** One plays-digest box; display strings only, gray, never a pick. */
+export interface NflSlateDigestItem {
+  lineId: number
+  gameId: number
+  playerName: string
+  market: string
+  matchup: string
+  line: string
+  model: string
+  /** Signed edge share against the category's reference line, as on the prop cards. */
+  gap: string
+}
 
-export interface NflSlateCardTeam {
+/** The week's largest gaps, from a board built as of now (which already drops started games). */
+export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlateDigestItem[] {
+  return rankTopProps(categories, limit).map(({ row, edgeShare: share }) => ({
+    lineId: row.lineId,
+    gameId: row.gameId,
+    playerName: row.playerName,
+    market: marketLabel(row.market),
+    matchup: `${row.awayTeam} @ ${row.homeTeam}`,
+    line: row.line?.toFixed(1) ?? MISSING,
+    model: row.projection?.toFixed(1) ?? MISSING,
+    gap: edgePctLabel(share),
+  }))
+}
+
+export type NflSlateRowState = 'upcoming' | 'live' | 'final'
+
+export interface NflSlateRowTeam {
   code: string
   record: string
-  rest: string | null
   /** Null until the game is final. */
   score: number | null
   lost: boolean
 }
 
-export interface NflSlateCardCell {
-  label: string
+export interface NflSlateRowCell {
   value: string
   detail: string | null
 }
 
-export interface NflSlateCardProp {
-  lineId: number
-  playerName: string
-  market: string
-  line: string
-  edge: string
-}
-
-/** One slate card's display strings; display only, never an input to an edge or rank. */
-export interface NflSlateCardModel {
+/** One slate table row's display strings; display only, never an input to an edge or rank. */
+export interface NflSlateRowModel {
   gameId: number
-  state: NflSlateCardState
+  state: NflSlateRowState
+  /** Central weekday and clock ("Sun 12:00 PM"; prime time spans two days); "--" when unscheduled. */
   kickoff: string
+  away: NflSlateRowTeam
+  home: NflSlateRowTeam
+  /** Market lines with their opening move, or the close graded against a final score. */
+  spread: NflSlateRowCell
+  total: NflSlateRowCell
+  /** Favorite first; "--" once final. */
+  moneyline: NflSlateRowCell
+  /** Muted nfl-elo-v1 spread and total; null when the model has no rating for a team. */
+  model: { spread: string, total: string } | null
+  /** Stored prop lines, counted as the summary strip counts them. */
+  props: number
   conditions: string
-  /** Report statuses only; null while game notes are unavailable. */
+  /** Report statuses only; null while game notes are unavailable or once final. */
   injuries: { out: number, doubtful: number, questionable: number } | null
   shortWeek: string[]
   /** Teams whose QB differs from the one the muted model was built on. */
   qbChange: string[]
-  /** "Best DAL -8.5 DK · TB +9.5 B365"; null unless upcoming with a best spread. */
-  bestSpread: string | null
-  away: NflSlateCardTeam
-  home: NflSlateCardTeam
-  /** Market de-vigged win probability in whole percent; null without both moneylines. */
-  winBar: { away: number, home: number } | null
-  /** Spread, total and moneyline; null when no book odds are stored. */
-  market: NflSlateCardCell[] | null
-  model: { spread: string, total: string, winProbability: string } | null
-  topProps: NflSlateCardProp[]
-  rateableCount: number
-  otherCount: number
-  /** Closing lines graded against the score; null unless final with a stored score. */
-  final: NflSlateCardCell[] | null
 }
 
-function cardState(game: NflSlateGame, now: Date): NflSlateCardState {
+const NO_CELL: NflSlateRowCell = { value: MISSING, detail: null }
+
+function rowState(game: NflSlateGame, now: Date): NflSlateRowState {
   if (game.status === 'completed') return 'final'
   return hasKickedOff(game.startUtc, now) ? 'live' : 'upcoming'
 }
 
-function cardTeam(code: string, context: NflTeamContext | null, form: NflTeamForm | undefined, score: number | null, otherScore: number | null): NflSlateCardTeam {
-  const rest = form?.restDays
-  return {
-    code,
-    record: recordLabel(context),
-    rest: rest == null ? null : `rest ${rest}`,
-    score,
-    lost: score !== null && otherScore !== null && score < otherScore,
-  }
+function rowTeam(code: string, context: NflTeamContext | null, score: number | null, otherScore: number | null): NflSlateRowTeam {
+  return { code, record: recordLabel(context), score, lost: score !== null && otherScore !== null && score < otherScore }
 }
 
 function lineMove(notes: NflGameNotes | undefined, market: NflLineMove['market']): NflLineMove | null {
@@ -230,32 +217,26 @@ function openedLabel(move: NflLineMove | null, format: (line: number) => string)
   return move.move === 0 ? 'no move' : `opened ${format(move.openLine)}`
 }
 
-function moneylineCell(odds: NflGameOdds, homeTeam: string, awayTeam: string): NflSlateCardCell {
-  const { homeMoneyline: home, awayMoneyline: away } = odds
-  if (home === null || away === null) return { label: 'Moneyline', value: MISSING, detail: null }
+function moneylineCell(odds: NflGameOdds | null, homeTeam: string, awayTeam: string): NflSlateRowCell {
+  const home = odds?.homeMoneyline ?? null
+  const away = odds?.awayMoneyline ?? null
+  if (home === null || away === null) return NO_CELL
   // The lower American price is the favorite; a pick'em shows the home side first.
   const homeFavored = home <= away
   const favorite = homeFavored ? `${homeTeam} ${fmtAmerican(home)}` : `${awayTeam} ${fmtAmerican(away)}`
   const other = homeFavored ? `${awayTeam} ${fmtAmerican(away)}` : `${homeTeam} ${fmtAmerican(home)}`
-  return { label: 'Moneyline', value: favorite, detail: other }
+  return { value: favorite, detail: other }
 }
 
-function marketCells(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateCardCell[] | null {
-  const { odds, homeTeam, awayTeam } = game
-  if (odds === null) return null
-  const spread = (line: number) => spreadLabel(line, homeTeam, awayTeam)
-  return [
-    { label: 'Spread', value: odds.homeSpread === null ? MISSING : spread(odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread) },
-    { label: 'Total', value: odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1)) },
-    moneylineCell(odds, homeTeam, awayTeam),
-  ]
+function marketSpread(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+  if (game.odds === null) return NO_CELL
+  const spread = (line: number) => spreadLabel(line, game.homeTeam, game.awayTeam)
+  return { value: game.odds.homeSpread === null ? MISSING : spread(game.odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread) }
 }
 
-function winBar(odds: NflGameOdds | null): NflSlateCardModel['winBar'] {
-  const home = devigP1(odds?.homeMoneyline ?? null, odds?.awayMoneyline ?? null)
-  if (home === null) return null
-  const homePct = Math.round(home * 100)
-  return { away: 100 - homePct, home: homePct }
+function marketTotal(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+  if (game.odds === null) return NO_CELL
+  return { value: game.odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1)) }
 }
 
 /** Home spread in book sign: the home side covers when its margin plus the line is positive. */
@@ -271,75 +252,60 @@ function totalResult(line: number, points: number): string {
   return `${difference > 0 ? 'over' : 'under'} by ${Math.abs(difference).toFixed(1)}`
 }
 
-function finalCells(game: NflSlateGame, notes: NflGameNotes | undefined, propCount: number): NflSlateCardCell[] | null {
-  if (notes === undefined || notes.awayScore === null || notes.homeScore === null) return null
-  const { homeTeam, awayTeam } = game
+/** A final's closing spread, graded; "--" until both the score and a pre-kickoff line are stored. */
+function closeSpread(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
   const spread = lineMove(notes, 'spread')
-  const total = lineMove(notes, 'total')
-  const cells: NflSlateCardCell[] = []
-  if (spread !== null) {
-    cells.push({
-      label: 'Close spread',
-      value: spreadLabel(spread.currentLine, homeTeam, awayTeam),
-      detail: spreadResult(spread.currentLine, notes.homeScore - notes.awayScore, homeTeam, awayTeam),
-    })
+  if (!notes || spread === null || notes.awayScore === null || notes.homeScore === null) return NO_CELL
+  const { homeTeam, awayTeam } = game
+  return {
+    value: spreadLabel(spread.currentLine, homeTeam, awayTeam),
+    detail: spreadResult(spread.currentLine, notes.homeScore - notes.awayScore, homeTeam, awayTeam),
   }
-  if (total !== null) {
-    cells.push({ label: 'Close total', value: total.currentLine.toFixed(1), detail: totalResult(total.currentLine, notes.homeScore + notes.awayScore) })
-  }
-  cells.push({ label: 'Props', value: String(propCount), detail: 'lines' })
-  return cells
 }
 
-function injuryCounts(notes: NflGameNotes | undefined): NflSlateCardModel['injuries'] {
+function closeTotal(notes: NflGameNotes | undefined): NflSlateRowCell {
+  const total = lineMove(notes, 'total')
+  if (!notes || total === null || notes.awayScore === null || notes.homeScore === null) return NO_CELL
+  return { value: total.currentLine.toFixed(1), detail: totalResult(total.currentLine, notes.awayScore + notes.homeScore) }
+}
+
+function injuryCounts(notes: NflGameNotes | undefined): NflSlateRowModel['injuries'] {
   if (notes === undefined) return null
   const count = (status: string) => notes.injuries.filter(injury => injury.injuryStatus === status).length
   return { out: count('Out'), doubtful: count('Doubtful'), questionable: count('Questionable') }
 }
 
-function bestSpread(notes: NflGameNotes | undefined, homeTeam: string, awayTeam: string): string | null {
-  const spread = notes?.bestLine?.markets.find(market => market.market === 'spread')
-  if (!spread) return null
-  return `Best ${spread.sides.map(side => `${sideLabel(side, homeTeam, awayTeam)} ${bookLabel(side.book, true)}`).join(' · ')}`
-}
-
-function modelCells(game: NflSlateGame): NflSlateCardModel['model'] {
+function modelLines(game: NflSlateGame): NflSlateRowModel['model'] {
   const summary = nflGameModelSummary(game.model, game.odds, game.homeTeam, game.awayTeam)
   if (summary === null) return null
-  return { spread: summary.spread.model, total: summary.total.model, winProbability: summary.winProbability.model }
+  return { spread: summary.spread.model, total: summary.total.model }
 }
 
-/** One slate card, from the slate game, its game notes, and the game's week-wide board (see `slateBoards`). */
-export function nflSlateCard(game: NflSlateGame, notes: NflGameNotes | undefined, categories: NflBoardCategory[], now: Date): NflSlateCardModel {
-  const state = cardState(game, now)
-  const inGame = (row: NflBoardLine) => row.gameId === game.gameId
-  const rateableCount = categories.reduce((sum, category) => sum + category.rateable.filter(inGame).length, 0)
-  const otherCount = categories.reduce((sum, category) => sum + category.other.filter(inGame).length, 0)
+function rowKickoff(game: NflSlateGame): string {
+  const time = kickoffTime(game)
+  return time === null ? MISSING : DAY_CLOCK.format(time).replace(',', '')
+}
+
+/** One slate row, from the slate game and its game notes. */
+export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date): NflSlateRowModel {
+  const state = rowState(game, now)
+  const final = state === 'final'
   const awayScore = notes?.awayScore ?? null
   const homeScore = notes?.homeScore ?? null
   return {
     gameId: game.gameId,
     state,
-    kickoff: kickoffLabel(game.startUtc),
+    kickoff: final ? 'Final' : rowKickoff(game),
+    away: rowTeam(game.awayTeam, game.awayContext, awayScore, homeScore),
+    home: rowTeam(game.homeTeam, game.homeContext, homeScore, awayScore),
+    spread: final ? closeSpread(game, notes) : marketSpread(game, notes),
+    total: final ? closeTotal(notes) : marketTotal(game, notes),
+    moneyline: final ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
+    model: modelLines(game),
+    props: groupNflPropRows(game.lines).length,
     conditions: conditionsLabel(game.weather),
-    injuries: injuryCounts(notes),
-    shortWeek: [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : []),
-    qbChange: qbChanges(notes).map(change => change.team),
-    bestSpread: state === 'upcoming' ? bestSpread(notes, game.homeTeam, game.awayTeam) : null,
-    away: cardTeam(game.awayTeam, game.awayContext, notes?.awayForm, awayScore, homeScore),
-    home: cardTeam(game.homeTeam, game.homeContext, notes?.homeForm, homeScore, awayScore),
-    winBar: winBar(game.odds),
-    market: marketCells(game, notes),
-    model: modelCells(game),
-    topProps: state === 'final' ? [] : topGameProps(categories, game.gameId).map(({ row, edgeShare: share }) => ({
-      lineId: row.lineId,
-      playerName: row.playerName,
-      market: marketLabel(row.market),
-      line: row.line?.toFixed(1) ?? MISSING,
-      edge: edgePctLabel(share),
-    })),
-    rateableCount,
-    otherCount,
-    final: state === 'final' ? finalCells(game, notes, rateableCount + otherCount) : null,
+    injuries: final ? null : injuryCounts(notes),
+    shortWeek: final ? [] : [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : []),
+    qbChange: final ? [] : qbChanges(notes).map(change => change.team),
   }
 }
