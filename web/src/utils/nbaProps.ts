@@ -18,7 +18,8 @@ export interface NbaPropRung {
 export interface NbaProjectionRow {
   projection: string
   gap: string
-  probability: string | null
+  pOver: string | null
+  pUnder: string | null
 }
 
 export interface NbaPropCard {
@@ -32,6 +33,8 @@ export interface NbaPropCard {
   also: string[]
   /** Null when the player is not eligible; `flagText` says why. */
   projectionRow: NbaProjectionRow | null
+  gamesInSample: number
+  priorMinutes: number | null
   flagText: string | null
   recent: NbaLineOnlyRecent[]
   overCount: number | null
@@ -48,6 +51,10 @@ const FLAG_TEXT: Record<NbaPropFlag, string> = {
   low_minutes: 'No projection: under 20 minutes a game',
   no_over_probability: 'P(over) not fitted for this market',
   integer_line: 'Whole-number line: no P(over)',
+}
+
+export function nbaPropFlagText(flag: NbaPropFlag): string {
+  return FLAG_TEXT[flag]
 }
 
 function marketRank(market: string): number {
@@ -78,11 +85,10 @@ export function rungLabel(rung: Pick<NbaPropRung, 'line' | 'oddsType' | 'pOver'>
 function projectionRow(projection: number | null, main: NbaPropRung): NbaProjectionRow | null {
   if (projection === null || main.gap === null) return null
   return {
-    projection: `Proj ${oneDecimal(projection)}`,
-    gap: `gap ${signedGap(main.gap)}`,
-    probability: main.pOver === null || main.pUnder === null
-      ? null
-      : `P(over) ${percent(main.pOver)} · under ${percent(main.pUnder)}`,
+    projection: oneDecimal(projection),
+    gap: signedGap(main.gap),
+    pOver: main.pOver === null ? null : percent(main.pOver),
+    pUnder: main.pUnder === null ? null : percent(main.pUnder),
   }
 }
 
@@ -97,7 +103,9 @@ function card(playerLines: NbaPropLine[]): NbaPropCard {
     playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team,
     rungs, main, also: rungs.filter(rung => rung !== main).map(rungLabel),
     projectionRow: projectionRow(first.projection, main),
-    flagText: flag ? FLAG_TEXT[flag] : null,
+    gamesInSample: first.gamesInSample,
+    priorMinutes: first.priorMinutes,
+    flagText: flag ? nbaPropFlagText(flag) : null,
     recent: first.recent, ...overAgainstStandard(rungs, first.recent),
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NbaLineOnlyRecent, NbaPropLine } from '~/types/nba'
 import { lineOnlyBars } from '~/utils/nflLineOnly'
-import { NBA_PROP_MARKETS, nbaPropGroups, rungLabel, signedGap } from '~/utils/nbaProps'
+import { NBA_PROP_MARKETS, nbaPropFlagText, nbaPropGroups, rungLabel, signedGap } from '~/utils/nbaProps'
 
 function recent(...values: Array<number | null>): NbaLineOnlyRecent[] {
   return values.map((value, index) => ({ gameDate: `2026-05-${String(20 - index).padStart(2, '0')}`, opponent: 'NY', value }))
@@ -56,20 +56,21 @@ describe('nbaPropGroups', () => {
     ])
     const [card] = group.cards
     expect(card.main.line).toBe(7.5)
-    expect(card.projectionRow?.gap).toBe('gap +0.4')
+    expect(card.projectionRow?.gap).toBe('+0.4')
     expect(card.also).toEqual(['9.5 demon · 18%'])
     expect(card.overCount).toBeNull()
   })
 
   it('prints the projection row with P(over) when the market has a fit', () => {
     const [card] = nbaPropGroups([line({})])[0].cards
-    expect(card.projectionRow).toEqual({ projection: 'Proj 8.0', gap: 'gap -1.5', probability: 'P(over) 35% · under 66%' })
+    expect(card.projectionRow).toEqual({ projection: '8.0', gap: '-1.5', pOver: '35%', pUnder: '66%' })
+    expect(card).toMatchObject({ gamesInSample: 20, priorMinutes: 41.4 })
     expect(card.flagText).toBeNull()
   })
 
   it('prints the projection row without P(over), saying why', () => {
     const [card] = nbaPropGroups([points({})])[0].cards
-    expect(card.projectionRow).toEqual({ projection: 'Proj 24.2', gap: 'gap -0.3', probability: null })
+    expect(card.projectionRow).toEqual({ projection: '24.2', gap: '-0.3', pOver: null, pUnder: null })
     expect(card.flagText).toBe('P(over) not fitted for this market')
   })
 
@@ -89,7 +90,7 @@ describe('nbaPropGroups', () => {
 
   it('a whole-number main line keeps its projection but has no P(over)', () => {
     const [card] = nbaPropGroups([line({ line: 3, projection: 2.85, gap: -0.15, pOver: null, pUnder: null, flags: ['integer_line'] })])[0].cards
-    expect(card.projectionRow).toEqual({ projection: 'Proj 2.9', gap: 'gap -0.1', probability: null })
+    expect(card.projectionRow).toEqual({ projection: '2.9', gap: '-0.1', pOver: null, pUnder: null })
     expect(card.flagText).toBe('Whole-number line: no P(over)')
   })
 
@@ -115,5 +116,12 @@ describe('rungLabel', () => {
   it('names non-standard rungs and appends P(over)', () => {
     expect(rungLabel({ line: 9.5, oddsType: 'demon', pOver: 0.31 })).toBe('9.5 demon · 31%')
     expect(rungLabel({ line: 9.5, oddsType: 'standard', pOver: null })).toBe('9.5')
+  })
+})
+
+describe('nbaPropFlagText', () => {
+  it('turns each projection flag into drawer-ready text', () => {
+    expect(nbaPropFlagText('few_prior_games')).toBe('No projection: fewer than 10 earlier games')
+    expect(nbaPropFlagText('integer_line')).toBe('Whole-number line: no P(over)')
   })
 })
