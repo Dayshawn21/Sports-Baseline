@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { NbaSlateGameCard } from '~/components/nba/NbaSlateGameCard'
+import { NbaSlateDigest } from '~/components/nba/NbaSlateDigest'
+import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
-import { useNbaSlate } from '~/hooks/useNba'
+import { useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
 import type { NbaSlateGame } from '~/types/nba'
-import { nbaSlateCard, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import './nfl-slate.css'
 
 const MISSING = '--'
@@ -25,7 +26,7 @@ function Summary({ games }: { games: NbaSlateGame[] }) {
 function Legend() {
   return <p className="nfl-slate__legend">
     <span><b>Market</b> is DraftKings when stored, else the latest book; win probability is de-vigged.</span>
-    <span><b>No model yet.</b> NBA lines are display only until a projection passes its backtest.</span>
+    <span><b>Gaps</b> are the reference projection minus the line: gray reference, not picks, until the ranking check adopts one.</span>
     <span><b>Scores</b> load the morning after each game.</span>
   </p>
 }
@@ -35,10 +36,13 @@ export default function NbaSlatePage() {
   // A malformed link falls back to the API's choice rather than an error page.
   const requested = parseSlateDate(searchParams.get('date'))
   const slate = useNbaSlate(requested)
-  const cards = useMemo(() => {
+  const rows = useMemo(() => {
     const now = new Date()
-    return (slate.data?.games ?? []).map(game => nbaSlateCard(game, now))
+    return (slate.data?.games ?? []).map(game => nbaSlateRow(game, now))
   }, [slate.data])
+  const gaps = useNbaSlateGaps(slate.data?.date ?? null)
+  // A failed digest only hides the strip; the games still render.
+  const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
 
   if (slate.isLoading) return <LoadingState message="Loading NBA slate..." />
   if (slate.isError || !slate.data) return <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />
@@ -52,10 +56,9 @@ export default function NbaSlatePage() {
       stats={games.length > 0 && <Summary games={games} />}
     />
     {games.length === 0 ? <div className="nfl-empty">No NBA games on this date.</div> : <>
+      <NbaSlateDigest items={digest} />
       <Legend />
-      <section className="nfl-slate-window" aria-label="Games">
-        <div className="nfl-slate-grid">{cards.map(card => <NbaSlateGameCard key={card.gameId} card={card} />)}</div>
-      </section>
+      <section className="nfl-slate-window" aria-label="Games"><NbaSlateTable rows={rows} /></section>
     </>}
   </div></div>
 }

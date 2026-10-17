@@ -149,5 +149,25 @@ class NbaSlateResponse(_CamelModel):
     games: list[NbaSlateGameSchema]
 
 
+class NbaSlateGapSchema(_CamelModel):
+    game_id: int
+    away_team: str
+    home_team: str
+    player_id: int
+    player_name: str
+    market: str
+    line: float
+    projection: float
+    gap: float
+    gap_share: float
+
+
+class NbaSlateGapsResponse(_CamelModel):
+    """The slate digest's largest gaps (38c2): gray reference, never a pick; the one sorted NBA gap."""
+    date: dt.date
+    model_version: str
+    items: list[NbaSlateGapSchema]
+
+
 class NbaModelRankingResponse(PropRankingResponse):
     """27i's rule on NBA's frozen pre-tip rows (20g4), in NFL's 27j shape; a later NBA adoption item reads it."""

@@ -12,7 +12,8 @@
 }
 /* A box can be a button (tennis selects a row) as well as a link. */
 button.slate-digest__play { font: inherit; text-align: left; cursor: pointer; }
-.slate-digest__play:hover { background: var(--bg-card-hover); border-color: var(--border-card); }
+/* The color restates the base: Ant Design's global `a:hover` outranks the class and would turn a link box blue. */
+.slate-digest__play:hover { background: var(--bg-card-hover); border-color: var(--border-card); color: var(--text-primary); }
 .slate-digest__play:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
 .slate-digest__play strong { overflow: hidden; font: 700 14px var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
 .slate-digest__what { overflow: hidden; color: var(--text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaProps, fetchNbaSlate } from '~/api/nba'
+import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
 import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 
@@ -7,6 +7,16 @@ export function useNbaSlate(date: string | null) {
   return useQuery({
     queryKey: ['nba', 'slate', date],
     queryFn: () => fetchNbaSlate(date),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** The digest for a date the slate has already resolved; waits for it. */
+export function useNbaSlateGaps(date: string | null) {
+  return useQuery({
+    queryKey: ['nba', 'slate', date, 'gaps'],
+    queryFn: () => fetchNbaSlateGaps(date as string),
+    enabled: date !== null,
     staleTime: 5 * 60 * 1000,
   })
 }

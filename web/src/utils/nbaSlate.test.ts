@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { NbaLineMove, NbaSlateGame } from '~/types/nba'
-import { nbaSlateCard, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import type { NbaLineMove, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import { nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 
 const NOW = new Date('2026-10-06T15:00:00Z')
 const FETCHED = '2026-10-06T14:34:47Z'
@@ -141,5 +141,81 @@ describe('parseSlateDate', () => {
 
   it('labels a slate date without shifting the day', () => {
     expect(slateDateLabel('2026-10-20')).toBe('Tue, Oct 20, 2026')
+  })
+})
+
+describe('nbaSlateDigest', () => {
+  const gap = (overrides: Partial<NbaSlateGap> = {}): NbaSlateGap => ({
+    gameId: 21319, awayTeam: 'PHI', homeTeam: 'NY', playerId: 7, playerName: 'Jaylen Brown', market: 'points',
+    line: 20.5, projection: 28.75, gap: 8.25, gapShare: 8.25 / 20.5, ...overrides,
+  })
+
+  it('formats line and model to one decimal with a signed gap and share', () => {
+    expect(nbaSlateDigest([gap()])).toEqual([{
+      key: '21319-7-points', gameId: 21319, playerName: 'Jaylen Brown', market: 'Points', matchup: 'PHI @ NY',
+      line: '20.5', model: '28.8', gap: '+8.3 · +40%',
+    }])
+  })
+
+  it('signs an under gap negative and labels combo markets', () => {
+    const [item] = nbaSlateDigest([gap({ market: 'points_rebounds_assists', line: 27.5, projection: 23.55, gap: -3.95, gapShare: 3.95 / 27.5 })])
+    expect(item.market).toBe('Pts + reb + ast')
+    expect(item.gap).toBe('-4.0 · -14%')
+  })
+
+  it('keeps the API order and gives an empty strip for no items', () => {
+    const items = nbaSlateDigest([gap({ playerId: 1 }), gap({ playerId: 2, market: 'blocks' })])
+    expect(items.map(item => item.key)).toEqual(['21319-1-points', '21319-2-blocks'])
+    expect(nbaSlateDigest([])).toEqual([])
+  })
+})
+
+describe('nbaSlateRow', () => {
+  it('reads an upcoming game from the card market', () => {
+    const row = nbaSlateRow(game({ lineMovement: [moved('spread', -1.5, -2.5)] }), NOW)
+    expect(row).toMatchObject({
+      gameId: 21320, state: 'upcoming', tip: nbaSlateCard(game(), NOW).tip,
+      spread: { value: 'DET -2.5', detail: 'opened DET -1.5' }, total: { value: '221.5', detail: null },
+      moneyline: { value: 'DET -125', detail: 'BOS +105' }, win: 'DET 53%', props: 61, tags: [], note: null,
+    })
+    expect(row.away).toMatchObject({ code: 'BOS', record: 'No games yet', score: null })
+  })
+
+  it('tags a tipped-off game and keeps its latest market', () => {
+    const row = nbaSlateRow(game(), new Date('2026-10-20T23:30:00Z'))
+    expect(row.state).toBe('started')
+    expect(row.tags).toEqual(['Tipped off'])
+    expect(row.note).toBe('Scores load the morning after')
+    expect(row.spread.value).toBe('DET -2.5')
+  })
+
+  it('grades a final against the close and drops the moneyline and win', () => {
+    const row = nbaSlateRow(game({
+      status: 'completed', awayScore: 110, homeScore: 104,
+      lineMovement: [moved('spread', -1.5, -2.5), moved('total', 220.5, 221.5)],
+    }), NOW)
+    expect(row).toMatchObject({
+      state: 'final', tip: 'Final',
+      spread: { value: 'DET -2.5', detail: 'BOS covered' }, total: { value: '221.5', detail: 'under by 7.5' },
+      moneyline: { value: '--', detail: null }, win: null, tags: [],
+    })
+    expect(row.away).toMatchObject({ score: 110, lost: false })
+    expect(row.home).toMatchObject({ score: 104, lost: true })
+  })
+
+  it('shows a final without stored lines as dashes', () => {
+    const row = nbaSlateRow(game({ status: 'completed', awayScore: 110, homeScore: 104 }), NOW)
+    expect([row.spread.value, row.total.value]).toEqual(['--', '--'])
+  })
+
+  it('names a postponed game in the tip column with no market', () => {
+    const row = nbaSlateRow(game({ status: 'postponed' }), NOW)
+    expect(row).toMatchObject({ state: 'off', tip: 'Postponed', spread: { value: '--' }, moneyline: { value: '--' }, win: null })
+    expect(nbaSlateRow(game({ status: 'canceled' }), NOW).tip).toBe('Canceled')
+  })
+
+  it('shows dashes and no win without a market', () => {
+    const row = nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW)
+    expect([row.spread.value, row.total.value, row.moneyline.value, row.win]).toEqual(['--', '--', '--', null])
   })
 })

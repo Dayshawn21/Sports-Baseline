@@ -1,4 +1,5 @@
-import type { NbaLineMove, NbaRecord, NbaSlateGame } from '~/types/nba'
+import type { NbaLineMove, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { hasKickedOff } from '~/utils/nflGame'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
@@ -189,5 +190,95 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
     finals: games.filter(game => game.status === 'completed').length,
     oddsUpdated: times.length ? `${CENTRAL_TIME.format(Math.max(...times))} CT` : null,
+  }
+}
+
+/** One digest box's display strings; gray, never a pick. */
+export interface NbaSlateDigestItem {
+  key: string
+  gameId: number
+  playerName: string
+  market: string
+  matchup: string
+  line: string
+  model: string
+  /** Signed points and share of the line: "+2.3 · +10%". */
+  gap: string
+}
+
+function signed(value: number, text: string): string {
+  return `${value > 0 ? '+' : value < 0 ? '-' : ''}${text}`
+}
+
+/** The API's ranked digest, in its order; the ranking rule lives server-side (`nba_slate_gaps`). */
+export function nbaSlateDigest(items: NbaSlateGap[]): NbaSlateDigestItem[] {
+  return items.map(item => ({
+    key: `${item.gameId}-${item.playerId}-${item.market}`,
+    gameId: item.gameId,
+    playerName: item.playerName,
+    market: nbaMarketLabel(item.market),
+    matchup: `${item.awayTeam} @ ${item.homeTeam}`,
+    line: item.line.toFixed(1),
+    model: item.projection.toFixed(1),
+    gap: `${signed(item.gap, Math.abs(item.gap).toFixed(1))} · ${signed(item.gap, `${Math.round(item.gapShare * 100)}%`)}`,
+  }))
+}
+
+export interface NbaSlateRowCell {
+  value: string
+  detail: string | null
+}
+
+/** One slate table row's display strings, from the card model so both read one state and final rule. */
+export interface NbaSlateRowModel {
+  gameId: number
+  state: NbaSlateCardState
+  /** Central clock, else Final, Postponed or Canceled. */
+  tip: string
+  away: NbaSlateCardTeam
+  home: NbaSlateCardTeam
+  /** Market lines with their opening move, or the close graded against a final score. */
+  spread: NbaSlateRowCell
+  total: NbaSlateRowCell
+  /** Favorite first; "--" once final or off. */
+  moneyline: NbaSlateRowCell
+  /** Market de-vigged win probability, favorite first, muted; null without a moneyline, final or off. */
+  win: string | null
+  props: number
+  tags: string[]
+  note: string | null
+}
+
+const NO_CELL: NbaSlateRowCell = { value: MISSING, detail: null }
+
+function cellOf(cells: NbaSlateCardCell[] | null, label: string): NbaSlateRowCell {
+  const cell = cells?.find(item => item.label === label)
+  return cell === undefined ? NO_CELL : { value: cell.value, detail: cell.detail }
+}
+
+function winLabel(card: NbaSlateCardModel): string | null {
+  if (card.winBar === null || card.state === 'final') return null
+  const { away, home } = card.winBar
+  return home >= away ? `${card.home.code} ${home}%` : `${card.away.code} ${away}%`
+}
+
+export function nbaSlateRow(game: NbaSlateGame, now: Date): NbaSlateRowModel {
+  const card = nbaSlateCard(game, now)
+  const final = card.state === 'final'
+  const off = card.state === 'off'
+  const started = card.state === 'started'
+  return {
+    gameId: card.gameId,
+    state: card.state,
+    tip: final || off ? card.stateLabel ?? MISSING : card.tip,
+    away: card.away,
+    home: card.home,
+    spread: cellOf(final ? card.final : card.market, final ? 'Close spread' : 'Spread'),
+    total: cellOf(final ? card.final : card.market, final ? 'Close total' : 'Total'),
+    moneyline: final ? NO_CELL : cellOf(card.market, 'Moneyline'),
+    win: winLabel(card),
+    props: game.propLineCount,
+    tags: started ? ['Tipped off'] : [],
+    note: started ? 'Scores load the morning after' : null,
   }
 }

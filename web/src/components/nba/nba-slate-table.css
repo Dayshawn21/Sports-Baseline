@@ -1,0 +1,14 @@
+/* The NBA slate as rows (38c2), on the NFL table's classes: Tip takes the kickoff column, and the muted
+   market win probability takes the model's place. */
+.nba-slate-table col.is-win { width: 100px; }
+.nba-slate-table col.is-notes { width: 264px; }
+
+@media (max-width: 1100px) {
+  .nba-slate-table__win { order: 4; }
+  /* Records before opening night read "No games yet" twice, too wide for line 1 beside the tip, so they truncate. */
+  .nba-slate-table .nfl-slate-table__game { flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; }
+  .nba-slate-table tr.is-final .nfl-slate-table__moneyline,
+  .nba-slate-table tr.is-final .nba-slate-table__win,
+  .nba-slate-table tr.is-off .nfl-slate-table__moneyline,
+  .nba-slate-table tr.is-off .nba-slate-table__win { display: none; }
+}

@@ -71,6 +71,28 @@ export interface NbaSlateResponse {
   games: NbaSlateGame[]
 }
 
+/** One digest line (38c2): gray reference, never a pick. */
+export interface NbaSlateGap {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  playerId: number
+  playerName: string
+  market: string
+  line: number
+  projection: number
+  /** Projection minus line. */
+  gap: number
+  /** |gap| / line, the digest's rank. */
+  gapShare: number
+}
+
+export interface NbaSlateGapsResponse {
+  date: string
+  modelVersion: string
+  items: NbaSlateGap[]
+}
+
 export interface NbaLineStep {
   fetchedAt: string
   line: number

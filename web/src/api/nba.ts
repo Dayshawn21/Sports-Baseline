@@ -1,10 +1,15 @@
 import client from './client'
-import type { NbaGameDetail, NbaLineOnlyProps, NbaProps, NbaSlateResponse } from '~/types/nba'
+import type { NbaGameDetail, NbaLineOnlyProps, NbaProps, NbaSlateGapsResponse, NbaSlateResponse } from '~/types/nba'
 import type { PropRankingRecord } from '~/types/propRanking'
 
 /** A null date lets the API choose: today, else the next date with games. */
 export async function fetchNbaSlate(date: string | null): Promise<NbaSlateResponse> {
   const { data } = await client.get<NbaSlateResponse>('/nba/slate', { params: date === null ? {} : { date } })
+  return data
+}
+
+export async function fetchNbaSlateGaps(date: string): Promise<NbaSlateGapsResponse> {
+  const { data } = await client.get<NbaSlateGapsResponse>('/nba/slate/gaps', { params: { date } })
   return data
 }
 

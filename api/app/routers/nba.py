@@ -8,13 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
 from app.schemas.nba import (
-    NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateResponse,
+    NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
+    NbaSlateResponse,
 )
 from app.services.nba import track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
 from app.services.nba.props import build_props
 from app.services.nba.slate import build_slate
+from app.services.nba.slate_gaps import build_slate_gaps
 
 router = APIRouter()
 
@@ -25,6 +27,11 @@ EASTERN = ZoneInfo("America/New_York")
 @router.get("/slate", response_model=NbaSlateResponse)
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NbaSlateResponse:
     return await build_slate(db, date, dt.datetime.now(EASTERN).date())
+
+
+@router.get("/slate/gaps", response_model=NbaSlateGapsResponse)
+async def get_slate_gaps(date: dt.date, db: AsyncSession = Depends(get_db)) -> NbaSlateGapsResponse:
+    return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC))
 
 
 @router.get("/games/{game_id}", response_model=NbaGameDetailResponse)
