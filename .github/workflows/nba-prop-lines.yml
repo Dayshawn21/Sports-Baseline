@@ -11,6 +11,7 @@ name: NBA PrizePicks Prop Lines
 # October through June only, matching the NBA data ingest. Both times sit off
 # every nfl-prop-lines.yml run so the two never share a PrizePicks window.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # 16:30 UTC: the day's board once it is posted.
     - cron: "30 16 * 1-6,10-12 *"

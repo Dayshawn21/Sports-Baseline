@@ -6,6 +6,7 @@ name: NFL Game Weather
 #
 # September through February only, matching the NFL data ingest.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     - cron: "0 14 * 1,2,9-12 *"
   workflow_dispatch:

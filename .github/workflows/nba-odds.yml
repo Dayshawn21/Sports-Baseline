@@ -13,6 +13,7 @@ name: NBA Game Odds
 # October through June only, matching the NBA data ingest. Both times sit off
 # every nfl-prop-odds.yml run.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # 15:00 UTC: the morning line.
     - cron: "0 15 * 1-6,10-12 *"

@@ -8,6 +8,7 @@ name: NBA Ingest
 #
 # October through June only, the NBA regular season and playoffs.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     - cron: "30 9 * 1-6,10-12 *"
   workflow_dispatch:

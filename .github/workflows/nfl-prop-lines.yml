@@ -9,6 +9,7 @@ name: NFL PrizePicks Prop Lines
 #
 # September through February only, matching the NFL data ingest.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # Thursday 20:00 UTC: before the Thursday night game.
     - cron: "0 20 * 1,2,9-12 4"

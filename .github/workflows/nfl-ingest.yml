@@ -1,6 +1,7 @@
 name: NFL Data Ingest
 
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # Weekly stats refresh, Tuesday 10:00 AM Central (15:00 UTC), after Monday
     # Night Football. Stale-baseline flags and the small-sample edge gate only

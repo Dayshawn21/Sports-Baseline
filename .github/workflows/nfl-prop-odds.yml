@@ -16,6 +16,7 @@ name: NFL Sportsbook Prop Odds
 #
 # September through February only, matching the NFL data ingest.
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # Wednesday 23:10 UTC (6:10 PM Central): the Thursday night game.
     - cron: "10 23 * 1,2,9-12 3"

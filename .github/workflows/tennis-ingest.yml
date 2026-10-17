@@ -1,6 +1,7 @@
 name: Tennis Data Ingest
 
 on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
     # Daily match scrape — 12:30 AM Central (06:30 UTC)
     - cron: "30 6 * * *"
