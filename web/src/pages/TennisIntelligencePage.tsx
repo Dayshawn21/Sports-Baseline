@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react'
 import { DatePicker, Select } from 'antd'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
+import { useAdminView } from '~/hooks/useAdmin'
 import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
-import TennisCommandCenter from '~/components/tennis/TennisCommandCenter'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
-import TennisPickCards from '~/components/tennis/TennisPickCards'
+import TennisSlateDigest from '~/components/tennis/TennisSlateDigest'
+import TennisSlateTable from '~/components/tennis/TennisSlateTable'
 import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
 import {
   UNIFIED_SORT_OPTIONS,
@@ -15,7 +16,8 @@ import {
   bestBetPicks,
   composeUnifiedMatches,
 } from '~/utils/unifiedTennis'
-import { featuredPicks, isGroupedSort } from '~/utils/tennisSlate'
+import type { TourTab } from '~/utils/tennisSlate'
+import { featuredPicks, isGroupedSort, revealTab, slateRows, tennisDigest } from '~/utils/tennisSlate'
 import { slateDateLabel } from '~/utils/nbaSlate'
 import '~/components/tennis/tennis-slate.css'
 
@@ -26,15 +28,6 @@ const SOURCE_OPTIONS = [
   { value: 'dk', label: 'DraftKings' },
   { value: 'bet', label: 'Bet365' },
 ]
-
-const SORT_SUMMARY: Record<UnifiedSort, string> = {
-  opportunity: 'Ranked by priced EV',
-  start: 'Soonest matches first',
-  start_desc: 'Latest matches first',
-  ev: 'Ranked by best single EV',
-  confidence: 'Ranked by confidence tier',
-  items: 'Ranked by how many picks a match holds',
-}
 
 function SourceNotice({ label, onRetry }: { label: string; onRetry: () => void }) {
   return (
@@ -79,14 +72,18 @@ export default function TennisIntelligencePage() {
   const [sort, setSort] = useState<UnifiedSort>('opportunity')
   const [upcomingOnly, setUpcomingOnly] = useState(true)
   const [showLeans, setShowLeans] = useState(false)
-  const [source, setSource] = useState<PropSource>('prizepicks')
-  const [selectedMatchKey, setSelectedMatchKey] = useState<string | null>(null)
+  const adminView = useAdminView()
+  const [chosenSource, setSource] = useState<PropSource>('prizepicks')
+  // Visitors get PrizePicks only: the book switch and its health warning are owner diagnostics.
+  const source: PropSource = adminView ? chosenSource : 'prizepicks'
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [tourTab, setTourTab] = useState<TourTab>('all')
 
   const predictionsQuery = useTennisToday({ tour, date })
   const bestPicksQuery = useBestPicks({ tour, date })
   const prizePicksQuery = usePrizePicksProps()
-  const draftKingsQuery = useDKProps()
-  const betOnlineQuery = useBetProps()
+  const draftKingsQuery = useDKProps(source === 'dk')
+  const betOnlineQuery = useBetProps(source === 'bet')
   const propsQuery = source === 'dk'
     ? draftKingsQuery
     : source === 'bet'
@@ -125,7 +122,23 @@ export default function TennisIntelligencePage() {
     return { props, locks, strongOrBetter }
   }, [matches])
 
-  const featured = useMemo(() => featuredPicks(matches, 4), [matches])
+  const digest = useMemo(() => tennisDigest(featuredPicks(matches, 4)), [matches])
+  const rows = useMemo(() => slateRows(matches), [matches])
+
+  function toggleRow(matchKey: string) {
+    setExpandedKey((open) => (open === matchKey ? null : matchKey))
+  }
+
+  // A digest pick opens its row (never closes it), then brings the row to the reader once it renders.
+  function openFromDigest(matchKey: string) {
+    setTourTab(revealTab(rows, matchKey, tourTab))
+    setExpandedKey(matchKey)
+    requestAnimationFrame(() => {
+      const toggle = document.querySelector<HTMLButtonElement>(`[data-match-key="${CSS.escape(matchKey)}"]`)
+      toggle?.focus({ preventScroll: true })
+      toggle?.closest('tr')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   const propsHealth = useMemo(
     () => assessPropsHealth(propsQuery.data?.props ?? []),
@@ -142,22 +155,7 @@ export default function TennisIntelligencePage() {
         <PageHead
           title="Tennis slate"
           meta={date ? slateDateLabel(date) : 'Today and tomorrow'}
-          stats={!primaryLoading && (
-            <TennisSlateSummary
-              matches={matches.length}
-              props={counts.props}
-              locks={counts.locks}
-              strongOrBetter={counts.strongOrBetter}
-            />
-          )}
-        />
-
-        <>
-          <div className="page-toolbar unified-toolbar">
-            <div className="unified-toolbar-summary">
-              <span className="unified-toolbar-title">Best Bets</span>
-              <span>{SORT_SUMMARY[sort]}, with angles separated</span>
-            </div>
+          actions={
             <div className="filter-bar-responsive unified-filters">
               <button
                 type="button"
@@ -192,12 +190,14 @@ export default function TennisIntelligencePage() {
                 labelRender={({ label }) => <>Sort: {label}</>}
                 onChange={(value) => setSort(value as UnifiedSort)}
               />
-              <Select
-                aria-label="Prop source"
-                value={source}
-                options={SOURCE_OPTIONS}
-                onChange={(value) => setSource(value as PropSource)}
-              />
+              {adminView && (
+                <Select
+                  aria-label="Prop source"
+                  value={source}
+                  options={SOURCE_OPTIONS}
+                  onChange={(value) => setSource(value as PropSource)}
+                />
+              )}
               <button
                 type="button"
                 className={`unified-filter-button${showLeans ? ' is-active is-lean' : ''}`}
@@ -207,14 +207,22 @@ export default function TennisIntelligencePage() {
                 {showLeans ? 'Hide Leans' : 'Show Leans'}
               </button>
             </div>
-          </div>
-        </>
+          }
+          stats={!primaryLoading && (
+            <TennisSlateSummary
+              matches={matches.length}
+              props={counts.props}
+              locks={counts.locks}
+              strongOrBetter={counts.strongOrBetter}
+            />
+          )}
+        />
 
         <div className="unified-notices">
           {predictionsQuery.isError && <SourceNotice label="Predictions" onRetry={predictionsQuery.refetch} />}
           {bestPicksQuery.isError && <SourceNotice label="Best Picks" onRetry={bestPicksQuery.refetch} />}
           {propsQuery.isError && <SourceNotice label={sourceLabel} onRetry={propsQuery.refetch} />}
-          {!propsQuery.isError && propsHealth.degraded && (
+          {adminView && !propsQuery.isError && propsHealth.degraded && (
             <PropsHealthNotice label={sourceLabel} health={propsHealth} />
           )}
         </div>
@@ -227,17 +235,20 @@ export default function TennisIntelligencePage() {
         ) : matches.length === 0 ? (
           <div className="unified-empty-state">
             <div className="unified-empty-title">No Best Bets found</div>
-            <p>Try another date or tour, switch the prop source, or include Lean picks.</p>
+            <p>Try another date or tour{adminView ? ', switch the prop source,' : ''} or include Lean picks.</p>
             {!showLeans && <button type="button" onClick={() => setShowLeans(true)}>Show Leans</button>}
           </div>
         ) : (
           <>
-          <TennisPickCards picks={featured} selectedMatchKey={selectedMatchKey} onSelectMatch={setSelectedMatchKey} />
-          <TennisCommandCenter
-            matches={matches}
+          <TennisSlateDigest items={digest} selectedKey={expandedKey} onSelect={openFromDigest} />
+          <TennisSlateTable
+            rows={rows}
             grouped={isGroupedSort(sort)}
-            selectedMatchKey={selectedMatchKey}
-            onSelectMatch={setSelectedMatchKey}
+            expandedKey={expandedKey}
+            onToggle={toggleRow}
+            showFlags={adminView}
+            tab={tourTab}
+            onTabChange={setTourTab}
           />
           </>
         )}

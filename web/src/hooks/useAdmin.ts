@@ -8,6 +8,14 @@ export function useAdminKey(): string | null {
   return useSyncExternalStore(sessionAdminKey.subscribe, sessionAdminKey.read, () => null)
 }
 
+/**
+ * Whether the owner's view is on: signed in with the admin key, or a local dev build.
+ * It shows the Admin nav (37a) and the diagnostics visitors never see, such as tennis quality flags.
+ */
+export function useAdminView(): boolean {
+  return useAdminKey() !== null || import.meta.env.DEV
+}
+
 export function useAdminSession() {
   const signedIn = useAdminKey() !== null
   const query = useQuery({

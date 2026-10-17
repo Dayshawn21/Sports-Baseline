@@ -19,19 +19,22 @@ export function usePrizePicksPropsAudit() {
   })
 }
 
-export function useDKProps() {
+/** `enabled` lets a page fetch a book's props only while it is the chosen source. */
+export function useDKProps(enabled = true) {
   return useQuery({
     queryKey: ['props', 'dk'],
     queryFn: fetchDKProps,
+    enabled,
     staleTime: 10 * 60 * 1000,
     retry: 2,
   })
 }
 
-export function useBetProps() {
+export function useBetProps(enabled = true) {
   return useQuery({
     queryKey: ['props', 'bet'],
     queryFn: fetchBetProps,
+    enabled,
     staleTime: 10 * 60 * 1000,
     retry: 2,
   })

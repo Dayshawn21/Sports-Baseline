@@ -8,7 +8,7 @@ import HowItWorksPage from '~/pages/HowItWorksPage'
 import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { APP_ANTD_THEME } from '~/theme/antdTheme'
-import { useAdminKey } from '~/hooks/useAdmin'
+import { useAdminView } from '~/hooks/useAdmin'
 import { documentTitle, menuSections, shellNav, type ShellNav } from '~/utils/sportNav'
 
 const { Header, Content } = Layout
@@ -83,7 +83,7 @@ function Nav() {
   const { pathname } = useLocation()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const adminVisible = useAdminKey() !== null || import.meta.env.DEV
+  const adminVisible = useAdminView()
   const nav = shellNav(pathname, adminVisible)
 
   useEffect(() => {

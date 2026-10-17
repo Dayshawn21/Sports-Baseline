@@ -1,0 +1,220 @@
+/* One match's detail, opened inline under its slate row (38c1): a context line, then
+   picks, match facts, and serve and return as three ledger columns. Rows and hairlines,
+   no cards, so it reads as part of the table. */
+
+.tennis-match-detail {
+  padding: 14px var(--space-4) 18px;
+}
+
+.tennis-detail__context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-detail__where {
+  color: var(--text-muted);
+  font: 600 11px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tennis-detail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tennis-detail__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.tennis-detail__players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-family: var(--font-mono);
+}
+
+.tennis-detail__players strong {
+  margin-right: 4px;
+  color: var(--text-primary);
+  font: 600 13px var(--font-body);
+}
+
+.tennis-detail__open {
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font: 600 12px var(--font-body);
+  white-space: nowrap;
+}
+
+.tennis-detail__open:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tennis-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 32px;
+  padding-top: 14px;
+}
+
+.tennis-detail__grid.is-props-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tennis-detail__label {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font: 600 11px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tennis-detail__label span {
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+.tennis-detail__empty {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
+.tennis-detail__pick {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-detail__kind {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.tennis-detail__pick strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.tennis-detail__pick small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-detail__cells {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Every pick's EV is green here, as the old panel colored it; the table colors only a priced best bet. */
+.tennis-detail__ev {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.tennis-detail__cells .tennis-tier {
+  margin-left: auto;
+}
+
+.tennis-detail__fact,
+.tennis-detail__measure {
+  display: grid;
+  align-items: baseline;
+  padding: 5px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-detail__fact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.tennis-detail__fact span,
+.tennis-detail__measure small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-detail__fact b {
+  color: var(--text-primary);
+  font: 500 13px var(--font-mono);
+}
+
+.tennis-detail__measure {
+  grid-template-columns: minmax(0, 1fr) 64px 64px;
+}
+
+.tennis-detail__measure span {
+  color: var(--text-primary);
+  font: 500 13px var(--font-mono);
+  text-align: right;
+}
+
+.tennis-detail__measure.is-head {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.tennis-detail__measure.is-head .tennis-detail__label {
+  margin: 0;
+}
+
+.tennis-detail__measure.is-head span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 600 11px var(--font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Narrower: picks take the full width, match and serve sit side by side under them. */
+@media (max-width: 1100px) {
+  .tennis-detail__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tennis-detail__grid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .tennis-match-detail {
+    padding: 12px var(--space-4) 16px;
+  }
+
+  .tennis-detail__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tennis-detail__open {
+    margin-left: 0;
+  }
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, tableGroups, groupByTournament, slateRow, slateRows, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, revealTab, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -253,5 +253,65 @@ describe('featuredPicks', () => {
   it('stops at the limit', () => {
     const matches = ['a', 'b', 'c'].map((key) => match({ key, bestPicks: [bestBet()] }))
     expect(featuredPicks(matches, 2).map(({ match: m }) => m.key)).toEqual(['a', 'b'])
+  })
+})
+
+describe('tennisDigest', () => {
+  // 2026-09-28 01:00 CT: the same CT day as the 10:30 UTC (5:30 AM CT) start.
+  const NOW = Date.parse('2026-09-28T06:00:00Z')
+
+  it('builds a box from a priced pick with the strings the pick card showed', () => {
+    const [item] = tennisDigest(featuredPicks([match({ bestPicks: [bestBet()] })], 4), NOW)
+    expect(item).toEqual({
+      matchKey: 'm1',
+      pick: 'Mensik ML (+128)',
+      what: 'Moneyline · Jakub Mensik vs Ben Shelton',
+      when: 'Tokyo · 5:30 AM CT',
+      odds: '+128',
+      ev: '+14.2%',
+      tier: 'STRONG',
+      tourLabel: 'ATP',
+      tone: 'atp',
+    })
+  })
+
+  it('keeps the WTA tone and label for a WTA 125 draw filed under Challenger', () => {
+    const [item] = tennisDigest(featuredPicks([
+      match({ prediction: prediction({ tour: 'CHALLENGER', tourLabel: 'WTA 125' }), bestPicks: [bestBet()] }),
+    ], 4), NOW)
+    expect(item.tone).toBe('wta')
+    expect(item.tourLabel).toBe('WTA 125')
+  })
+
+  it('reads Time TBA when the match has no start time', () => {
+    const [item] = tennisDigest(featuredPicks([
+      match({ prediction: prediction({ startUtc: null }), bestPicks: [bestBet()] }),
+    ], 4), NOW)
+    expect(item.when).toBe('Tokyo · Time TBA')
+  })
+
+  it('returns no boxes when there is no priced pick', () => {
+    expect(tennisDigest([], NOW)).toEqual([])
+  })
+})
+
+describe('revealTab', () => {
+  const rows = slateRows([
+    match({ key: 'atp', prediction: prediction({ tour: 'ATP' }) }),
+    match({ key: 'w125', prediction: prediction({ tour: 'CHALLENGER', tourLabel: 'WTA 125' }) }),
+  ])
+
+  it('keeps the current tab when the row is already visible', () => {
+    expect(revealTab(rows, 'atp', 'ATP')).toBe('ATP')
+    expect(revealTab(rows, 'w125', 'WTA 125')).toBe('WTA 125')
+  })
+
+  it('falls back to All when the tab hides the row', () => {
+    expect(revealTab(rows, 'w125', 'CHALLENGER')).toBe('all')
+    expect(revealTab(rows, 'atp', 'WTA')).toBe('all')
+  })
+
+  it('keeps the tab for a key the table does not hold', () => {
+    expect(revealTab(rows, 'missing', 'ATP')).toBe('ATP')
   })
 })

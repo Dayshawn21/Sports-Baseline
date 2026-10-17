@@ -1,3 +1,5 @@
+import StatChip from '~/components/shared/StatChip'
+
 interface Props {
   matches: number
   props: number
@@ -5,30 +7,14 @@ interface Props {
   strongOrBetter: number
 }
 
-/** The page's existing four counts as summary cards; Locks leads because it is the day's play count. */
+/** The slate's four counts in the shared chip strip every slate uses; Locks and Strong+ stay green, as tier counts. */
 export default function TennisSlateSummary({ matches, props, locks, strongOrBetter }: Props) {
   return (
-    <section className="tennis-slate-summary" aria-label="Slate summary">
-      <div className="tennis-slate-stat is-hero">
-        <span className="tennis-slate-stat__label">Locks</span>
-        <strong className="tennis-slate-stat__value is-positive">{locks}</strong>
-        <span className="tennis-slate-stat__sub">of {matches} matches</span>
-      </div>
-      <div className="tennis-slate-stat">
-        <span className="tennis-slate-stat__label">Strong+</span>
-        <strong className="tennis-slate-stat__value is-positive">{strongOrBetter}</strong>
-        <span className="tennis-slate-stat__sub">Lock and Strong picks and props</span>
-      </div>
-      <div className="tennis-slate-stat">
-        <span className="tennis-slate-stat__label">Props</span>
-        <strong className="tennis-slate-stat__value">{props}</strong>
-        <span className="tennis-slate-stat__sub">player props</span>
-      </div>
-      <div className="tennis-slate-stat">
-        <span className="tennis-slate-stat__label">Matches</span>
-        <strong className="tennis-slate-stat__value">{matches}</strong>
-        <span className="tennis-slate-stat__sub">on the slate</span>
-      </div>
+    <section className="page-head__stats" aria-label="Slate summary">
+      <StatChip value={matches} label="Matches" />
+      <StatChip value={locks} label="Locks" color="var(--positive)" />
+      <StatChip value={strongOrBetter} label="Strong+" color="var(--positive)" />
+      <StatChip value={props} label="Player props" />
     </section>
   )
 }

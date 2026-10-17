@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { Fragment } from 'react'
+import type { MouseEvent } from 'react'
+import TennisMatchDetail from '~/components/tennis/TennisMatchDetail'
 import type { SlateRow, TourTab } from '~/utils/tennisSlate'
 import { TOUR_TABS, filterByTourTab, fmtEv, tableGroups } from '~/utils/tennisSlate'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
@@ -8,9 +10,16 @@ interface Props {
   rows: SlateRow[]
   /** Tournament headers; off for ranking sorts, where each row names its tournament. */
   grouped: boolean
-  selectedKey: string | null
-  onSelect: (key: string) => void
+  /** The one row whose detail is open, or null. */
+  expandedKey: string | null
+  onToggle: (key: string) => void
+  /** Quality flags are pipeline diagnostics: the owner's view only. */
+  showFlags: boolean
+  /** Lifted to the page so a digest pick can switch to a tab that shows its row. */
+  tab: TourTab
+  onTabChange: (tab: TourTab) => void
 }
+
 
 const TAB_LABEL: Record<TourTab, string> = { all: 'All', ATP: 'ATP', WTA: 'WTA', CHALLENGER: 'Challenger', 'WTA 125': 'WTA 125' }
 
@@ -49,30 +58,46 @@ function FlagsCell({ flags }: { flags: string[] }) {
   )
 }
 
-function SlateTableRow({ row, selected, showTournament, onSelect }: { row: SlateRow; selected: boolean; showTournament: boolean; onSelect: () => void }) {
+function detailId(key: string): string {
+  return `tennis-match-detail-${key}`
+}
+
+function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row: SlateRow; open: boolean; showTournament: boolean; showFlags: boolean; onToggle: () => void }) {
   const pct = (value: number | null) => fmtPct(value)
+  const matchup = row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0]
+  // The toggle button is the keyboard path; a click elsewhere on the row toggles too, but a
+  // button or link keeps its own click, and a modified click is left to the browser.
+  function onRowClick(event: MouseEvent<HTMLTableRowElement>) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+    if ((event.target as HTMLElement).closest('a, button')) return
+    onToggle()
+  }
   return (
-    <tr
-      className={`tennis-slate-table__row${selected ? ' is-selected' : ''}`}
-      aria-selected={selected}
-      tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }}
-    >
+    <tr className={`tennis-slate-table__row${open ? ' is-open' : ''}`} onClick={onRowClick}>
       <StartCell startUtc={row.startUtc} />
       <td className="tennis-slate-table__players">
-        <span>{row.players[0]}</span>
-        <span>{row.players[1] ?? ''}</span>
+        <button
+          type="button"
+          className="tennis-slate-table__toggle"
+          data-match-key={row.key}
+          aria-expanded={open}
+          aria-controls={open ? detailId(row.key) : undefined}
+          aria-label={`${matchup}, show match detail`}
+          onClick={onToggle}
+        >
+          <span>{row.players[0]}</span>
+          <span>{row.players[1] ?? ''}</span>
+        </button>
         {showTournament && <small>{fmtTournament(row.tournament)}</small>}
       </td>
       <PairCell pair={row.elo} format={pct} extra />
       <PairCell pair={row.ml} format={pct} extra />
       <PairCell pair={row.market} format={pct} />
       <PairCell pair={row.model} format={pct} />
-      <td className="tennis-slate-table__pick">{bestPickText(row)}</td>
+      <td className="tennis-slate-table__pick"><span>{bestPickText(row)}</span></td>
       <td className={`tennis-slate-table__ev${row.primaryIsBestBet ? ' is-play' : ''}`}>{fmtEv(row.primaryPick ? row.primaryPick.evPct : row.primaryProp?.evPct)}</td>
       <PairCell pair={row.odds} format={(value) => fmtAmerican(value)} extra />
-      <FlagsCell flags={row.flags} />
+      {showFlags && <FlagsCell flags={row.flags} />}
     </tr>
   )
 }
@@ -89,15 +114,25 @@ function TourTabs({ tab, onChange }: { tab: TourTab; onChange: (tab: TourTab) =>
   )
 }
 
-/** The day's matches grouped by tournament, in the page's sort order. */
-export default function TennisSlateTable({ rows, grouped, selectedKey, onSelect }: Props) {
-  const [tab, setTab] = useState<TourTab>('all')
+function DetailRow({ row, columns, showFlags }: { row: SlateRow; columns: number; showFlags: boolean }) {
+  return (
+    <tr className="tennis-slate-table__detail" id={detailId(row.key)}>
+      <td colSpan={columns}>
+        <div className="tennis-match-detail"><TennisMatchDetail match={row.match} showFlags={showFlags} /></div>
+      </td>
+    </tr>
+  )
+}
+
+/** The day's matches grouped by tournament, in the page's sort order; one row's detail opens inline. */
+export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle, showFlags, tab, onTabChange }: Props) {
   const groups = tableGroups(filterByTourTab(rows, tab), grouped)
+  const columns = showFlags ? 10 : 9
   return (
     <section className="tennis-slate-table" aria-label="Today's tennis matches">
       <div className="tennis-slate-table__head">
         <h2 className="tennis-slate-section">All matches</h2>
-        <TourTabs tab={tab} onChange={setTab} />
+        <TourTabs tab={tab} onChange={onTabChange} />
       </div>
       {groups.length === 0 ? (
         <div className="tennis-slate-table__empty">No matches in this group.</div>
@@ -107,15 +142,21 @@ export default function TennisSlateTable({ rows, grouped, selectedKey, onSelect 
             <thead>
               <tr>
                 <th>Time</th><th>Match</th><th className="is-extra">ELO</th><th className="is-extra">ML</th><th>Market</th><th>Model</th>
-                <th>Best pick</th><th>EV</th><th className="is-extra">Odds</th><th>Flags</th>
+                <th>Best pick</th><th>EV</th><th className="is-extra">Odds</th>{showFlags && <th>Flags</th>}
               </tr>
             </thead>
             {groups.map((group) => (
               <tbody key={group.tournament ?? 'ranked'}>
-                {group.tournament != null && <tr className="tennis-slate-table__group"><td colSpan={10}>{fmtTournament(group.tournament)}</td></tr>}
-                {group.rows.map((row) => (
-                  <SlateTableRow key={row.key} row={row} selected={row.key === selectedKey} showTournament={!grouped} onSelect={() => onSelect(row.key)} />
-                ))}
+                {group.tournament != null && <tr className="tennis-slate-table__group"><td colSpan={columns}>{fmtTournament(group.tournament)}</td></tr>}
+                {group.rows.map((row) => {
+                  const open = row.key === expandedKey
+                  return (
+                    <Fragment key={row.key}>
+                      <SlateTableRow row={row} open={open} showTournament={!grouped} showFlags={showFlags} onToggle={() => onToggle(row.key)} />
+                      {open && <DetailRow row={row} columns={columns} showFlags={showFlags} />}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             ))}
           </table>

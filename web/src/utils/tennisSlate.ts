@@ -2,6 +2,8 @@ import type { BestPick, PropLine } from '~/types/tennis'
 import type { UnifiedSort, UnifiedTennisMatch } from '~/utils/unifiedTennis'
 import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unifiedTennis'
 import { getDisplayFlags } from '~/components/tennis/qualityFlags'
+import { fmtStartCT, fmtTournament } from '~/utils/format'
+import { fmtAmerican } from '~/utils/odds'
 
 type Pair = [number, number]
 
@@ -143,6 +145,44 @@ export function isGroupedSort(sort: UnifiedSort): boolean {
 export function tableGroups(rows: SlateRow[], grouped: boolean): TournamentGroup[] {
   if (!grouped) return rows.length ? [{ tournament: null, rows }] : []
   return groupByTournament(rows)
+}
+
+/** One box of the tennis digest; display strings only. The EV is a priced best bet's, so the box shows it green. */
+export interface TennisDigestItem {
+  matchKey: string
+  pick: string
+  what: string
+  when: string
+  odds: string
+  ev: string
+  tier: string
+  tourLabel: string | null
+  tone: TourTone | null
+}
+
+export function tennisDigest(featured: FeaturedPick[], now: number = Date.now()): TennisDigestItem[] {
+  return featured.map(({ match, pick }) => {
+    const prediction = unifiedMatchToPrediction(match)
+    // fmtStartCT answers '' rather than null for a missing or unreadable time.
+    const start = fmtStartCT(prediction?.startUtc, now) || 'Time TBA'
+    return {
+      matchKey: match.key,
+      pick: pick.pick,
+      what: prediction ? `${pick.label} · ${prediction.p1Name} vs ${prediction.p2Name}` : pick.label,
+      when: `${fmtTournament(prediction?.tournament ?? null)} · ${start}`,
+      odds: fmtAmerican(pick.oddsAmerican),
+      ev: fmtEv(pick.evPct),
+      tier: pick.confidence,
+      tourLabel: prediction?.tourLabel ?? prediction?.tour ?? null,
+      tone: tourTone(prediction?.tour, prediction?.tourLabel),
+    }
+  })
+}
+
+/** The tab to show so the row with `key` is visible: the current one when it already is, else All. */
+export function revealTab(rows: SlateRow[], key: string, tab: TourTab): TourTab {
+  if (!rows.some((row) => row.key === key)) return tab
+  return filterByTourTab(rows, tab).some((row) => row.key === key) ? tab : 'all'
 }
 
 export function featuredPicks(matches: UnifiedTennisMatch[], limit: number): FeaturedPick[] {
