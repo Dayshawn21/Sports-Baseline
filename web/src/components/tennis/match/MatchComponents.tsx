@@ -2,6 +2,7 @@ import { Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
 import type { MatchDetail } from '~/types/tennis'
 import { getDisplayFlagLabel, getDisplayFlags } from '~/components/tennis/qualityFlags'
+import { useAdminView } from '~/hooks/useAdmin'
 import { fmtPct } from '~/utils/odds'
 import { componentRows, heroSide, sideView, weightColumnLabel } from '~/utils/tennisMatch'
 
@@ -10,11 +11,12 @@ function lastName(name: string): string {
 }
 
 export default function MatchComponents({ detail }: { detail: MatchDetail }) {
+  const adminView = useAdminView()
   const prediction = detail.prediction
   if (!prediction) return null
   const side = heroSide(detail)
   const rows = componentRows(detail, side)
-  const flags = getDisplayFlags(prediction.qualityFlags)
+  const flags = adminView ? getDisplayFlags(prediction.qualityFlags) : []
 
   return (
     <section aria-labelledby="tennis-match-components">
