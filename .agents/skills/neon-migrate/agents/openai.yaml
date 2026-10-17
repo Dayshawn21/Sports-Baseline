@@ -1,0 +1,6 @@
+interface:
+  display_name: "Neon migrate"
+  short_description: "Apply an Alembic migration to Neon, one approved command at a time"
+  default_prompt: "Use $neon-migrate to check the current Neon revision."
+policy:
+  allow_implicit_invocation: false

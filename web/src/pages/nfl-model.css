@@ -1,0 +1,101 @@
+/* The NFL model track record (33d). Color comes only from is-positive / is-negative on a server signal. */
+.nfl-model__head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--border-card);
+}
+.nfl-model__none { margin-top: var(--space-5); }
+.nfl-model__stats { margin-top: 18px; }
+.nfl-model__stats .stat-chip__label { font-size: 11px; }
+.nfl-model__stats .stat-chip:last-child .stat-chip__value { font: 500 16px/1.4 var(--font-mono); }
+
+.nfl-model-heading {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 28px 0 12px;
+  color: var(--text-secondary); font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nfl-model-heading small {
+  color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none;
+}
+
+.nfl-model .num { font-family: var(--font-mono); color: var(--text-primary); }
+.nfl-model-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: var(--radius); }
+.nfl-model-label { color: var(--text-secondary); font: 600 12px var(--font-body); }
+.nfl-model-note { margin: 10px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.nfl-model-tag {
+  padding: 2px 8px; border: 1px solid var(--border-card); border-radius: 999px;
+  color: var(--text-secondary); font: 600 11px var(--font-body);
+}
+.nfl-model-tag.is-positive { border-color: currentColor; }
+.nfl-model-tag.is-negative { border-color: currentColor; }
+.nfl-model-progress { height: 6px; border-radius: 3px; background: var(--bg-raised); overflow: hidden; }
+.nfl-model-progress i { display: block; width: var(--w); height: 100%; background: var(--text-secondary); }
+.nfl-model-kv { display: grid; gap: 8px; margin: 0; }
+.nfl-model-kv div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.nfl-model-kv dt { color: var(--text-secondary); }
+.nfl-model-kv dd { margin: 0; color: var(--text-primary); font: 500 12px var(--font-mono); text-align: right; }
+
+.nfl-model-slices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.nfl-model-slice { display: grid; gap: 12px; padding: 14px; }
+.nfl-model-slice__top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+.nfl-model-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; align-items: start;
+}
+.nfl-model-card__head {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+}
+.nfl-model-card__body { padding: 14px 16px 16px; }
+.nfl-model-muted { color: var(--text-muted); font-size: 11px; }
+.nfl-model-dim { color: var(--text-secondary); font: 400 12px var(--font-mono); }
+.nfl-model-headline { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; }
+.nfl-model-big { color: var(--text-primary); font: 500 32px/1.1 var(--font-mono); letter-spacing: -0.02em; }
+.nfl-model-rates { margin-top: 12px; }
+.nfl-model-rate {
+  display: grid; grid-template-columns: 130px minmax(0, 1fr) 118px; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle); font-size: 12px;
+}
+.nfl-model-rate:last-child { border-bottom: 0; }
+.nfl-model-rate > b { color: var(--text-primary); font: 500 12px var(--font-mono); text-align: right; }
+.nfl-model-rate small { color: var(--text-muted); font: 400 11px var(--font-mono); }
+.nfl-model-meter { position: relative; height: 6px; border-radius: 3px; background: var(--chart-low); }
+.nfl-model-meter i {
+  position: absolute; left: 0; top: 0; bottom: 0; width: var(--v); border-radius: 3px; background: var(--chart-mid);
+}
+.nfl-model-meter i.is-negative { background: var(--negative); }
+.nfl-model-meter i.is-positive { background: var(--positive); }
+.nfl-model-meter b { position: absolute; top: -3px; bottom: -3px; left: var(--be); width: 2px; background: var(--text-primary); }
+
+.nfl-model-rate.is-plain { grid-template-columns: minmax(0, 1fr) auto; }
+.nfl-model-clv__progress { margin: 14px 0 6px; }
+.nfl-model-rule {
+  margin: 12px 0 0; padding: 12px 14px; border: 1px dashed var(--border-card); border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 12px; line-height: 1.6;
+}
+.nfl-model-rule b { color: var(--text-primary); font-weight: 600; }
+
+.nfl-model-scroll { overflow-x: auto; }
+.nfl-model-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.nfl-model-table th {
+  padding: 0 0 8px 12px; border-bottom: 1px solid var(--border-card); color: var(--text-muted);
+  font: 600 11px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; text-align: right; white-space: nowrap;
+}
+.nfl-model-table td {
+  padding: 8px 0 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);
+  font-family: var(--font-mono); text-align: right; white-space: nowrap;
+}
+.nfl-model-table .text { font-family: var(--font-body); text-align: left; }
+.nfl-model-table :is(th, td):first-child { padding-left: 0; }
+.nfl-model-table tr.is-hidden td { color: var(--text-secondary); }
+.nfl-model-table tr.is-total td { border-bottom: 0; font-weight: 600; }
+.nfl-model-table tbody tr:last-child td { border-bottom: 0; }
+
+.nfl-model .is-positive { color: var(--positive); }
+.nfl-model .is-negative { color: var(--negative); }
+
+@media (max-width: 860px) { .nfl-model__head { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 600px) {
+  .nfl-model-rate { grid-template-columns: 104px minmax(0, 1fr) 96px; gap: 8px; }
+  .nfl-model-rate.is-plain { grid-template-columns: minmax(0, 1fr) auto; }
+  .nfl-model .nfl-model__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nfl-model__stats .stat-chip:last-child { grid-column: 1 / -1; }
+}

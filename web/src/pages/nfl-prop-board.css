@@ -1,0 +1,230 @@
+/* NFL prop board (build-plan 31d), after prototypes/nfl-prop-board.html. */
+
+.nfl-prop-board__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.nfl-prop-board .unified-page-title {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.nfl-prop-board__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.nfl-prop-board__controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.nfl-prop-board__controls .ant-select {
+  min-width: 120px;
+}
+
+.nfl-prop-summary {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.nfl-prop-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+}
+
+.nfl-prop-stat__label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.nfl-prop-stat__value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.nfl-prop-stat__sub {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.nfl-prop-pills {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-1);
+  overflow-x: auto;
+}
+
+.nfl-prop-pills button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font: 500 13px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.nfl-prop-pills button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text-primary);
+}
+
+.nfl-prop-pills button.is-selected {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--bg-app);
+}
+
+.nfl-prop-pills em {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.nfl-prop-pills button.is-selected em {
+  color: var(--bg-raised);
+}
+
+.nfl-prop-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+.nfl-prop-filter-bar > .ant-select {
+  min-width: 190px;
+}
+
+.nfl-prop-seg {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: var(--bg-card);
+}
+
+.nfl-prop-seg button {
+  flex: none;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nfl-prop-seg button:hover {
+  color: var(--text-primary);
+}
+
+.nfl-prop-seg button.is-selected {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.nfl-prop-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* The shared prop detail panel; the board pins a wrapper around it and stacks it under the grid
+   only at phone widths, not at the slate's 1180px. */
+.nfl-prop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(305px, var(--nfl-detail-width));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.nfl-prop-layout__panel {
+  position: sticky;
+  top: calc(var(--nav-height) + 16px);
+  max-height: calc(100vh - var(--nav-height) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-margin-top: calc(var(--nav-height) + 16px);
+  border-radius: 8px;
+}
+
+.nfl-prop-board .nfl-prop-layout__panel .nfl-prop-detail {
+  position: static;
+  max-height: none;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .nfl-prop-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nfl-prop-layout__panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .nfl-prop-board__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nfl-prop-board__aside {
+    align-items: flex-start;
+  }
+
+  .nfl-prop-board__controls {
+    flex-wrap: wrap;
+  }
+
+  .nfl-prop-stat {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nfl-prop-toggle {
+    margin-left: 0;
+  }
+}

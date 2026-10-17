@@ -1,0 +1,6 @@
+interface:
+  display_name: "Smoke live"
+  short_description: "Scripted smoke checks against the hosted demo"
+  default_prompt: "Use $smoke-live to run the live smoke checks against the hosted demo."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,101 @@
+/* NFL player page (build-plan 33c), per prototypes/nfl-player.html. Display only and grayscale;
+   injury tags alone take a warning color, and edges are gray through the shared .nfl-slate root. */
+.nfl-player-crumb { display: inline-block; margin-bottom: 14px; color: var(--text-secondary); font-size: 12px; }
+.nfl-player-crumb:hover { color: var(--text-primary); }
+.nfl-player-empty { padding: 20px; border: 1px dashed var(--border-card); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 13px; }
+.nfl-player-empty.is-page { max-width: 620px; margin-top: 24px; }
+.nfl-player-note { margin: 8px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+
+.nfl-player-head {
+  display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;
+  gap: 20px 32px; padding-bottom: 20px; margin-bottom: 18px; border-bottom: 1px solid var(--border-subtle);
+}
+.nfl-player-stats .stat-chip__label { font-size: 11px; }
+.nfl-player-who { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.nfl-player-badge {
+  display: grid; place-items: center; flex: none; width: 60px; height: 60px; border-radius: 50%;
+  background: var(--bg-raised); color: var(--text-secondary); font: 800 18px var(--font-display); letter-spacing: 0.04em;
+}
+.nfl-player-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.nfl-player-tag {
+  padding: 1px 6px; border: 1px solid var(--border-card); border-radius: 3px;
+  color: var(--text-secondary); font: 600 11px var(--font-body); white-space: nowrap;
+}
+.nfl-player-tag.is-out { border-color: color-mix(in srgb, var(--negative) 40%, transparent); background: var(--negative-soft); color: var(--negative); }
+.nfl-player-tag.is-caution { border-color: color-mix(in srgb, var(--caution) 40%, transparent); background: var(--caution-soft); color: var(--caution); }
+
+.nfl-player-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.nfl-player-card { min-width: 0; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 10px; }
+.nfl-player-card__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+}
+.nfl-player-card__body { padding: 12px 16px 14px; }
+.nfl-player-card__empty { margin: 0; padding: 14px 16px; color: var(--text-muted); font-size: 11px; }
+.nfl-player-label { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.15em; text-transform: uppercase; }
+.nfl-player-muted { color: var(--text-muted); font-size: 11px; text-align: right; }
+
+.nfl-player-usage { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; }
+.nfl-player-usage__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }
+.nfl-player-usage__head b { color: var(--text-primary); font: 500 12px var(--font-mono); }
+.nfl-player-weekbars { display: flex; align-items: flex-end; gap: 6px; height: 70px; }
+.nfl-player-weekbars i { flex: 1; height: var(--h); min-height: 1px; border-radius: 2px 2px 0 0; background: var(--chart-mid); }
+.nfl-player-weekbars i.is-prior { background: var(--chart-low); }
+.nfl-player-weekaxis { display: flex; gap: 6px; margin-top: 4px; }
+.nfl-player-weekaxis span { flex: 1; text-align: center; color: var(--text-muted); font: 400 11px var(--font-mono); }
+
+.nfl-player-line {
+  display: grid; grid-template-columns: minmax(0, 1fr) 60px 64px 76px 12px; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 0; border: 0; border-bottom: 1px solid var(--border-subtle); background: none;
+  color: var(--text-primary); font: 400 12px var(--font-body); text-align: left; cursor: pointer;
+}
+.nfl-player-line:hover, .nfl-player-line.is-selected { background: var(--bg-card-hover); }
+.nfl-player-line:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.nfl-player-line.is-head { cursor: default; padding-top: 0; }
+.nfl-player-line.is-head:hover { background: none; }
+.nfl-player-line.is-head > span:not(:first-child) { text-align: right; }
+.nfl-player-line small { margin-left: 6px; color: var(--text-muted); font: 400 11px var(--font-mono); }
+.nfl-player-num { text-align: right; font: 400 12px var(--font-mono); white-space: nowrap; }
+.nfl-player-num.is-dim { color: var(--text-secondary); font-size: 11px; }
+.nfl-player-line__arrow { color: var(--text-muted); }
+.nfl-player-section-title {
+  display: flex; align-items: center; gap: 10px; margin: 26px 0 12px;
+  color: var(--text-secondary); font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nfl-player-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+.nfl-player-section-title small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+.nfl-player-table-wrap { overflow-x: auto; }
+.nfl-player-table { width: 100%; border-collapse: collapse; }
+.nfl-player-table th {
+  padding: 8px 10px; border-bottom: 1px solid var(--border-card); text-align: right; white-space: nowrap;
+  color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.nfl-player-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); text-align: right;
+  color: var(--text-primary); font: 400 12px var(--font-mono); white-space: nowrap;
+}
+.nfl-player-table th:first-child, .nfl-player-table td:first-child { text-align: left; }
+.nfl-player-table td.is-text { font-family: var(--font-body); }
+.nfl-player-table td.is-dim { color: var(--text-secondary); }
+.nfl-player-table tr:last-child td { border-bottom: 0; }
+.nfl-player-grid.is-record { margin-top: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nfl-player-rate {
+  display: grid; grid-template-columns: 120px minmax(0, 1fr) 64px; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 12px;
+}
+.nfl-player-rate:last-of-type { border-bottom: 0; }
+.nfl-player-rate > b { text-align: right; font: 500 12px var(--font-mono); white-space: nowrap; }
+.nfl-player-meter { position: relative; height: 6px; border-radius: 3px; background: var(--chart-low); }
+.nfl-player-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--v); border-radius: 3px; background: var(--chart-mid); }
+.nfl-player-meter b { position: absolute; top: -3px; bottom: -3px; left: var(--be); width: 2px; background: var(--text-primary); }
+.nfl-player-footer { margin-top: 18px; }
+.nfl-player-drawer .ant-drawer-body { padding: 0; background: var(--bg-app); }
+
+@media (max-width: 1000px) { .nfl-player-grid, .nfl-player-grid.is-record { grid-template-columns: 1fr; } }
+
+@media (max-width: 600px) {
+  .nfl-player-head { align-items: stretch; flex-direction: column; }
+  .nfl-player .nfl-player-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nfl-player-badge { width: 48px; height: 48px; font-size: 15px; }
+  .nfl-player-tag { white-space: normal; }
+}

@@ -1,0 +1,273 @@
+.tennis-model-heading {
+  margin: var(--space-5) 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.tennis-model-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+}
+.tennis-model-pad { padding: var(--space-4) var(--space-5); }
+.tennis-model-empty {
+  padding: var(--space-5);
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px dashed var(--border-card);
+  border-radius: var(--radius);
+}
+.tennis-model-note {
+  margin: var(--space-3) 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.tennis-model .num { font-family: var(--font-mono); color: var(--text-primary); }
+.tennis-model .is-positive { color: var(--positive); }
+.tennis-model .is-negative { color: var(--negative); }
+.tennis-model .is-dim { color: var(--text-secondary); }
+
+.tennis-model-verdicts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.tennis-model-verdict { padding: var(--space-4) var(--space-5); }
+.tennis-model-verdict__label { font-size: 12px; color: var(--text-secondary); }
+.tennis-model-verdict__value {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.tennis-model-verdict__say {
+  margin-top: var(--space-2);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.tennis-model-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.tennis-model-scroll { overflow-x: auto; }
+.tennis-model-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tennis-model-table th {
+  padding: 0 0 var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-card);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.tennis-model-table td {
+  padding: 8px 0 8px var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+.tennis-model-table th:first-child,
+.tennis-model-table td:first-child { padding-left: 0; text-align: left; font-family: var(--font-body); }
+.tennis-model-table tr.is-base td { font-weight: 600; }
+.tennis-model-table tr.is-base td:first-child::after {
+  content: "baseline";
+  margin-left: var(--space-2);
+  font: 600 11px var(--font-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tennis-model-table tr.is-group td {
+  padding-top: var(--space-4);
+  border-bottom: 0;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.tennis-model-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.tennis-model-subhead {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.tennis-model-calibration { display: block; width: 100%; height: auto; max-height: 300px; margin-top: var(--space-3); }
+.tennis-model-calibration text { font-family: var(--font-mono); font-size: 11px; fill: var(--text-muted); }
+.tennis-model-calibration .axis { stroke: var(--border-card); }
+.tennis-model-calibration .ideal { stroke: var(--chart-mid); stroke-dasharray: 4 4; }
+.tennis-model-calibration .series { fill: none; stroke: var(--text-primary); stroke-width: 2; }
+.tennis-model-calibration .dot { fill: var(--text-primary); }
+.tennis-model-chart-empty { margin-top: var(--space-3); }
+
+.tennis-model-clv {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.tennis-model-clv__value {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.tennis-model-clv__sub { margin-top: var(--space-1); font-size: 12px; color: var(--text-secondary); }
+.tennis-model-split {
+  display: flex;
+  height: 10px;
+  margin-top: var(--space-4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tennis-model-split i { display: block; }
+.tennis-model-split .is-toward { background: var(--text-primary); }
+.tennis-model-split .is-away { background: var(--chart-low); }
+.tennis-model-split-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tennis-model-clv-table { margin-top: var(--space-4); }
+
+.tennis-model-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font: 600 11px var(--font-body);
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+}
+.tennis-model-tag.is-goblin { color: var(--goblin); background: color-mix(in srgb, var(--goblin) 14%, transparent); }
+.tennis-model-tag.is-demon { color: var(--demon); background: color-mix(in srgb, var(--demon) 14%, transparent); }
+.tennis-model-se { font-size: 11px; color: var(--text-muted); }
+.tennis-model-table .tennis-model-range-head { text-align: left; padding-left: var(--space-5); }
+.tennis-model-table td.tennis-model-range-cell { width: 30%; min-width: 180px; padding-left: var(--space-5); }
+.tennis-model-range { position: relative; height: 18px; }
+.tennis-model-range::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  background: var(--bg-raised);
+}
+.tennis-model-range .rng {
+  position: absolute;
+  top: 7px;
+  height: 4px;
+  left: var(--lo);
+  width: calc(var(--hi) - var(--lo));
+  border-radius: 2px;
+  background: var(--chart-mid);
+}
+.tennis-model-range .be {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--be);
+  border-left: 1px dashed var(--caution);
+}
+.tennis-model-range .pt {
+  position: absolute;
+  top: 4px;
+  left: calc(var(--p) - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+.tennis-model-tiers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.tennis-model-tier { padding: var(--space-4); }
+.tennis-model-tier__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+.tennis-model-tier__value {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.tennis-model-tier__sub { margin-top: var(--space-1); font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.tennis-model-tier__foot { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.tennis-model-progress { height: 4px; margin-top: var(--space-3); border-radius: 999px; background: var(--bg-raised); }
+.tennis-model-progress i { display: block; width: var(--w); height: 100%; border-radius: 999px; background: var(--text-secondary); }
+.tennis-model-note code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+
+@media (max-width: 1100px) {
+  .tennis-model-verdicts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tennis-model-grid { grid-template-columns: minmax(0, 1fr); }
+  .tennis-model-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .tennis-model-verdicts { grid-template-columns: minmax(0, 1fr); }
+  .tennis-model-verdict__value { font-size: 26px; }
+  .tennis-model-clv { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .tennis-model-pad { padding: var(--space-4); }
+}
+
+.tennis-model-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.tennis-model-version__label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.tennis-model-version__note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}

@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/protect-files.mjs\"",
+            "commandWindows": "cmd /c for /f \"delims=\" %r in ('git rev-parse --show-toplevel') do node \"%r/.agents/hooks/protect-files.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking protected files"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/check-dashes.mjs\"",
+            "commandWindows": "cmd /c for /f \"delims=\" %r in ('git rev-parse --show-toplevel') do node \"%r/.agents/hooks/check-dashes.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking writing rules"
+          }
+        ]
+      }
+    ]
+  }
+}

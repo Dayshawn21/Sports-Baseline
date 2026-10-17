@@ -1,0 +1,2 @@
+/* NBA's strip ends in two version strings, not one, so both take NFL's version-chip type. */
+.nba-model__stats .stat-chip:nth-last-child(2) .stat-chip__value { font: 500 16px/1.4 var(--font-mono); }

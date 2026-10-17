@@ -1,0 +1,168 @@
+name: NFL Data Ingest
+
+on:
+  schedule:
+    # Weekly stats refresh, Tuesday 10:00 AM Central (15:00 UTC), after Monday
+    # Night Football. Stale-baseline flags and the small-sample edge gate only
+    # lift as current-season games load, so a missed week keeps the slate on
+    # last season's numbers.
+    #
+    # September through February only. Off-season, the inferred season has no
+    # published stats and the run would fail every week on SeasonNotPublished.
+    - cron: "0 15 * 1,2,9-12 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+
+jobs:
+  nflverse:
+    name: NFLverse Stats Refresh and Relink
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Load current-season stats
+        run: |
+          cd api
+          python -m app.ingest.nflverse
+
+      # After the stats load: the replay reads the scores it just refreshed.
+      - name: Recompute team ELO
+        run: |
+          cd api
+          python -m app.ingest.nfl_team_elo
+
+      # After the stats load: red-zone counts only attach to weekly rows that exist.
+      - name: Load current-season red-zone usage
+        run: |
+          cd api
+          python -m app.ingest.nflverse_pbp
+
+      # After the stats load: only games with final scores are written.
+      - name: Load current-season team efficiency
+        run: |
+          cd api
+          python -m app.ingest.nflverse_team_efficiency
+
+      # After the stats load: snap rows only attach to players and games that exist.
+      - name: Load current-season snap counts
+        run: |
+          cd api
+          python -m app.ingest.nflverse_snap_counts
+
+      # After the stats load: roster rows only attach to players that exist.
+      - name: Load current-season weekly rosters
+        run: |
+          cd api
+          python -m app.ingest.nflverse_rosters
+
+      - name: Load current-season injury reports
+        run: |
+          cd api
+          python -m app.ingest.nflverse_injuries
+
+      # After the stats load: the pre-game rule maps snapshots onto the stored schedule.
+      - name: Load current-season depth charts
+        run: |
+          cd api
+          python -m app.ingest.nflverse_depth_charts
+
+      - name: Refresh NFL game odds
+        run: |
+          cd api
+          python -m app.ingest.nfl_odds --days-ahead 14
+
+      # Pinnacle is the fair-price reference for item 36 (3 credits). Stored as
+      # the_odds_api_eu, which no pre-36a reader sees; never blocks the rest.
+      - name: Refresh Pinnacle NFL odds
+        continue-on-error: true
+        run: |
+          cd api
+          python -m app.ingest.nfl_odds --days-ahead 14 --pinnacle
+
+      # Same job, after the load: lines only resolve to players that exist, and
+      # relinking spends no PrizePicks requests.
+      - name: Relink stored prop lines
+        run: |
+          cd api
+          python -m app.ingest.prizepicks_nfl --relink
+
+      # Last: the week that just finished can only settle once its stats and
+      # snaps are loaded. Reads and prints, spends no credits, writes nothing.
+      - name: Report the prop-market forward holdout
+        run: |
+          cd api
+          python -m app.backtest.nfl_prop_market
+
+      # After the holdout report, for the same reason: last week's lines settle
+      # only once its stats and snaps are in. Also written to the run's Summary
+      # page so the hit rate is readable without opening the log.
+      - name: Report PrizePicks line grading
+        run: |
+          cd api
+          python -m app.backtest.nfl_prizepicks_lines | tee prizepicks_lines_report.txt
+          {
+            echo '## PrizePicks NFL line grading'
+            echo '```'
+            cat prizepicks_lines_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The same grading, stored for the hosted demo's model page, which cannot
+      # replay it inside its 512 MB (37d). Needs migration 0045.
+      - name: Store the model page's line grading
+        run: |
+          cd api
+          python -m app.ingest.nfl_model_snapshot
+
+      # After the NFLverse load (closing lines and scores) and the odds refresh.
+      # Reads and prints, writes nothing, spends no credits.
+      - name: Report game-line CLV
+        run: |
+          cd api
+          python -m app.backtest.nfl_game_line_clv | tee game_line_clv_report.txt
+          {
+            echo '## NFL game-line CLV'
+            echo '```'
+            cat game_line_clv_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # After the stats load, so last week's frozen predictions can settle. Reads
+      # and prints, writes nothing; 27h reads its slice verdicts.
+      - name: Report forward ranking check
+        run: |
+          cd api
+          python -m app.backtest.nfl_ranking_check | tee ranking_check_report.txt
+          {
+            echo '## NFL forward ranking check'
+            echo '```'
+            cat ranking_check_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Last, and even after a failed step: the hosted demo serves stored slates
+      # and never builds one inside its 512 MB (37d). Needs migration 0045.
+      - name: Store the current NFL slates
+        if: ${{ !cancelled() }}
+        run: |
+          cd api
+          python -m app.ingest.nfl_slate_snapshot

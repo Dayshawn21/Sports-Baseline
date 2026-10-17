@@ -1,0 +1,64 @@
+name: NBA Ingest
+
+# NBA schedule, final scores and player box scores from hoopR's ESPN release
+# files (item 20b). hoopR publishes its daily release at 07:00 UTC, after the
+# latest West Coast final, so this runs at 09:30 UTC. Free and keyless; each
+# run upserts the whole season schedule and the last 3 days of box scores, so
+# a missed day is caught up the next morning.
+#
+# October through June only, the NBA regular season and playoffs.
+on:
+  schedule:
+    - cron: "30 9 * 1-6,10-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  ingest:
+    name: NBA Ingest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Load NBA schedule and box scores
+        run: |
+          cd api
+          python -m app.ingest.hoopr_nba
+
+      # Lines stored before a player's first box score (rookies, call-ups) or
+      # before the schedule held their game link only now (item 20c).
+      - name: Relink stored PrizePicks NBA lines
+        run: |
+          cd api
+          python -m app.ingest.prizepicks_nba --relink
+
+      # After the box scores and the relink, so last week's frozen predictions
+      # can settle (item 20g4). Reads and prints, writes nothing.
+      - name: Report NBA forward ranking check
+        run: |
+          cd api
+          python -m app.backtest.nba_ranking_check | tee ranking_check_report.txt
+          {
+            echo '## NBA forward ranking check'
+            echo '```'
+            cat ranking_check_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,46 @@
+name: NFL Bet365 and DraftKings Odds
+
+# Odds-API.io's free plan allows two books (DraftKings and Bet365, shared with
+# tennis) and 100 requests an hour. A refresh is one /events call plus one
+# /odds/multi call per 10 games: 3 requests for a 15-game slate, about 24 a day
+# at this cadence. The ingest stops before leaving fewer than 20 requests in
+# the hour, so tennis keeps its share. No credits: The Odds API is not called.
+#
+# Every 3 hours, off the top of the hour; September through February only,
+# matching the NFL data ingest.
+on:
+  schedule:
+    - cron: "25 */3 * 1,2,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+
+jobs:
+  odds-io:
+    name: Bet365 and DraftKings Game Odds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Refresh Bet365 and DraftKings NFL game odds
+        run: |
+          cd api
+          python -m app.ingest.nfl_odds_io

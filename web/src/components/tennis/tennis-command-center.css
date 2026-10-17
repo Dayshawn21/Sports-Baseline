@@ -1,0 +1,269 @@
+/* The selected-match panel beside the Tennis slate table (build-plan 31b).
+   Column sizing and stickiness live in tennis-slate.css. */
+
+.tennis-command-layout {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tennis-command-workspace {
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.tennis-panel-label {
+  display: block;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tennis-panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tennis-panel-heading span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tennis-panel-ev {
+  color: var(--positive);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* ── Matchup ── */
+
+.tennis-panel-matchup {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tennis-panel-player {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tennis-panel-player strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-panel-player span {
+  flex: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tennis-panel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.tennis-panel-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.tennis-panel-open {
+  justify-self: start;
+  text-decoration: none;
+  margin-top: var(--space-2);
+  padding: 7px 14px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font: 600 12px var(--font-body);
+  cursor: pointer;
+}
+
+.tennis-panel-open:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Best opportunity ── */
+
+.tennis-panel-featured {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+}
+
+.tennis-panel-featured > strong {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.tennis-panel-featured > small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-panel-featured__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.tennis-panel-featured__stats b {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.tennis-panel-featured__stats b.tennis-panel-ev {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.tennis-panel-featured .tennis-tier {
+  justify-self: start;
+}
+
+/* ── Sections: match intelligence, decision board ── */
+
+.tennis-panel-section {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-panel-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.tennis-panel-facts strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.tennis-panel-model {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.tennis-panel-model span {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.tennis-panel-measures div {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tennis-panel-measures div span:last-child {
+  text-align: right;
+}
+
+.tennis-panel-measures small {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-align: center;
+}
+
+.tennis-panel-row {
+  display: grid;
+  gap: 3px;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tennis-panel-row:last-of-type {
+  border-bottom: 0;
+}
+
+.tennis-panel-row > strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.tennis-panel-row > small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-panel-row__cells {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tennis-panel-row__cells .tennis-tier {
+  margin-left: auto;
+}
+
+.tennis-panel-empty {
+  padding: var(--space-5) 0;
+  color: var(--text-secondary);
+  text-align: center;
+}

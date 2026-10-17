@@ -1,0 +1,12 @@
+{
+  "version": "0.2",
+  "words": [
+    "Betfair", "betfair", "draftkings", "DraftKings", "BetOnline",
+    "betonline", "topbar", "statusbar", "mkts", "monospace",
+    "Plex", "Barlow", "sportbook", "Sportsbook", "sportsbook", "psycopg", "alembic", "uvicorn",
+    "LightGBM", "lgbm", "httpx", "prizepicks", "sofascore",
+    "sbpulse", "sbspin",
+    "moneyline", "vigging", "devig", "tennisabstract", "livetennis", "livetennisapi",
+    "pydantic", "pytest", "vitest", "nflverse", "nfldata"
+  ]
+}

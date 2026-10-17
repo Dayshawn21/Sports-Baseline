@@ -1,0 +1,354 @@
+/* Tennis prop board layout and evidence panel (build-plan 31c). The panel keeps
+   the board's side coloring on its EV: green unless the side is UNDER. */
+
+.tennis-prop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.tennis-prop-evidence {
+  position: sticky;
+  top: calc(var(--nav-height) + 16px);
+  max-height: calc(100vh - var(--nav-height) - 32px);
+  overflow-y: auto;
+  scroll-margin-top: calc(var(--nav-height) + 16px);
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.tennis-prop-evidence > header {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+.tennis-prop-evidence__reason span,
+.tennis-prop-evidence__grid span,
+.tennis-prop-evidence__inputs > span,
+.tennis-prop-form > span {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tennis-prop-evidence h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tennis-prop-evidence header p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-prop-evidence__summary {
+  display: none;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+}
+
+.tennis-prop-evidence__summary b {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.tennis-prop-evidence__reason {
+  display: grid;
+  gap: 6px;
+  margin: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+}
+
+.tennis-prop-evidence__reason p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tennis-prop-evidence__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-prop-evidence__grid > div {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tennis-prop-evidence__grid strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.tennis-prop-evidence__inputs {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-prop-evidence__inputs > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tennis-prop-evidence__inputs .ant-tag {
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tennis-prop-form {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tennis-prop-form > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-prop-form__names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-prop-form__names strong {
+  font-weight: 600;
+}
+
+.tennis-prop-form__names strong:last-child,
+.tennis-prop-form__stats strong:last-child {
+  text-align: right;
+}
+
+.tennis-prop-form__stats {
+  display: grid;
+  gap: 6px;
+}
+
+.tennis-prop-form__stats > div {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tennis-prop-form__stats strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tennis-prop-form__stats span {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.tennis-prop-form__histories {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tennis-prop-form__history {
+  min-width: 0;
+}
+
+.tennis-prop-form__history h3 {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 var(--space-2);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tennis-prop-form__history h3 small {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.tennis-prop-form__history > div {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: var(--space-2);
+  row-gap: 2px;
+  align-items: start;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tennis-prop-form__history > div strong {
+  grid-row: span 2;
+  padding-top: 1px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.tennis-prop-form__history .is-win {
+  color: var(--positive);
+}
+
+.tennis-prop-form__history .is-loss {
+  color: var(--negative);
+}
+
+.tennis-prop-form__history span {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-prop-form__history em {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-style: normal;
+}
+
+/* Recent box scores against today's line. Above and below differ by shade only:
+   green is a signal color, and a past hit is not a signal. */
+.tennis-prop-bars__values,
+.tennis-prop-bars__chart,
+.tennis-prop-bars__dates {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tennis-prop-bars__values em {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-style: normal;
+  text-align: center;
+}
+
+.tennis-prop-bars__chart {
+  position: relative;
+  align-items: end;
+  height: 72px;
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.tennis-prop-bars__chart::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: var(--line);
+  left: 0;
+  border-top: 1px dashed var(--text-secondary);
+}
+
+.tennis-prop-bars__chart i {
+  height: var(--h);
+  min-height: 2px;
+  border-radius: 3px 3px 1px 1px;
+}
+
+.tennis-prop-bars__chart i.is-above { background: var(--text-primary); }
+.tennis-prop-bars__chart i.is-push { background: var(--text-secondary); }
+.tennis-prop-bars__chart i.is-below { background: var(--bg-raised); box-shadow: inset 0 0 0 1px var(--border-card); }
+
+.tennis-prop-bars__chart i.is-missing {
+  height: 100%;
+  border: 1px dashed var(--border-card);
+  background: transparent;
+}
+
+.tennis-prop-bars__dates small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-prop-bars__line {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.tennis-prop-notice {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--caution-soft);
+  color: var(--caution);
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .tennis-prop-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tennis-prop-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tennis-prop-evidence {
+    position: static;
+    max-height: none;
+  }
+
+  /* Stacked under the grid, the panel is away from its card, so it restates the pick. */
+  .tennis-prop-evidence__summary {
+    display: flex;
+  }
+}
+
+@media (max-width: 600px) {
+  .tennis-prop-evidence__grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,10 @@
+# Secret scan config for the secret-scan job in .github/workflows/verify.yml.
+# Default gitleaks rules, plus path exceptions. Each exception names one file
+# and why its finding is not a credential.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Saved TennisAbstract page; the token is Cloudflare's public analytics beacon id, embedded in the site's own HTML"
+paths = ['''(^|/)blueprint/history/one-off-scripts/root/tmp_ta_zverev\.html$''']

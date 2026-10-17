@@ -1,0 +1,346 @@
+{
+  "model_version": "v4",
+  "engine": "lgbm",
+  "tour_split": "WTA",
+  "csv": "tennis_training_v4_unified.csv",
+  "date_col": "match_date",
+  "num_features": 45,
+  "features": [
+    "d_elo",
+    "d_surface_elo",
+    "has_p1_elo",
+    "has_p2_elo",
+    "has_both_elo",
+    "d_win_rate_last_20",
+    "d_win_rate_surface",
+    "d_experience",
+    "d_rest_days",
+    "d_matches_10d",
+    "d_matches_30d",
+    "is_clay",
+    "is_grass",
+    "is_grand_slam",
+    "round_ordinal",
+    "tournament_tier",
+    "h2h_total_matches",
+    "h2h_surface_matches",
+    "market_ml_p1_implied",
+    "market_ml_p2_implied",
+    "market_ml_p1_no_vig",
+    "market_ml_p2_no_vig",
+    "market_ml_overround",
+    "d_market_ml_no_vig",
+    "d_svc_pts_w",
+    "d_ret_pts_w",
+    "d_ace_pg",
+    "d_bp_save",
+    "d_bp_win",
+    "d_last5_hold",
+    "d_last5_break",
+    "d_last10_hold",
+    "d_last10_break",
+    "d_surf_last10_hold",
+    "d_surf_last10_break",
+    "d_last10_aces_pg",
+    "d_surf_last10_aces_pg",
+    "d_last10_df_pg",
+    "d_surf_last10_df_pg",
+    "d_last10_tb_match_rate",
+    "d_last10_tb_win_pct",
+    "d_surf_last10_tb_match_rate",
+    "d_surf_last10_tb_win_pct",
+    "d_streak",
+    "d_win_rate_last_3"
+  ],
+  "profile": "no_market_totals_spread+no_zero_imp+pruned_lt1",
+  "split": {
+    "val_days": 180,
+    "test_days": 180,
+    "early_stop_days": 120,
+    "min_date": null,
+    "max_date": null
+  },
+  "rows": {
+    "total": 12203,
+    "train": 8542,
+    "val": 1830,
+    "test": 1831,
+    "train_fit": 7504,
+    "early_stop": 1038
+  },
+  "metrics": {
+    "val": {
+      "accuracy": 0.855191256830601,
+      "log_loss": 0.3267925630166484,
+      "brier": 0.10427042503162975,
+      "auc": 0.933379600817525
+    },
+    "test": {
+      "accuracy": 0.7640633533588204,
+      "log_loss": 0.4620295445418584,
+      "brier": 0.15270408352984316,
+      "auc": 0.8659011805231619
+    },
+    "test_calibrated": {
+      "accuracy": 0.7531403604587658,
+      "log_loss": 0.5762857075854253,
+      "brier": 0.16144762613379587,
+      "auc": 0.8481921370220197
+    }
+  },
+  "calibration_report": {
+    "bins": [
+      {
+        "bin_start": 0.0,
+        "bin_end": 0.1,
+        "mean_predicted": 0.03241123852704339,
+        "mean_actual": 0.027237354085603113,
+        "count": 257
+      },
+      {
+        "bin_start": 0.1,
+        "bin_end": 0.2,
+        "mean_predicted": 0.1430827309719945,
+        "mean_actual": 0.19480519480519481,
+        "count": 154
+      },
+      {
+        "bin_start": 0.2,
+        "bin_end": 0.30000000000000004,
+        "mean_predicted": 0.2448153470257152,
+        "mean_actual": 0.25396825396825395,
+        "count": 126
+      },
+      {
+        "bin_start": 0.30000000000000004,
+        "bin_end": 0.4,
+        "mean_predicted": 0.3494397206265115,
+        "mean_actual": 0.46616541353383456,
+        "count": 133
+      },
+      {
+        "bin_start": 0.4,
+        "bin_end": 0.5,
+        "mean_predicted": 0.4475704041532218,
+        "mean_actual": 0.4621212121212121,
+        "count": 132
+      },
+      {
+        "bin_start": 0.5,
+        "bin_end": 0.6000000000000001,
+        "mean_predicted": 0.5520023768436012,
+        "mean_actual": 0.5035971223021583,
+        "count": 139
+      },
+      {
+        "bin_start": 0.6000000000000001,
+        "bin_end": 0.7000000000000001,
+        "mean_predicted": 0.6534534639320231,
+        "mean_actual": 0.5431034482758621,
+        "count": 116
+      },
+      {
+        "bin_start": 0.7000000000000001,
+        "bin_end": 0.8,
+        "mean_predicted": 0.743401997745048,
+        "mean_actual": 0.6212121212121212,
+        "count": 132
+      },
+      {
+        "bin_start": 0.8,
+        "bin_end": 0.9,
+        "mean_predicted": 0.853347697836643,
+        "mean_actual": 0.7736625514403292,
+        "count": 243
+      },
+      {
+        "bin_start": 0.9,
+        "bin_end": 1.0,
+        "mean_predicted": 0.9590544758935632,
+        "mean_actual": 0.9105431309904153,
+        "count": 313
+      }
+    ]
+  },
+  "walk_forward_cv": {
+    "folds": [
+      {
+        "accuracy": 0.777513855898654,
+        "log_loss": 0.44064349196897623,
+        "brier": 0.14645172892472458,
+        "auc": 0.8727334675720676,
+        "train_size": 3957,
+        "test_size": 2526,
+        "test_start": "2022-01-11",
+        "test_end": "2023-01-14"
+      },
+      {
+        "accuracy": 0.8064740689175078,
+        "log_loss": 0.40340280730099776,
+        "brier": 0.13150258692400055,
+        "auc": 0.8955854322173236,
+        "train_size": 6483,
+        "test_size": 2873,
+        "test_start": "2023-01-14",
+        "test_end": "2024-01-17"
+      },
+      {
+        "accuracy": 0.8486509274873525,
+        "log_loss": 0.31842360950069737,
+        "brier": 0.10145695290244952,
+        "auc": 0.9374951976846437,
+        "train_size": 9356,
+        "test_size": 2372,
+        "test_start": "2024-01-17",
+        "test_end": "2025-01-19"
+      },
+      {
+        "accuracy": 0.5714285714285714,
+        "log_loss": 0.8212121929528984,
+        "brier": 0.2787140256505106,
+        "auc": 0.6437505860290671,
+        "train_size": 11728,
+        "test_size": 462,
+        "test_start": "2025-01-19",
+        "test_end": "2026-01-22"
+      }
+    ],
+    "mean": {
+      "accuracy": 0.7510168559330215,
+      "log_loss": 0.49592052543089243,
+      "brier": 0.1645313236004213,
+      "auc": 0.8373911708757755
+    },
+    "std": {
+      "accuracy": 0.10672623545632179,
+      "log_loss": 0.1929604251655572,
+      "brier": 0.06788562969525004,
+      "auc": 0.11418531240048238
+    }
+  },
+  "betting_simulation": {
+    "0.55": {
+      "bets": 1721,
+      "wins": 1349,
+      "accuracy": 0.7838466008134806,
+      "threshold": 0.55
+    },
+    "0.6": {
+      "bets": 1606,
+      "wins": 1295,
+      "accuracy": 0.8063511830635118,
+      "threshold": 0.6
+    },
+    "0.65": {
+      "bets": 1495,
+      "wins": 1233,
+      "accuracy": 0.8247491638795986,
+      "threshold": 0.65
+    },
+    "0.7": {
+      "bets": 1378,
+      "wins": 1169,
+      "accuracy": 0.8483309143686503,
+      "threshold": 0.7
+    }
+  },
+  "feature_importance_gain": {
+    "d_ace_pg": "1900",
+    "d_last10_aces_pg": "1707",
+    "d_ret_pts_w": "1487",
+    "d_last10_break": "1438",
+    "d_last10_hold": "1430",
+    "d_surf_last10_break": "1355",
+    "d_svc_pts_w": "1347",
+    "d_surf_last10_aces_pg": "1281",
+    "d_bp_win": "1229",
+    "d_bp_save": "1198",
+    "d_surf_last10_hold": "1192",
+    "d_last10_df_pg": "1190",
+    "d_experience": "1187",
+    "d_last5_hold": "1172",
+    "d_last5_break": "1168",
+    "d_surf_last10_df_pg": "1018",
+    "d_rest_days": "840",
+    "d_surf_last10_tb_match_rate": "736",
+    "d_matches_30d": "660",
+    "d_last10_tb_match_rate": "601",
+    "d_last10_tb_win_pct": "545",
+    "d_surf_last10_tb_win_pct": "517",
+    "d_elo": "400",
+    "round_ordinal": "356",
+    "d_win_rate_surface": "320",
+    "d_win_rate_last_20": "226",
+    "has_p1_elo": "186",
+    "d_matches_10d": "179",
+    "market_ml_overround": "163",
+    "market_ml_p1_implied": "140",
+    "has_p2_elo": "129",
+    "h2h_total_matches": "123",
+    "d_surface_elo": "118",
+    "market_ml_p2_implied": "93",
+    "d_streak": "87",
+    "is_clay": "61",
+    "is_grand_slam": "57",
+    "market_ml_p1_no_vig": "52",
+    "d_win_rate_last_3": "40",
+    "market_ml_p2_no_vig": "33",
+    "is_grass": "28",
+    "h2h_surface_matches": "26",
+    "has_both_elo": "22",
+    "tournament_tier": "18",
+    "d_market_ml_no_vig": "18"
+  },
+  "calibration": "none",
+  "optuna_tuned": true,
+  "time_decay_half_life": null,
+  "fill_defaults": {
+    "d_elo": 0.0,
+    "d_surface_elo": 0.0,
+    "d_rank_log": 0.0,
+    "d_age": 0.0,
+    "has_p1_elo": 0.0,
+    "has_p2_elo": 0.0,
+    "has_both_elo": 0.0,
+    "d_win_rate_last_20": 0.0,
+    "d_win_rate_surface": 0.0,
+    "d_experience": 0.0,
+    "d_rest_days": 0.0,
+    "d_matches_10d": 0.0,
+    "d_matches_30d": 0.0,
+    "h2h_p1_win_pct": 0.5,
+    "h2h_total_matches": 0.0,
+    "h2h_surface_p1_win_pct": 0.5,
+    "h2h_surface_matches": 0.0,
+    "has_moneyline": 0.0,
+    "market_ml_p1_implied": 0.5,
+    "market_ml_p2_implied": 0.5,
+    "market_ml_p1_no_vig": 0.5,
+    "market_ml_p2_no_vig": 0.5,
+    "market_ml_overround": 0.0,
+    "d_market_ml_no_vig": 0.0,
+    "round_ordinal": 0.0,
+    "tournament_tier": 2.0,
+    "d_streak": 0.0,
+    "d_win_rate_last_3": 0.0
+  },
+  "monotone_constraints": {
+    "d_elo": 1,
+    "d_surface_elo": 1,
+    "d_rank_log": 1,
+    "d_win_rate_last_20": 1,
+    "d_win_rate_surface": 1,
+    "h2h_p1_win_pct": 1,
+    "h2h_surface_p1_win_pct": 1,
+    "d_streak": 1,
+    "d_win_rate_last_3": 1
+  },
+  "improvements_over_v3": [
+    "Dropped 15 dead market totals/spread features (0% coverage)",
+    "Added momentum features: d_streak, d_win_rate_last_3",
+    "Walk-forward time-series CV for reliable performance estimation",
+    "LightGBM benchmark support (--lgbm flag)",
+    "Calibration diagnostics (reliability diagram data)",
+    "Monotonic constraints on momentum features"
+  ]
+}

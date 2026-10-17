@@ -1,0 +1,33 @@
+# Web
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+limits==5.8.0
+
+# DB
+psycopg[binary]==3.2.4
+sqlalchemy[asyncio]==2.0.36
+alembic==1.14.0
+
+# ML
+lightgbm==4.5.0
+scikit-learn==1.8.0
+numpy==2.2.1
+pandas==2.2.3
+joblib==1.4.2
+
+# Config
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# Scraping
+playwright==1.49.0
+httpx==0.28.1
+requests==2.32.3
+
+# Utilities
+tenacity==9.0.0
+
+# Test
+pytest==9.0.3

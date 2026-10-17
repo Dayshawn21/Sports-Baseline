@@ -1,0 +1,178 @@
+/* Tennis prop board head and controls (build-plan 31c), after prototypes/tennis-props.html. */
+
+.tennis-prop-board__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tennis-prop-board .unified-page-title {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.tennis-prop-board__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.tennis-prop-summary {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.tennis-prop-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+}
+
+.tennis-prop-stat__label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-prop-stat__value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.tennis-prop-stat__sub {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tennis-prop-pills {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-1);
+  overflow-x: auto;
+}
+
+.tennis-prop-pills button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font: 500 13px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tennis-prop-pills button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text-primary);
+}
+
+.tennis-prop-pills button.is-selected {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--bg-app);
+}
+
+.tennis-prop-pills em {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.tennis-prop-pills button.is-selected em {
+  color: var(--bg-raised);
+}
+
+.tennis-prop-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+.tennis-prop-seg {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: var(--bg-card);
+}
+
+.tennis-prop-seg button {
+  flex: none;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tennis-prop-seg button:hover {
+  color: var(--text-primary);
+}
+
+.tennis-prop-seg button.is-selected {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.tennis-prop-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .tennis-prop-board__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tennis-prop-board__aside {
+    align-items: flex-start;
+  }
+
+  .tennis-prop-stat {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tennis-prop-toggle {
+    margin-left: 0;
+  }
+}

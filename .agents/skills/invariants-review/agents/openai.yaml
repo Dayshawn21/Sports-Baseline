@@ -1,0 +1,4 @@
+interface:
+  display_name: "Invariants review"
+  short_description: "Check a branch against the project's load-bearing rules"
+  default_prompt: "Use $invariants-review to check the current branch against the project invariants."

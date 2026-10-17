@@ -1,0 +1,274 @@
+{
+  "model_version": "v6",
+  "engine": "lgbm",
+  "tour_split": "ATP",
+  "num_features": 26,
+  "features": [
+    "d_elo",
+    "d_surface_elo",
+    "has_p1_elo",
+    "has_p2_elo",
+    "has_both_elo",
+    "d_elo_computed",
+    "d_surface_elo_computed",
+    "d_rank_log",
+    "d_age",
+    "d_experience",
+    "d_rest_days",
+    "d_matches_10d",
+    "d_matches_30d",
+    "d_streak",
+    "d_win_rate_last_20",
+    "d_win_rate_surface",
+    "h2h_total_matches",
+    "h2h_p1_win_pct",
+    "h2h_surface_matches",
+    "h2h_surface_p1_win_pct",
+    "is_clay",
+    "is_grass",
+    "is_grand_slam",
+    "round_ordinal",
+    "tournament_tier",
+    "best_of"
+  ],
+  "missing_value_fill": "nan",
+  "mirrored_training_rows": true,
+  "rows": {
+    "total": 16264,
+    "train": 20118,
+    "val": 1693,
+    "test": 2780,
+    "train_fit": 20118,
+    "early_stop": 3464
+  },
+  "metrics": {
+    "val": {
+      "accuracy": 0.6633195510927348,
+      "log_loss": 0.602420347300773,
+      "brier": 0.20789168364336186,
+      "auc": 0.7325576482716081
+    },
+    "test": {
+      "accuracy": 0.6438848920863309,
+      "log_loss": 0.6164324421409886,
+      "brier": 0.21443162405978086,
+      "auc": 0.7137589314659923
+    },
+    "test_calibrated": {
+      "accuracy": 0.6438848920863309,
+      "log_loss": 0.6164324421409886,
+      "brier": 0.21443162405978086,
+      "auc": 0.7137589314659923
+    }
+  },
+  "calibration_report": {
+    "bins": [
+      {
+        "bin_start": 0.0,
+        "bin_end": 0.1,
+        "mean_predicted": 0.07905850387797758,
+        "mean_actual": 0.1111111111111111,
+        "count": 9
+      },
+      {
+        "bin_start": 0.1,
+        "bin_end": 0.2,
+        "mean_predicted": 0.16029013385580548,
+        "mean_actual": 0.08108108108108109,
+        "count": 74
+      },
+      {
+        "bin_start": 0.2,
+        "bin_end": 0.3,
+        "mean_predicted": 0.25458019252658487,
+        "mean_actual": 0.2831050228310502,
+        "count": 219
+      },
+      {
+        "bin_start": 0.3,
+        "bin_end": 0.4,
+        "mean_predicted": 0.3537022947204515,
+        "mean_actual": 0.3188010899182561,
+        "count": 367
+      },
+      {
+        "bin_start": 0.4,
+        "bin_end": 0.5,
+        "mean_predicted": 0.44912354295260304,
+        "mean_actual": 0.46689895470383275,
+        "count": 574
+      },
+      {
+        "bin_start": 0.5,
+        "bin_end": 0.6,
+        "mean_predicted": 0.5505696911601806,
+        "mean_actual": 0.5378548895899053,
+        "count": 634
+      },
+      {
+        "bin_start": 0.6,
+        "bin_end": 0.7,
+        "mean_predicted": 0.6465785590523848,
+        "mean_actual": 0.6368038740920097,
+        "count": 413
+      },
+      {
+        "bin_start": 0.7,
+        "bin_end": 0.8,
+        "mean_predicted": 0.7467597388859395,
+        "mean_actual": 0.775974025974026,
+        "count": 308
+      },
+      {
+        "bin_start": 0.8,
+        "bin_end": 0.9,
+        "mean_predicted": 0.845825554511376,
+        "mean_actual": 0.8543046357615894,
+        "count": 151
+      },
+      {
+        "bin_start": 0.9,
+        "bin_end": 1.0,
+        "mean_predicted": 0.926246078717247,
+        "mean_actual": 0.9354838709677419,
+        "count": 31
+      }
+    ]
+  },
+  "walk_forward_cv": {
+    "folds": [
+      {
+        "accuracy": 0.6151291512915129,
+        "log_loss": 0.7227627874376789,
+        "brier": 0.2515614199900081,
+        "auc": 0.6410994945306638,
+        "train_size": 2710,
+        "test_size": 2710,
+        "test_start": "2023-07-30 00:00:00",
+        "test_end": "2024-04-01 00:00:00"
+      },
+      {
+        "accuracy": 0.6214022140221402,
+        "log_loss": 0.6819754613701168,
+        "brier": 0.23868985708467857,
+        "auc": 0.6623680912007839,
+        "train_size": 5420,
+        "test_size": 2710,
+        "test_start": "2024-04-01 00:00:00",
+        "test_end": "2024-10-17 00:00:00"
+      },
+      {
+        "accuracy": 0.6136531365313653,
+        "log_loss": 0.6731463936413549,
+        "brier": 0.23554177437138238,
+        "auc": 0.6664463804587168,
+        "train_size": 8130,
+        "test_size": 2710,
+        "test_start": "2024-10-17 00:00:00",
+        "test_end": "2025-06-25 00:00:00"
+      },
+      {
+        "accuracy": 0.6243542435424354,
+        "log_loss": 0.6486361381956999,
+        "brier": 0.22652324364767182,
+        "auc": 0.6870877221856484,
+        "train_size": 10840,
+        "test_size": 2710,
+        "test_start": "2025-06-25 00:00:00",
+        "test_end": "2026-03-05 00:00:00"
+      },
+      {
+        "accuracy": 0.6453874538745388,
+        "log_loss": 0.6590346225282655,
+        "brier": 0.22677687907921382,
+        "auc": 0.698597691806832,
+        "train_size": 13550,
+        "test_size": 2710,
+        "test_start": "2026-03-06 00:00:00",
+        "test_end": "2026-08-26 00:00:00"
+      }
+    ],
+    "mean": {
+      "accuracy": 0.6239852398523985,
+      "log_loss": 0.6771110806346232,
+      "brier": 0.23581863483459092,
+      "auc": 0.671119876036529
+    },
+    "std": {
+      "accuracy": 0.011402154312648934,
+      "log_loss": 0.02553836314839889,
+      "brier": 0.009212095286446594,
+      "auc": 0.020048247178411166
+    }
+  },
+  "betting_simulation": {
+    "0.55": {
+      "bets": 2196,
+      "wins": 1504,
+      "accuracy": 0.6848816029143898,
+      "threshold": 0.55
+    },
+    "0.6": {
+      "bets": 1572,
+      "wins": 1143,
+      "accuracy": 0.7270992366412213,
+      "threshold": 0.6
+    },
+    "0.65": {
+      "bets": 1141,
+      "wins": 874,
+      "accuracy": 0.7659947414548641,
+      "threshold": 0.65
+    },
+    "0.7": {
+      "bets": 792,
+      "wins": 630,
+      "accuracy": 0.7954545454545454,
+      "threshold": 0.7
+    }
+  },
+  "feature_importance_gain": {
+    "d_elo_computed": "12567",
+    "d_experience": "6396",
+    "d_rank_log": "5992",
+    "d_surface_elo_computed": "2935",
+    "d_rest_days": "1731",
+    "d_matches_30d": "526",
+    "d_age": "441",
+    "tournament_tier": "181",
+    "round_ordinal": "162",
+    "d_win_rate_surface": "110",
+    "d_matches_10d": "102",
+    "h2h_total_matches": "63",
+    "is_grand_slam": "61",
+    "h2h_surface_matches": "52",
+    "d_streak": "36",
+    "h2h_p1_win_pct": "26",
+    "is_grass": "13",
+    "best_of": "7",
+    "h2h_surface_p1_win_pct": "7",
+    "is_clay": "4",
+    "d_elo": "0",
+    "d_surface_elo": "0",
+    "has_p1_elo": "0",
+    "has_p2_elo": "0",
+    "has_both_elo": "0",
+    "d_win_rate_last_20": "0"
+  },
+  "calibration": "none",
+  "optuna_tuned": false,
+  "params": {
+    "objective": "binary",
+    "metric": "binary_logloss",
+    "verbosity": -1,
+    "boosting_type": "gbdt",
+    "learning_rate": 0.05,
+    "num_leaves": 8,
+    "max_depth": 5,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0
+  }
+}

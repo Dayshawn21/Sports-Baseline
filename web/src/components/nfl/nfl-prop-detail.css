@@ -1,0 +1,411 @@
+/* NFL prop detail (build-plan 31e), after prototypes/prop-detail.html. The shared evidence panel on
+   /nfl/board and the game page. The edge reads --nfl-green / --nfl-red, gray via .nfl-slate until 27j adopts a slice. */
+
+.nfl-prop-detail {
+  position: sticky;
+  top: calc(var(--nav-height) + 16px);
+  max-height: calc(100vh - var(--nav-height) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--nfl-line);
+  border-radius: 8px;
+  background: var(--nfl-surface);
+}
+
+@media (max-width: 1180px) {
+  .nfl-prop-detail {
+    position: static;
+    max-height: none;
+    overflow: hidden;
+  }
+}
+
+.nfl-prop-detail__player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.nfl-prop-detail__badge {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.nfl-prop-detail__player-link { color: inherit; }
+.nfl-prop-detail__player-link:hover { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.nfl-prop-detail .nfl-prop-detail__player h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.nfl-prop-detail .nfl-prop-detail__player p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.nfl-prop-detail__projection {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+}
+
+.nfl-prop-detail__projection > span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.nfl-prop-detail__projection > strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 48px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.nfl-prop-detail__delta {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.nfl-prop-detail__delta.is-over {
+  color: var(--nfl-green);
+}
+
+.nfl-prop-detail__delta.is-under {
+  color: var(--nfl-red);
+}
+
+.nfl-prop-detail__section {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nfl-prop-detail__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.nfl-prop-detail__section-head h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__section-head > span {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.nfl-prop-detail__list {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Heights are
+   shares of the plot box, so the mark and the bars read off the same scale. */
+.nfl-prop-detail__chart {
+  margin-top: var(--space-3);
+  padding-left: 40px;
+}
+
+.nfl-prop-detail__plot,
+.nfl-prop-detail__opps {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-2);
+}
+
+.nfl-prop-detail__plot {
+  position: relative;
+  height: 112px;
+  margin-top: 18px;
+}
+
+.nfl-prop-detail__col {
+  position: relative;
+  height: 100%;
+}
+
+.nfl-prop-detail__bar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  max-width: 40px;
+  height: max(var(--h), 2px);
+  border-radius: 5px 5px 2px 2px;
+  background: var(--text-secondary);
+  transform: translateX(-50%);
+}
+
+.nfl-prop-detail__col.is-above .nfl-prop-detail__bar {
+  background: var(--text-primary);
+}
+
+.nfl-prop-detail__col.is-below .nfl-prop-detail__bar {
+  background: var(--chart-low);
+}
+
+.nfl-prop-detail__val {
+  position: absolute;
+  bottom: calc(max(var(--h), 2px) + 4px);
+  left: 50%;
+  z-index: 2;
+  padding: 0 2px;
+  background: var(--nfl-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transform: translateX(-50%);
+}
+
+.nfl-prop-detail__opps {
+  margin-top: 6px;
+}
+
+.nfl-prop-detail__opps > span {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.nfl-prop-detail__line-mark {
+  position: absolute;
+  right: 0;
+  bottom: var(--line);
+  left: -40px;
+  z-index: 1;
+  border-top: 1px dashed var(--text-secondary);
+  pointer-events: none;
+}
+
+.nfl-prop-detail__line-mark > span {
+  position: absolute;
+  top: -9px;
+  left: 0;
+  padding: 0 4px;
+  background: var(--nfl-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.nfl-prop-detail__context {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.nfl-prop-detail__why {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nfl-prop-detail__rows {
+  margin: var(--space-3) 0 0;
+}
+
+.nfl-prop-detail__rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nfl-prop-detail__rows dt {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.nfl-prop-detail__rows dt small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.nfl-prop-detail__rows dd {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+}
+
+.nfl-prop-detail__rows > div.is-total dt,
+.nfl-prop-detail__rows > div.is-total dd {
+  font-weight: 600;
+}
+
+.nfl-prop-detail__table {
+  width: 100%;
+  margin-top: var(--space-3);
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.nfl-prop-detail__table th {
+  padding: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__table td {
+  padding: 7px 0;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.nfl-prop-detail__table th:first-child,
+.nfl-prop-detail__table td:first-child {
+  text-align: left;
+}
+
+.nfl-prop-detail__table tr.is-selected td {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.nfl-prop-detail__table .ant-tag {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__this {
+  margin-left: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.nfl-prop-detail__note {
+  width: fit-content;
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: help;
+}
+
+.nfl-prop-detail__kv {
+  margin: var(--space-2) 0 0;
+}
+
+.nfl-prop-detail__kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 7px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.nfl-prop-detail__kv > div:first-child {
+  border-top: 0;
+}
+
+.nfl-prop-detail__kv dt {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.nfl-prop-detail__kv dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.nfl-prop-detail__model {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: help;
+}
+
+.nfl-prop-detail__model > span:last-child {
+  font-family: var(--font-mono);
+}
+
+.nfl-prop-detail__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.nfl-prop-detail__flags .ant-tag {
+  margin: 0;
+  border-color: var(--nfl-line);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.nfl-prop-detail__game-link { display: inline-block; margin-top: 10px; color: var(--text-secondary); font-size: 12px; }
+.nfl-prop-detail__game-link:hover { color: var(--text-primary); }

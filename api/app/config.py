@@ -1,0 +1,43 @@
+import re
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolves to the .env file next to this file (api/app/.env)
+_ENV_FILE = Path(__file__).parent / ".env"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
+
+    database_url: str
+    api_title: str = "SportApp V2"
+    api_env: str = "dev"
+    odds_api_key: str = ""
+    the_odds_api_key: str = ""
+    live_odds_bookmakers: str = "DraftKings,Bet365"
+    api_sports_nfl_key: str = ""
+    livetennis_api_key: str = ""
+    livetennis_tier: str = "free"  # free | basic | pro | ultra
+    # Future PrizePicks live-prop ingest safety floor. The provider is rate-limited,
+    # so callers must retain cached snapshots between polls.
+    prizepicks_poll_interval_minutes: int = 120
+    # Shared secret for mutating / quota-spending routes. Empty leaves them open,
+    # which is the local default — see app/security.py.
+    admin_api_key: str = ""
+    # JSON list in .env, e.g. CORS_ORIGINS=["https://app.example.com"].
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    # Per client IP, in the `limits` notation; heavy routes are in app/core/rate_limits.py.
+    rate_limit_default: str = "120/minute"
+    rate_limit_heavy: str = "10/minute"
+
+    @property
+    def async_database_url(self) -> str:
+        url = self.database_url
+        # Strip unsupported params
+        url = re.sub(r"\?.*", "", url)
+        # Ensure psycopg3 async driver
+        url = re.sub(r"^postgresql(\+\w+)?://", "postgresql+psycopg://", url)
+        return url
+
+
+settings = Settings()

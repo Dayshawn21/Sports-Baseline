@@ -1,0 +1,53 @@
+name: NBA Game Odds
+
+# NBA moneyline, spread and total from The Odds API into sport_game_odds
+# (item 20d). Each run is one /odds call: 3 credits from the free plan's 500 a
+# month, shared with NFL. Twice daily is about 180 credits a month. A manual
+# dispatch spends 3 credits too.
+#
+# Before the paid call the ingest reads the balance from a free /sports call
+# and stops below --min-credits 100, so NBA can never use up the credits NFL's
+# anytime-TD runs (floor 50) depend on. With no scheduled NBA game in the
+# window it makes no provider call at all.
+#
+# October through June only, matching the NBA data ingest. Both times sit off
+# every nfl-prop-odds.yml run.
+on:
+  schedule:
+    # 15:00 UTC: the morning line.
+    - cron: "0 15 * 1-6,10-12 *"
+    # 22:30 UTC: before the first 7 pm ET tip-off.
+    - cron: "30 22 * 1-6,10-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+
+jobs:
+  odds:
+    name: NBA Game Odds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Store NBA game odds
+        run: |
+          cd api
+          python -m app.ingest.nba_odds

@@ -1,0 +1,4 @@
+# LightGBM parses model files in parallel byte-offset chunks, so a CRLF checkout
+# shifts every chunk boundary mid-token and aborts the process on load. Git must
+# never convert line endings for model artifacts.
+api/models/** -text

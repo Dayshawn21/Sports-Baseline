@@ -1,0 +1,19 @@
+/* NBA game page (build-plan 20e3): the NFL game page's classes, plus what NBA adds. */
+
+.nba-game .nfl-game-layout { grid-template-columns: minmax(0, 1fr); }
+
+.nba-game-score { display: flex; justify-content: center; gap: 18px; color: var(--text-primary); font: 500 30px/1.1 var(--font-mono); }
+.nba-game-score .is-loser { color: var(--text-muted); }
+
+.nba-game-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.nba-game-cells > div { display: grid; gap: 4px; padding: 12px 16px; }
+.nba-game-cells small { color: var(--text-muted); font: 400 11px var(--font-mono); }
+
+@media (max-width: 640px) {
+  .nba-game-score { justify-content: flex-start; font-size: 24px; }
+}
+
+/* Modelled props (20g2): the projection row stays gray, never a signal color. */
+.nba-prop-card__projection { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-secondary); font: 400 12px var(--font-mono); }
+.nba-prop-card__projection span:first-child { color: var(--text-primary); font-weight: 500; }
+.nba-prop-card__flag { color: var(--text-muted); font-size: 12px; }

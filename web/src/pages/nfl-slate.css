@@ -1,0 +1,25 @@
+/* Shared by the NFL slate, prop board and game page. The prop detail panel grows with the viewport, holding
+   360px at 1280. Edges and picks are gray on every NFL page until the ranking check (27j) adopts a slice. */
+.nfl-slate { --nfl-detail-width: clamp(360px, 28vw, 440px); --nfl-surface: var(--bg-card); --nfl-raised: var(--bg-raised); --nfl-line: var(--border-card); --nfl-blue: var(--text-primary); --nfl-green: var(--text-primary); --nfl-red: var(--text-primary); }
+.nfl-slate__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--nfl-line); }
+.nfl-slate__controls { display: flex; gap: 10px; }.nfl-slate__controls .ant-select { min-width: 142px; }
+.nfl-empty { padding: 48px 0; color: var(--text-secondary); }
+.nfl-slate__stats { margin-top: 18px; }
+.nfl-slate__stats .stat-chip__label { font-size: 11px; }
+.nfl-slate__stats .stat-chip:last-child .stat-chip__value { font: 500 18px/1.2 var(--font-mono); }
+@media (max-width: 600px) {
+  .nfl-slate .nfl-slate__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nfl-slate__stats .stat-chip:last-child { grid-column: span 2; }
+}
+.nfl-slate__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; color: var(--text-muted); font-size: 11px; }
+.nfl-slate__legend b { color: var(--text-secondary); font-weight: 600; }
+.nfl-slate-window { margin-top: 28px; }
+.nfl-slate-window__title {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+  color: var(--text-secondary); font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nfl-slate-window__title::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+.nfl-slate-window__title small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+.nfl-slate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 14px; }
+@media (max-width: 860px) { .nfl-slate__head { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 600px) { .nfl-slate__controls { width: 100%; }.nfl-slate__controls .ant-select { flex: 1; min-width: 0; } }

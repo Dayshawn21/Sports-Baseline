@@ -1,0 +1,282 @@
+{
+  "model_version": "v5",
+  "engine": "lgbm",
+  "tour_split": "WTA",
+  "num_features": 45,
+  "features": [
+    "d_elo",
+    "d_surface_elo",
+    "has_p1_elo",
+    "has_p2_elo",
+    "has_both_elo",
+    "d_win_rate_last_20",
+    "d_win_rate_surface",
+    "d_experience",
+    "d_rest_days",
+    "d_matches_10d",
+    "d_matches_30d",
+    "is_clay",
+    "is_grass",
+    "is_grand_slam",
+    "round_ordinal",
+    "tournament_tier",
+    "h2h_total_matches",
+    "h2h_surface_matches",
+    "market_ml_p1_implied",
+    "market_ml_p2_implied",
+    "market_ml_p1_no_vig",
+    "market_ml_p2_no_vig",
+    "market_ml_overround",
+    "d_market_ml_no_vig",
+    "d_svc_pts_w",
+    "d_ret_pts_w",
+    "d_ace_pg",
+    "d_bp_save",
+    "d_bp_win",
+    "d_last5_hold",
+    "d_last5_break",
+    "d_last10_hold",
+    "d_last10_break",
+    "d_surf_last10_hold",
+    "d_surf_last10_break",
+    "d_last10_aces_pg",
+    "d_surf_last10_aces_pg",
+    "d_last10_df_pg",
+    "d_surf_last10_df_pg",
+    "d_last10_tb_match_rate",
+    "d_last10_tb_win_pct",
+    "d_surf_last10_tb_match_rate",
+    "d_surf_last10_tb_win_pct",
+    "d_streak",
+    "d_win_rate_last_3"
+  ],
+  "rows": {
+    "total": 270,
+    "train": 162,
+    "val": 27,
+    "test": 54,
+    "train_fit": 162,
+    "early_stop": 27
+  },
+  "metrics": {
+    "val": {
+      "accuracy": 0.5925925925925926,
+      "log_loss": 0.6603625899071509,
+      "brier": 0.23303012749629287,
+      "auc": 0.6420454545454546
+    },
+    "test": {
+      "accuracy": 0.7037037037037037,
+      "log_loss": 0.5454092652126226,
+      "brier": 0.18150646930651668,
+      "auc": 0.8372252747252747
+    },
+    "test_calibrated": {
+      "accuracy": 0.7037037037037037,
+      "log_loss": 0.5454092652126226,
+      "brier": 0.18150646930651668,
+      "auc": 0.8372252747252747
+    }
+  },
+  "calibration_report": {
+    "bins": [
+      {
+        "bin_start": 0.2,
+        "bin_end": 0.3,
+        "mean_predicted": 0.23817873086496108,
+        "mean_actual": 0.10526315789473684,
+        "count": 19
+      },
+      {
+        "bin_start": 0.3,
+        "bin_end": 0.4,
+        "mean_predicted": 0.3621163418312387,
+        "mean_actual": 0.36363636363636365,
+        "count": 11
+      },
+      {
+        "bin_start": 0.4,
+        "bin_end": 0.5,
+        "mean_predicted": 0.4627102567011274,
+        "mean_actual": 1.0,
+        "count": 6
+      },
+      {
+        "bin_start": 0.5,
+        "bin_end": 0.6,
+        "mean_predicted": 0.5663964877405918,
+        "mean_actual": 0.75,
+        "count": 4
+      },
+      {
+        "bin_start": 0.6,
+        "bin_end": 0.7,
+        "mean_predicted": 0.6605850734166171,
+        "mean_actual": 1.0,
+        "count": 5
+      },
+      {
+        "bin_start": 0.7,
+        "bin_end": 0.8,
+        "mean_predicted": 0.7584414793971884,
+        "mean_actual": 0.6666666666666666,
+        "count": 9
+      }
+    ]
+  },
+  "walk_forward_cv": {
+    "folds": [
+      {
+        "accuracy": 0.5111111111111111,
+        "log_loss": 0.6929002466535779,
+        "brier": 0.24987654320987665,
+        "auc": 0.5,
+        "train_size": 45,
+        "test_size": 45,
+        "test_start": "2026-03-18",
+        "test_end": "2026-03-21"
+      },
+      {
+        "accuracy": 0.5111111111111111,
+        "log_loss": 0.6929002466535779,
+        "brier": 0.24987654320987665,
+        "auc": 0.5,
+        "train_size": 90,
+        "test_size": 45,
+        "test_start": "2026-03-21",
+        "test_end": "2026-03-23"
+      },
+      {
+        "accuracy": 0.7555555555555555,
+        "log_loss": 0.45652919584098345,
+        "brier": 0.15047933211314454,
+        "auc": 0.8740000000000001,
+        "train_size": 135,
+        "test_size": 45,
+        "test_start": "2026-03-24",
+        "test_end": "2026-03-29"
+      },
+      {
+        "accuracy": 0.6666666666666666,
+        "log_loss": 0.7727381891678136,
+        "brier": 0.2444489237632392,
+        "auc": 0.7055335968379446,
+        "train_size": 180,
+        "test_size": 45,
+        "test_start": "2026-03-29",
+        "test_end": "2026-03-31"
+      },
+      {
+        "accuracy": 0.7777777777777778,
+        "log_loss": 0.5209421406126493,
+        "brier": 0.16026014604168876,
+        "auc": 0.8478260869565217,
+        "train_size": 225,
+        "test_size": 45,
+        "test_start": "2026-03-31",
+        "test_end": "2026-04-02"
+      }
+    ],
+    "mean": {
+      "accuracy": 0.6444444444444444,
+      "log_loss": 0.6272020037857204,
+      "brier": 0.21098829766756516,
+      "auc": 0.6854719367588933
+    },
+    "std": {
+      "accuracy": 0.11504159204928699,
+      "log_loss": 0.11851891442358034,
+      "brier": 0.04556069591495874,
+      "auc": 0.16192828633142148
+    }
+  },
+  "betting_simulation": {
+    "0.55": {
+      "bets": 50,
+      "wins": 37,
+      "accuracy": 0.74,
+      "threshold": 0.55
+    },
+    "0.6": {
+      "bets": 44,
+      "wins": 35,
+      "accuracy": 0.7954545454545454,
+      "threshold": 0.6
+    },
+    "0.65": {
+      "bets": 35,
+      "wins": 29,
+      "accuracy": 0.8285714285714286,
+      "threshold": 0.65
+    },
+    "0.7": {
+      "bets": 28,
+      "wins": 23,
+      "accuracy": 0.8214285714285714,
+      "threshold": 0.7
+    }
+  },
+  "feature_importance_gain": {
+    "d_win_rate_surface": "270",
+    "market_ml_p2_implied": "135",
+    "market_ml_p1_implied": "59",
+    "d_surface_elo": "46",
+    "d_win_rate_last_20": "45",
+    "market_ml_p2_no_vig": "19",
+    "d_bp_win": "18",
+    "d_last10_break": "9",
+    "d_surf_last10_break": "5",
+    "d_elo": "0",
+    "has_p1_elo": "0",
+    "has_p2_elo": "0",
+    "has_both_elo": "0",
+    "d_experience": "0",
+    "d_rest_days": "0",
+    "d_matches_10d": "0",
+    "d_matches_30d": "0",
+    "is_clay": "0",
+    "is_grass": "0",
+    "is_grand_slam": "0",
+    "round_ordinal": "0",
+    "tournament_tier": "0",
+    "h2h_total_matches": "0",
+    "h2h_surface_matches": "0",
+    "market_ml_p1_no_vig": "0",
+    "market_ml_overround": "0",
+    "d_market_ml_no_vig": "0",
+    "d_svc_pts_w": "0",
+    "d_ret_pts_w": "0",
+    "d_ace_pg": "0",
+    "d_bp_save": "0",
+    "d_last5_hold": "0",
+    "d_last5_break": "0",
+    "d_last10_hold": "0",
+    "d_surf_last10_hold": "0",
+    "d_last10_aces_pg": "0",
+    "d_surf_last10_aces_pg": "0",
+    "d_last10_df_pg": "0",
+    "d_surf_last10_df_pg": "0",
+    "d_last10_tb_match_rate": "0",
+    "d_last10_tb_win_pct": "0",
+    "d_surf_last10_tb_match_rate": "0",
+    "d_surf_last10_tb_win_pct": "0",
+    "d_streak": "0",
+    "d_win_rate_last_3": "0"
+  },
+  "calibration": "none",
+  "optuna_tuned": false,
+  "params": {
+    "objective": "binary",
+    "metric": "binary_logloss",
+    "verbosity": -1,
+    "boosting_type": "gbdt",
+    "learning_rate": 0.05,
+    "num_leaves": 8,
+    "max_depth": 5,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0
+  }
+}

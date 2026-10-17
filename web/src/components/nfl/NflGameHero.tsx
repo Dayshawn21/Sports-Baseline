@@ -1,0 +1,51 @@
+import type { NflGameDetail, NflGameNotes, NflSlateGame, NflTeamContext } from '~/types/nfl'
+import { conditionsLabel, gameMarket, kickoffLabel, recordLabel } from '~/utils/nflGame'
+import { NFL_GAME_MODEL_CAVEAT, nflGameModelSummary, qbChangeText, qbChanges, type NflGameModelCell } from '~/utils/nflGameModel'
+
+const VENUE_LABELS: Record<string, string> = { dome: 'Dome', outdoor: 'Outdoor', retractable: 'Retractable roof' }
+
+/** `context` is undefined while the slate loads, so no record is claimed before it arrives. */
+function Team({ code, context, side }: { code: string, context: NflTeamContext | null | undefined, side: 'away' | 'home' }) {
+  return <div className={`nfl-game-hero__team is-${side}`}>
+    <span className="nfl-game-badge" aria-hidden="true">{code}</span>
+    <div><strong>{code}</strong><small>{context === undefined ? null : recordLabel(context)}</small></div>
+  </div>
+}
+
+export function NflGameHero({ detail, game }: { detail: NflGameDetail, game: NflSlateGame | null }) {
+  const venue = game ? VENUE_LABELS[game.weather.venueType] ?? game.weather.venueType : null
+  return <header className="nfl-game-hero">
+    <Team code={detail.awayTeam} context={game?.awayContext} side="away" />
+    <div className="nfl-game-hero__mid">
+      <b>{kickoffLabel(detail.startUtc)}</b>
+      <span>{detail.status === 'scheduled' ? `Week ${detail.week}` : `Week ${detail.week} · ${detail.status}`}</span>
+      {game && <span>{venue} · {conditionsLabel(game.weather)}</span>}
+    </div>
+    <Team code={detail.homeTeam} context={game?.homeContext} side="home" />
+  </header>
+}
+
+function ModelCell({ cell }: { cell: NflGameModelCell }) {
+  return <div className="is-model"><span className="nfl-game-big">{cell.model}</span><small>{cell.gap ?? 'No market to compare'}</small></div>
+}
+
+/** Market in the primary color; the team-strength model muted beneath it, never a pick. */
+export function NflGameMarketBlock({ game, notes }: { game: NflSlateGame, notes: NflGameNotes | undefined }) {
+  const market = gameMarket(game.odds, game.homeTeam, game.awayTeam)
+  const model = nflGameModelSummary(game.model, game.odds, game.homeTeam, game.awayTeam)
+  return <section className="nfl-game-card" aria-label="Market and model">
+    <div className="nfl-game-card__head"><span className="nfl-game-label">Market and model</span><span className="nfl-game-caveat">Model is context, not a pick</span></div>
+    <div className="nfl-game-mm">
+      <div /><div className="nfl-game-label">Spread</div><div className="nfl-game-label">Win probability</div><div className="nfl-game-label">Total</div>
+      <div className="nfl-game-label">Market</div>
+      {market ? [market.spread, market.winProbability, market.total].map((cell, index) =>
+        <div key={index}><span className="nfl-game-big">{cell.value}</span><small>{cell.detail}</small></div>)
+        : <div className="nfl-game-mm__empty">No book odds stored for this game yet.</div>}
+      <div className="nfl-game-label">Model</div>
+      {model ? <><ModelCell cell={model.spread} /><ModelCell cell={model.winProbability} /><ModelCell cell={model.total} /></>
+        : <div className="nfl-game-mm__empty">Model unavailable for this game.</div>}
+    </div>
+    {model && qbChanges(notes).map(change => <p key={change.team} className="nfl-game-note is-qb-change">{qbChangeText(change)}</p>)}
+    {model && <p className="nfl-game-note">{NFL_GAME_MODEL_CAVEAT}</p>}
+  </section>
+}

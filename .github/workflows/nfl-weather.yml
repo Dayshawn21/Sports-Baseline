@@ -1,0 +1,50 @@
+name: NFL Game Weather
+
+# Free Open-Meteo forecasts for outdoor games in the next 7 days, shown on the
+# NFL matchup bar. Display only: weather never feeds a projection, edge or rank.
+# 14:00 UTC lands before every kickoff window, including Sunday's 17:00 UTC.
+#
+# September through February only, matching the NFL data ingest.
+on:
+  schedule:
+    - cron: "0 14 * 1,2,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  weather:
+    name: NFL Weather Forecasts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Refresh game weather forecasts
+        run: |
+          cd api
+          python -m app.ingest.nfl_weather --days-ahead 7
+
+      # Last, and even after a failed step: the hosted demo serves stored slates
+      # and never builds one inside its 512 MB (37d). Needs migration 0045.
+      - name: Store the current NFL slates
+        if: ${{ !cancelled() }}
+        run: |
+          cd api
+          python -m app.ingest.nfl_slate_snapshot

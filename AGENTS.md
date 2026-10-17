@@ -1,0 +1,258 @@
+# AGENTS.md
+
+Instructions for AI coding agents working in this project. This is the cross-tool
+entry point: Codex, OpenCode, Cursor, GitHub Copilot, Gemini CLI, Aider, Zed,
+Windsurf, and others read `AGENTS.md`. Claude Code reads `CLAUDE.md`, which imports
+this file, so there is a single source of truth.
+
+## What this is
+
+**SportApp V2** is a tennis betting intelligence app. It ingests ATP and WTA
+matches, book odds, player stats, and props on a schedule, blends ELO, LightGBM,
+and de-vigged market probabilities into a calibrated ensemble, and surfaces the
+plays where the model disagrees with the market by enough to be worth a bet. It
+also tracks placed bets so the edge is measurable rather than assumed.
+
+Two parts: a FastAPI backend in `api/` (Python 3.11, async SQLAlchemy over
+Postgres, LightGBM/XGBoost models) and a React SPA in `web/` (React 19, Vite,
+TypeScript, Ant Design, Tailwind v4, TanStack Query).
+
+This project is built with the **AI Blueprint**, a workflow layer, not an
+app skeleton. To start a new project, scaffold the app first in an empty folder
+(create-next-app, Vite, etc.), then overlay these files on top. Never run a
+framework scaffolder inside a directory that already holds the blueprint files
+(`AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `blueprint/`); it fails
+because the directory isn't empty.
+
+The workflow is defined by the local skills and context files below.
+
+## Read these for full context
+
+- `blueprint/context/project-overview.md` - the project's source of truth
+- `blueprint/context/coding-standards.md` - conventions to follow
+- `blueprint/context/ai-interaction.md` - how to work with the user on this project
+- `blueprint/context/current-feature.md` - the one feature, fix, or rollback being built right now
+
+## Workflow
+
+Build one feature, fix, or rollback at a time, behind review gates. Each step's instructions
+are plain markdown skills any capable agent can read and follow. The workflow is
+exposed through tool-specific adapters:
+
+- Codex: `.agents/skills/<skill>/SKILL.md`
+- Claude Code: `.claude/skills/<skill>/SKILL.md`
+- GitHub Copilot: `AGENTS.md` plus `.agents/skills/<skill>/SKILL.md`
+- OpenCode: `AGENTS.md` plus the compatible `.agents/skills/` or
+  `.claude/skills/` tree already installed for the selected tools
+
+Unused adapters can be removed. Codex, GitHub Copilot, and OpenCode can share
+`.agents/`. OpenCode can also reuse `.claude/` when Claude Code is selected.
+Codex-only, Copilot-only, or OpenCode-only projects can delete `CLAUDE.md` and
+`.claude/`. Claude Code-only projects can delete `.agents/`, but should keep
+`AGENTS.md` because `CLAUDE.md` imports it. Do not duplicate the same Blueprint
+skills under `.opencode/skills/`; OpenCode already discovers the compatible
+trees.
+
+When changing shared workflow behavior, update the matching skill in both
+adapter folders so Codex, Claude Code, GitHub Copilot, and OpenCode stay aligned.
+
+Core skills:
+
+- `onboard` - tune commands, standards, visibility, ignore rules, and tool adapters after overlaying the Blueprint onto a freshly scaffolded or early project
+- `discovery` - optional deep, multi-turn planning conversation that drafts the two user-owned plans only after review and approval; direct plan writing remains fully supported
+- `doctor` - read-only Blueprint health check for setup, adapters, plans, overview freshness, and workflow drift
+- `adopt` - bootstrap the Blueprint into an existing brownfield app with shipped features
+- `overview` - distill the two planning docs into `blueprint/context/project-overview.md`
+- `brief` - read-only briefing on an upcoming build-plan feature (scope, dependencies, size) before you spec it
+- `feature` - turn a build-plan item into a spec, or propose a reviewed plan addition for a genuinely new feature
+- `debug` - reproduce and isolate a failure without editing code, then hand the evidence to `fix` or `implement`
+- `fix` - document an ad-hoc bug or change into `blueprint/context/current-feature.md`
+- `tests` - add or normalize unit testing and turn on the test gate
+- `ci` - explicitly set up one project-specific Verify command and matching automatic GitHub checks
+- `implement` - build the current spec one small, reviewed step at a time
+- `check` - prove the current spec against the running app
+- `try` - read-only manual review guide: where to go, what to click, what to expect
+- `audit` - branch-aware or full-project review across all concerns or a focused quality, security, performance, or tests lens; records findings with durable IDs and statuses in `blueprint/context/findings.md`, where open or fixed P0/P1 findings block `complete`
+- `rollback` - plan a safe reversal of a completed feature from its archive and exact git commit, with later-dependency review before code changes
+- `complete` - run the final safety pass, log features, fixes, or rollbacks under `blueprint/history/`, then merge with approval
+- `release` - optional Render or Vercel deployment readiness, local config, env review, and smoke-test planning
+- `prototype` - optional, pre-build static mockups to lock the look
+- `status` - read-only progress summary, workflow drift warning, and suggested next action
+
+In Codex, invoke these as skills (`$onboard`, `$discovery`, `$overview`, `$feature`,
+`$implement`, and so on) or ask naturally, such as "run the overview." In Claude
+Code, use the slash commands (`/onboard`, `/discovery`, `/overview`, `/feature`,
+and so on). In OpenCode or other tools without a dedicated invocation syntax,
+ask the agent to run the matching skill or follow its `SKILL.md` manually. The
+conventions in `blueprint/context/` apply however a step is invoked. `/discovery`
+is never required: users may write detailed plans directly or develop them
+through any conversation before running `/overview`.
+
+Optional explicit-only skill: `autopilot` can run one bounded spec/build/check
+and targeted-audit pass when directly invoked. It may create checkpoint commits
+on the feature or fix branch after passing steps, repair confirmed P0/P1 findings
+within scope, and rerun affected checks. It stops before `/complete`, merge, push,
+deploy, or destructive actions.
+
+Deployment is also explicit. `/release` can prepare local Render or Vercel config
+and run readiness checks, but it must stop before deploy, remote service changes,
+push, or publish unless the user gives a separate yes in the current chat.
+
+## Automatic verification
+
+Automatic GitHub checks are a separate explicit setup. `/onboard` and `/adopt`
+only report existing checks and point to `/ci` or `$ci` when none exist. Running
+`/ci` inspects the real project and defines one `Verify` command from checks that
+already exist. Use this order when available: typecheck, tests, then build. Never
+invent a test runner or another check just to fill the command.
+
+For JavaScript and TypeScript projects, prefer a package script such as `verify`
+and use the detected package manager. For other stacks, use the native task
+runner or exact combined command. Record the exact command under Commands below.
+
+The optional `.github/workflows/verify.yml` must run that same command for pull
+requests and pushes to the default branch. Preserve existing workflows, use the
+project's real runtime and install command, and grant only `contents: read` by
+default. This setup does not add local git hooks, coverage, browser tests,
+security scans, or version matrices. Those remain later project choices.
+
+GitHub branch protection or a ruleset can require the check after the repository
+is pushed, but that is a separate remote setting. Missing automatic GitHub
+checks do not make the Blueprint unusable.
+
+**This project (37c):** `verify.yml` has two jobs, `verify` (the Verify command,
+with a password-free dummy `DATABASE_URL`, since no test connects) and
+`secret-scan` (a pinned, checksum-verified gitleaks scanning the tracked tree
+and the commits the push or pull request adds). The secret scan was a deliberate
+build-plan choice for the public demo, not a default. Rename neither job without
+updating any ruleset that requires it. A failing check does not stop a push;
+GitHub push protection does, and is an owner setting best enabled once the repo
+is public (37e).
+
+## Employer interview guide maintenance
+
+Keep `docs/SportApp-Employer-Interview-Guide.md` current when completing an
+important project change. The guide is a local, untracked file (ignored since
+37e, so it never reaches the public repo); edit it on disk and never stage it.
+If it is missing on this machine, skip this section. Update the relevant
+passages in the same work as the change, without waiting for a separate
+request. This applies to:
+
+- Major features or sports becoming available, changing scope, or being removed.
+- Architecture, technology, data provider, or deployment changes.
+- Authentication, security, testing, or operational capabilities that materially
+  change how the app can be described to an employer.
+- Model validation findings, adopted or rejected signals, and changes to which
+  outputs are recommendations versus reference information.
+- Engineering decisions or measured results that provide a useful interview example.
+
+Skip cosmetic changes, routine dependency updates, and small fixes unless they
+change a claim in the guide. Check actual implementation and verification
+evidence before making claims. Keep planned, implemented, validated, and deployed
+work distinct; do not describe a partially completed spec as shipped. Preserve
+the guide's plain-language interview style and update existing explanations
+instead of appending a changelog. Mention guide updates in the work summary.
+
+These are agent maintenance instructions, not a background file watcher. They
+apply across tools through this shared file, which `CLAUDE.md` imports.
+
+## Commands
+
+Two apps, two command sets. Paths are relative to the repo root.
+
+### Web (`web/`, npm)
+
+- Dev server: `npm run dev` (http://localhost:3001, proxies `/api` to the API)
+- Build: `npm run build` (runs `tsc -b` first, so this typechecks too)
+- Preview production build: `npm run preview`
+- Test: `npm run test` (Vitest, single run)
+- Test watch: `npm run test:watch`
+
+### API (`api/`, pip + venv)
+
+- Dev server: `uvicorn app.main:app --reload` (http://127.0.0.1:8000)
+- Install: `pip install -r requirements.txt`
+- Test: `pytest`
+- Migrate: `alembic upgrade head`
+- New migration: `alembic revision -m "description"`
+
+### Ingest (`api/`, each runnable standalone)
+
+- Matches: `python -m app.ingest.livetennis --days-back 1 --days-ahead 1`
+- Odds: `python -m app.ingest.odds_api --hours-ahead 4`
+- Props: `python -m app.ingest.prizepicks`
+- NFL schedule + player stats: `python -m app.ingest.nflverse --season 2024`
+- NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve
+  stored lines to players and games without spending a provider request)
+- NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14` (add `--dry-run`
+  to report matched and stored market counts without database writes)
+- ELO: `python -m app.ingest.elo --web`
+- Player stats: `python -m app.ingest.player_stats --today-only`
+- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
+  predictions; safe to re-run, a stored prop row is skipped)
+- NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]
+  [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
+  schedule plus box scores from the last 3 days; `--season` backfills it all)
+- NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD]
+  [--end YYYY-MM-DD] [--dry-run]` (ESPN site API; default Oct 1 to today + 14;
+  stored as `game_type = 'PRE'`, never used by baselines or grading)
+- NBA props: `python -m app.ingest.prizepicks_nba [--dry-run]` (full-game
+  lines, every market line-only until 20g; add `--relink` to re-resolve stored
+  lines to players and games without a provider request)
+- NBA game odds: `python -m app.ingest.nba_odds [--days-ahead 2]
+  [--min-credits 100] [--dry-run]` (3 The Odds API credits a run, dry run
+  included; skips the paid call below the credit floor or with no game in the
+  window)
+
+### Verify (both apps, from the repo root)
+
+- Verify: `npm --prefix web run verify && cd api && python -m pytest`
+
+Web typecheck, web tests and web build, then the API tests. This is the one
+automated gate: `.github/workflows/verify.yml` runs it on every pull request
+and push to `master`. Locally, `python` must be the API venv (activate
+`api/.venv` first, or run the halves separately with
+`.venv\Scripts\python.exe -m pytest` from `api/`).
+
+No lint command is configured.
+
+### Deploy (Render, 37d)
+
+`render.yaml` defines both hosted services, deployed from the repo:
+
+- `sportapp-api`: a Python web service on the always-on `0.5c-512mb` plan in
+  Virginia, beside Neon's us-east-1. It runs `uvicorn ... --proxy-headers
+  --forwarded-allow-ips '*'` with `API_ENV=production`. Its secrets
+  (`DATABASE_URL`, `ADMIN_API_KEY`, `CORS_ORIGINS`) are entered in the
+  dashboard, never committed.
+- `sportapp-web`: a static site built with `VITE_API_BASE_URL` set to the API
+  origin. The value is read at build time, so changing it needs a web
+  redeploy.
+
+Things that are easy to get wrong:
+
+- **Memory.** The API runs on the always-on `0.5c-512mb` plan, with 512 MB.
+  Production never builds a heavy report on request; it serves copies
+  stored in `report_snapshots` and returns 503 when one is missing:
+  - `/nfl/slate`: `python -m app.ingest.nfl_slate_snapshot` (the current
+    week and the one before; `--weeks all` backfills). The four NFL
+    workflows that write slate inputs run it as their last step, so any new
+    slate input's writer must refresh it too.
+  - `/nfl/model/prop-lines`: `python -m app.ingest.nfl_model_snapshot`, run
+    by `nfl-ingest.yml`.
+
+  Keep any new heavy report off the request path the same way. In dev a
+  stored copy also wins over a live build.
+- **Ingest** stays on GitHub Actions; Render runs no cron jobs.
+- **Migrations are manual and run one command at a time** against the shared
+  Neon database. `alembic.ini` is untracked, so pass one with `-c`: it needs
+  `[alembic] script_location = <repo>/api/app/db/migrations` plus logging
+  sections, because `env.py` calls `fileConfig`.
+
+**Testing is on.** Both `npm run test` and `pytest` are real, so the test gate
+applies: a step that adds logic ships a passing test in the same diff. See the
+Testing section of `blueprint/context/coding-standards.md` for scope.
+
+`pytest` is declared in `api/requirements.txt`. In this managed Codex shell, the
+bare `pytest` command may not be on PATH; use the local venv equivalent
+`.venv\Scripts\python.exe -m pytest` from `api/` when needed.

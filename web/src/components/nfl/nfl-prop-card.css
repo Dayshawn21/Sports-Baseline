@@ -1,0 +1,341 @@
+/* NFL prop cards (build-plan 31d), after prototypes/nfl-prop-board.html.
+   The pick and edge read --nfl-green / --nfl-red, which .nfl-slate sets to gray until 27j adopts a slice. */
+
+.nfl-prop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.nfl-prop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nfl-prop-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-card-hover);
+}
+
+.nfl-prop-card.is-selected {
+  border-color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.nfl-prop-card:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.nfl-prop-card > * {
+  width: 100%;
+}
+
+.nfl-prop-card.is-dim {
+  opacity: 0.62;
+}
+
+.nfl-prop-card.is-dim.is-selected {
+  opacity: 1;
+}
+
+.nfl-prop-card__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nfl-prop-card__badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font: 600 12px var(--font-display);
+  letter-spacing: 0.05em;
+}
+
+.nfl-prop-card__name {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nfl-prop-card__name strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-prop-card__name small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-prop-card__rank {
+  flex: none;
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.nfl-prop-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.nfl-prop-card__tags .ant-tag {
+  margin: 0;
+}
+
+.nfl-prop-card__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.nfl-prop-card__line {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.nfl-prop-card__line small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nfl-prop-card__value,
+.nfl-prop-card__model {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nfl-prop-card__value b {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.nfl-prop-card__value small:last-child {
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-prop-card__edge {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.nfl-prop-card__edge small {
+  font-family: var(--font-mono);
+}
+
+.nfl-prop-card__pick {
+  color: var(--nfl-green);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.nfl-prop-card__share {
+  color: var(--nfl-green);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.nfl-prop-card__pick.is-negative,
+.nfl-prop-card__share.is-negative {
+  color: var(--nfl-red);
+}
+
+/* No edge means no side, so the dashes carry no signal color. */
+.nfl-prop-card__pick.is-none,
+.nfl-prop-card__share.is-none {
+  color: var(--text-muted);
+}
+
+.nfl-prop-card__model {
+  justify-items: end;
+  text-align: right;
+}
+
+.nfl-prop-card__model b {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Anytime-TD cards: two probabilities side by side, gray, no pick. */
+.nfl-prop-card__probs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.nfl-prop-card__probs > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nfl-prop-card__probs small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nfl-prop-card__probs b {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.nfl-prop-card__probs b.nfl-prop-card__book {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.nfl-prop-card__snap {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Last games, oldest to newest, sized on one scale with the line; the dashed mark is the line. */
+.nfl-prop-card__bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 44px;
+}
+
+.nfl-prop-card__bars > span {
+  flex: 1;
+  height: max(var(--h), 2px);
+  border-radius: 3px 3px 0 0;
+  background: var(--text-secondary);
+}
+
+.nfl-prop-card__bars > span.is-above {
+  background: var(--text-primary);
+}
+
+.nfl-prop-card__bars > span.is-below {
+  background: var(--text-muted);
+}
+
+.nfl-prop-card__bars.has-line::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: var(--line);
+  left: 0;
+  border-top: 1px dashed var(--text-secondary);
+}
+
+.nfl-prop-card__no-history {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nfl-prop-card__why {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nfl-prop-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nfl-prop-card__trust {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-card__sample {
+  font-family: var(--font-mono);
+}
+
+.nfl-prop-card__sample.is-thin {
+  color: var(--caution);
+}
+
+.nfl-prop-empty {
+  margin: 0;
+  padding: var(--space-5) 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.nfl-prop-divider {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-5) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nfl-prop-divider strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-divider small {
+  color: var(--text-muted);
+  font-size: 12px;
+}

@@ -1,0 +1,45 @@
+name: NFL Scores
+
+# Final scores and game status from the free NFLverse schedule asset, so a
+# finished game reads final on the slate the next morning instead of waiting
+# for Tuesday's nfl-ingest.yml. Daily rather than per game slot because it is
+# free and takes seconds, and catches Thursday, Saturday, Sunday and Monday games
+# alike. Schedule only: player stats still load Tuesday, so grading (27a, 27j)
+# never settles a week early.
+#
+# September through February only, matching the NFL data ingest.
+on:
+  schedule:
+    - cron: "0 13 * 1,2,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  scores:
+    name: NFL Scores
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Load NFLverse schedule and scores
+        run: |
+          cd api
+          python -m app.ingest.nflverse --schedule-only

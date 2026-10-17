@@ -1,0 +1,66 @@
+# Render Blueprint for the public read-only demo (build-plan 37d).
+# Secret values are entered in the Render dashboard (sync: false), never here.
+# Scheduled ingest stays on GitHub Actions, so no cron jobs are defined.
+# Migrations stay a manual local step: alembic.ini is untracked and the database
+# is shared with those jobs, so there is no preDeployCommand.
+
+services:
+  - type: web
+    name: sportapp-api
+    runtime: python
+    # $7/month: never sleeps, and 5x the free plan's 0.1 CPU, which made a cold
+    # NFL slate take 34 s and stall the event loop past the health check.
+    plan: 0.5c-512mb
+    # Beside Neon's us-east-1; from Oregon each slate query crossed the country.
+    region: virginia
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    # Render does not publish its proxy addresses, so every hop is trusted;
+    # without --proxy-headers all visitors would share one rate-limit bucket.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: API_ENV
+        value: production
+      # glibc gives each thread its own malloc arena; with the slate built in a
+      # worker thread, that fragmentation took the API past 512 MB (37d).
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      - key: RATE_LIMIT_DEFAULT
+        value: 120/minute
+      - key: RATE_LIMIT_HEAVY
+        value: 10/minute
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_API_KEY
+        sync: false
+      # JSON list holding the web origin, e.g. ["https://sportapp-web.onrender.com"]
+      - key: CORS_ORIGINS
+        sync: false
+      # No provider keys: only the ingest jobs on GitHub Actions read them. The
+      # one API reader of ODDS_API_KEY, the tennis live moneyline lookup, has
+      # had nothing to feed since moneyline picks went off (26d), and leaving
+      # it out keeps visitors from spending the Odds-API.io hourly quota.
+
+  - type: web
+    name: sportapp-web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: build
+    envVars:
+      # The API origin, e.g. https://sportapp-api.onrender.com, read at build time.
+      - key: VITE_API_BASE_URL
+        sync: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

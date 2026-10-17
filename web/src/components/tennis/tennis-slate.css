@@ -1,0 +1,525 @@
+/* Tennis slate (build-plan 31b), after prototypes/tennis-slate.html.
+   Scoped to .unified-tennis-page: the unified-* head and toolbar classes are
+   shared with the NFL and prop-board pages. */
+
+.unified-tennis-page .unified-page-title {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.unified-tennis-page .unified-page-head {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: var(--space-5);
+}
+
+/* ── Summary strip ── */
+
+.tennis-slate-summary {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.tennis-slate-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+}
+
+.tennis-slate-stat__label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tennis-slate-stat__value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.tennis-slate-stat.is-hero .tennis-slate-stat__value {
+  font-size: 44px;
+  line-height: 1.05;
+}
+
+.tennis-slate-stat__value.is-positive {
+  color: var(--positive);
+}
+
+.tennis-slate-stat__sub {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ── Toolbar ── */
+
+.unified-tennis-page .unified-toolbar {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.unified-tennis-page .unified-toolbar-title {
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.unified-tennis-page .unified-toolbar-summary {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.unified-tennis-page .unified-filter-button {
+  min-height: 32px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.unified-tennis-page .unified-filters .ant-select-selector,
+.unified-tennis-page .unified-filters .ant-picker {
+  border-radius: 999px;
+}
+
+/* ── Shared bits: section label, tour tag, confidence tier ── */
+
+.tennis-slate-section {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tennis-tour-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.tennis-tour-tag.is-atp { color: var(--atp-blue); background: color-mix(in srgb, var(--atp-blue) 14%, transparent); }
+.tennis-tour-tag.is-wta { color: var(--wta-pink); background: color-mix(in srgb, var(--wta-pink) 14%, transparent); }
+.tennis-tour-tag.is-challenger { color: var(--challenger-teal); background: color-mix(in srgb, var(--challenger-teal) 14%, transparent); }
+
+.tennis-tier {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.tennis-tier.is-lock { color: var(--positive); background: var(--positive-soft); }
+.tennis-tier.is-strong { color: var(--positive); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--positive) 35%, transparent); }
+.tennis-tier.is-lean { color: var(--caution); background: var(--caution-soft); }
+
+/* ── Best-pick cards ── */
+
+.tennis-pick-cards {
+  margin-bottom: var(--space-5);
+}
+
+.tennis-pick-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.tennis-pick-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tennis-pick-card:hover { background: var(--bg-card-hover); }
+.tennis-pick-card.is-selected { border-color: rgba(255, 255, 255, 0.35); }
+
+.tennis-pick-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tennis-pick-card__head strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.tennis-pick-card__meta {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tennis-pick-card__ev {
+  margin: var(--space-1) 0;
+  color: var(--positive);
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.tennis-pick-card__ev small {
+  margin-left: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.tennis-pick-card__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.tennis-pick-card__row span:first-child { color: var(--text-secondary); }
+.tennis-pick-card__row span:last-child { font-family: var(--font-mono); }
+
+.tennis-pick-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* ── Match table ── */
+
+.tennis-slate-table {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.tennis-slate-table__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.tennis-slate-table__head .tennis-slate-section {
+  margin: 0;
+}
+
+.tennis-slate-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.tennis-slate-tabs button {
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12px var(--font-body);
+  cursor: pointer;
+}
+
+.tennis-slate-tabs button.is-active {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.tennis-slate-table__scroll {
+  overflow-x: auto;
+}
+
+.tennis-slate-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tennis-slate-table th {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tennis-slate-table th:nth-child(-n+2),
+.tennis-slate-table th:nth-child(7),
+.tennis-slate-table th:nth-child(10) {
+  text-align: left;
+}
+
+.tennis-slate-table td {
+  padding: 8px var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tennis-slate-table__group td {
+  padding-top: var(--space-4);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+.tennis-slate-table__row {
+  cursor: pointer;
+  outline: none;
+}
+
+.tennis-slate-table__row:hover td,
+.tennis-slate-table__row:focus-visible td {
+  background: var(--bg-card-hover);
+}
+
+.tennis-slate-table__row.is-selected td {
+  background: var(--bg-raised);
+}
+
+.tennis-slate-table td.tennis-slate-table__time {
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.tennis-slate-table td.tennis-slate-table__players,
+.tennis-slate-table td.tennis-slate-table__pick,
+.tennis-slate-table td.tennis-slate-table__flags {
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.tennis-slate-table__players span,
+.tennis-slate-table__pair span,
+.tennis-slate-table__time span {
+  display: block;
+  line-height: 1.5;
+}
+
+.tennis-slate-table__players span:first-child {
+  font-weight: 600;
+}
+
+.tennis-slate-table__players small {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.tennis-slate-table__pair span:last-child {
+  color: var(--text-muted);
+}
+
+.tennis-slate-table__time span:first-child {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.tennis-slate-table__pick {
+  max-width: 200px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+}
+
+.tennis-slate-table__ev {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.tennis-slate-table__ev.is-play {
+  color: var(--positive);
+}
+
+.tennis-slate-table__flags span {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* ELO, ML and odds need the room of a wide screen; below it they stay on the
+   page in the selected match's panel (model breakdown and matchup odds). */
+.tennis-slate-table .is-extra {
+  display: none;
+}
+
+@media (min-width: 1680px) {
+  .tennis-slate-table .is-extra {
+    display: table-cell;
+  }
+}
+
+.tennis-slate-table__empty {
+  padding: var(--space-5) var(--space-4);
+  color: var(--text-secondary);
+}
+
+/* ── Table + side panel ──
+   The side panel is the sticky element here, so the filter toolbar scrolls with
+   the page; both sticky, the panel would slide under a toolbar whose height
+   changes when its filters wrap. */
+
+.unified-tennis-page .unified-toolbar {
+  position: static;
+}
+
+.unified-tennis-page .tennis-command-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  align-items: start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.unified-tennis-page .tennis-command-workspace {
+  position: sticky;
+  top: calc(var(--nav-height) + 16px);
+  max-height: calc(100vh - var(--nav-height) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1100px) {
+  .tennis-slate-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .unified-tennis-page .tennis-command-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .unified-tennis-page .tennis-command-workspace {
+    position: static;
+    max-height: none;
+    scroll-margin-top: calc(var(--nav-height) + 12px);
+  }
+}
+
+@media (max-width: 768px) {
+  .tennis-slate-summary {
+    gap: var(--space-2);
+  }
+
+  /* Pick cards swipe sideways instead of stacking four tall cards. */
+  .tennis-pick-cards__grid {
+    grid-auto-columns: 78%;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-1);
+  }
+
+  .tennis-pick-card {
+    scroll-snap-align: start;
+  }
+
+  /* Table rows become two lines: time and players, then best pick and EV. */
+  .tennis-slate-table thead,
+  .tennis-slate-table__row > td:not(.tennis-slate-table__time):not(.tennis-slate-table__players):not(.tennis-slate-table__pick):not(.tennis-slate-table__ev) {
+    display: none;
+  }
+
+  .tennis-slate-table table,
+  .tennis-slate-table tbody {
+    display: block;
+  }
+
+  .tennis-slate-table__group,
+  .tennis-slate-table__group td {
+    display: block;
+  }
+
+  .tennis-slate-table__row {
+    display: grid;
+    grid-template-areas:
+      "time players players"
+      "pick pick ev";
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .tennis-slate-table__row > td {
+    padding: 0;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .tennis-slate-table__row:hover,
+  .tennis-slate-table__row:focus-visible {
+    background: var(--bg-card-hover);
+  }
+
+  .tennis-slate-table__row.is-selected {
+    background: var(--bg-raised);
+  }
+
+  .tennis-slate-table td.tennis-slate-table__time { grid-area: time; }
+  .tennis-slate-table td.tennis-slate-table__players { grid-area: players; }
+  .tennis-slate-table td.tennis-slate-table__pick { grid-area: pick; max-width: none; padding-top: var(--space-1); }
+  .tennis-slate-table td.tennis-slate-table__ev { grid-area: ev; align-self: end; }
+
+  .tennis-slate-stat {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .tennis-slate-stat.is-hero .tennis-slate-stat__value {
+    font-size: 34px;
+  }
+}
