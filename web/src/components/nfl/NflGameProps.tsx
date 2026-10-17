@@ -2,7 +2,7 @@ import { Drawer, Switch } from 'antd'
 import { useMemo, useState } from 'react'
 import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { NflLineOnlyProps } from '~/components/nfl/NflLineOnlyProps'
-import { NflPropCard } from '~/components/nfl/NflPropCard'
+import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import type { NflSlateGame } from '~/types/nfl'
 import { hasKickedOff } from '~/utils/nflGame'
@@ -25,7 +25,7 @@ interface Props {
   now?: Date
 }
 
-/** The game's props as prop-board cards, ranked and scored by the week-wide board. */
+/** The game's props as prop-board rows, ranked and scored by the week-wide board. */
 export function NflGameProps({ games, game, now }: Props) {
   // One clock per visit, so the memoized board is not rebuilt on every render.
   const [mountedAt] = useState(() => new Date())
@@ -41,8 +41,6 @@ export function NflGameProps({ games, game, now }: Props) {
   const includeOther = showAll || period !== 'full_game'
   const visible = categories.filter(item => item.rateable.length > 0 || (includeOther && item.other.length > 0))
   const rateableCount = categories.reduce((total, item) => total + item.rateable.length, 0)
-  const card = (row: NflBoardLine, rank: number | null, category: typeof categories[number]['category']) =>
-    <NflPropCard key={row.lineId} row={row} rank={rank} category={category} selected={row.lineId === selected?.lineId} onOpen={setSelected} />
   return <section className="nfl-game-props" aria-label="Props for this game">
     <h2 className="nfl-game-section-title">Props <small>{rateableCount} rateable · ranks are from the week's prop board · edges stay gray until the ranking check adopts a slice</small></h2>
     <div className="nfl-game-props__toolbar">
@@ -55,10 +53,8 @@ export function NflGameProps({ games, game, now }: Props) {
     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">No modelled lines for this period and position. {period === 'full_game' && !showAll ? 'Turn on "Show all lines" for alternates and thin samples.' : ''}</div>}
     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market" aria-label={`${marketLabel(item.category.market)} lines`}>
       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
-      <div className="nfl-prop-grid">
-        {item.rateable.map(({ row, rank }) => card(row, rank, item.category))}
-        {includeOther && item.other.map(row => card(row, null, item.category))}
-      </div>
+      <NflPropTable category={item.category} now={at.getTime()} selectedLineId={selected?.lineId ?? null} onOpen={setSelected}
+        rateable={item.rateable} other={includeOther ? item.other.map(row => ({ row, rank: null })) : []} />
     </section>)}
     {/* Weekly stats are full-game totals, so partial-game line-only lines would show the wrong history. */}
     {period === 'full_game' && <NflLineOnlyProps gameId={game.gameId} position={position} />}

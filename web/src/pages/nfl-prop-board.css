@@ -138,42 +138,7 @@
   cursor: pointer;
 }
 
-/* The shared prop detail panel; the board pins a wrapper around it and stacks it under the grid
-   only at phone widths, not at the slate's 1180px. */
-.nfl-prop-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(305px, var(--nfl-detail-width));
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.nfl-prop-layout__panel {
-  position: sticky;
-  top: calc(var(--nav-height) + 16px);
-  max-height: calc(100vh - var(--nav-height) - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-margin-top: calc(var(--nav-height) + 16px);
-  border-radius: 8px;
-}
-
-.nfl-prop-board .nfl-prop-layout__panel .nfl-prop-detail {
-  position: static;
-  max-height: none;
-  overflow: hidden;
-}
-
 @media (max-width: 860px) {
-  .nfl-prop-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .nfl-prop-layout__panel {
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
-
   .nfl-prop-stat {
     flex: 1;
     min-width: 0;

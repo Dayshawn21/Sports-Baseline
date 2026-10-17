@@ -1,0 +1,88 @@
+/* Prop rows (38d) and their last-games bars. Bars are grayscale on purpose: above, below and push differ by shade, never by signal color. */
+.mini-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mini-bars-gap, 4px);
+  height: var(--mini-bars-h, 24px);
+}
+
+.mini-bars > span {
+  flex: 1;
+  height: max(var(--h), 2px);
+  border-radius: 3px 3px 0 0;
+  background: var(--text-secondary);
+}
+
+.mini-bars > span.is-above {
+  background: var(--text-primary);
+}
+
+.mini-bars > span.is-below {
+  background: var(--text-muted);
+}
+
+.mini-bars.has-line::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: var(--line);
+  left: 0;
+  border-top: 1px dashed var(--text-secondary);
+}
+
+.mini-bars__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* One prop line per row, after the slate tables (38b). Each sport sets its column widths and signal colors;
+   this file adds none. Below 1100px rows wrap to two lines: cells with order 1 to 2 lead, the rest follow. */
+.prop-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.prop-table th {
+  padding: 6px 10px; color: var(--text-muted); text-align: left; white-space: nowrap;
+  font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.prop-table td {
+  padding: 8px 10px; border-top: 1px solid var(--border-subtle); vertical-align: middle;
+  color: var(--text-primary); font: 400 13px/1.35 var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.prop-table td small { display: block; color: var(--text-muted); font: 400 11px/1.35 var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
+.prop-table .is-num { text-align: right; }
+.prop-table__rank { color: var(--text-muted); }
+.prop-table tbody tr.is-row { cursor: pointer; }
+.prop-table tbody tr.is-row:hover td { background: var(--bg-card); }
+.prop-table tbody tr.is-selected td { background: var(--bg-raised); }
+.prop-table tbody tr.is-dim td { color: var(--text-secondary); }
+.prop-table__open {
+  display: block; width: 100%; padding: 0; border: 0; background: none; color: var(--text-primary);
+  font: 700 14px/1.35 var(--font-body); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis;
+}
+.prop-table__open:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
+.prop-table__player-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.prop-table__player-name > :first-child { overflow: hidden; text-overflow: ellipsis; }
+.prop-table__player-name .ant-tag { margin: 0; }
+.prop-table__tag { padding: 0 6px; border-radius: 999px; background: var(--bg-raised); color: var(--text-secondary); font: 400 11px var(--font-body); }
+.prop-table .mini-bars { max-width: 96px; }
+.prop-table tr.prop-table__divider td { padding: 18px 10px 8px; white-space: normal; }
+.prop-table tr.prop-table__divider strong { color: var(--text-secondary); font: 600 12px var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; }
+.prop-table tr.prop-table__divider small { font-family: var(--font-body); }
+
+@media (max-width: 1100px) {
+  .prop-table, .prop-table tbody { display: block; }
+  .prop-table colgroup, .prop-table thead { display: none; }
+  .prop-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+    padding: 9px 0; border-top: 1px solid var(--border-subtle);
+  }
+  .prop-table tbody tr::before { content: ''; order: 3; flex-basis: 100%; }
+  .prop-table td { order: 4; padding: 0; border: 0; font-size: 12px; }
+  .prop-table tbody tr.is-row:hover td, .prop-table tbody tr.is-selected td { background: none; }
+  .prop-table tbody tr.is-selected { background: var(--bg-raised); }
+  .prop-table td.prop-table__lead { order: 1; }
+  .prop-table td.prop-table__player { order: 1; flex: 1 1 0; min-width: 0; }
+  .prop-table td.prop-table__end { order: 2; }
+  .prop-table td[data-label]::before { content: attr(data-label) ' '; color: var(--text-muted); font: 400 11px var(--font-body); }
+  .prop-table tr.prop-table__divider td { order: 1; flex-basis: 100%; padding: 12px 0 0; }
+  .prop-table .mini-bars { width: 72px; --mini-bars-h: 18px; }
+}

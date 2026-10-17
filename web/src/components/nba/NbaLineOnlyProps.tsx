@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
 import '~/components/nfl/nfl-prop-card.css'
+import { MiniBars } from '~/components/shared/MiniBars'
 import { useNbaLineOnlyProps } from '~/hooks/useNba'
 import { nbaLineOnlyGroups, nbaMarketLabel, nbaRecentValueLabel, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
 import { lineOnlyBars, mainRung } from '~/utils/nflLineOnly'
@@ -10,13 +10,7 @@ function rungLabel(line: number, oddsType: string | null): string {
 
 /** Recent results as gray bars, oldest to newest, with the standard line dashed. */
 export function NbaRecentBars({ row, market }: { row: Parameters<typeof lineOnlyBars>[0], market: string }) {
-  const { bars, linePct } = lineOnlyBars(row)
-  if (!bars.length) return <span className="nfl-prop-card__no-history">No earlier games</span>
-  const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
-  return <span className={`nfl-prop-card__bars${linePct === null ? '' : ' has-line'}`} style={style} aria-label={`Last ${bars.length} games`}>
-    {bars.map((bar, index) => <span key={index} className={`is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties}
-      title={`${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} />)}
-  </span>
+  return <MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} />
 }
 
 function Card({ row, market }: { row: NbaLineOnlyRow, market: string }) {

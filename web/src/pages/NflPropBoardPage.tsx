@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Drawer } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
 import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { NflMarketPills, NflPropBoardFilters, NflPropBoardHead } from '~/components/nfl/NflPropBoardControls'
-import { NflPropCardGrid } from '~/components/nfl/NflPropCard'
+import { NflPropTable } from '~/components/nfl/NflPropTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
+import { useIsMobile } from '~/hooks/useIsMobile'
 import { useNflCurrentWeek, useNflSlate } from '~/hooks/useNfl'
+import { marketLabel } from '~/utils/nflLabels'
 import type { NflPositionFilter } from '~/utils/nflPositions'
-import { buildNflPropBoard, filterNflPropBoardGames, flattenSlateLines, type NflBoardLine } from '~/utils/nflPropBoard'
+import { buildNflPropBoard, filterNflPropBoardGames, flattenSlateLines } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
-
-const STACKED_QUERY = '(max-width: 860px)'
 
 export default function NflPropBoardPage() {
   // Null follows the current week; a user's pick pins it.
@@ -22,7 +23,7 @@ export default function NflPropBoardPage() {
   const [gameFilter, setGameFilter] = useState('all')
   const [showAll, setShowAll] = useState(false)
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
   const currentWeek = useNflCurrentWeek()
   const activeSeason = season ?? currentWeek.data?.season ?? null
   const activeWeek = week ?? currentWeek.data?.week ?? null
@@ -37,17 +38,10 @@ export default function NflPropBoardPage() {
     ?? categories[0]
     ?? null
   const boardLines = category ? [...category.rateable, ...(showAll ? category.other : [])] : []
-  const selectedLine = boardLines.find(row => row.lineId === selectedLineId) ?? boardLines[0] ?? null
+  const selectedLine = boardLines.find(row => row.lineId === selectedLineId) ?? null
   const selectedGame = availableGames.find(game => game.gameId === selectedLine?.gameId) ?? null
   // A position or week change can empty the chosen market, so fall back rather than show nothing.
   useEffect(() => { setMarket(null) }, [activeSeason, activeWeek, position])
-  function selectLine(row: NflBoardLine) {
-    setSelectedLineId(row.lineId)
-    // Stacked, the panel sits below the whole grid, so bring it to the reader.
-    if (window.matchMedia(STACKED_QUERY).matches) {
-      requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-    }
-  }
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
   if (activeSeason === null || activeWeek === null || slate.isLoading) return <LoadingState message="Loading NFL prop board..." />
   if (slate.isError) return <ErrorState error={slate.error} onRetry={() => slate.refetch()} />
@@ -59,10 +53,15 @@ export default function NflPropBoardPage() {
       <NflMarketPills categories={categories} selected={category.market} onSelect={setMarket} />
       <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll}
         onPosition={setPosition} onGame={setGameFilter} onShowAll={setShowAll} />
-      <main className="nfl-prop-layout">
-        <NflPropCardGrid category={category} showAll={showAll} selectedLineId={selectedLine?.lineId ?? null} onOpen={selectLine} />
-        {selectedLine && <div className="nfl-prop-layout__panel" ref={panelRef}><NflEvidencePanel row={selectedLine} game={selectedGame} alternates={alternates.get(selectedLine.lineId) ?? []} /></div>}
+      <main>
+        {category.rateable.length === 0 && <p className="nfl-prop-table-empty">No rateable {marketLabel(category.market).toLowerCase()} lines this week.</p>}
+        <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => setSelectedLineId(row.lineId)}
+          rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
+          other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
       </main>
+      <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
+        {selectedLine && <NflEvidencePanel row={selectedLine} game={selectedGame} alternates={alternates.get(selectedLine.lineId) ?? []} />}
+      </Drawer>
     </> : <div className="nfl-empty">No upcoming prop lines for this season and week.</div>}
   </div></div>
 }

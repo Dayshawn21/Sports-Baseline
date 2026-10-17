@@ -94,8 +94,6 @@
 .nfl-line-only__market h4 { margin: 0; color: var(--text-secondary); font: 600 12px var(--font-body); }
 /* Same card as the modelled props, minus the pick, edge and model: nothing here opens a drawer. */
 .nfl-line-only-card { cursor: default; }
-.nfl-line-only-card .nfl-prop-card__name a { color: inherit; }
-.nfl-line-only-card .nfl-prop-card__name a:hover { text-decoration: underline; }
 .nfl-line-only-card__rungs { color: var(--text-secondary); font: 400 12px var(--font-mono); }
 .nfl-game-note.is-inline { padding: 0; }
 .nfl-game-note.is-qb-change { padding-bottom: 0; color: var(--caution); font-size: 12px; }
