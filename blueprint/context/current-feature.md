@@ -135,7 +135,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
     is taken from the overview or an archive.
   - Verify passes.
 
-- [ ] **Step 4b - Keep tennis best picks off the event loop (added
+- [x] **Step 4b - Keep tennis best picks off the event loop (added
   2026-10-16, owner)** - a cold `/tennis/predictions/best-picks` held the
   loop for about 4.4 s (Step 3), so visitors opening NFL right after the
   tennis landing page waited 10 to 16 s.
@@ -153,7 +153,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   - After the deploy, a concurrent `/nfl/current-week` stays under 1 s
     while a cold best-picks request runs.
 
-- [ ] **Step 5 - Create the public repo and push the snapshot (owner yes)**
+- [x] **Step 5 - Create the public repo and push the snapshot (owner yes)**
   1. **Owner:** create an empty public `Dayshawn21/Sports-Baseline`, with no README,
      license or `.gitignore`.
   2. **Me, after a separate yes:**
@@ -319,7 +319,29 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
       0.08 s.
     - **Tests:** 1 new test (a single row predicts on one thread). API
       2,597 pass and web verify passes.
-    - **Pending:** the live probe after the deploy (Step 6).
+    - **Live (after Render deployed from `Sports-Baseline`):** a cold
+      `best-picks?match_date=2026-10-17` took 1.88 s, against 5.9 s
+      before. `/health` probes every 0.25 s peaked at 0.57 s, against
+      5.35 s before.
+  - **Step 5 (2026-10-16):**
+    - **Repo:** the owner created an empty public `Dayshawn21/Sports-Baseline`.
+      The name was the owner's choice; the README and the app keep
+      "SportApp". The owner also asked whether to make the private repo
+      public instead. A full-history gitleaks scan (177 commits) found the
+      old Neon URL with its host in 3 commits, an ingest log with the old
+      Odds-API.io key in 436 lines, and the interview guide in 7 commits,
+      so the fresh snapshot was kept.
+    - **Snapshot:** checkpoint `62f07a8` on `feature/public-repo`, then
+      `git commit-tree` of its tree with no parent gave `2312f3a`. Its tree
+      is identical to the checkpoint, and it holds 988 files, with no
+      interview guide, `.env` or log.
+    - **Scans:** gitleaks `dir` on the archive and gitleaks `git` on
+      `-1 2312f3a` both found no leaks.
+    - **Remotes:** `origin` was renamed `private`, and the public repo
+      added as `origin`. The snapshot was pushed as `master` (the default
+      branch, public), and local `master` tracks it.
+    - **CI:** public Verify run 38989021876 on `2312f3a` succeeded, with
+      both the Secret scan and Verify jobs green.
 
 ## Notes for the AI
 
