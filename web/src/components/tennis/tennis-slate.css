@@ -55,6 +55,7 @@
 .tennis-tier.is-lock { color: var(--positive); background: var(--positive-soft); }
 .tennis-tier.is-strong { color: var(--positive); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--positive) 35%, transparent); }
 .tennis-tier.is-lean { color: var(--caution); background: var(--caution-soft); }
+.tennis-tier.is-neutral { color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-card); }
 
 /* ── Digest boxes (38c1): the shared strip, with a priced best bet's EV in green ── */
 

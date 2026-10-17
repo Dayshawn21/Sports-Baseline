@@ -12,11 +12,17 @@ import { getDisplayFlagLabel, getDisplayFlags } from '~/components/tennis/qualit
 import './tennis-match-detail.css'
 
 const MISSING = '--'
+const BEST_BET = 'Best bet'
 
-/** LOCK and STRONG are green; LEAN and unrated stay amber, as the old tags were orange. */
+/** Gray: no tennis tier has passed the 32b tier rule yet. */
 function ConfidenceTag({ value }: { value: string | null | undefined }) {
-  const tone = value === 'LOCK' ? 'lock' : value === 'STRONG' ? 'strong' : 'lean'
-  return <span className={`tennis-tier is-${tone}`}>{value ?? 'Review'}</span>
+  return <span className="tennis-tier is-neutral">{value ?? 'Review'}</span>
+}
+
+/** Green only for a priced best bet's positive EV, the table and digest rule. */
+function evClass(item: PickItem): string {
+  const positive = item.kind === BEST_BET && item.ev != null && item.ev > 0
+  return `tennis-detail__ev${positive ? ' is-positive' : ''}`
 }
 
 interface PickItem {
@@ -60,7 +66,7 @@ function propItem(prop: PropLine): PickItem {
  */
 function pickItems(match: UnifiedTennisMatch): PickItem[] {
   const picks = [
-    ...bestBetPicks(match).map((pick, index) => pickItem(pick, 'Best bet', index)),
+    ...bestBetPicks(match).map((pick, index) => pickItem(pick, BEST_BET, index)),
     ...anglePicks(match).map((pick, index) => pickItem(pick, 'Angle', index)),
   ]
   const props = match.props.map(propItem)
@@ -81,7 +87,7 @@ function Picks({ items }: { items: PickItem[] }) {
           {item.detail && <small>{item.detail}</small>}
           <div className="tennis-detail__cells">
             {item.cells.map((cell, index) => <span key={index}>{cell}</span>)}
-            <span className="tennis-detail__ev">{fmtEv(item.ev)}</span>
+            <span className={evClass(item)}>{fmtEv(item.ev)}</span>
             <ConfidenceTag value={item.confidence} />
           </div>
         </div>

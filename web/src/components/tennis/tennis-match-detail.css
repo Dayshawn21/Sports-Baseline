@@ -133,10 +133,12 @@
   font-size: 12px;
 }
 
-/* Every pick's EV is green here, as the old panel colored it; the table colors only a priced best bet. */
 .tennis-detail__ev {
-  color: var(--positive);
   font-weight: 600;
+}
+
+.tennis-detail__ev.is-positive {
+  color: var(--positive);
 }
 
 .tennis-detail__cells .tennis-tier {
