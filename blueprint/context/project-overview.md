@@ -16,9 +16,11 @@
 > page and slate card. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
 > public read-only demo (item 37) is complete: live on Render, with the code
-> public at `github.com/Dayshawn21/Sports-Baseline`. Next is the Lineform
-> structural redesign (item 38): one command-bar shell, table-first slates
-> and props as rows instead of cards, keeping the palette and signal rules.
+> public at `github.com/Dayshawn21/Sports-Baseline`. The Lineform structural
+> redesign (item 38) is in progress: the shared command-bar shell, all three
+> table-first slates, and NFL prop rows are shipped; tennis and NBA prop rows,
+> command search, and the final shape-consistency pass remain. The palette,
+> fonts, and signal rules stay unchanged.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
@@ -51,7 +53,7 @@ and soccer are planned.
 - route protection is a single shared `X-API-Key` on the admin routes, open by
   default on localhost; production refuses to start without one (fix
   2026-10-15, see Deployment)
-- visitors to the planned public demo (item 37) are anonymous and read-only;
+- visitors to the live public demo (item 37) are anonymous and read-only;
   the only login is the owner's, for the admin surface (37a)
 
 **Multi-user is out of scope for one to two years** (see Monetization). Do not add
@@ -680,7 +682,7 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
 - **No server key (dev):** `keyRequired` is false and the page opens with no
   card; production cannot start without a key.
 
-**Next: Lineform structural redesign (item 38, added 2026-10-16)**
+**In progress: Lineform structural redesign (item 38, added 2026-10-16)**
 
 The app is renamed Lineform and restructured so every sport shares one shape.
 **Display only:** no page changes a probability, edge, rank, sort or pick, and
@@ -692,8 +694,13 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 
 38a. **Lineform shell** *(shipped 2026-10-17)* - finish the rename from SportApp to Lineform in the UI and README; a top bar with logo, sport tabs and Slate / Props / Model / How it works on every page (replacing each page's own view switch); one shared page head (title, period, previous and next); per-route tab titles; phone menu.
 38b. **Table-first NFL slate** *(shipped 2026-10-17)* - a plays digest of the week's largest gaps (gray, labeled reference) above one dense row per game grouped by kickoff window, each row opening the game page; two-line rows on phones.
-38c. **Tennis and NBA slates on the same shape** - tennis's digest holds its priced picks (green under the existing rule) above a match table whose rows expand inline (best opportunity, model breakdown, serve and return, link to the match page), replacing the side panel; NBA's digest holds its largest gaps (gray).
-38d. **Props as tables** - the NFL game page and prop board, the tennis prop board and the NBA game page show props as dense rows (player, market, line, model, gap, last-5 mini bars, rank) instead of cards, with each prop's detail in a drawer; ranks, edges and colors unchanged.
+38c. **Tennis and NBA slates on the same shape** *(shipped 2026-10-17)* - both sports now use the shared table-first slate shape.
+38c1. **Tennis slate** *(shipped 2026-10-17)* - priced picks use the shared digest strip (green under the existing rule) above a match table whose rows expand inline with the best opportunity, model breakdown, serve and return, decision board, and match-page link; the side panel and pick cards are gone.
+38c2. **NBA slate** *(shipped 2026-10-17)* - one row per game replaces the cards, under a gray digest of upcoming standard lines ranked by normalized gap, one per player. This is the one NBA surface allowed to sort a gap; game-page props remain unranked and unsorted.
+38d. **Props as tables** *(in progress)* - replace NFL, tennis, and NBA prop cards with dense rows and evidence drawers without changing ranks, edges, or colors.
+38d1. **NFL props as rows** *(shipped 2026-10-17)* - the prop board and game-page Props use dense rows per market; the board's side panel is now the game page's evidence drawer, and gray line-only props are plain rows without a drawer. Shared row styles and mini bars are ready for tennis and NBA.
+38d2. **Tennis prop board as rows** *(next)* - one row per line with rank, player and match, line, model, hit probability against break-even, EV, tier, and trust; evidence moves to a drawer and last-five bars stay there because they require a per-match request.
+38d3. **NBA game-page props as rows** *(planned)* - gray modelled and line-only props become rows with a detail drawer, while staying unranked and unsorted under 20g2.
 38e. **Command field** - a search in the top bar, focused with `/`, that filters the current slate as you type and jumps to a game, team or player from data the page already loaded; Enter opens the top match; a search button that expands on phones.
 38f. **Shape consistency pass** - model, game, match and player pages take the shared page head; game pages get an `h1`; times read `CT` everywhere; the defects from the 2026-10-16 polish captures that survive the new shape.
 
@@ -747,6 +754,17 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 - **Not part of the rename:** the Render service names `sportapp-api` and
   `sportapp-web`, their URLs and the public repo name, which feed
   `CORS_ORIGINS` and `VITE_API_BASE_URL` (37d).
+
+**What 38c and 38d1 lock for the remaining redesign:**
+
+- Tennis, NFL, and NBA slates now share the table-first shape while preserving
+  each sport's existing signal rules: tennis priced picks may be green; NFL
+  and NBA reference gaps stay gray.
+- NBA digest sorting is a narrow slate-only exception. NBA game-page props
+  remain unranked and unsorted.
+- NFL establishes the shared prop-row and mini-bar presentation that 38d2 and
+  38d3 reuse; converting cards to rows does not change the underlying ranking,
+  edge, or color rules.
 
 **Next: tennis depth (item 16 stays open)**
 
@@ -1483,8 +1501,9 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
 
 **CI (37c):** `.github/workflows/verify.yml` on every pull request, push to
 `master` and manual run: `verify` (Node 24, Python 3.11, the Verify command)
-and `secret-scan` (gitleaks 8.28.0, checksum-pinned). Not yet run on GitHub:
-it first runs when the 37c commit is pushed.
+and `secret-scan` (gitleaks 8.28.0, checksum-pinned). Both run on the public
+repo; GitHub push protection is enabled. Keep both job names stable if a
+ruleset requires them.
 
 **API hardening (fix `api-hardening`, 2026-10-15):**
 
@@ -1788,3 +1807,10 @@ the request path the same way.
     the shared shell and table-first pages, and whether the Render services
     are ever renamed (that would change `CORS_ORIGINS` and
     `VITE_API_BASE_URL`).
+
+50. **Project-plan §7 overstates item 38's completion.** It says the app was
+    restructured with the `/` command search and props as table rows, while the
+    build plan still has 38d2 (tennis prop rows), 38d3 (NBA prop rows), 38e
+    (command search), and 38f (shape consistency) unchecked. Treat the build
+    plan as the progress authority; revise §7 to distinguish shipped and
+    planned redesign work, then re-run `/overview`.

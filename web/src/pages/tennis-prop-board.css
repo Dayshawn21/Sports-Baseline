@@ -1,20 +1,6 @@
-/* Tennis prop board layout and evidence panel (build-plan 31c). The panel keeps
-   the board's side coloring on its EV: green unless the side is UNDER. */
-
-.tennis-prop-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
-  gap: var(--space-4);
-  align-items: start;
-}
+/* Tennis prop evidence drawer (build-plan 38d2). */
 
 .tennis-prop-evidence {
-  position: sticky;
-  top: calc(var(--nav-height) + 16px);
-  max-height: calc(100vh - var(--nav-height) - 32px);
-  overflow-y: auto;
-  scroll-margin-top: calc(var(--nav-height) + 16px);
-  overscroll-behavior: contain;
   border: 1px solid var(--border-card);
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -70,6 +56,26 @@
   font-weight: 500;
 }
 
+.tennis-prop-evidence__pick {
+  color: var(--positive);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.tennis-prop-evidence__pick.is-negative { color: var(--negative); }
+.tennis-prop-evidence__pick.is-none { color: var(--text-muted); }
+
+.tennis-prop-evidence__ev {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tennis-prop-evidence__ev.is-positive { color: var(--positive); }
+.tennis-prop-evidence__ev.is-negative { color: var(--negative); }
+
 .tennis-prop-evidence__reason {
   display: grid;
   gap: 6px;
@@ -124,6 +130,7 @@
 }
 
 .tennis-prop-evidence__inputs .ant-tag {
+  max-width: 100%;
   margin: 0;
   border: 0;
   border-radius: 999px;
@@ -131,6 +138,8 @@
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .tennis-prop-form {
@@ -327,21 +336,7 @@
   font-size: 13px;
 }
 
-@media (max-width: 860px) {
-  .tennis-prop-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .tennis-prop-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tennis-prop-evidence {
-    position: static;
-    max-height: none;
-  }
-
-  /* Stacked under the grid, the panel is away from its card, so it restates the pick. */
+@media (max-width: 768px) {
   .tennis-prop-evidence__summary {
     display: flex;
   }

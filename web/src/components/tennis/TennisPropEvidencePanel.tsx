@@ -76,11 +76,11 @@ function RecentBars({ row, players }: { row: TennisBoardLine, players: PlayerRec
 /** One line for the stacked mobile layout, where the panel sits away from its card. */
 function MobileSummary({ row }: { row: TennisBoardLine }) {
   const card = propCard(row)
-  const side = card.isUnder ? ' is-under' : ''
+  const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''
   return <div className="tennis-prop-evidence__summary">
-    <span className={`tennis-prop-card__pick${side}`}>{card.pickLabel}</span>
+    <span className={`tennis-prop-evidence__pick${side}`}>{card.pickLabel}</span>
     <b>{card.valueText}</b>
-    {card.evText !== '--' && <span className={`tennis-prop-card__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>{card.evText} EV</span>}
+    {card.evText !== '--' && <span className={`tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>{card.evText} EV</span>}
   </div>
 }
 
