@@ -7,12 +7,14 @@ import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
+import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS } from '~/utils/nflLabels'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { kickoffWindows, nflSlateRow, nflSlateSummary, slateDigest } from '~/utils/nflSlate'
+import { matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import './nfl-slate.css'
 
 const MISSING = '--'
@@ -67,6 +69,23 @@ export default function NflIntelligencePage() {
   // As of now, so only games not yet kicked off can reach the digest.
   const digest = useMemo(() => slateDigest(buildNflPropBoard(games, 'all', new Date())), [games])
   const windows = useMemo(() => kickoffWindows(games), [games])
+  const { query } = useSlateCommand()
+  const orderedGames = useMemo(() => windows.flatMap(window => window.games), [windows])
+  const commandRows = useMemo(() => nflSlateCommandRows(orderedGames), [orderedGames])
+  const commandScope = useMemo(() => activeSeason === null || activeWeek === null || slate.isLoading || slate.isError
+    ? null
+    : { periodKey: `${activeSeason}-${activeWeek}`, rows: commandRows },
+  [activeSeason, activeWeek, commandRows, slate.isError, slate.isLoading])
+  useRegisterSlateCommand(commandScope)
+  const commandActive = normalizeSlateCommand(query).length > 0
+  const filteredWindows = useMemo(() => {
+    if (!commandActive) return windows
+    const gameIds = new Set(matchingSlateCommandRows(commandRows, query).map(row => Number(row.path.split('/').at(-1))))
+    return windows.flatMap(window => {
+      const matchingGames = window.games.filter(game => gameIds.has(game.gameId))
+      return matchingGames.length > 0 ? [{ ...window, games: matchingGames }] : []
+    })
+  }, [commandActive, commandRows, query, windows])
 
   // The old slate opened one game from ?gameId=; that game now has its own page.
   if (legacyGameId !== null) return <Navigate to={`/nfl/game/${legacyGameId}`} replace />
@@ -86,7 +105,8 @@ export default function NflIntelligencePage() {
     {games.length === 0 ? <div className="nfl-empty">No games loaded for this season and week.</div> : <>
       <NflSlateDigest items={digest} />
       <Legend />
-      {windows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
+      {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
+      {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
         <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
         <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />
       </section>)}

@@ -18,6 +18,9 @@ interface Props {
   /** Lifted to the page so a digest pick can switch to a tab that shows its row. */
   tab: TourTab
   onTabChange: (tab: TourTab) => void
+  /** A command query searches the already-filtered slate across local tour tabs. */
+  searchAllTabs?: boolean
+  emptyMessage?: string
 }
 
 
@@ -125,8 +128,8 @@ function DetailRow({ row, columns, showFlags }: { row: SlateRow; columns: number
 }
 
 /** The day's matches grouped by tournament, in the page's sort order; one row's detail opens inline. */
-export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle, showFlags, tab, onTabChange }: Props) {
-  const groups = tableGroups(filterByTourTab(rows, tab), grouped)
+export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
+  const groups = tableGroups(searchAllTabs ? rows : filterByTourTab(rows, tab), grouped)
   const columns = showFlags ? 10 : 9
   return (
     <section className="tennis-slate-table" aria-label="Today's tennis matches">
@@ -135,7 +138,7 @@ export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle,
         <TourTabs tab={tab} onChange={onTabChange} />
       </div>
       {groups.length === 0 ? (
-        <div className="tennis-slate-table__empty">No matches in this group.</div>
+        <div className="tennis-slate-table__empty">{emptyMessage}</div>
       ) : (
         <div className="tennis-slate-table__scroll">
           <table>

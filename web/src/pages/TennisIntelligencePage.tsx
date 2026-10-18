@@ -9,6 +9,7 @@ import PageHead from '~/components/shared/PageHead'
 import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
 import TennisSlateDigest from '~/components/tennis/TennisSlateDigest'
 import TennisSlateTable from '~/components/tennis/TennisSlateTable'
+import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
 import {
   UNIFIED_SORT_OPTIONS,
@@ -19,6 +20,7 @@ import {
 import type { TourTab } from '~/utils/tennisSlate'
 import { featuredPicks, isGroupedSort, revealTab, slateRows, tennisDigest } from '~/utils/tennisSlate'
 import { slateDateLabel } from '~/utils/nbaSlate'
+import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
 import '~/components/tennis/tennis-slate.css'
 
 type PropSource = 'prizepicks' | 'dk' | 'bet'
@@ -78,6 +80,7 @@ export default function TennisIntelligencePage() {
   const source: PropSource = adminView ? chosenSource : 'prizepicks'
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [tourTab, setTourTab] = useState<TourTab>('all')
+  const { query } = useSlateCommand()
 
   const predictionsQuery = useTennisToday({ tour, date })
   const bestPicksQuery = useBestPicks({ tour, date })
@@ -125,6 +128,23 @@ export default function TennisIntelligencePage() {
   const digest = useMemo(() => tennisDigest(featuredPicks(matches, 4)), [matches])
   const rows = useMemo(() => slateRows(matches), [matches])
 
+  // Predictions and Best Picks are the primary sources; gating on props too
+  // would let a fast props failure render the empty state mid-load.
+  const primaryLoading = predictionsQuery.isLoading || bestPicksQuery.isLoading
+  const commandRows = useMemo(() => tennisSlateCommandRows(rows), [rows])
+  const commandScope = useMemo(() => primaryLoading ? null : ({
+    periodKey: JSON.stringify({ date, tour, source, upcomingOnly, showLeans, sort }),
+    rows: commandRows,
+  }), [commandRows, date, primaryLoading, showLeans, sort, source, tour, upcomingOnly])
+  useRegisterSlateCommand(commandScope)
+
+  const commandActive = normalizeSlateCommand(query).length > 0
+  const filteredRows = useMemo(() => {
+    if (!commandActive) return rows
+    const matchingKeys = new Set(matchingSlateCommandRows(commandRows, query).map(row => row.key))
+    return rows.filter(row => matchingKeys.has(row.key))
+  }, [commandActive, commandRows, query, rows])
+
   function toggleRow(matchKey: string) {
     setExpandedKey((open) => (open === matchKey ? null : matchKey))
   }
@@ -144,10 +164,6 @@ export default function TennisIntelligencePage() {
     () => assessPropsHealth(propsQuery.data?.props ?? []),
     [propsQuery.data?.props],
   )
-
-  // Predictions and Best Picks are the primary sources; gating on props too
-  // would let a fast props failure render the empty state mid-load.
-  const primaryLoading = predictionsQuery.isLoading || bestPicksQuery.isLoading
 
   return (
     <div className="page-shell">
@@ -242,13 +258,15 @@ export default function TennisIntelligencePage() {
           <>
           <TennisSlateDigest items={digest} selectedKey={expandedKey} onSelect={openFromDigest} />
           <TennisSlateTable
-            rows={rows}
+            rows={filteredRows}
             grouped={isGroupedSort(sort)}
             expandedKey={expandedKey}
             onToggle={toggleRow}
             showFlags={adminView}
             tab={tourTab}
             onTabChange={setTourTab}
+            searchAllTabs={commandActive}
+            emptyMessage={commandActive ? 'No matches found for this slate search.' : undefined}
           />
           </>
         )}

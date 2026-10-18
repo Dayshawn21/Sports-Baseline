@@ -9,7 +9,9 @@ import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { APP_ANTD_THEME } from '~/theme/antdTheme'
 import { useAdminView } from '~/hooks/useAdmin'
-import { documentTitle, menuSections, shellNav, type ShellNav } from '~/utils/sportNav'
+import { documentTitle, menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
+import { SlateCommandProvider } from '~/components/shared/SlateCommandProvider'
+import SlateCommandField from '~/components/shared/SlateCommandField'
 
 const { Header, Content } = Layout
 
@@ -66,6 +68,7 @@ function TopBar({ nav }: { nav: ShellNav }) {
           </Link>
         ))}
       </nav>
+      <SlateCommandField />
       <ViewTabs nav={nav} />
       <nav className="shell-tabs shell-tabs--end" aria-label="More">
         {nav.links.map(link => (
@@ -83,11 +86,14 @@ function Nav() {
   const { pathname } = useLocation()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [mobileCommandOpen, setMobileCommandOpen] = useState(false)
   const adminVisible = useAdminView()
   const nav = shellNav(pathname, adminVisible)
+  const mobileCommandActive = mobileCommandOpen && sportViewForPath(pathname) === 'slate'
 
   useEffect(() => {
     setDrawerOpen(false)
+    setMobileCommandOpen(false)
     document.title = documentTitle(pathname)
   }, [pathname])
 
@@ -95,14 +101,21 @@ function Nav() {
     return (
       <>
         <Header style={{ ...HEADER_STYLE, padding: '0 20px', gap: 10 }}>
-          <Wordmark />
-          <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
-          <Button
-            type="text"
-            icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open navigation menu"
-          />
+          {mobileCommandActive ? (
+            <SlateCommandField mobile mobileExpanded onMobileExpandedChange={setMobileCommandOpen} />
+          ) : (
+            <>
+              <Wordmark />
+              <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
+              <SlateCommandField mobile onMobileExpandedChange={setMobileCommandOpen} />
+              <Button
+                type="text"
+                icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Open navigation menu"
+              />
+            </>
+          )}
         </Header>
         <ViewTabs nav={nav} className="shell-views-row" />
 
@@ -139,21 +152,23 @@ export default function App() {
   return (
     <ConfigProvider theme={APP_ANTD_THEME}>
       <HashRouter>
-        <Layout style={{ minHeight: '100vh' }}>
-          <Nav />
-          <Content style={{ background: 'transparent' }}>
-            <Routes>
-              {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
-              <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
-              <Route path="/props" element={<Navigate to="/" replace />} />
-              <Route path="/live-odds" element={<Navigate to="/" replace />} />
-              <Route path="/bets" element={<Navigate to="/" replace />} />
-              <Route path="/parlays" element={<ParlaysPage />} />
-              <Route path="/how-it-works" element={<HowItWorksPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-            </Routes>
-          </Content>
-        </Layout>
+        <SlateCommandProvider>
+          <Layout style={{ minHeight: '100vh' }}>
+            <Nav />
+            <Content style={{ background: 'transparent' }}>
+              <Routes>
+                {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
+                <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
+                <Route path="/props" element={<Navigate to="/" replace />} />
+                <Route path="/live-odds" element={<Navigate to="/" replace />} />
+                <Route path="/bets" element={<Navigate to="/" replace />} />
+                <Route path="/parlays" element={<ParlaysPage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+              </Routes>
+            </Content>
+          </Layout>
+        </SlateCommandProvider>
       </HashRouter>
     </ConfigProvider>
   )
