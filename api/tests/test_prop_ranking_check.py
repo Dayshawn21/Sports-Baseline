@@ -12,12 +12,12 @@ FETCHED = datetime(2026, 9, 27, 2, 24, tzinfo=UTC)
 
 def _frozen(line_id: int = 1, *, week: int = 3, player_id: int = 7, odds_type: str = "standard", line: float = 55.5,
             stat_value: float | None = 70.0, segment: str = "full_game", snaps: int | None = 40,
-            week_has_stats: bool = True, p_over: float | None = 0.7, model_version: str = MODEL,
+            game_has_stats: bool = True, p_over: float | None = 0.7, model_version: str = MODEL,
             over_probability_version: str | None = P_OVER) -> FrozenLine:
     graded = GradeableLine(
         line_id=line_id, season=2026, week=week, game_id=100 + player_id, player_id=player_id,
         market="receiving_yards", segment=segment, odds_type=odds_type, line=line, fetched_at=FETCHED,
-        stat_value=stat_value, offense_snaps=snaps, week_has_stats=week_has_stats,
+        stat_value=stat_value, offense_snaps=snaps, game_has_stats=game_has_stats,
     )
     return FrozenLine(
         line_id=line_id, period=week, player_id=player_id, game_id=100 + player_id, market="receiving_yards",
@@ -45,7 +45,7 @@ def test_every_line_that_cannot_be_a_call_says_why() -> None:
     cases = {
         "period_not_finished": _frozen(week=4),
         "unsettleable_segment": _frozen(segment="first_half"),
-        "week_not_loaded": _frozen(week_has_stats=False),
+        "week_not_loaded": _frozen(game_has_stats=False),
         "void_dnp": _frozen(stat_value=None, snaps=None),
         "push": _frozen(line=70.0, stat_value=70.0),
     }
@@ -100,6 +100,22 @@ def test_a_slice_that_clears_its_break_even_adopts_exactly_as_slice_verdict_says
     assert check.slices[("standard", "over")] == expected
     assert expected.verdict == "adopt"
     assert check.slices[("standard", "under")].verdict == "insufficient"
+
+
+def test_a_week_held_open_for_late_stats_leaves_a_past_200_slice_undecided() -> None:
+    # F-10: 210 standard-under picks over weeks 3-5, then a week 6 whose games
+    # are final but not all loaded. Until week 6 counts as finished, its lines
+    # never enter the sample, so the first four whole weeks are not yet fixed.
+    lines = [_frozen(i, week=3 + i % 3, player_id=i, stat_value=12.0, p_over=0.3) for i in range(210)]
+    week_six = [_frozen(1000 + i, week=6, player_id=1000 + i, stat_value=None, snaps=None, p_over=0.3)
+                for i in range(40)]
+
+    held_open = [c for f in lines + week_six if isinstance(c := to_frozen_call(f, (3, 4, 5), MODEL, P_OVER), FrozenCall)]
+    result = slice_results(held_open).slices[("standard", "under")]
+
+    assert result.n == 210
+    assert result.verdict == "insufficient"
+    assert all(to_frozen_call(f, (3, 4, 5), MODEL, P_OVER) == "period_not_finished" for f in week_six)
 
 
 def test_report_prints_the_funnel_coverage_and_an_accruing_slice() -> None:

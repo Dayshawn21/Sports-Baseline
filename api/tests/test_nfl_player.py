@@ -101,7 +101,7 @@ def test_a_position_without_a_focus_has_no_splits() -> None:
 def _result(market: str, outcome: LineOutcome, odds_type: str | None = "standard", segment: str = "full_game") -> LineResult:
     line = GradeableLine(
         line_id=1, season=2026, week=3, game_id=1, player_id=7, market=market, segment=segment, odds_type=odds_type,
-        line=60.5, fetched_at=datetime(2026, 9, 27, tzinfo=UTC), stat_value=70.0, offense_snaps=40, week_has_stats=True,
+        line=60.5, fetched_at=datetime(2026, 9, 27, tzinfo=UTC), stat_value=70.0, offense_snaps=40, game_has_stats=True,
     )
     return LineResult(line, outcome, 70.0)
 

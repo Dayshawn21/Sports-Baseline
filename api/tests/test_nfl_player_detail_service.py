@@ -30,7 +30,7 @@ def settled(game_id: int, market: str, line: float, outcome: LineOutcome, hour: 
     gradeable = GradeableLine(
         line_id=game_id * 100 + hour, season=2026, week=3, game_id=game_id, player_id=3107, market=market,
         segment="full_game", odds_type="standard", line=line, fetched_at=datetime(2026, 9, 26, hour, tzinfo=UTC),
-        stat_value=154.0, offense_snaps=50, week_has_stats=True,
+        stat_value=154.0, offense_snaps=50, game_has_stats=True,
     )
     return LineResult(replace(gradeable, **overrides), outcome, 154.0)
 

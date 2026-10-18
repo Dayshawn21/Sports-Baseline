@@ -2189,9 +2189,10 @@ async def get_gradeable_prop_lines(db: AsyncSession, season: int, player_id: int
 
     A snapshot taken after kickoff can already reflect the game, so it never
     counts. Stats and snaps are left-joined: a missing stat row is settled from
-    snaps by the grading code, and `week_has_stats` separates a player who sat
-    from a week whose stats are not loaded yet. `player_id` narrows it to one
-    player's lines for the player page.
+    snaps by the grading code, and `game_has_stats` separates a player who sat
+    from a game whose stats are not loaded yet. It is per game, not per week:
+    Thursday's stats can load before Monday's game has any. `player_id`
+    narrows it to one player's lines for the player page.
     """
     stat_columns = ", ".join(f"s.{column}" for column in _GRADED_STAT_COLUMNS)
     player_filter = "AND l.player_id = :player_id" if player_id is not None else ""
@@ -2209,18 +2210,15 @@ async def get_gradeable_prop_lines(db: AsyncSession, season: int, player_id: int
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
                   AND l.fetched_at < g.start_utc {player_filter} AND {MODELLED_MARKET_FILTER}
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
-            ),
-            loaded_weeks AS (
-                SELECT DISTINCT season, week FROM nfl_player_weekly_stats WHERE season = :season
             )
             SELECT latest.id, g.season, g.week, latest.game_id, latest.player_id, latest.market,
                    latest.segment, latest.odds_type, latest.line, latest.fetched_at,
-                   {stat_columns}, sc.offense_snaps, lw.week IS NOT NULL AS week_has_stats
+                   {stat_columns}, sc.offense_snaps,
+                   EXISTS (SELECT 1 FROM nfl_player_weekly_stats gs WHERE gs.game_id = latest.game_id) AS game_has_stats
             FROM latest
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = latest.game_id
             LEFT JOIN nfl_player_weekly_stats s ON s.player_id = latest.player_id AND s.game_id = latest.game_id
             LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = latest.player_id AND sc.game_id = latest.game_id
-            LEFT JOIN loaded_weeks lw ON lw.season = g.season AND lw.week = g.week
             ORDER BY g.week, latest.id
         """),
         params,
@@ -2237,7 +2235,7 @@ def _gradeable_line(row: RowMapping) -> GradeableLine:
         player_id=row["player_id"], market=row["market"], segment=row["segment"], odds_type=row["odds_type"],
         line=float(row["line"]), fetched_at=row["fetched_at"],
         stat_value=float(value) if value is not None else None,
-        offense_snaps=row["offense_snaps"], week_has_stats=bool(row["week_has_stats"]),
+        offense_snaps=row["offense_snaps"], game_has_stats=bool(row["game_has_stats"]),
     )
 
 
@@ -2262,19 +2260,16 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
                   AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
-            ),
-            loaded_weeks AS (
-                SELECT DISTINCT season, week FROM nfl_player_weekly_stats WHERE season = :season
             )
             SELECT frozen.id, g.season, g.week, frozen.game_id, frozen.player_id, frozen.market,
                    frozen.segment, frozen.odds_type, frozen.line, frozen.fetched_at,
-                   {stat_columns}, sc.offense_snaps, lw.week IS NOT NULL AS week_has_stats,
+                   {stat_columns}, sc.offense_snaps,
+                   EXISTS (SELECT 1 FROM nfl_player_weekly_stats gs WHERE gs.game_id = frozen.game_id) AS game_has_stats,
                    frozen.p_over, frozen.p_under, frozen.model_version, frozen.over_probability_version
             FROM frozen
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = frozen.game_id
             LEFT JOIN nfl_player_weekly_stats s ON s.player_id = frozen.player_id AND s.game_id = frozen.game_id
             LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = frozen.player_id AND sc.game_id = frozen.game_id
-            LEFT JOIN loaded_weeks lw ON lw.season = g.season AND lw.week = g.week
             ORDER BY g.week, frozen.id
         """),
         {"season": season},
@@ -2292,11 +2287,17 @@ def _frozen_line(row: RowMapping) -> FrozenLine:
 
 
 async def get_finished_weeks(db: AsyncSession, season: int) -> set[int]:
-    """Weeks whose regular-season games are all completed."""
+    """Weeks whose regular-season games are all completed, each with its stats loaded (27j's rule).
+
+    Stats load on Tuesday, after the Monday game is marked final, so a week
+    without this second check would fix a verdict sample on partial results.
+    """
     rows = await db.execute(text("""
-        SELECT week FROM sport_games
-        WHERE sport = 'nfl' AND season = :season AND game_type = 'REG'
-        GROUP BY week HAVING bool_and(status = 'completed')
+        SELECT g.week FROM sport_games g
+        WHERE g.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG'
+        GROUP BY g.week
+        HAVING bool_and(g.status = 'completed')
+           AND bool_and(EXISTS (SELECT 1 FROM nfl_player_weekly_stats s WHERE s.game_id = g.id))
     """), {"season": season})
     return {row[0] for row in rows.fetchall()}
 

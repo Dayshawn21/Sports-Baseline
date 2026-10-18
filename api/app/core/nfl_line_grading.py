@@ -49,7 +49,7 @@ class GradeableLine:
     # The market's stat from nfl_player_weekly_stats; None means the player has no row.
     stat_value: float | None
     offense_snaps: int | None
-    week_has_stats: bool
+    game_has_stats: bool
 
 
 @dataclass(frozen=True)
@@ -113,11 +113,13 @@ def settle_line(line: GradeableLine) -> LineResult:
 
     NFLverse weekly stats hold only players who recorded something, so a player
     with snaps and no stat row recorded zero. With neither, the player sat, and
-    PrizePicks voids the line rather than grading it as an under.
+    PrizePicks voids the line rather than grading it as an under. Both readings
+    hold only once the game's stats file is loaded, so a game without any stat
+    row settles nothing yet (its outcome keeps the API's `week_not_loaded` name).
     """
     if line.segment != "full_game":
         return LineResult(line, "unsettleable_segment", None)
-    if not line.week_has_stats:
+    if not line.game_has_stats:
         return LineResult(line, "week_not_loaded", None)
     actual = line.stat_value
     if actual is None and line.offense_snaps:

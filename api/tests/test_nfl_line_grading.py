@@ -17,7 +17,7 @@ def _line(line_id: int = 1, **overrides: object) -> GradeableLine:
     base = GradeableLine(
         line_id=line_id, season=2026, week=2, game_id=3, player_id=9, market="receptions",
         segment="full_game", odds_type="standard", line=4.5, fetched_at=FETCHED,
-        stat_value=6.0, offense_snaps=51, week_has_stats=True,
+        stat_value=6.0, offense_snaps=51, game_has_stats=True,
     )
     return replace(base, **overrides)
 
@@ -54,8 +54,14 @@ def test_no_stat_row_and_no_snaps_is_a_void_not_an_under(snaps: int | None) -> N
     assert (result.outcome, result.actual) == ("void_dnp", None)
 
 
-def test_a_week_without_loaded_stats_is_not_read_as_everyone_sitting() -> None:
-    assert settle_line(_line(stat_value=None, offense_snaps=None, week_has_stats=False)).outcome == "week_not_loaded"
+def test_a_game_without_loaded_stats_is_not_read_as_everyone_sitting() -> None:
+    assert settle_line(_line(stat_value=None, offense_snaps=None, game_has_stats=False)).outcome == "week_not_loaded"
+
+
+def test_snaps_on_a_game_without_loaded_stats_are_not_read_as_zero() -> None:
+    result = settle_line(_line(stat_value=None, offense_snaps=44, game_has_stats=False))
+
+    assert (result.outcome, result.actual) == ("week_not_loaded", None)
 
 
 def test_a_first_half_line_is_counted_but_not_settled() -> None:

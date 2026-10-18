@@ -11,7 +11,7 @@ def _line(line_id: int, **overrides: object) -> GradeableLine:
     base = GradeableLine(
         line_id=line_id, season=2026, week=2, game_id=3, player_id=line_id, market="receptions",
         segment="full_game", odds_type="standard", line=4.5, fetched_at=FETCHED,
-        stat_value=6.0, offense_snaps=50, week_has_stats=True,
+        stat_value=6.0, offense_snaps=50, game_has_stats=True,
     )
     return replace(base, **overrides)
 

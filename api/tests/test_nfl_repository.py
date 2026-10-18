@@ -867,7 +867,7 @@ def _gradeable_row(**overrides: object) -> dict[str, object]:
         "id": 7, "season": 2026, "week": 2, "game_id": 3, "player_id": 9, "market": "receptions",
         "segment": "full_game", "odds_type": "standard", "line": Decimal("4.5"),
         "fetched_at": datetime(2026, 9, 20, 15, 0, tzinfo=UTC), **stats, "receptions": 6,
-        "offense_snaps": 51, "week_has_stats": True,
+        "offense_snaps": 51, "game_has_stats": True,
     } | overrides
 
 
@@ -884,7 +884,11 @@ def test_gradeable_lines_take_the_last_pre_kickoff_snapshot_of_completed_games()
     assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
     assert "LEFT JOIN nfl_player_weekly_stats s ON s.player_id = latest.player_id AND s.game_id = latest.game_id" in sql
     assert "LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = latest.player_id AND sc.game_id = latest.game_id" in sql
-    assert (line.line, line.stat_value, line.offense_snaps, line.week_has_stats) == (4.5, 6.0, 51, True)
+    assert (
+        "EXISTS (SELECT 1 FROM nfl_player_weekly_stats gs WHERE gs.game_id = latest.game_id) AS game_has_stats" in sql
+    )
+    assert "loaded_weeks" not in sql
+    assert (line.line, line.stat_value, line.offense_snaps, line.game_has_stats) == (4.5, 6.0, 51, True)
 
 
 def test_frozen_lines_take_the_latest_pre_kickoff_frozen_row_of_each_provider_prop() -> None:
@@ -899,6 +903,10 @@ def test_frozen_lines_take_the_latest_pre_kickoff_frozen_row_of_each_provider_pr
     assert "DISTINCT ON (l.provider, l.provider_prop_id)" in sql
     assert "l.fetched_at < g.start_utc AND p.generated_at < g.start_utc" in sql
     assert "g.status = 'completed'" in sql and "g.game_type = 'REG'" in sql
+    assert (
+        "EXISTS (SELECT 1 FROM nfl_player_weekly_stats gs WHERE gs.game_id = frozen.game_id) AS game_has_stats" in sql
+    )
+    assert "loaded_weeks" not in sql
     assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC" in sql
     # Settled here: 6 receptions against 4.5.
     assert frozen == FrozenLine(
@@ -907,14 +915,16 @@ def test_frozen_lines_take_the_latest_pre_kickoff_frozen_row_of_each_provider_pr
     )
 
 
-def test_finished_weeks_are_those_with_every_regular_season_game_completed() -> None:
+def test_finished_weeks_need_every_regular_season_game_completed_and_its_stats_loaded() -> None:
     session = _ScriptedSession([(1,), (2,)])
 
     weeks = asyncio.run(nfl_repository.get_finished_weeks(cast(AsyncSession, session), 2026))
 
     [(sql, params)] = session.calls
     assert params == {"season": 2026}
-    assert "GROUP BY week HAVING bool_and(status = 'completed')" in sql and "game_type = 'REG'" in sql
+    assert "g.sport = 'nfl'" in sql and "g.game_type = 'REG'" in sql and "GROUP BY g.week" in sql
+    assert "bool_and(g.status = 'completed')" in sql
+    assert "bool_and(EXISTS (SELECT 1 FROM nfl_player_weekly_stats s WHERE s.game_id = g.id))" in sql
     assert weeks == {1, 2}
 
 
