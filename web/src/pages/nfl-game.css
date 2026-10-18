@@ -2,6 +2,7 @@
 
 .nfl-game-crumb { display: inline-block; margin-bottom: 14px; color: var(--text-secondary); font-size: 12px; }
 .nfl-game-crumb:hover { color: var(--text-primary); }
+.nfl-game-crumb:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
 
 .nfl-game-empty { padding: 20px; border: 1px dashed var(--border-card); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 13px; }
 .nfl-game-empty.is-page { max-width: 620px; margin-top: 24px; }
@@ -12,10 +13,9 @@
 }
 .nfl-game-hero__team { display: flex; align-items: center; gap: 14px; }
 .nfl-game-hero__team.is-home { flex-direction: row-reverse; text-align: right; }
-.nfl-game-hero__team strong { display: block; font: 800 40px/1 var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.nfl-game-hero__team strong { display: block; font: 700 18px/1.2 var(--font-display); }
 .nfl-game-hero__team small { display: block; min-height: 1.4em; color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
 .nfl-game-hero__mid { display: grid; gap: 3px; text-align: center; color: var(--text-secondary); font-size: 12px; }
-.nfl-game-hero__mid b { color: var(--text-primary); font: 800 14px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
 
 .nfl-game-badge {
   display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%;
@@ -60,7 +60,6 @@
   .nfl-game-hero { grid-template-columns: 1fr; gap: 12px; }
   .nfl-game-hero__team.is-home { flex-direction: row; text-align: left; }
   .nfl-game-hero__mid { text-align: left; }
-  .nfl-game-hero__team strong { font-size: 30px; }
   .nfl-game-mm { grid-template-columns: 64px repeat(3, minmax(0, 1fr)); }
   .nfl-game-mm > div { padding: 8px 6px; }
   .nfl-game-big { font-size: 16px; }

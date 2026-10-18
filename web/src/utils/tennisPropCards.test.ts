@@ -29,7 +29,7 @@ describe('propCard', () => {
   it('shows a standard prop the way the table cells did', () => {
     const card = propCard(row())
     expect(card).toMatchObject({
-      key: 'prizepicks-7', playerName: 'Ben Shelton', meta: 'Ben Shelton vs Jakub Mensik · Tokyo', startText: 'Sep 29, 12:10 AM CDT',
+      key: 'prizepicks-7', playerName: 'Ben Shelton', meta: 'Ben Shelton vs Jakub Mensik · Tokyo', startText: 'Sep 29, 12:10 AM CT',
       confidence: 'STRONG', payoutTier: 'standard', isUnder: false, pickLabel: 'OVER', valueLabel: 'Line', valueText: '11.5', unit: 'aces',
       projectionText: '13.4', hitPct: 66, breakEvenPct: 57.7, breakEvenLabel: 'Break-even 57.7% · standard', evText: '+14.4%', evTone: 'positive',
       opponentText: 'Opp allows 0.6', trust: 'Ready', source: 'PrizePicks', sampleText: 'n=34',
@@ -107,9 +107,17 @@ describe('propCard', () => {
 })
 
 describe('startLabel', () => {
-  it('formats in Central time and says when the start is unknown', () => {
-    expect(startLabel('2026-09-28T15:00:00Z')).toBe('Sep 28, 10:00 AM CDT')
-    expect(startLabel(null)).toBe('Time unavailable')
+  it.each([
+    ['2026-01-15T18:00:00Z', 'Jan 15, 12:00 PM CT'],
+    ['2026-07-15T18:00:00Z', 'Jul 15, 1:00 PM CT'],
+    ['2026-07-01T04:30:00Z', 'Jun 30, 11:30 PM CT'],
+    ['2026-07-01T05:00:00Z', 'Jul 1, 12:00 AM CT'],
+  ])('formats %s with the Central date and offset', (value, expected) => {
+    expect(startLabel(value)).toBe(expected)
+  })
+
+  it.each([null, '', 'not a date', '2026-99-99T00:00:00Z'])('handles an unavailable start: %s', value => {
+    expect(startLabel(value)).toBe('Time unavailable')
   })
 })
 

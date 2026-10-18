@@ -9,7 +9,8 @@ import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { APP_ANTD_THEME } from '~/theme/antdTheme'
 import { useAdminView } from '~/hooks/useAdmin'
-import { documentTitle, menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
+import { menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
+import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
 import { SlateCommandProvider } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
 
@@ -94,7 +95,6 @@ function Nav() {
   useEffect(() => {
     setDrawerOpen(false)
     setMobileCommandOpen(false)
-    document.title = documentTitle(pathname)
   }, [pathname])
 
   if (isMobile) {
@@ -152,23 +152,25 @@ export default function App() {
   return (
     <ConfigProvider theme={APP_ANTD_THEME}>
       <HashRouter>
-        <SlateCommandProvider>
-          <Layout style={{ minHeight: '100vh' }}>
-            <Nav />
-            <Content style={{ background: 'transparent' }}>
-              <Routes>
-                {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
-                <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
-                <Route path="/props" element={<Navigate to="/" replace />} />
-                <Route path="/live-odds" element={<Navigate to="/" replace />} />
-                <Route path="/bets" element={<Navigate to="/" replace />} />
-                <Route path="/parlays" element={<ParlaysPage />} />
-                <Route path="/how-it-works" element={<HowItWorksPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-              </Routes>
-            </Content>
-          </Layout>
-        </SlateCommandProvider>
+        <DocumentTitleProvider>
+          <SlateCommandProvider>
+            <Layout style={{ minHeight: '100vh' }}>
+              <Nav />
+              <Content style={{ background: 'transparent' }}>
+                <Routes>
+                  {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
+                  <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
+                  <Route path="/props" element={<Navigate to="/" replace />} />
+                  <Route path="/live-odds" element={<Navigate to="/" replace />} />
+                  <Route path="/bets" element={<Navigate to="/" replace />} />
+                  <Route path="/parlays" element={<ParlaysPage />} />
+                  <Route path="/how-it-works" element={<HowItWorksPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                </Routes>
+              </Content>
+            </Layout>
+          </SlateCommandProvider>
+        </DocumentTitleProvider>
       </HashRouter>
     </ConfigProvider>
   )

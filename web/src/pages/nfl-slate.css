@@ -10,7 +10,15 @@
 }
 .nfl-slate__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; color: var(--text-muted); font-size: 11px; }
 .nfl-slate__legend b { color: var(--text-secondary); font-weight: 600; }
-.nfl-slate-window { margin-top: 28px; }
+.nfl-slate-window {
+  min-width: 0;
+  margin-top: 28px;
+  padding: var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
 .nfl-slate-window__title {
   display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
   color: var(--text-secondary); font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;

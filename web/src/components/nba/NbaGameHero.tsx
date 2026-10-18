@@ -1,14 +1,11 @@
 import type { NbaGameDetail } from '~/types/nba'
 import type { NbaSlateCardModel, NbaSlateCardTeam } from '~/utils/nbaSlate'
 import { nbaGameMarket } from '~/utils/nbaGame'
-import { kickoffLabel } from '~/utils/nflGame'
-
-const GAME_TYPE_LABELS: Record<NbaGameDetail['gameType'], string | null> = { REG: null, PIN: 'Play-in', PST: 'Playoffs' }
 
 function Team({ team, side }: { team: NbaSlateCardTeam, side: 'away' | 'home' }) {
   return <div className={`nfl-game-hero__team is-${side}`}>
     <span className="nfl-game-badge" aria-hidden="true">{team.code}</span>
-    <div><strong>{team.code}</strong><small>{team.name} · {team.record}</small></div>
+    <div><strong>{team.name}</strong><small>{team.record}</small></div>
   </div>
 }
 
@@ -20,18 +17,15 @@ function Score({ card }: { card: NbaSlateCardModel }) {
   </span>
 }
 
-/** Teams, records and tip time; the score once final. Reads the slate card model, so page and card agree. */
-export function NbaGameHero({ detail, card }: { detail: NbaGameDetail, card: NbaSlateCardModel }) {
-  const meta = [GAME_TYPE_LABELS[detail.gameType], card.stateLabel].filter(Boolean).join(' · ')
-  return <header className="nfl-game-hero">
+/** Supporting team records and final score, read from the slate card model. */
+export function NbaGameHero({ card }: { card: NbaSlateCardModel }) {
+  return <div className="nfl-game-hero" role="group" aria-label="Team records and score">
     <Team team={card.away} side="away" />
     <div className="nfl-game-hero__mid">
       <Score card={card} />
-      <b>{kickoffLabel(detail.startUtc)}</b>
-      {meta && <span>{meta}</span>}
     </div>
     <Team team={card.home} side="home" />
-  </header>
+  </div>
 }
 
 /** Market only: NBA has no model row until 20g. */

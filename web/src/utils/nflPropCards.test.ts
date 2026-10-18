@@ -100,7 +100,7 @@ describe('nflPropCard', () => {
 
   it('adds kickoff and a partial segment to the meta', () => {
     const card = nflPropCard(row({ segment: 'first_half', startUtc: '2026-10-04T17:00:00Z' }), null, 26.5, NOW)
-    expect(card.meta).toBe('WR · MIA @ LAC · 12:00 PM CDT · 1st half')
+    expect(card.meta).toBe('WR · MIA @ LAC · 12:00 PM CT · 1st half')
   })
 
   it('flags a thin sample and passes flags through, minus the historical baseline', () => {

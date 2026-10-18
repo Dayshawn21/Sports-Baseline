@@ -2,22 +2,32 @@ import { describe, expect, it } from 'vitest'
 import { formatHistoryValue, formatKickoffTime, formatProjection, formatTime, matchupAllowedLabel } from './nflLabels'
 
 describe('formatTime', () => {
-  it('formats kickoff times in Central Time', () => {
-    expect(formatTime('2026-09-17T20:15:00Z')).toBe('9/17/2026, 3:15:00 PM CDT')
+  it.each([
+    ['2026-01-15T18:00:00Z', '1/15/2026, 12:00:00 PM CT'],
+    ['2026-07-15T18:00:00Z', '7/15/2026, 1:00:00 PM CT'],
+    ['2026-07-01T04:30:00Z', '6/30/2026, 11:30:00 PM CT'],
+    ['2026-07-01T05:00:00Z', '7/1/2026, 12:00:00 AM CT'],
+  ])('formats %s with the Central date and offset', (value, expected) => {
+    expect(formatTime(value)).toBe(expected)
   })
 
-  it('handles a missing kickoff time', () => {
-    expect(formatTime(null)).toBe('Start time unavailable')
+  it.each([null, '', 'not a date', '2026-99-99T00:00:00Z'])('handles an unavailable kickoff: %s', value => {
+    expect(formatTime(value)).toBe('Start time unavailable')
   })
 })
 
 describe('formatKickoffTime', () => {
-  it('shows a compact Central kickoff time for board rows', () => {
-    expect(formatKickoffTime('2026-09-20T17:00:00Z')).toBe('12:00 PM CDT')
+  it.each([
+    ['2026-01-15T18:00:00Z', '12:00 PM CT'],
+    ['2026-07-15T18:00:00Z', '1:00 PM CT'],
+    ['2026-07-01T04:30:00Z', '11:30 PM CT'],
+    ['2026-07-01T05:00:00Z', '12:00 AM CT'],
+  ])('shows a compact Central kickoff for %s', (value, expected) => {
+    expect(formatKickoffTime(value)).toBe(expected)
   })
 
-  it('returns no label when the kickoff is unavailable', () => {
-    expect(formatKickoffTime(null)).toBe('')
+  it.each([null, '', 'not a date', '2026-99-99T00:00:00Z'])('returns no label for an unavailable kickoff: %s', value => {
+    expect(formatKickoffTime(value)).toBe('')
   })
 })
 

@@ -1,34 +1,8 @@
-.tennis-player-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-.tennis-player-head .tennis-match-badge { width: 64px; height: 64px; font-size: 16px; }
-.tennis-player-id { flex: 1 1 200px; min-width: 0; }
-.tennis-player-name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 40px;
-  line-height: 1;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-.tennis-player-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
 .tennis-player-next { margin-left: auto; text-align: right; }
 .tennis-player-next__label { font-size: 12px; color: var(--text-muted); }
 .tennis-player-next a { font-weight: 500; color: var(--text-primary); text-decoration: none; }
 .tennis-player-next a:hover { text-decoration: underline; }
+.tennis-player-next a:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
 .tennis-player-next__time { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
 
 .tennis-player-layout {
@@ -145,8 +119,6 @@
   .tennis-player-layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 720px) {
-  .tennis-player-head { flex-wrap: wrap; }
-  .tennis-player-name { font-size: 32px; }
   .tennis-player-next { margin-left: 0; flex-basis: 100%; text-align: left; }
   .tennis-player-elo { padding: var(--space-4); }
   .tennis-player-elo__big { font-size: 44px; }

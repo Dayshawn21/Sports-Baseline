@@ -24,7 +24,7 @@ function MarketPanel({ history, detail, now }: { history: NflLineHistory, detail
   const current = lineText(history, chart.current, detail)
   return <figure className="nfl-line-panel">
     <figcaption>
-      <span className="nfl-game-label">{MARKET_TITLES[history.market]}</span>
+      <span className="nfl-game-label">{MARKET_TITLES[history.market]} (CT)</span>
       <strong>{chart.move === 0 ? `${current}, no move` : `${opened} → ${current}`}</strong>
     </figcaption>
     <svg className="nfl-line-panel__plot" viewBox="0 0 100 100" preserveAspectRatio="none" role="img"

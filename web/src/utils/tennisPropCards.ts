@@ -28,10 +28,11 @@ export interface TennisPropCardModel {
   sampleText: string
 }
 
-const START_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' })
+const START_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
 
 export function startLabel(value: string | null): string {
-  return value ? START_FORMAT.format(new Date(value)) : 'Time unavailable'
+  const time = value ? Date.parse(value) : Number.NaN
+  return Number.isNaN(time) ? 'Time unavailable' : `${START_FORMAT.format(time)} CT`
 }
 
 function clampPct(value: number | null | undefined): number | null {

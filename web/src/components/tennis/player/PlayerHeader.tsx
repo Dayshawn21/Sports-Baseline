@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
+import PageHead from '~/components/shared/PageHead'
 import type { PlayerDetail } from '~/types/tennis'
 import { fmtStartCT } from '~/utils/format'
 import { ageOn } from '~/utils/tennisPlayer'
-import { playerBadge } from '~/utils/tennisMatch'
 import { tourTone } from '~/utils/tennisSlate'
 import '~/components/tennis/tennis-slate.css'
 
@@ -30,16 +30,9 @@ export default function PlayerHeader({ player, now }: { player: PlayerDetail, no
     age != null ? `age ${age}` : null,
   ].filter(Boolean)
   return (
-    <header className="tennis-player-head">
-      <span className="tennis-match-badge" aria-hidden="true">{playerBadge(player)}</span>
-      <div className="tennis-player-id">
-        <h1 className="tennis-player-name">{player.name}</h1>
-        <div className="tennis-player-meta">
-          <span className={`tennis-tour-tag${tone ? ` is-${tone}` : ''}`}>{player.tour}</span>
-          {meta.length > 0 && <span>{meta.join(' · ')}</span>}
-        </div>
-      </div>
-      <NextMatch next={player.nextMatch} />
-    </header>
+    <PageHead title={player.name}
+      meta={<><span className={`tennis-tour-tag${tone ? ` is-${tone}` : ''}`}>{player.tour}</span>
+        {meta.length > 0 && <> · {meta.join(' · ')}</>}</>}
+      actions={<NextMatch next={player.nextMatch} />} />
   )
 }

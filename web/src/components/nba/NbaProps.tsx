@@ -18,7 +18,7 @@ export function NbaProps({ gameId }: { gameId: number }) {
     <h3 className="nfl-game-label">Props <small>reference projection · gray until the ranking check adopts a slice</small></h3>
     {query.isLoading && <p className="nfl-line-only__status">Loading props...</p>}
     {query.isError && <p className="nfl-line-only__status">Props could not load.</p>}
-    {groups.map(group => <div key={group.market} className="nfl-line-only__market">
+    {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{nbaMarketLabel(group.market)}</h4>
       <NbaPropTable market={group.market} cards={group.cards}
         selectedPlayerId={selected?.market === group.market ? selected.card.playerId : null}

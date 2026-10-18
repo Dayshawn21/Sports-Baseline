@@ -2,21 +2,13 @@
    injury tags alone take a warning color, and edges are gray through the shared .nfl-slate root. */
 .nfl-player-crumb { display: inline-block; margin-bottom: 14px; color: var(--text-secondary); font-size: 12px; }
 .nfl-player-crumb:hover { color: var(--text-primary); }
+.nfl-player-crumb:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
 .nfl-player-empty { padding: 20px; border: 1px dashed var(--border-card); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 13px; }
 .nfl-player-empty.is-page { max-width: 620px; margin-top: 24px; }
 .nfl-player-note { margin: 8px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 
-.nfl-player-head {
-  display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;
-  gap: 20px 32px; padding-bottom: 20px; margin-bottom: 18px; border-bottom: 1px solid var(--border-subtle);
-}
 .nfl-player-stats .stat-chip__label { font-size: 11px; }
-.nfl-player-who { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.nfl-player-badge {
-  display: grid; place-items: center; flex: none; width: 60px; height: 60px; border-radius: 50%;
-  background: var(--bg-raised); color: var(--text-secondary); font: 800 18px var(--font-display); letter-spacing: 0.04em;
-}
-.nfl-player-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.nfl-player-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--space-4); }
 .nfl-player-tag {
   padding: 1px 6px; border: 1px solid var(--border-card); border-radius: 3px;
   color: var(--text-secondary); font: 600 11px var(--font-body); white-space: nowrap;
@@ -94,8 +86,6 @@
 @media (max-width: 1000px) { .nfl-player-grid, .nfl-player-grid.is-record { grid-template-columns: 1fr; } }
 
 @media (max-width: 600px) {
-  .nfl-player-head { align-items: stretch; flex-direction: column; }
   .nfl-player .nfl-player-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .nfl-player-badge { width: 48px; height: 48px; font-size: 15px; }
   .nfl-player-tag { white-space: normal; }
 }

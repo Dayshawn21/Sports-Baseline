@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { fmtStartCT } from '~/utils/format'
+import { fmtDateCT, fmtStartCT, fmtTimeCT } from '~/utils/format'
 
 // 2026-08-25T18:00:00Z == 1:00 PM America/Chicago (CDT, UTC-5)
 const NOW = Date.parse('2026-08-25T18:00:00Z')
+
+describe('Central clock and date labels', () => {
+  it.each([
+    ['2026-01-15T18:00:00Z', '12:00 PM CT', 'Thu, Jan 15'],
+    ['2026-07-15T18:00:00Z', '1:00 PM CT', 'Wed, Jul 15'],
+    ['2026-07-01T04:30:00Z', '11:30 PM CT', 'Tue, Jun 30'],
+    ['2026-07-01T05:00:00Z', '12:00 AM CT', 'Wed, Jul 1'],
+  ])('keeps the Central offset and calendar day for %s', (value, time, date) => {
+    expect(fmtTimeCT(value)).toBe(time)
+    expect(fmtDateCT(value)).toBe(date)
+  })
+
+  it.each([null, undefined, '', 'not a date'])('omits unavailable clock and date labels: %s', value => {
+    expect(fmtTimeCT(value)).toBe('')
+    expect(fmtDateCT(value)).toBe('')
+  })
+})
 
 describe('fmtStartCT', () => {
   it('shows time alone for a match later today', () => {

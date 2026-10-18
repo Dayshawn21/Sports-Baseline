@@ -17,7 +17,7 @@ export function NbaLineOnlyProps({ gameId }: { gameId: number }) {
     <h3 className="nfl-game-label">Other lines <small>not modelled · recent results only</small></h3>
     {query.isLoading && <p className="nfl-line-only__status">Loading lines...</p>}
     {query.isError && <p className="nfl-line-only__status">Lines could not load.</p>}
-    {groups.map(group => <div key={group.market} className="nfl-line-only__market">
+    {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{nbaMarketLabel(group.market)}</h4>
       <NbaLineOnlyTable market={group.market} rows={group.rows}
         selectedPlayerId={selected?.market === group.market ? selected.row.playerId : null}

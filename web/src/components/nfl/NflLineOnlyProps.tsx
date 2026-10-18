@@ -39,7 +39,7 @@ export function NflLineOnlyProps({ gameId, position }: { gameId: number, positio
     <h3 className="nfl-game-label">Other lines <small>not modelled · recent results only</small></h3>
     {query.isLoading && <p className="nfl-line-only__status">Loading other lines...</p>}
     {query.isError && <p className="nfl-line-only__status">Other lines could not load.</p>}
-    {groups.map(group => <div key={group.market} className="nfl-line-only__market">
+    {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{marketLabel(group.market)}</h4>
       <table className="prop-table nfl-line-only-table" aria-label={`${marketLabel(group.market)} lines`}>
         <colgroup><col className="is-player" /><col className="is-line" /><col className="is-also" /><col className="is-bars" /><col className="is-over" /></colgroup>

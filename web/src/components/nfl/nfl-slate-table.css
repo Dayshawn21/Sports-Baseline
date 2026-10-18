@@ -23,7 +23,7 @@
 }
 .nfl-slate-table td small { display: block; color: var(--text-muted); font: 400 11px/1.35 var(--font-mono); }
 .nfl-slate-table tbody tr { cursor: pointer; }
-.nfl-slate-table tbody tr:hover td { background: var(--bg-card); }
+.nfl-slate-table tbody tr:hover td { background: var(--bg-card-hover); }
 .nfl-slate-table .is-num { text-align: right; }
 .nfl-slate-table .is-muted, .nfl-slate-table .nfl-slate-table__kickoff { color: var(--text-muted); }
 .nfl-slate-table__game a { color: var(--text-primary); font: 700 14px/1.35 var(--font-body); }
@@ -45,6 +45,7 @@
   .nfl-slate-table tbody tr::before { content: ''; order: 3; flex-basis: 100%; }
   .nfl-slate-table td { padding: 0; border: 0; font-size: 12px; overflow: visible; }
   .nfl-slate-table tbody tr:hover td { background: none; }
+  .nfl-slate-table tbody tr:hover { background: var(--bg-card-hover); }
   .nfl-slate-table__kickoff { order: 1; }
   .nfl-slate-table .nfl-slate-table__kickoff small { display: inline; margin-left: 6px; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }

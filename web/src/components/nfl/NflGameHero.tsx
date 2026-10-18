@@ -1,5 +1,5 @@
 import type { NflGameDetail, NflGameNotes, NflSlateGame, NflTeamContext } from '~/types/nfl'
-import { conditionsLabel, gameMarket, kickoffLabel, recordLabel } from '~/utils/nflGame'
+import { conditionsLabel, gameMarket, recordLabel } from '~/utils/nflGame'
 import { NFL_GAME_MODEL_CAVEAT, nflGameModelSummary, qbChangeText, qbChanges, type NflGameModelCell } from '~/utils/nflGameModel'
 
 const VENUE_LABELS: Record<string, string> = { dome: 'Dome', outdoor: 'Outdoor', retractable: 'Retractable roof' }
@@ -14,15 +14,13 @@ function Team({ code, context, side }: { code: string, context: NflTeamContext |
 
 export function NflGameHero({ detail, game }: { detail: NflGameDetail, game: NflSlateGame | null }) {
   const venue = game ? VENUE_LABELS[game.weather.venueType] ?? game.weather.venueType : null
-  return <header className="nfl-game-hero">
+  return <div className="nfl-game-hero" role="group" aria-label="Team records and conditions">
     <Team code={detail.awayTeam} context={game?.awayContext} side="away" />
     <div className="nfl-game-hero__mid">
-      <b>{kickoffLabel(detail.startUtc)}</b>
-      <span>{detail.status === 'scheduled' ? `Week ${detail.week}` : `Week ${detail.week} · ${detail.status}`}</span>
       {game && <span>{venue} · {conditionsLabel(game.weather)}</span>}
     </div>
     <Team code={detail.homeTeam} context={game?.homeContext} side="home" />
-  </header>
+  </div>
 }
 
 function ModelCell({ cell }: { cell: NflGameModelCell }) {

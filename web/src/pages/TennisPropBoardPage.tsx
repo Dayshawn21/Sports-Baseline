@@ -51,7 +51,7 @@ export default function TennisPropBoardPage() {
     {(prizePicks.isError || draftKings.isError || betOnline.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={categories} selected={category.market} onSelect={setMarket} />}
     <PropBoardFilters source={source} tour={tour} showAll={showAll} onSource={setSource} onTour={setTour} onShowAll={setShowAll} />
-    {category ? <main>
+    {category ? <main className="prop-table-panel">
       {category.rateable.length === 0 && <p className="tennis-prop-empty">No actionable {category.label.toLowerCase()} lines on this slate.</p>}
       <TennisPropTable category={category} selectedId={selected?.id ?? null} onOpen={row => setSelectedId(row.id)}
         rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}

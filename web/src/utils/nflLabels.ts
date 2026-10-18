@@ -1,4 +1,5 @@
 /** Display labels shared by the NFL slate and the prop-line board. */
+import { fmtTimeCT } from '~/utils/format'
 
 export const NFL_SEASON_OPTIONS = [
   { value: 2026, label: '2026' },
@@ -81,7 +82,9 @@ export function marketLabel(market: string): string {
 }
 
 export function formatTime(value: string | null): string {
-  return value ? new Intl.DateTimeFormat('en-US', {
+  const time = value ? Date.parse(value) : Number.NaN
+  if (Number.isNaN(time)) return 'Start time unavailable'
+  return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     year: 'numeric',
     month: 'numeric',
@@ -90,19 +93,12 @@ export function formatTime(value: string | null): string {
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
-    timeZoneName: 'short',
-  }).format(new Date(value)) : 'Start time unavailable'
+  }).format(time) + ' CT'
 }
 
 /** Compact Central kickoff time for dense board rows. */
 export function formatKickoffTime(value: string | null): string {
-  return value ? new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZoneName: 'short',
-  }).format(new Date(value)) : ''
+  return fmtTimeCT(value)
 }
 
 /** One past game: anytime TD is scored or not, other markets are the stat itself. */
