@@ -53,12 +53,12 @@ export default function NflPropBoardPage() {
       <NflMarketPills categories={categories} selected={category.market} onSelect={setMarket} />
       <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll}
         onPosition={setPosition} onGame={setGameFilter} onShowAll={setShowAll} />
-      <main className="prop-table-panel">
+      <section className="prop-table-panel" aria-label="Prop lines">
         {category.rateable.length === 0 && <p className="nfl-prop-table-empty">No rateable {marketLabel(category.market).toLowerCase()} lines this week.</p>}
         <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => setSelectedLineId(row.lineId)}
           rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
           other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
-      </main>
+      </section>
       <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
         {selectedLine && <NflEvidencePanel row={selectedLine} game={selectedGame} alternates={alternates.get(selectedLine.lineId) ?? []} />}
       </Drawer>

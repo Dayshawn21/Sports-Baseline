@@ -103,6 +103,12 @@ describe('nflPropCard', () => {
     expect(card.meta).toBe('WR · MIA @ LAC · 12:00 PM CT · 1st half')
   })
 
+  it('keeps only the position and a partial segment in the game-page meta', () => {
+    expect(nflPropCard(row({ startUtc: '2026-10-04T17:00:00Z' }), 1, 26.5, NOW).gameMeta).toBe('WR')
+    expect(nflPropCard(row({ segment: 'first_half' }), null, 26.5, NOW).gameMeta).toBe('WR · 1st half')
+    expect(nflPropCard(row({ position: null }), 1, 26.5, NOW).gameMeta).toBe('--')
+  })
+
   it('flags a thin sample and passes flags through, minus the historical baseline', () => {
     const card = nflPropCard(row({ gamesInSample: 5, qualityFlags: ['historical_baseline', 'stale_baseline_season'] }), 3, 26.5, NOW)
     expect(card).toMatchObject({ sampleText: '5g thin', thin: true, trust: 'Review', flags: ['stale_baseline_season'] })

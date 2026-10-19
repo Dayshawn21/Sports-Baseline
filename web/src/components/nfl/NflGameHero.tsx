@@ -32,7 +32,7 @@ export function NflGameMarketBlock({ game, notes }: { game: NflSlateGame, notes:
   const market = gameMarket(game.odds, game.homeTeam, game.awayTeam)
   const model = nflGameModelSummary(game.model, game.odds, game.homeTeam, game.awayTeam)
   return <section className="nfl-game-card" aria-label="Market and model">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">Market and model</span><span className="nfl-game-caveat">Model is context, not a pick</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Market and model</h2><span className="nfl-game-caveat">Model is context, not a pick</span></div>
     <div className="nfl-game-mm">
       <div /><div className="nfl-game-label">Spread</div><div className="nfl-game-label">Win probability</div><div className="nfl-game-label">Total</div>
       <div className="nfl-game-label">Market</div>

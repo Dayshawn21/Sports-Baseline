@@ -15,6 +15,7 @@ export interface NflPropCardModel {
   playerName: string
   badge: string
   meta: string
+  gameMeta: string
   unit: string
   lineText: string
   modelText: string
@@ -66,6 +67,11 @@ function meta(row: NflBoardLine): string {
   return parts.join(' · ')
 }
 
+// The game page already names the game and kickoff, so its rows drop them.
+function gameMeta(row: NflBoardLine): string {
+  return row.segment === 'full_game' ? row.position ?? '--' : `${row.position ?? '--'} · ${segmentLabel(row.segment)}`
+}
+
 export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLine: number | null, now: number): NflPropCardModel {
   const td = row.market === TD_MARKET
   const confident = isConfidentSample(row)
@@ -76,6 +82,7 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
     playerName: row.playerName,
     badge: teamBadge(row, row.awayTeam, row.homeTeam),
     meta: meta(row),
+    gameMeta: gameMeta(row),
     unit: marketLabel(row.market).toLowerCase(),
     lineText: row.line?.toFixed(1) ?? '--',
     modelText: formatProjection(row.market, row.projection),

@@ -53,7 +53,7 @@ export function NflGameProps({ games, game, now }: Props) {
     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">No modelled lines for this period and position. {period === 'full_game' && !showAll ? 'Turn on "Show all lines" for alternates and thin samples.' : ''}</div>}
     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market prop-table-panel" aria-label={`${marketLabel(item.category.market)} lines`}>
       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
-      <NflPropTable category={item.category} now={at.getTime()} selectedLineId={selected?.lineId ?? null} onOpen={setSelected}
+      <NflPropTable category={item.category} now={at.getTime()} inGame selectedLineId={selected?.lineId ?? null} onOpen={setSelected}
         rateable={item.rateable} other={includeOther ? item.other.map(row => ({ row, rank: null })) : []} />
     </section>)}
     {/* Weekly stats are full-game totals, so partial-game line-only lines would show the wrong history. */}

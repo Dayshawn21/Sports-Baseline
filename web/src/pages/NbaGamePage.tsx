@@ -50,12 +50,12 @@ export default function NbaGamePage() {
       meta={<>{detail.data.season} season · {GAME_TYPE_LABELS[detail.data.gameType]} · {kickoffLabel(detail.data.startUtc)} · {card.stateLabel ?? 'Scheduled'}</>} />
     <NbaGameHero card={card} />
     <div className="nfl-game-layout">
-      <main className="nfl-game-main">
+      <div className="nfl-game-main">
         <NbaGameMarket detail={detail.data} card={card} />
         <NflLineMovementChart detail={detail.data} caveat="Before tip-off" />
         <NbaProps gameId={detail.data.gameId} />
         <NbaLineOnlyProps gameId={detail.data.gameId} />
-      </main>
+      </div>
     </div>
   </div></div>
 }

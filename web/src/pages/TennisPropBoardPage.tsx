@@ -51,12 +51,12 @@ export default function TennisPropBoardPage() {
     {(prizePicks.isError || draftKings.isError || betOnline.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={categories} selected={category.market} onSelect={setMarket} />}
     <PropBoardFilters source={source} tour={tour} showAll={showAll} onSource={setSource} onTour={setTour} onShowAll={setShowAll} />
-    {category ? <main className="prop-table-panel">
+    {category ? <section className="prop-table-panel" aria-label="Prop lines">
       {category.rateable.length === 0 && <p className="tennis-prop-empty">No actionable {category.label.toLowerCase()} lines on this slate.</p>}
       <TennisPropTable category={category} selectedId={selected?.id ?? null} onOpen={row => setSelectedId(row.id)}
         rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
         other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
-    </main> : <div className="tennis-prop-empty-state">No current tennis prop lines are loaded for this source. Try another provider or run the prop ingest.</div>}
+    </section> : <div className="tennis-prop-empty-state">No current tennis prop lines are loaded for this source. Try another provider or run the prop ingest.</div>}
     <Drawer open={selected !== null} onClose={() => setSelectedId(null)} width={isMobile ? '100%' : 460} title={null} className="tennis-prop-drawer" destroyOnHidden>
       {selected && <TennisPropEvidencePanel row={selected} />}
     </Drawer>

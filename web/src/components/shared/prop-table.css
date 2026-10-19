@@ -67,7 +67,7 @@
 }
 .prop-table__open:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
 .prop-table__player-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.prop-table__player-name > :first-child { overflow: hidden; text-overflow: ellipsis; }
+.prop-table__player-name > :first-child { flex: 0 1 auto; width: auto; overflow: hidden; text-overflow: ellipsis; }
 .prop-table__player-name .ant-tag { margin: 0; }
 .prop-table__tag { padding: 0 6px; border-radius: 999px; background: var(--bg-raised); color: var(--text-secondary); font: 400 11px var(--font-body); }
 .prop-table .mini-bars { max-width: 96px; }

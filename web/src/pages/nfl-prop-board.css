@@ -97,28 +97,26 @@
   min-width: 190px;
 }
 
+/* Filters read as the market tabs do: plain labels, the chosen one underlined. */
 .nfl-prop-seg {
   display: inline-flex;
   max-width: 100%;
-  gap: 2px;
+  gap: var(--space-4);
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px;
-  border: 1px solid var(--border-card);
-  border-radius: 999px;
-  background: var(--bg-card);
 }
 
 .nfl-prop-seg button {
   flex: none;
-  padding: 5px 12px;
+  padding: 6px 0;
   border: 0;
-  border-radius: 999px;
-  background: transparent;
+  border-bottom: 2px solid transparent;
+  background: none;
   color: var(--text-secondary);
-  font: 500 12px var(--font-body);
+  font: 500 13px var(--font-body);
   white-space: nowrap;
   cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .nfl-prop-seg button:hover {
@@ -126,8 +124,12 @@
 }
 
 .nfl-prop-seg button.is-selected {
-  background: var(--bg-raised);
+  border-bottom-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .nfl-prop-seg button, .nfl-prop-toggle { min-height: 40px; }
 }
 
 .nfl-prop-toggle {

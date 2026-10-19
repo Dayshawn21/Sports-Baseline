@@ -93,28 +93,26 @@
   margin: var(--space-4) 0;
 }
 
+/* Filters read as the market tabs do: plain labels, the chosen one underlined. */
 .tennis-prop-seg {
   display: inline-flex;
   max-width: 100%;
-  gap: 2px;
+  gap: var(--space-4);
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px;
-  border: 1px solid var(--border-card);
-  border-radius: 999px;
-  background: var(--bg-card);
 }
 
 .tennis-prop-seg button {
   flex: none;
-  padding: 5px 12px;
+  padding: 6px 0;
   border: 0;
-  border-radius: 999px;
-  background: transparent;
+  border-bottom: 2px solid transparent;
+  background: none;
   color: var(--text-secondary);
-  font: 500 12px var(--font-body);
+  font: 500 13px var(--font-body);
   white-space: nowrap;
   cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .tennis-prop-seg button:hover {
@@ -122,8 +120,12 @@
 }
 
 .tennis-prop-seg button.is-selected {
-  background: var(--bg-raised);
+  border-bottom-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .tennis-prop-seg button, .tennis-prop-toggle { min-height: 40px; }
 }
 
 .tennis-prop-toggle {

@@ -5,6 +5,7 @@ import { NflGameHero, NflGameMarketBlock } from '~/components/nfl/NflGameHero'
 import { NflGameProps } from '~/components/nfl/NflGameProps'
 import { NflGameSidebar } from '~/components/nfl/NflGameSidebar'
 import { NflLineMovementChart } from '~/components/nfl/NflLineMovementChart'
+import { NflTeamStatsMatchup } from '~/components/nfl/NflTeamStatsMatchup'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
@@ -49,14 +50,15 @@ export default function NflGamePage() {
       meta={<>{detail.data.season} season · Week {detail.data.week} · {kickoffLabel(detail.data.startUtc)} · {detail.data.status}</>} />
     <NflGameHero detail={detail.data} game={game} />
     <div className="nfl-game-layout">
-      <main className="nfl-game-main">
+      <div className="nfl-game-main">
         {slate.isLoading && <LoadingState message="Loading market..." />}
         {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
         {game && <NflGameMarketBlock game={game} notes={gameNotes} />}
         {detail.data.status === 'scheduled' && gameNotes && <NflBestLineCard bestLine={gameNotes.bestLine} homeTeam={detail.data.homeTeam} awayTeam={detail.data.awayTeam} />}
         <NflLineMovementChart detail={detail.data} />
+        {gameNotes && <NflTeamStatsMatchup notes={gameNotes} />}
         {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
-      </main>
+      </div>
       <NflGameSidebar notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
     </div>
   </div></div>

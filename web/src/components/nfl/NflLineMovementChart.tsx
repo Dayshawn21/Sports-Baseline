@@ -42,7 +42,7 @@ function MarketPanel({ history, detail, now }: { history: NflLineHistory, detail
 /** Pre-kickoff spread and total from one book per market; the spread reads by its favorite. */
 export function NflLineMovementChart({ detail, now = new Date(), caveat = 'Before kickoff' }: { detail: LineMovementGame, now?: Date, caveat?: string }) {
   return <section className="nfl-game-card" aria-label="Line movement">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">Line movement</span><span className="nfl-game-caveat">{caveat}</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Line movement</h2><span className="nfl-game-caveat">{caveat}</span></div>
     {detail.lineHistory.length
       ? <div className="nfl-line-panels">{detail.lineHistory.map(history => <MarketPanel key={history.market} history={history} detail={detail} now={now} />)}</div>
       : <p className="nfl-game-note">No spread or total prices stored for this game yet.</p>}

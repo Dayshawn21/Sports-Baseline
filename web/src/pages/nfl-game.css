@@ -1,6 +1,6 @@
 /* NFL game page (build-plan 33a), per prototypes/nfl-game.html. Edges are gray via the shared .nfl-slate root. */
 
-.nfl-game-crumb { display: inline-block; margin-bottom: 14px; color: var(--text-secondary); font-size: 12px; }
+.nfl-game-crumb { display: inline-flex; align-items: center; min-height: 32px; margin-bottom: 6px; color: var(--text-secondary); font-size: 12px; }
 .nfl-game-crumb:hover { color: var(--text-primary); }
 .nfl-game-crumb:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
 
@@ -27,10 +27,11 @@
 
 .nfl-game-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 10px; }
 .nfl-game-card__head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px;
   padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
 }
-.nfl-game-label { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.15em; text-transform: uppercase; }
+.nfl-game-card__head > .nfl-game-label { flex: none; }
+.nfl-game-label { margin: 0; color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.15em; text-transform: uppercase; }
 .nfl-game-caveat { color: var(--text-muted); font: 600 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
 .nfl-game-note { margin: 0; padding: 10px 16px 12px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 .nfl-game-big { display: block; font: 500 22px/1.1 var(--font-mono); }
@@ -66,6 +67,8 @@
   .nfl-game-bl { grid-template-columns: 64px repeat(2, minmax(0, 1fr)) minmax(0, 0.8fr); }
   .nfl-game-bl > div, .nfl-game-bl__row > div { padding: 8px 6px; }
   .nfl-game-bl__price { font-size: 13px; }
+  .nfl-game-crumb { min-height: 40px; }
+  .nfl-game-props__toolbar .nfl-prop-seg + .nfl-prop-seg { padding-left: 0; border-left: 0; }
 }
 
 .nfl-line-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; padding: 12px 16px 14px; }
@@ -82,7 +85,8 @@
 }
 .nfl-game-section-title small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
 .nfl-game-props { display: grid; gap: 14px; }
-.nfl-game-props__toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.nfl-game-props__toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; }
+.nfl-game-props__toolbar .nfl-prop-seg + .nfl-prop-seg { padding-left: 20px; border-left: 1px solid var(--border-card); }
 .nfl-game-props__market { display: grid; gap: 10px; }
 
 /* Item 35: line-only markets. Gray throughout: these lines are not modelled. */
@@ -123,12 +127,21 @@
 .nfl-game-side__form ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: right; font: 400 11px var(--font-mono); }
 .nfl-game-side__form li small { margin-right: 6px; color: var(--text-muted); font-size: 11px; }
 
-.nfl-game-side__stats { display: grid; gap: 6px; }
-.nfl-game-side__stats > b { font-size: 12px; font-weight: 600; }
-.nfl-game-side__stats > b small { color: var(--text-muted); font-size: 11px; font-weight: 400; }
-.nfl-game-side__stats table { width: 100%; border-collapse: collapse; }
-.nfl-game-side__stats th, .nfl-game-side__stats td { padding: 5px 4px; border-bottom: 1px solid var(--border-subtle); text-align: right; font: 400 12px var(--font-mono); white-space: nowrap; }
-.nfl-game-side__stats thead th { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
-.nfl-game-side__stats tbody th { text-align: left; font-family: var(--font-body); color: var(--text-secondary); }
-.nfl-game-side__stats td small { margin-left: 4px; color: var(--text-muted); font-size: 11px; }
-.nfl-game-side__stats tr:last-child th, .nfl-game-side__stats tr:last-child td { border-bottom: 0; }
+/* Item 30's team stats: each half is one team's offense beside the other team's defense. */
+.nfl-game-stats__body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; padding: 12px 16px 14px; }
+.nfl-game-stats__half { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.nfl-game-stats__half h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin: 0; color: var(--text-secondary); font: 400 12px var(--font-body); }
+.nfl-game-stats__half h3 b { color: var(--text-primary); font-weight: 600; }
+.nfl-game-stats__half h3 small { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+.nfl-game-stats table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.nfl-game-stats col.is-value { width: 72px; }
+.nfl-game-stats col.is-rank { width: 44px; }
+.nfl-game-stats th, .nfl-game-stats td { padding: 5px 4px; border-bottom: 1px solid var(--border-subtle); text-align: right; font: 400 12px var(--font-mono); white-space: nowrap; }
+.nfl-game-stats thead th { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
+.nfl-game-stats tbody th { text-align: left; font-family: var(--font-body); color: var(--text-secondary); }
+.nfl-game-stats td.is-rank { padding-left: 6px; text-align: left; color: var(--text-muted); font-size: 11px; }
+.nfl-game-stats tr:last-child th, .nfl-game-stats tr:last-child td { border-bottom: 0; }
+
+@media (max-width: 760px) {
+  .nfl-game-stats__body { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}

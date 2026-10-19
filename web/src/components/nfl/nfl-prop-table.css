@@ -2,15 +2,15 @@
    until 27h adopts a slice, so every NFL gap is gray. */
 .nfl-prop-table col.is-rank { width: 48px; }
 .nfl-prop-table col.is-player { width: auto; }
-.nfl-prop-table col.is-line { width: 128px; }
+.nfl-prop-table col.is-line { width: 88px; }
 .nfl-prop-table col.is-model { width: 88px; }
-.nfl-prop-table col.is-gap { width: 120px; }
-.nfl-prop-table col.is-bars { width: 120px; }
+.nfl-prop-table col.is-gap { width: 132px; }
+.nfl-prop-table col.is-bars { width: 140px; }
 .nfl-prop-table col.is-sample { width: 96px; }
 .nfl-prop-table.is-td col.is-books { width: 180px; }
 .nfl-prop-table.is-td col.is-snap { width: 230px; }
 
-.nfl-prop-table__unit { white-space: nowrap; }
+.nfl-prop-table td.nfl-prop-table__bars, .nfl-prop-table:not(.is-td) th:nth-child(6) { padding-left: 28px; }
 .nfl-prop-table__pick { color: var(--nfl-green); font: 700 11px var(--font-body); letter-spacing: 0.08em; }
 .nfl-prop-table__share { color: var(--nfl-green); font: 600 14px var(--font-mono); }
 .nfl-prop-table__pick.is-negative, .nfl-prop-table__share.is-negative { color: var(--nfl-red); }
@@ -22,7 +22,8 @@
 .nfl-prop-table.is-td td.nfl-prop-table__snap { white-space: normal; }
 
 @media (max-width: 1100px) {
-  .nfl-prop-table td.nfl-prop-table__gap small, .nfl-prop-table td small.nfl-prop-table__unit { display: none; }
+  .nfl-prop-table td.nfl-prop-table__gap small { display: none; }
+  .nfl-prop-table td.nfl-prop-table__bars { padding-left: 0; }
   .nfl-prop-table td.is-num:not(.prop-table__end) { text-align: left; }
   .nfl-prop-table td .nfl-prop-table__trust + small { display: inline; margin-left: 6px; }
 }

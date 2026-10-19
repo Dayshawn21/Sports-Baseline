@@ -32,7 +32,7 @@ export function NbaGameHero({ card }: { card: NbaSlateCardModel }) {
 function MarketBlock({ detail }: { detail: NbaGameDetail }) {
   const market = nbaGameMarket(detail)
   return <section className="nfl-game-card" aria-label="Market">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">Market</span><span className="nfl-game-caveat">Latest stored price</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Market</h2><span className="nfl-game-caveat">Latest stored price</span></div>
     <div className="nfl-game-mm">
       <div /><div className="nfl-game-label">Spread</div><div className="nfl-game-label">Win probability</div><div className="nfl-game-label">Total</div>
       <div className="nfl-game-label">Market</div>
@@ -45,7 +45,7 @@ function MarketBlock({ detail }: { detail: NbaGameDetail }) {
 
 function ClosingBlock({ card }: { card: NbaSlateCardModel }) {
   return <section className="nfl-game-card" aria-label="Closing lines">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">Closing lines</span><span className="nfl-game-caveat">Last line before tip-off</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Closing lines</h2><span className="nfl-game-caveat">Last line before tip-off</span></div>
     {card.final === null
       ? <p className="nfl-game-note">No closing lines stored</p>
       : <div className="nba-game-cells">{card.final.map(cell => <div key={cell.label}>

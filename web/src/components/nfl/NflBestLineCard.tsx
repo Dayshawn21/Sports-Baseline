@@ -14,7 +14,7 @@ export function NflBestLineCard({ bestLine, homeTeam, awayTeam, now = new Date()
   bestLine: NflBestLine | null, homeTeam: string, awayTeam: string, now?: Date,
 }) {
   return <section className="nfl-game-card" aria-label="Best line">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">Best line</span><span className="nfl-game-caveat">Reference, not a pick</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Best line</h2><span className="nfl-game-caveat">Reference, not a pick</span></div>
     {bestLine === null
       ? <p className="nfl-game-note">No book prices fetched in the last 36 hours.</p>
       : <>

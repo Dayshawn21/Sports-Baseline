@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { NflGameNotes, NflNoteInjury, NflTeamForm, NflTeamStats } from '~/types/nfl'
+import type { NflGameNotes, NflNoteInjury, NflTeamForm } from '~/types/nfl'
 import { depthLabel, injuryLabel, injuryTag } from '~/utils/nflAvailability'
-import { SMALL_SAMPLE_GAMES, TEAM_STAT_ROWS, formLabel, gamesLabel, injuriesByTeam, rankLabel, restLabel, statValue } from '~/utils/nflGameNotes'
+import { formLabel, injuriesByTeam, restLabel } from '~/utils/nflGameNotes'
 
 const CHANGE_LABELS = { promoted: 'Up', demoted: 'Down', new: 'New' } as const
 const STATUS_CLASSES: Record<string, string> = { Out: 'is-out', Doubtful: 'is-caution', Questionable: 'is-caution' }
 
 function Card({ title, meta, children }: { title: string, meta?: string, children: ReactNode }) {
   return <section className="nfl-game-card">
-    <div className="nfl-game-card__head"><span className="nfl-game-label">{title}</span>{meta && <span className="nfl-game-side__meta">{meta}</span>}</div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">{title}</h2>{meta && <span className="nfl-game-side__meta">{meta}</span>}</div>
     <div className="nfl-game-side__body">{children}</div>
   </section>
 }
@@ -52,17 +52,6 @@ function FormRow({ form }: { form: NflTeamForm }) {
   </div>
 }
 
-function StatsTable({ stats }: { stats: NflTeamStats }) {
-  const games = gamesLabel(stats)
-  if (!games) return <div className="nfl-game-side__stats"><b>{stats.team}</b><Empty text="No completed games this season" /></div>
-  return <div className="nfl-game-side__stats">
-    <b>{stats.team} <small>{games}{stats.games < SMALL_SAMPLE_GAMES && ' · small sample'}</small></b>
-    <table><thead><tr><th scope="col" /><th scope="col">Off</th><th scope="col">Def</th></tr></thead>
-      <tbody>{TEAM_STAT_ROWS.map(row => <tr key={row.label}><th scope="row">{row.label}</th>{[row.offense, row.defense].map(key => <td key={key}>{statValue(stats[key], row.kind)}<small>{rankLabel(stats[key].rank)}</small></td>)}</tr>)}</tbody>
-    </table>
-  </div>
-}
-
 /** Item 29/30 game notes as sidebar cards. Context only: never changes an edge or its rank. */
 export function NflGameSidebar({ notes, isLoading, isError }: { notes: NflGameNotes | undefined, isLoading: boolean, isError: boolean }) {
   if (isLoading) return <aside className="nfl-game-side"><Card title="Game notes"><Empty text="Loading injuries, depth and team stats..." /></Card></aside>
@@ -71,7 +60,6 @@ export function NflGameSidebar({ notes, isLoading, isError }: { notes: NflGameNo
     <Injuries notes={notes} />
     <DepthChanges notes={notes} />
     <Card title="Form and rest"><FormRow form={notes.awayForm} /><FormRow form={notes.homeForm} /></Card>
-    <Card title="Team stats" meta="Season per game · rank of 32 · def = allowed"><StatsTable stats={notes.awayStats} /><StatsTable stats={notes.homeStats} /></Card>
-    <p className="nfl-game-note is-inline">Context only. Injuries, depth and team stats never change an edge or its rank.</p>
+    <p className="nfl-game-note is-inline">Context only. Injuries, depth, form and team stats never change an edge or its rank.</p>
   </aside>
 }
