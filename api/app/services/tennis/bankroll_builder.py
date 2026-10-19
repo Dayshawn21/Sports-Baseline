@@ -29,7 +29,7 @@ from app.core.prop_probs import total_games_probs
 from app.core.tennis_sets import set_outcomes
 from app.repositories import matches as match_repo
 from app.repositories import players as player_repo
-from app.services.tennis.best_picks import _compute_stat_avg, _CONF_MULT, _serve_hold
+from app.services.tennis.best_picks import _compute_stat_avg, _CONF_MULT
 from app.services.tennis.predictor import PredictionOutput, predict_today
 
 # ── Constants ────────────────────────────────────────────────────────────────

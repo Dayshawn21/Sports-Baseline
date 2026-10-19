@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
+from app.routers.props import enrich_with
 from app.services.tennis.best_picks import (
     generate_market_odds_picks,
     generate_ml_pick,
@@ -185,9 +186,8 @@ def test_unpriced_picks_leave_ev_pct_none():
         surface="Hard",
     )
 
-    picks = generate_prop_picks(
-        _prediction(), [prop], _two_big_servers(), {(10, 99): 0.64}, {(10, 99): 20}
-    )
+    lines = enrich_with([prop], {(10, 99): 20}, _two_big_servers(), {(10, 99): 0.64}, {}, {})
+    picks = generate_prop_picks(_prediction(), lines)
 
     assert picks
     assert all(p.ev_pct is None for p in picks)

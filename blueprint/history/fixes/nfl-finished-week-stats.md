@@ -168,7 +168,7 @@ projection/tier behavior changes, use a new projection version rather than
 silently changing `props-v2`. Fix together with F-05: both share one root
 cause (cards duplicate the board's prop logic instead of calling it), so one
 `/fix` routing cards through the canonical assessment closes both.
-**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge.
+**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge. Repaired and re-reviewed on 2026-10-18; see `tennis-best-pick-prop-parity/F-17` in `tennis-best-pick-prop-parity.md`.
 
 ### nfl-finished-week-stats/F-05 [P1] accepted - Best-pick prop probabilities and tiers disagree with props-v2 snapshots
 
@@ -199,7 +199,7 @@ assumption is a separate versioned model change requiring forward validation.
 Fix together with F-04 (same root cause). Until LOCK/STRONG `props-v2` tiers
 reach a verdict, consider showing best-pick prop cards without signal color
 rather than only matching the board's unvalidated tiers.
-**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge.
+**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge. Repaired and re-reviewed on 2026-10-18; see `tennis-best-pick-prop-parity/F-18` in `tennis-best-pick-prop-parity.md`.
 
 ### nfl-finished-week-stats/F-06 [P1] accepted - Pre-match prop snapshots can admit a match already marked live
 

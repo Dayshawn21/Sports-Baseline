@@ -7,6 +7,14 @@
 > finding is `open` or `fixed`, then archives resolved findings with the work
 > and resets this file.
 
+### F-20 [P3] open - Bankroll builder retains an unused dataclasses import
+
+**File:** api/app/services/tennis/bankroll_builder.py:10
+**Found:** 2026-10-18 by /audit (scope: imports in the two F-19 modules; lens: quality). Present before this fix.
+**Why it matters:** `field` is imported from `dataclasses` but has no name load in the module, contrary to the no-unused-import convention. No runtime behavior is affected.
+**Suggested fix:** Remove `field` from the import during a future cleanup.
+**Resolution:** Open, nonblocking. F-19's three named imports are repaired and closed independently.
+
 ### F-07 [P3] open - Prediction grading has no loss comparison for the served no-ML path
 
 **File:** api/app/services/tennis/track_record.py:147; api/app/services/tennis/track_record.py:165; api/app/backtest/tennis_predictions.py:31

@@ -13,20 +13,16 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional
 
-from app.core.bettable_criteria import MIN_EV, assess_bettable_pick
+from app.core.bettable_criteria import assess_bettable_pick
 from app.core.kelly import expected_value, kelly_fraction as compute_kelly_fraction
 from app.core.odds import american_to_prob, devig_two_way
 from app.core.poisson import confidence_tier
-from app.core.prop_probs import games_won_probs, prop_over_under_probs, prop_side, total_games_probs
-from app.core.prop_projection import (
-    _BASELINE_HOLD_PCT,
-    compute_stat_avg as _compute_stat_avg,
-    expected_total_games as _expected_total_games,
-    serve_hold as _serve_hold,
-)
+from app.core.prop_probs import total_games_probs
+from app.core.prop_projection import compute_stat_avg as _compute_stat_avg
 from app.core.tennis_first_set import FIRST_SET_STATS
 from app.core.tennis_sets import set_outcomes
 from app.repositories.players import PlayerRollingStats
+from app.schemas.props import PropLine
 from app.services.tennis.predictor import PredictionOutput
 
 # 26d's holdout: betting the served blend's moneyline gaps at the close lost
@@ -208,131 +204,62 @@ def _pick_stats_for_player(
     return all_stats.get((player_id, None))
 
 
-def generate_prop_picks(
-    pred: PredictionOutput,
-    props: list,
-    rolling_stats: dict,
-    win_probs: dict,
-    opponent_ids_map: dict | None = None,
-    market_total_games_map: dict | None = None,
-) -> list[BestPick]:
-    """Generate prop-based picks from available prop lines for this match."""
+def generate_prop_picks(pred: PredictionOutput, prop_lines: list[PropLine]) -> list[BestPick]:
+    """Prop picks from the board's own assessment of each line (`_enrich`).
+
+    Side, hit probability, tier and flags are read, never recomputed, so a card
+    cannot outrank the board row or the props-v2 snapshot it came from.
+    """
     picks: list[BestPick] = []
-    opp_map = opponent_ids_map or {}
-    mtg_map = market_total_games_map or {}
 
-    for prop in props:
-        if prop.match_id != pred.match_id:
+    for line in prop_lines:
+        if line.match_id != pred.match_id or line.line is None:
             continue
-        if prop.line is None or prop.player_id is None:
+        if line.recommendation is None or line.confidence in (None, "PASS"):
             continue
+        stat_key = line.stat_type.strip().lower().replace(" ", "_")
         # Ungraded (16e): the props page caps them at LEAN, so they are no best pick.
-        if prop.stat_type.strip().lower().replace(" ", "_") in FIRST_SET_STATS:
+        if stat_key in FIRST_SET_STATS:
+            continue
+        if line.hit_probability is None or line.stat_avg is None or line.edge_pct is None:
             continue
 
-        line_f = float(prop.line)
-        if line_f <= 0:
-            continue
-
-        # Get rolling stats for this player (surface-first, then all-surface fallback)
-        stats = _pick_stats_for_player(prop.player_id, prop.surface, rolling_stats)
-        if stats is None:
-            continue
-
-        # Get opponent stats for matchup-aware calculations
-        opp_id = opp_map.get((prop.player_id, prop.match_id))
-        opp_stats = _pick_stats_for_player(opp_id, prop.surface, rolling_stats)
-
-        wp = win_probs.get((prop.player_id, prop.match_id))
-        market_total = mtg_map.get(prop.match_id) if prop.match_id is not None else None
-        stat_avg = _compute_stat_avg(
-            prop.stat_type,
-            stats,
-            opponent_stats=opp_stats,
-            win_prob=wp,
-            surface=prop.surface,
-            market_total_games=market_total,
-            best_of=pred.best_of,
-        )
-        if stat_avg is None:
-            continue
-
-        edge_pct = round((stat_avg - line_f) / line_f * 100, 1)
-
-        stat_key = prop.stat_type.strip().lower().replace(" ", "_")
-        if stat_key in ("total_games_won", "games_won"):
-            player_hold = _serve_hold(stats)
-            opp_hold = _serve_hold(opp_stats) if opp_stats is not None else _BASELINE_HOLD_PCT
-            p_over, p_under = games_won_probs(line_f, stat_avg, wp, player_hold, opp_hold)
-        else:
-            p_over, p_under = prop_over_under_probs(prop.stat_type, line_f, stat_avg)
-        direction = prop_side(p_over, p_under)
-
-        # PrizePicks demon/goblin are OVER-only — skip if model says UNDER
-        odds_type = (getattr(prop, "odds_type", None) or "").lower()
-        if odds_type in ("demon", "goblin") and direction == "UNDER":
-            continue
-        prob = p_over if direction == "OVER" else p_under
-        stat_label = STAT_LABELS.get(prop.stat_type.strip().lower().replace(" ", "_"), prop.stat_type)
-        player_last = (prop.player_name or "").split()[-1] if prop.player_name else "Unknown"
+        line_f = float(line.line)
+        direction = line.recommendation
+        prob = line.hit_probability
+        stat_label = STAT_LABELS.get(stat_key, line.stat_type)
+        player_last = (line.player_name or "").split()[-1] if line.player_name else "Unknown"
 
         avg_word = "projects for" if stat_key in ("fantasy_score", "total_games_won", "games_won") else "averages"
         reasoning = (
-            f"{player_last} {avg_word} {stat_avg:.1f} {stat_label.lower()} vs {line_f:.1f} line — "
+            f"{player_last} {avg_word} {line.stat_avg:.1f} {stat_label.lower()} vs {line_f:.1f} line — "
             f"{prob:.0%} probability {direction.lower()}"
         )
-        if stats.matches_count and stats.matches_count < 10:
+        if line.matches_count and line.matches_count < 10:
             reasoning += " (small sample)"
 
-        # Attach book odds if available (OVER → p1_odds, UNDER → p2_odds)
-        pick_odds = None
-        if hasattr(prop, "p1_odds") and hasattr(prop, "p2_odds"):
-            pick_odds = prop.p1_odds if direction == "OVER" else prop.p2_odds
-
-        data_quality_flags = ["small_sample"] if stats.matches_count and stats.matches_count < 10 else []
-        ev_pct = None
-        kelly = None
-        market_prob = None
-        odds_source = "unpriced"
-        if pick_odds is not None:
-            ev = expected_value(prob, pick_odds)
-            kelly = compute_kelly_fraction(prob, pick_odds)
-            assessment = assess_bettable_pick(
-                prob,
-                ev,
-                kelly,
-                data_quality_flags=data_quality_flags,
-                odds_source="posted",
-            )
-            if assessment is None:
-                continue
-            conf = assessment.confidence
-            ev_pct = round(ev * 100, 1)
-            data_quality_flags = list(assessment.data_quality_flags)
-            odds_source = assessment.odds_source
-        else:
-            conf = confidence_tier(prob)
-            if conf == "PASS":
-                continue
-
-        score = _score_pick(ev_pct if ev_pct is not None else edge_pct, conf, stats.matches_count)
+        # Only a real book price earns an EV here. The board's PrizePicks EV is
+        # against assumed payouts, which the card has always shown as unpriced.
+        pick_odds = line.p1_odds if direction == "OVER" else line.p2_odds
+        ev_pct = line.ev_pct if pick_odds is not None else None
+        kelly = compute_kelly_fraction(prob, pick_odds) if pick_odds is not None else None
 
         picks.append(BestPick(
             pick_type="prop",
             label=stat_label,
             pick=f"{player_last} {stat_label} {direction} {line_f:.1f}",
-            player_name=prop.player_name,
-            edge_pct=edge_pct,
-            confidence=conf,
+            player_name=line.player_name,
+            edge_pct=line.edge_pct,
+            confidence=line.confidence,
             reasoning=reasoning,
             odds_american=pick_odds,
             ev_pct=ev_pct,
             model_prob=round(prob, 4),
-            market_prob=market_prob,
+            market_prob=None,
             kelly_fraction=round(kelly, 4) if kelly is not None else None,
-            data_quality_flags=tuple(data_quality_flags),
-            odds_source=odds_source,
-            score=score,
+            data_quality_flags=tuple(line.data_quality_flags),
+            odds_source="posted" if pick_odds is not None else "unpriced",
+            score=_score_pick(ev_pct if ev_pct is not None else line.edge_pct, line.confidence, line.matches_count),
         ))
 
     return picks
@@ -783,8 +710,7 @@ def build_best_picks(
     pred: PredictionOutput,
     props: list,
     rolling_stats: dict,
-    win_probs: dict,
-    opponent_ids_map: dict | None = None,
+    prop_lines: list[PropLine] | None = None,
     match_player_ids: tuple[Optional[int], Optional[int]] | None = None,
     market_total_games_map: dict | None = None,
 ) -> MatchBestPicks:
@@ -808,7 +734,7 @@ def build_best_picks(
 
     # Bucket B: Prop picks (top 3 by score)
     prop_picks: list[BestPick] = sorted(
-        generate_prop_picks(pred, props, rolling_stats, win_probs, opponent_ids_map, market_total_games_map)
+        generate_prop_picks(pred, prop_lines or [])
         + generate_market_odds_picks(pred, props, rolling_stats, match_player_ids, market_total_games_map),
         key=lambda p: p.score,
         reverse=True,

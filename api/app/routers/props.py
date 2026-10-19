@@ -774,6 +774,18 @@ async def _enrich_props(db: AsyncSession, props: list["Prop"]) -> list[PropLine]
     prediction_probs = await _fetch_win_probs(db, props)
     market_probs = await _fetch_market_win_probs(db, props)
     market_total_games = await _fetch_market_total_games(db, props)
+    return enrich_with(props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_total_games)
+
+
+def enrich_with(
+    props: list["Prop"],
+    opponent_ids_map: dict[tuple[int, int], int],
+    rolling_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
+    prediction_probs: dict[tuple[int, int], float],
+    market_probs: dict[tuple[int, int], float],
+    market_total_games: dict[int, float],
+) -> list[PropLine]:
+    """The board's rows from already-loaded inputs; best-pick cards read the same rows."""
     return [
         _enrich(
             p,

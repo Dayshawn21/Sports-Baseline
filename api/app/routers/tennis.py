@@ -531,14 +531,20 @@ async def _build_best_picks(
         pass
 
     # 2. Get all props (all sources)
-    all_props = await get_today_props(db)
+    player_props = await get_today_props(db)
     odds_props = await get_today_match_odds_as_props(db, books=["draftkings", "bet365", "betonline.ag"])
-    all_props = [*all_props, *odds_props]
+    all_props = [*player_props, *odds_props]
     matches = await match_repo.get_upcoming(db, target_date)
     match_player_ids_map = {m.id: (m.p1_id, m.p2_id) for m in matches}
 
     # 3. Get rolling stats for all players in props + their opponents
-    from app.routers.props import _fetch_market_total_games, _fetch_market_win_probs, _fetch_opponent_ids, _fetch_win_probs
+    from app.routers.props import (
+        _fetch_market_total_games,
+        _fetch_market_win_probs,
+        _fetch_opponent_ids,
+        _fetch_win_probs,
+        enrich_with,
+    )
     opponent_ids_map = await _fetch_opponent_ids(db, all_props)
     prop_player_ids = [p.player_id for p in all_props if p.player_id is not None]
     opponent_ids = list(opponent_ids_map.values())
@@ -549,20 +555,22 @@ async def _build_best_picks(
     # 4. Get win probs and market totals
     prediction_win_probs = await _fetch_win_probs(db, all_props)
     market_win_probs = await _fetch_market_win_probs(db, all_props)
-    win_probs = {**market_win_probs, **prediction_win_probs}
     market_total_games = await _fetch_market_total_games(db, all_props)
 
     # 5. Build best picks per match, in a worker thread: pure CPU that would
     # otherwise hold every other request on the hosted instance (37e).
     def assemble() -> list[MatchBestPicksSchema]:
+        # Cards read the board's rows for player props, never their own copy (F-04, F-05).
+        prop_lines = enrich_with(
+            player_props, opponent_ids_map, rolling_stats, prediction_win_probs, market_win_probs, market_total_games
+        )
         match_picks = []
         for pred in predictions:
             mbp = build_best_picks(
                 pred,
                 all_props,
                 rolling_stats,
-                win_probs,
-                opponent_ids_map,
+                prop_lines,
                 match_player_ids_map.get(pred.match_id),
                 market_total_games,
             )
