@@ -60,7 +60,6 @@ const BLOCKING_FLAGS = new Set([
   'stale_stats', 'stale_odds', 'market_stale', 'small_sample', 'missing_prediction', 'missing_projection',
   'match_finished', 'match_link_invalid', 'ungraded_stat',
 ])
-const MIN_MONEYLINE_WIN_PROBABILITY = 50
 
 function numeric(value: string | number | null | undefined): number | null {
   if (value == null || value === '') return null
@@ -150,11 +149,11 @@ function americanImpliedProbability(odds: number): number {
   return odds > 0 ? 100 / (odds + 100) : Math.abs(odds) / (Math.abs(odds) + 100)
 }
 
-function americanDecimalOdds(odds: number): number {
-  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds)
-}
-
-/** Turns existing match predictions into side-specific board rows without adding a new API. */
+/**
+ * Turns existing match predictions into side-specific board rows without adding a new API.
+ * Reference only: tennis moneyline picks are off since 26d (MONEYLINE_PICKS_ENABLED in
+ * best_picks.py), so a row carries no recommendation, tier or EV, as on the match page.
+ */
 export function moneylineBoardRows(predictions: MatchPrediction[]): PropLine[] {
   return predictions.flatMap(match => {
     if (match.p1WinProb == null || match.p2WinProb == null || match.p1OddsAmerican == null || match.p2OddsAmerican == null) return []
@@ -165,40 +164,37 @@ export function moneylineBoardRows(predictions: MatchPrediction[]): PropLine[] {
       { playerName: match.p1Name, modelProb: match.p1WinProb, odds: match.p1OddsAmerican, marketProb: p1Raw / denominator, id: -(match.matchId * 2 + 1) },
       { playerName: match.p2Name, modelProb: match.p2WinProb, odds: match.p2OddsAmerican, marketProb: p2Raw / denominator, id: -(match.matchId * 2 + 2) },
     ]
-    return sides.map(side => {
-      const evPct = (side.modelProb * americanDecimalOdds(side.odds) - 1) * 100
-      return {
-        id: side.id,
-        playerId: null,
-        playerName: side.playerName,
-        matchId: match.matchId,
-        source: 'market',
-        statType: 'moneyline',
-        line: String(side.odds),
-        oddsType: 'standard',
-        fetchedAt: match.startUtc ?? new Date(0).toISOString(),
-        startTime: match.startUtc,
-        p1Odds: side.odds,
-        p2Odds: null,
-        pOver: null,
-        pUnder: null,
-        confidence: evPct > 0 ? 'LEAN' : 'PASS',
-        recommendation: evPct > 0 ? 'BET' : null,
-        statAvg: side.modelProb * 100,
-        // Relative edge, the same definition the backend's moneyline pick uses.
-        edgePct: (side.modelProb - side.marketProb) / side.marketProb * 100,
-        evPct,
-        hitProbability: side.modelProb,
-        breakEvenPct: side.marketProb * 100,
-        matchesCount: null,
-        surface: match.surface,
-        projectionSource: 'ensemble',
-        projectionInputs: { model_probability: side.modelProb, market_probability: side.marketProb },
-        dataQualityFlags: match.qualityFlags,
-        projectionStatus: 'ok',
-        audit: null,
-      }
-    })
+    return sides.map(side => ({
+      id: side.id,
+      playerId: null,
+      playerName: side.playerName,
+      matchId: match.matchId,
+      source: 'market',
+      statType: 'moneyline',
+      line: String(side.odds),
+      oddsType: 'standard',
+      fetchedAt: match.startUtc ?? new Date(0).toISOString(),
+      startTime: match.startUtc,
+      p1Odds: side.odds,
+      p2Odds: null,
+      pOver: null,
+      pUnder: null,
+      confidence: null,
+      recommendation: null,
+      statAvg: side.modelProb * 100,
+      // Relative edge, the same definition the backend's moneyline pick uses.
+      edgePct: (side.modelProb - side.marketProb) / side.marketProb * 100,
+      evPct: null,
+      hitProbability: side.modelProb,
+      breakEvenPct: side.marketProb * 100,
+      matchesCount: null,
+      surface: match.surface,
+      projectionSource: 'ensemble',
+      projectionInputs: { model_probability: side.modelProb, market_probability: side.marketProb },
+      dataQualityFlags: match.qualityFlags,
+      projectionStatus: 'ok',
+      audit: null,
+    }))
   })
 }
 
@@ -243,13 +239,13 @@ export function winASetBoardRows(matches: MatchBestPicks[]): PropLine[] {
 export function isTennisRateable(line: PropLine): boolean {
   const status = line.projectionStatus ?? 'ok'
   const flags = line.dataQualityFlags ?? []
-  return line.recommendation != null
+  return !isMoneyline(line)
+    && line.recommendation != null
     && line.statAvg != null
     && line.evPct != null
     && line.evPct > 0
     && numeric(line.line) != null
     && status === 'ok'
-    && (!isMoneyline(line) || line.statAvg >= MIN_MONEYLINE_WIN_PROBABILITY)
     && !flags.some(flag => BLOCKING_FLAGS.has(flag))
     && line.audit?.matchLinked !== false
 }
@@ -262,7 +258,7 @@ export function trustLabel(line: PropLine): string {
 
 export function signalSummary(line: PropLine): string {
   if ('reason' in line && typeof line.reason === 'string') return line.reason
-  if (isMoneyline(line) && (line.statAvg ?? 0) < MIN_MONEYLINE_WIN_PROBABILITY) return 'Below 50% Moneyline win-probability floor'
+  if (isMoneyline(line)) return 'Reference only: tennis moneyline picks are off'
   if (line.statsStale) return 'Rolling stats need refresh'
   if (line.dataQualityFlags?.includes('small_sample')) return 'Thin rolling sample'
   const lineValue = numeric(line.line)

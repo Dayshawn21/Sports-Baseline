@@ -25,12 +25,8 @@ describe('isTennisRateable', () => {
     ['unpriced', { evPct: null }],
     ['negative EV', { evPct: -1 }],
     ['break-even EV', { evPct: 0 }],
-    ['Moneyline longshot', { statType: 'moneyline', statAvg: 49.9, line: '+180' }],
+    ['Moneyline', { statType: 'moneyline', statAvg: 70, line: '-110' }],
   ])('rejects %s lines', (_label, override) => expect(isTennisRateable(prop(1, override))).toBe(false))
-
-  it('accepts Moneyline picks at the 50% win-probability floor', () => {
-    expect(isTennisRateable(prop(1, { statType: 'moneyline', statAvg: 50, line: '-110' }))).toBe(true)
-  })
 })
 
 describe('buildTennisPropBoard', () => {
@@ -121,13 +117,19 @@ describe('buildTennisPropBoard', () => {
     expect(row.edgePct).toBeCloseTo((0.60 - 0.50) / 0.50 * 100)
   })
 
-  it('creates side-specific moneyline rows from the existing prediction market', () => {
+  it('keeps a positive-EV moneyline as an unranked reference row, since moneyline picks are off', () => {
     const rows = moneylineBoardRows([{ ...prediction, p1WinProb: .62, p2WinProb: .38, p1OddsAmerican: -110, p2OddsAmerican: -110 }])
     expect(rows).toHaveLength(2)
-    expect(rows[0]).toMatchObject({ playerName: 'Aryna Sabalenka', statType: 'moneyline', source: 'market', recommendation: 'BET' })
-    expect(rows[1].recommendation).toBeNull()
-    expect(rows[0].evPct).toBeGreaterThan(0)
+    expect(rows[0]).toMatchObject({ playerName: 'Aryna Sabalenka', statType: 'moneyline', source: 'market', recommendation: null, confidence: null, evPct: null })
+    expect(rows[0].statAvg).toBeCloseTo(62)
     expect(rows[0].breakEvenPct).toBeCloseTo(50)
+    expect(rows.map(isTennisRateable)).toEqual([false, false])
+    expect(rows.map(trustLabel)).toEqual(['Review', 'Review'])
+    expect(signalSummary(rows[0])).toBe('Reference only: tennis moneyline picks are off')
+
+    const [category] = buildTennisPropBoard(rows, [prediction], 'all')
+    expect(category.rateable).toEqual([])
+    expect(category.other).toHaveLength(2)
   })
 })
 

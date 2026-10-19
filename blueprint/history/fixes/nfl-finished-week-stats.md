@@ -137,7 +137,7 @@ without BET, actionable ranking or positive signal styling. Add a regression
 covering a positive-EV input while moneyline recommendations are disabled.
 This is a policy/consumer bug, verified with tests and a UI check; it requires no
 new modelling verdict or holdout read. Do not re-enable moneylines.
-**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge.
+**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge. Repaired 2026-10-18 by fix `tennis-board-moneyline-reference` and re-reviewed there as `tennis-board-moneyline-reference/F-16`.
 
 ### nfl-finished-week-stats/F-04 [P1] accepted - Best-pick props bypass the board's eligibility and data-quality gates
 

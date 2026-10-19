@@ -60,14 +60,14 @@ describe('propCard', () => {
     expect(dk.breakEvenLabel).toBe('Break-even 57.7%')
   })
 
-  it('shows a moneyline row as signed odds against the market probability', () => {
+  it('shows a moneyline row as signed odds against the market probability, with no pick or EV', () => {
     const card = propCard(boardRow(moneylineBoardRows([prediction])[0]))
     expect(card).toMatchObject({
-      pickLabel: 'BET', isUnder: false, valueLabel: 'Odds', valueText: '+129', unit: null, projectionText: '57.8%',
+      pickLabel: '--', isUnder: false, valueLabel: 'Odds', valueText: '+129', unit: null, projectionText: '57.8%',
       hitPct: 57.8, source: 'Market odds', sampleText: '--', flags: ['small_sample'],
     })
     expect(card.breakEvenLabel).toMatch(/^Market \d+\.\d%$/)
-    expect(card.evText).toBe('+32.4%')
+    expect(card).toMatchObject({ evText: '--', evTone: null, confidence: null, trust: 'Review' })
   })
 
   it('shows a win-a-set row as the confidence, unpriced, with no bar', () => {
