@@ -8,3 +8,13 @@ useDefault = true
 [[allowlists]]
 description = "Saved TennisAbstract page; the token is Cloudflare's public analytics beacon id, embedded in the site's own HTML"
 paths = ['''(^|/)blueprint/history/one-off-scripts/root/tmp_ta_zverev\.html$''']
+
+# Extends the default rule, so only matching secrets in this file are skipped
+# and any other credential there is still caught.
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "NBA digest test; key is a '<gameId>-<playerId>-<market>' row key, not a credential"
+condition = "AND"
+paths = ['''(^|/)web/src/utils/nbaSlate\.test\.ts$''']
+regexes = ['''^\d+-\d+-[a-z_]+$''']
