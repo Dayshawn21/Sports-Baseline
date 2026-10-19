@@ -4,13 +4,14 @@ import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '
 import { edgeShare, isConfidentSample, type NflBoardLine } from '~/utils/nflPropBoard'
 import { edgeLabel, edgePctLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 const TD_MARKET = 'anytime_touchdown'
 const DEPTH_FLAGS = ['depth_promoted', 'depth_demoted', 'depth_new']
 
 export interface NflPropCardModel {
   key: number
-  kind: 'stat' | 'td'
+  kind: 'stat' | 'td' | 'reference'
   rank: number | null
   playerName: string
   badge: string
@@ -74,11 +75,12 @@ function gameMeta(row: NflBoardLine): string {
 
 export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLine: number | null, now: number): NflPropCardModel {
   const td = row.market === TD_MARKET
-  const confident = isConfidentSample(row)
+  const reference = isTargetsReference(row.market)
+  const confident = reference ? row.projection !== null : isConfidentSample(row)
   return {
     key: row.lineId,
-    kind: td ? 'td' : 'stat',
-    rank,
+    kind: reference ? 'reference' : td ? 'td' : 'stat',
+    rank: reference ? null : rank,
     playerName: row.playerName,
     badge: teamBadge(row, row.awayTeam, row.homeTeam),
     meta: meta(row),
@@ -86,12 +88,12 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
     unit: marketLabel(row.market).toLowerCase(),
     lineText: row.line?.toFixed(1) ?? '--',
     modelText: formatProjection(row.market, row.projection),
-    pickLabel: pickLabel(row.edge),
-    isUnder: row.edge !== null && row.edge < 0,
+    pickLabel: reference ? '--' : pickLabel(row.edge),
+    isUnder: !reference && row.edge !== null && row.edge < 0,
     edgeShareText: edgePctLabel(edgeShare(row, referenceLine)),
     edgeText: edgeLabel(row.edge),
-    trust: trustLabel(row),
-    sampleText: `${row.gamesInSample}g${confident ? '' : ' thin'}`,
+    trust: reference ? 'Reference' : trustLabel(row),
+    sampleText: `${row.gamesInSample}g${confident ? '' : reference ? ' unavailable' : ' thin'}`,
     thin: !confident,
     injury: injuryTag(row.injuryStatus),
     depthText: row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,

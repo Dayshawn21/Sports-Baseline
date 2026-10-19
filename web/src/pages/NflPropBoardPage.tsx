@@ -11,6 +11,7 @@ import { marketLabel } from '~/utils/nflLabels'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import { buildNflPropBoard, filterNflPropBoardGames, flattenSlateLines } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { isTargetsReference } from '~/utils/nflTargets'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
 
@@ -54,9 +55,9 @@ export default function NflPropBoardPage() {
       <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll}
         onPosition={setPosition} onGame={setGameFilter} onShowAll={setShowAll} />
       <section className="prop-table-panel" aria-label="Prop lines">
-        {category.rateable.length === 0 && <p className="nfl-prop-table-empty">No rateable {marketLabel(category.market).toLowerCase()} lines this week.</p>}
+        {category.rateable.length === 0 && <p className="nfl-prop-table-empty">{isTargetsReference(category.market) ? 'No standard full-game Rec Targets references available.' : `No rateable ${marketLabel(category.market).toLowerCase()} lines this week.`}</p>}
         <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => setSelectedLineId(row.lineId)}
-          rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
+          rateable={category.rateable.map((row, index) => ({ row, rank: isTargetsReference(row.market) ? null : index + 1 }))}
           other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
       </section>
       <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>

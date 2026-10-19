@@ -25,6 +25,7 @@ def test_prizepicks_nfl_mapping_excludes_noisy_markets() -> None:
 
 
 def test_current_prizepicks_spellings_map_to_supported_markets() -> None:
+    assert market_for_prizepicks_stat("Rec Targets") == NflPropMarket.RECEIVING_TARGETS
     assert market_for_prizepicks_stat("Rush Yards") == NflPropMarket.RUSHING_YARDS
     assert market_for_prizepicks_stat("Anytime TDs") == NflPropMarket.ANYTIME_TOUCHDOWN
     assert market_for_prizepicks_stat("Rushing Yards") == NflPropMarket.RUSHING_YARDS
@@ -43,7 +44,6 @@ def test_unmapped_stat_counts_reports_only_skipped_names() -> None:
 
 
 LINE_ONLY_NAMES = {
-    "Rec Targets": NflLineOnlyMarket.RECEIVING_TARGETS,
     "Pass TDs": NflLineOnlyMarket.PASSING_TOUCHDOWNS,
     "INT": NflLineOnlyMarket.INTERCEPTIONS,
     "Rush+Rec Yds": NflLineOnlyMarket.RUSHING_RECEIVING_YARDS,

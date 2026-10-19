@@ -12,7 +12,6 @@ from app.nfl.markets import NflLineOnlyMarket
 # market -> ((column, weight), ...). Kicking points use PrizePicks' standard
 # scoring, 3 per field goal and 1 per extra point.
 _RULES: dict[NflLineOnlyMarket, tuple[tuple[str, int], ...]] = {
-    NflLineOnlyMarket.RECEIVING_TARGETS: (("targets", 1),),
     NflLineOnlyMarket.PASSING_TOUCHDOWNS: (("passing_tds", 1),),
     NflLineOnlyMarket.INTERCEPTIONS: (("interceptions", 1),),
     NflLineOnlyMarket.RUSHING_RECEIVING_YARDS: (("rushing_yards", 1), ("receiving_yards", 1)),

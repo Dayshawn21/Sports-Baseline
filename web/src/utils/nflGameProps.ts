@@ -2,11 +2,12 @@ import type { NflSlateGame } from '~/types/nfl'
 import { buildNflPropBoard, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import type { NflPropPeriod } from '~/utils/nflPropPeriods'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 export interface NflRankedBoardLine {
   row: NflBoardLine
   /** The line's rank on the week-wide prop board, so a card reads the same on both pages. */
-  rank: number
+  rank: number | null
 }
 
 export interface NflGamePropCategory {
@@ -40,7 +41,7 @@ export function nflGameProps(
   return buildNflPropBoard(games, position, gameBoardAsOf(game, now))
     .map(category => ({
       category,
-      rateable: category.rateable.flatMap((row, index) => inView(row) ? [{ row, rank: index + 1 }] : []),
+      rateable: category.rateable.flatMap((row, index) => inView(row) ? [{ row, rank: isTargetsReference(row.market) ? null : index + 1 }] : []),
       other: category.other.filter(inView),
     }))
     .filter(item => item.rateable.length > 0 || item.other.length > 0)

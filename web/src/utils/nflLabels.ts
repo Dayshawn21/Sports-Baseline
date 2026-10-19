@@ -43,6 +43,7 @@ export const ODDS_TYPE_COLORS: Record<string, string> = {
 }
 
 export const FLAG_LABELS: Record<string, string> = {
+  no_baseline: 'No valid pre-week targets history',
   historical_baseline: 'Baseline from past results, not a live model',
   small_sample: 'Fewer than 4 games behind this average',
   stale_baseline_season: 'Baseline is from a different season than this line',

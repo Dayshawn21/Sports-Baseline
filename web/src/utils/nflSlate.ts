@@ -2,6 +2,7 @@ import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamConte
 import { conditionsLabel, hasKickedOff, recordLabel } from '~/utils/nflGame'
 import { nflGameModelSummary, qbChanges, spreadLabel } from '~/utils/nflGameModel'
 import { marketLabel } from '~/utils/nflLabels'
+import { isTargetsReference } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
 import { compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
@@ -138,6 +139,7 @@ export interface NflSlateDigestItem {
   matchup: string
   line: string
   model: string
+  modelLabel?: string
   /** Signed edge share against the category's reference line, as on the prop cards. */
   gap: string
 }
@@ -148,10 +150,11 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
     lineId: row.lineId,
     gameId: row.gameId,
     playerName: row.playerName,
-    market: marketLabel(row.market),
+    market: isTargetsReference(row.market) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
     matchup: `${row.awayTeam} @ ${row.homeTeam}`,
     line: row.line?.toFixed(1) ?? MISSING,
     model: row.projection?.toFixed(1) ?? MISSING,
+    ...(isTargetsReference(row.market) ? { modelLabel: 'reference' } : {}),
     gap: edgePctLabel(share),
   }))
 }

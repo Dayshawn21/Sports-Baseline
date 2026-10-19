@@ -28,12 +28,12 @@ from app.core.nfl_game_environment import apply_game_environment
 from app.core.nfl_season_blend import apply_season_blend, blended_row
 from app.core.nfl_team_game_dvp import apply_team_game_dvp
 from app.core.nfl_wind import WIND_MARKETS, apply_wind
-from app.nfl.markets import NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 from app.services.nfl.slate import _slate_line
 
 PRODUCTION_ARM = "production"
 REGULAR_SEASON_WEEKS = range(1, 19)
-ENVIRONMENT_ARM_MARKETS = frozenset(NflPropMarket) - {NflPropMarket.ANYTIME_TOUCHDOWN}
+ENVIRONMENT_ARM_MARKETS = NFL_V4_PROP_MARKETS - {NflPropMarket.ANYTIME_TOUCHDOWN}
 
 
 def _production(row: dict, season: int) -> dict:

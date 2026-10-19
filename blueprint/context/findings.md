@@ -150,7 +150,7 @@ backfilling future weeks; optionally expose the snapshot's `computed_at`.
 Tests on `parse_weeks`. Display freshness only, no model change.
 **Resolution:**
 
-### F-15 [P3] open - Frozen-row grading loader does not apply MODELLED_MARKET_FILTER
+### F-15 [P3] fixed - Frozen-row grading loader does not apply MODELLED_MARKET_FILTER
 
 **File:** api/app/repositories/nfl.py:2244
 **Found:** 2026-10-18 by /audit (scope: NFL frozen predictions; lens: correctness)
@@ -163,7 +163,12 @@ has no column and it would settle as `void_dnp` rather than fail loudly.
 **Suggested fix:** Add the filter to the `frozen` CTE and a recorded-SQL test,
 matching `get_gradeable_prop_lines` and `get_frozen_coverage`. Output is
 identical today.
-**Resolution:**
+**Resolution:** Fixed by 39c Step 1, approved 2026-10-19. The frozen CTE now
+applies `V4_MARKET_FILTER`, the explicit nine-market subset of the modelled
+universe, before latest-row selection. Recorded-SQL and mixed-market predicate
+tests cover the guard in `test_nfl_v4_markets.py`. Full Verify passed (612 web
+tests, production build, 2,836 API tests). Awaiting independent `/audit`
+re-review; this repair does not close the finding.
 
 ## Tennis audit evidence, 2026-10-18
 

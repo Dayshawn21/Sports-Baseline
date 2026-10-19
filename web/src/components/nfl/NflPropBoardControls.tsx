@@ -4,6 +4,7 @@ import type { NflSlateGame } from '~/types/nfl'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS, formatKickoffTime, marketLabel } from '~/utils/nflLabels'
 import type { NflBoardCategory } from '~/utils/nflPropBoard'
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 interface HeadProps {
   season: number
@@ -15,7 +16,9 @@ interface HeadProps {
 }
 
 export function NflPropBoardHead({ season, week, games, categories, onSeason, onWeek }: HeadProps) {
-  const rateable = categories.reduce((total, category) => total + category.rateable.length, 0)
+  const comparisons = categories.filter(category => !isTargetsReference(category.market))
+  const rateable = comparisons.reduce((total, category) => total + category.rateable.length, 0)
+  const references = categories.filter(category => isTargetsReference(category.market)).reduce((total, category) => total + category.rateable.length, 0)
   return <PageHead
     title="NFL props"
     meta={`${season} · Week ${week}`}
@@ -25,7 +28,7 @@ export function NflPropBoardHead({ season, week, games, categories, onSeason, on
     </>}
     stats={<section className="nfl-prop-summary" aria-label="Prop board summary">
       <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Games</span><strong className="nfl-prop-stat__value">{games}</strong><span className="nfl-prop-stat__sub">upcoming with lines</span></div>
-      <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Rateable</span><strong className="nfl-prop-stat__value">{rateable}</strong><span className="nfl-prop-stat__sub">across {categories.length} markets</span></div>
+      <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Rateable</span><strong className="nfl-prop-stat__value">{rateable}</strong><span className="nfl-prop-stat__sub">across {comparisons.length} markets{references > 0 ? ` · ${references} reference lines` : ''}</span></div>
     </section>}
   />
 }

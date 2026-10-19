@@ -4,13 +4,12 @@ from app.core.nfl_line_only import LINE_ONLY_COLUMNS, _RULES, line_only_value
 from app.nfl.markets import NflLineOnlyMarket as M
 
 ROW = {
-    "targets": 9, "passing_tds": 2, "interceptions": 1, "rushing_yards": 31, "receiving_yards": 64,
+    "passing_tds": 2, "interceptions": 1, "rushing_yards": 31, "receiving_yards": 64,
     "passing_yards": 248, "touchdowns": 1, "fg_made": 3, "pat_made": 2, "punts": 4,
 }
 
 
 @pytest.mark.parametrize(("market", "expected"), [
-    (M.RECEIVING_TARGETS, 9.0),
     (M.PASSING_TOUCHDOWNS, 2.0),
     (M.INTERCEPTIONS, 1.0),
     (M.RUSHING_RECEIVING_YARDS, 95.0),

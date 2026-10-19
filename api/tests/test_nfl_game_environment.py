@@ -5,7 +5,7 @@ from app.core.nfl_game_environment import (
     ENVIRONMENT_ADJUSTMENT_MAX, GAME_ENVIRONMENT_SLOPES, KEEP_SLOPE_STANDARD_ERRORS, NflEnvironmentGame, NflEnvironmentSlopes,
     environment_adjustment_pct, environment_samples, fit_environment_slopes, team_lines,
 )
-from app.nfl.markets import NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 
 ATTEMPTS = NflPropMarket.PASSING_ATTEMPTS
 SLOPES = {ATTEMPTS: NflEnvironmentSlopes(total=0.5, margin=-0.1)}
@@ -124,5 +124,5 @@ def test_too_few_players_cannot_be_fitted() -> None:
     assert fit_environment_slopes(environment_samples(games, ATTEMPTS)) is None
 
 
-def test_frozen_slopes_cover_every_market_but_anytime_td() -> None:
-    assert set(GAME_ENVIRONMENT_SLOPES) == set(NflPropMarket) - {NflPropMarket.ANYTIME_TOUCHDOWN}
+def test_frozen_slopes_cover_v4_markets_but_anytime_td() -> None:
+    assert set(GAME_ENVIRONMENT_SLOPES) == NFL_V4_PROP_MARKETS - {NflPropMarket.ANYTIME_TOUCHDOWN}

@@ -29,7 +29,7 @@ from app.ingest.nflverse_injuries import NflverseInjuryWeek
 from app.ingest.nflverse_rosters import NflverseRosterWeek
 from app.ingest.nflverse_snap_counts import NflverseSnapGame
 from app.ingest.nflverse_team_efficiency import NflverseTeamEfficiency
-from app.nfl.markets import NflLineOnlyMarket, NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflLineOnlyMarket, NflPropMarket
 from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1151,10 +1151,12 @@ def _availability(row) -> dict:
     return {field: row[field] for field in _AVAILABILITY_FIELDS}
 
 
-# Item 34 stores lines for markets the model does not project, so a stored line is
-# not necessarily a modelled one. Every reader that projects, grades or freezes
-# lines keeps to these; the values are code constants, never request input.
+# Stored lines include unmodelled markets. Each model's readers also restrict
+# this serving universe to their own markets so grading samples stay separate.
 MODELLED_MARKET_FILTER = "l.market IN ({})".format(", ".join(f"'{market.value}'" for market in NflPropMarket))
+V4_MARKET_FILTER = "l.market IN ({})".format(
+    ", ".join(f"'{market.value}'" for market in NflPropMarket if market in NFL_V4_PROP_MARKETS)
+)
 
 _LATEST_LINES_CTE = f"""
     latest_lines AS (
@@ -1162,7 +1164,7 @@ _LATEST_LINES_CTE = f"""
                l.id, l.provider, l.market, l.segment, l.line, l.start_time,
                l.fetched_at, l.player_id, l.game_id, l.odds_type, l.raw_json
         FROM sport_prop_lines l
-        WHERE l.sport = 'nfl' AND {MODELLED_MARKET_FILTER}
+        WHERE l.sport = 'nfl' AND {V4_MARKET_FILTER}
         ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
     )
 """
@@ -2210,7 +2212,7 @@ async def get_gradeable_prop_lines(db: AsyncSession, season: int, player_id: int
                 JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
                 WHERE l.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
-                  AND l.fetched_at < g.start_utc {player_filter} AND {MODELLED_MARKET_FILTER}
+                  AND l.fetched_at < g.start_utc {player_filter} AND {V4_MARKET_FILTER}
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
             )
             SELECT latest.id, g.season, g.week, latest.game_id, latest.player_id, latest.market,
@@ -2261,6 +2263,7 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
                 WHERE p.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
                   AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
+                  AND {V4_MARKET_FILTER}
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
             )
             SELECT frozen.id, g.season, g.week, frozen.game_id, frozen.player_id, frozen.market,
@@ -2312,12 +2315,12 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
     """
     rows = await db.execute(text(f"""
         WITH latest AS (
-            SELECT DISTINCT ON (l.provider, l.provider_prop_id) l.provider, l.provider_prop_id, g.week
+            SELECT DISTINCT ON (l.provider, l.provider_prop_id) l.provider, l.provider_prop_id, l.market, g.week
             FROM sport_prop_lines l
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
             WHERE l.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
               AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
-              AND l.fetched_at < g.start_utc AND l.segment = 'full_game' AND {MODELLED_MARKET_FILTER}
+              AND l.fetched_at < g.start_utc AND l.segment = 'full_game' AND {V4_MARKET_FILTER}
             ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
         )
         SELECT latest.week, COUNT(*),
@@ -2326,6 +2329,7 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
                    JOIN sport_prop_predictions p ON p.sport = 'nfl' AND p.prop_line_id = fl.id
                    JOIN sport_games g ON g.sport = 'nfl' AND g.id = fl.game_id
                    WHERE fl.sport = 'nfl' AND fl.provider = latest.provider AND fl.provider_prop_id = latest.provider_prop_id
+                     AND fl.market = latest.market
                      AND fl.fetched_at < g.start_utc AND p.generated_at < g.start_utc
                ))
         FROM latest

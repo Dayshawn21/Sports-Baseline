@@ -976,11 +976,11 @@ def test_frozen_coverage_counts_27a_full_game_lines_with_any_frozen_row_per_week
 def test_the_modelled_market_filter_lists_exactly_the_projected_markets() -> None:
     expected = ", ".join(f"'{market.value}'" for market in NflPropMarket)
     assert nfl_repository.MODELLED_MARKET_FILTER == f"l.market IN ({expected})"
-    assert len(NflPropMarket) == 9
+    assert len(NflPropMarket) == 10
 
 
 def test_slate_lines_read_only_modelled_markets() -> None:
-    assert f"WHERE l.sport = 'nfl' AND {nfl_repository.MODELLED_MARKET_FILTER}" in nfl_repository._LATEST_LINES_CTE
+    assert f"WHERE l.sport = 'nfl' AND {nfl_repository.V4_MARKET_FILTER}" in nfl_repository._LATEST_LINES_CTE
 
 
 def test_gradeable_lines_read_only_modelled_markets() -> None:
@@ -988,14 +988,14 @@ def test_gradeable_lines_read_only_modelled_markets() -> None:
         session = _MappingSession([])
         asyncio.run(get_gradeable_prop_lines(cast(AsyncSession, session), 2026, player_id=player_id))
         [(sql, _)] = session.calls
-        assert nfl_repository.MODELLED_MARKET_FILTER in sql
+        assert nfl_repository.V4_MARKET_FILTER in sql
 
 
 def test_frozen_coverage_counts_only_modelled_markets() -> None:
     session = _ScriptedSession([])
     asyncio.run(nfl_repository.get_frozen_coverage(cast(AsyncSession, session), 2026))
     [(sql, _)] = session.calls
-    assert f"l.segment = 'full_game' AND {nfl_repository.MODELLED_MARKET_FILTER}" in sql
+    assert f"l.segment = 'full_game' AND {nfl_repository.V4_MARKET_FILTER}" in sql
 
 
 def test_gradeable_line_reads_its_markets_stat_and_keeps_a_missing_row_as_none() -> None:

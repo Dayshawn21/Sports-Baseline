@@ -13,6 +13,8 @@
 .nfl-prop-table td.nfl-prop-table__bars, .nfl-prop-table:not(.is-td) th:nth-child(6) { padding-left: 28px; }
 .nfl-prop-table__pick { color: var(--nfl-green); font: 700 11px var(--font-body); letter-spacing: 0.08em; }
 .nfl-prop-table__share { color: var(--nfl-green); font: 600 14px var(--font-mono); }
+.nfl-prop-table__share.is-reference { color: var(--text-secondary); }
+.nfl-prop-table__reference-note { padding: var(--space-3) 0; color: var(--text-secondary); text-align: left; font-size: 13px; line-height: 1.5; }
 .nfl-prop-table__pick.is-negative, .nfl-prop-table__share.is-negative { color: var(--nfl-red); }
 /* No edge means no side, so the dashes carry no signal color. */
 .nfl-prop-table__pick.is-none, .nfl-prop-table__share.is-none { color: var(--text-muted); }
@@ -22,6 +24,7 @@
 .nfl-prop-table.is-td td.nfl-prop-table__snap { white-space: normal; }
 
 @media (max-width: 1100px) {
+  .nfl-prop-table__reference-note { display: block; width: 100%; }
   .nfl-prop-table td.nfl-prop-table__gap small { display: none; }
   .nfl-prop-table td.nfl-prop-table__bars { padding-left: 0; }
   .nfl-prop-table td.is-num:not(.prop-table__end) { text-align: left; }

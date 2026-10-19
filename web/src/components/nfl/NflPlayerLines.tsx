@@ -4,21 +4,23 @@ import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { formatKickoffTime, formatProjection, marketLabel } from '~/utils/nflLabels'
 import type { NflPlayerWeek, NflPlayerWeekLine } from '~/utils/nflPlayer'
-import { edgePctLabel } from '~/utils/nflSignal'
+import { edgeLabel, edgePctLabel } from '~/utils/nflSignal'
+import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 
 const TD = 'anytime_touchdown'
 
 function LineRow({ item, selected, onOpen }: { item: NflPlayerWeekLine, selected: boolean, onOpen: () => void }) {
   const { row } = item
   const isTd = row.market === TD
+  const reference = isTargetsReference(row.market)
   // The de-vigged price where there is one, else the raw price, as the prop cards read it.
   const bookPrice = row.bookProbabilityDevigged ?? row.bookProbability
   const books = bookPrice === null ? 'no books' : `books ${formatProjection(TD, bookPrice)}`
   return <button type="button" className={`nfl-player-line${selected ? ' is-selected' : ''}`} onClick={onOpen}>
-    <span>{marketLabel(row.market)}{item.rank !== null && <small>#{item.rank}</small>}</span>
+    <span title={reference ? TARGETS_REFERENCE_NOTE : undefined}>{marketLabel(row.market)}{reference ? <small>reference</small> : item.rank !== null && <small>#{item.rank}</small>}</span>
     <span className={`nfl-player-num${isTd ? ' is-dim' : ''}`}>{isTd ? '--' : row.line?.toFixed(1) ?? '--'}</span>
     <span className="nfl-player-num">{formatProjection(row.market, row.projection)}</span>
-    <span className={`nfl-player-num${isTd ? ' is-dim' : ''}`}>{isTd ? books : edgePctLabel(item.edgeShare)}</span>
+    <span className={`nfl-player-num${isTd ? ' is-dim' : ''}`}>{reference ? `${edgeLabel(row.edge)} gap` : isTd ? books : edgePctLabel(item.edgeShare)}</span>
     <span className="nfl-player-line__arrow" aria-hidden="true">›</span>
   </button>
 }

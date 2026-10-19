@@ -1,6 +1,7 @@
 import type { NflSlateLine } from '~/types/nfl'
 import { STALE_FLAG } from '~/utils/nflBaseline'
 import { formatProjection } from '~/utils/nflLabels'
+import { isTargetsReference, targetsReferenceSummary } from '~/utils/nflTargets'
 
 type SignalLine = Pick<
   NflSlateLine,
@@ -54,6 +55,7 @@ export function overShareLabel(pOver: number | null): string | null {
 }
 
 export function signalSummary(row: SignalLine): string {
+  if (isTargetsReference(row.market)) return targetsReferenceSummary(row)
   const details: string[] = []
   if (row.projection !== null && row.line !== null) details.push(`Model ${formatProjection(row.market, row.projection)} vs ${formatProjection(row.market, row.line)} line`)
   if (row.recentForm.average !== null) details.push(`Recent ${formatProjection(row.market, row.recentForm.average)} avg (${row.recentForm.values.length}g)`)

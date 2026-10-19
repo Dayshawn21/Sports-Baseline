@@ -17,9 +17,12 @@ import sys
 from app.core.nfl_game_environment import (
     KEEP_SLOPE_STANDARD_ERRORS, NflEnvironmentFit, NflEnvironmentGame, environment_samples, fit_environment_slopes,
 )
-from app.nfl.markets import NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 
-FIT_MARKETS = tuple(market for market in NflPropMarket if market is not NflPropMarket.ANYTIME_TOUCHDOWN)
+FIT_MARKETS = tuple(
+    market for market in NflPropMarket
+    if market in NFL_V4_PROP_MARKETS and market is not NflPropMarket.ANYTIME_TOUCHDOWN
+)
 
 
 def _row(market: NflPropMarket, fit: NflEnvironmentFit | None) -> str:

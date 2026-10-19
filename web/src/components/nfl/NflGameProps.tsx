@@ -12,6 +12,7 @@ import type { NflBoardLine } from '~/utils/nflPropBoard'
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
 import { NFL_PROP_PERIOD_OPTIONS, type NflPropPeriod } from '~/utils/nflPropPeriods'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 function Segment<T extends string>({ label, options, value, onChange }: { label: string, options: Array<{ label: string, value: T }>, value: T, onChange: (value: T) => void }) {
   return <div className="nfl-prop-seg" role="group" aria-label={label}>
@@ -40,7 +41,7 @@ export function NflGameProps({ games, game, now }: Props) {
   // Partial-game lines are never rateable, so hiding "other" there would always leave the view empty.
   const includeOther = showAll || period !== 'full_game'
   const visible = categories.filter(item => item.rateable.length > 0 || (includeOther && item.other.length > 0))
-  const rateableCount = categories.reduce((total, item) => total + item.rateable.length, 0)
+  const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
   return <section className="nfl-game-props" aria-label="Props for this game">
     <h2 className="nfl-game-section-title">Props <small>{rateableCount} rateable · ranks are from the week's prop board · edges stay gray until the ranking check adopts a slice</small></h2>
     <div className="nfl-game-props__toolbar">

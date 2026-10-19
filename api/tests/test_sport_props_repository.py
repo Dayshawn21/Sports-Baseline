@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import cast
@@ -117,3 +118,24 @@ def test_no_frozen_predictions_issue_no_sql() -> None:
 
     assert _run(sport_props.insert_prop_predictions(cast(AsyncSession, session), "nfl", [])) == 0
     assert session.statement == ""
+
+
+def test_mixed_models_reuse_nullable_version_keys_and_insert_only_sql_on_a_rerun() -> None:
+    original = _prediction_row()
+    target = replace(original, prop_line_id=42, model_version="nfl-targets-v1", projection=3.25,
+                     feature_snapshot={"market": "receiving_targets", "odds_type": "standard"})
+    session = _Session([(1,), (2,)])
+    db = cast(AsyncSession, session)
+
+    assert _run(sport_props.insert_prop_predictions(db, "nfl", [original, target])) == 2
+    first_sql, first_params = session.statement, session.params.copy()
+    session._rows = []
+    assert _run(sport_props.insert_prop_predictions(db, "nfl", [original, target])) == 0
+
+    assert session.statement == first_sql and session.params == first_params
+    assert "ON CONFLICT (prop_line_id, model_version, over_probability_version) DO NOTHING" in first_sql
+    assert "DO UPDATE" not in first_sql
+    rows = json.loads(str(first_params["rows"]))
+    assert [(row["prop_line_id"], row["model_version"], row["over_probability_version"]) for row in rows] == [
+        (41, "opponent-dvp-tg-blend-usage-snap-v4", None), (42, "nfl-targets-v1", None),
+    ]

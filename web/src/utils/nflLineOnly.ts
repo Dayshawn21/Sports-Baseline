@@ -1,10 +1,11 @@
 import type { NflLineOnlyLine, NflLineOnlyRecent } from '~/types/nfl'
 import type { NflRecentBars } from '~/utils/nflPropCards'
 import { filterNflSlateLinesByPosition, type NflPositionFilter } from '~/utils/nflPositions'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 /** The order item 34 stored them in; any unknown market sorts after these. */
 export const LINE_ONLY_MARKETS = [
-  'receiving_targets', 'passing_touchdowns', 'interceptions', 'rushing_receiving_yards', 'passing_rushing_yards',
+  'passing_touchdowns', 'interceptions', 'rushing_receiving_yards', 'passing_rushing_yards',
   'passing_rushing_receiving_touchdowns', 'field_goals_made', 'kicking_points', 'punts',
 ]
 
@@ -71,6 +72,7 @@ export function lineOnlyBars(row: { rungs: NflLineOnlyRung[], recent: LineOnlyRe
 export function lineOnlyGroups(lines: NflLineOnlyLine[], position: NflPositionFilter): NflLineOnlyGroup[] {
   const groups = new Map<string, Map<number, NflLineOnlyLine[]>>()
   for (const line of filterNflSlateLinesByPosition(lines, position)) {
+    if (isTargetsReference(line.market)) continue
     const players = groups.get(line.market) ?? new Map<number, NflLineOnlyLine[]>()
     players.set(line.playerId, [...(players.get(line.playerId) ?? []), line])
     groups.set(line.market, players)

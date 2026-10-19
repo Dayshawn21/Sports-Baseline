@@ -80,7 +80,7 @@ export function DetailBreakdown({ detail }: { detail: NflPropDetailModel }) {
     <SectionHead title="How the projection is built" />
     <p className="nfl-prop-detail__why">{detail.why}</p>
     <dl className="nfl-prop-detail__rows">
-      {detail.breakdown.map(item => <div key={item.label} className={item.label === 'Projection' ? 'is-total' : undefined}>
+      {detail.breakdown.map(item => <div key={item.label} className={item.label === 'Projection' || item.label === 'Reference' ? 'is-total' : undefined}>
         <dt>{item.label}{item.note && <small>{item.note}</small>}</dt>
         <dd>{item.value}</dd>
       </div>)}
@@ -92,14 +92,15 @@ export function DetailLines({ detail }: { detail: NflPropDetailModel }) {
   return <section className="nfl-prop-detail__section">
     <SectionHead title="PrizePicks lines" />
     <table className="nfl-prop-detail__table">
-      <thead><tr><th>Type</th><th>Line</th><th>P(over)</th></tr></thead>
+      <thead><tr><th>Type</th><th>Line</th>{!detail.referenceNote && <th>P(over)</th>}</tr></thead>
       <tbody>{detail.lines.map(line => <tr key={line.key} className={line.selected ? 'is-selected' : undefined}>
         <td><Tag color={line.typeColor}>{line.typeLabel}</Tag>{line.selected && <span className="nfl-prop-detail__this">This line</span>}</td>
         <td>{line.lineText}</td>
-        <td>{line.pOverText ?? '--'}</td>
+        {!detail.referenceNote && <td>{line.pOverText ?? '--'}</td>}
       </tr>)}</tbody>
     </table>
     {detail.pOverNote && <Tooltip title={P_OVER_NOTE}><p className="nfl-prop-detail__note">{detail.pOverNote}</p></Tooltip>}
+    {detail.referenceNote && <p className="nfl-prop-detail__note">{detail.referenceNote}</p>}
   </section>
 }
 

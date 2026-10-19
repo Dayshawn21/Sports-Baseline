@@ -8,7 +8,7 @@ from app.core.nfl_line_grading import (
     over_probability_reads, rate,
     reference_lines, settle_line,
 )
-from app.nfl.markets import NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 
 FETCHED = datetime(2026, 9, 20, 15, 0, tzinfo=UTC)
 
@@ -22,8 +22,8 @@ def _line(line_id: int = 1, **overrides: object) -> GradeableLine:
     return replace(base, **overrides)
 
 
-def test_every_supported_market_settles_on_a_weekly_stat_column() -> None:
-    assert set(STAT_COLUMN_BY_MARKET) == set(NflPropMarket)
+def test_every_v4_market_settles_on_a_weekly_stat_column() -> None:
+    assert set(STAT_COLUMN_BY_MARKET) == NFL_V4_PROP_MARKETS
     assert STAT_COLUMN_BY_MARKET[NflPropMarket.ANYTIME_TOUCHDOWN] == "touchdowns"
 
 

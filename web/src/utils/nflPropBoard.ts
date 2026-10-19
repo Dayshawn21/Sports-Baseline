@@ -3,6 +3,7 @@ import { MIN_BASELINE_GAMES, STALE_FLAG } from '~/utils/nflBaseline'
 import { MARKET_LABELS } from '~/utils/nflLabels'
 import { filterNflSlateLinesByPosition, type NflPositionFilter } from '~/utils/nflPositions'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { isTargetsReference } from '~/utils/nflTargets'
 
 /** A slate line carrying the game it came from, so the board can show a matchup without regrouping. */
 export interface NflBoardLine extends NflSlateLine {
@@ -14,7 +15,7 @@ export interface NflBoardLine extends NflSlateLine {
 
 export interface NflBoardCategory {
   market: string
-  /** Ranked best to worst; comparable to the market price. */
+  /** Default rows: ranked v4 comparisons or unranked Rec Targets references. */
   rateable: NflBoardLine[]
   /** Ranked, but alternate payouts, partial segments, or thin samples. */
   other: NflBoardLine[]
@@ -77,12 +78,13 @@ export function edgeShare(line: Pick<NflSlateLine, 'edge'>, referenceLine: numbe
 }
 
 /**
- * Mirrors `edge_is_comparable` in `api/app/core/nfl_projection.py`; both sides must agree.
+ * Mirrors v4's `edge_is_comparable`; Rec Targets follows its own unranked reference path.
  * Anytime TD is never rateable until build-plan item 25c, so it ranks by probability under
  * "show all" without a pick.
  */
 export function isRateable(line: Pick<NflSlateLine, 'edge' | 'gamesInSample' | 'line' | 'market' | 'oddsType' | 'segment'>): boolean {
   return line.market !== 'anytime_touchdown'
+    && !isTargetsReference(line.market)
     && line.edge !== null
     && line.line !== null
     && line.oddsType === 'standard'
@@ -151,17 +153,22 @@ export function buildNflPropBoard(games: NflSlateGame[], position: NflPositionFi
 
   return [...known, ...unknown].map(market => {
     const lines = byMarket.get(market) ?? []
-    const rateable = lines.filter(isRateable)
+    const primary = (line: NflBoardLine) => isTargetsReference(market)
+      ? line.segment === 'full_game' && line.oddsType === 'standard'
+      : isRateable(line)
+    const rateable = lines.filter(primary)
     // A category with nothing rateable still needs a denominator for its "show all" rows.
     const referenceLine = categoryReferenceLine(rateable.length ? rateable : lines)
-    const compare = market === 'anytime_touchdown'
+    const compare = isTargetsReference(market)
+      ? (left: NflBoardLine, right: NflBoardLine) => left.playerName.localeCompare(right.playerName) || left.lineId - right.lineId
+      : market === 'anytime_touchdown'
       ? compareAnytimeTdLines
       : compareBoardLines(referenceLine)
     return {
       market,
       referenceLine,
       rateable: rateable.sort(compare),
-      other: lines.filter(line => !isRateable(line)).sort(compare),
+      other: lines.filter(line => !primary(line)).sort(compare),
     }
   })
 }

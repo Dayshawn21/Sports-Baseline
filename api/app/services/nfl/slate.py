@@ -35,6 +35,8 @@ from app.core.nfl_prop_odds import NflSlateBookOdds, consensus, devigged_book_pr
 from app.nfl.markets import NflPropMarket
 from app.nfl.weather import stadium_for_home_team
 from app.repositories import nfl as nfl_repo
+from app.repositories import nfl_targets as targets_repo
+from app.services.nfl.targets import targets_slate_line
 from app.schemas.nfl import (
     NflGameModelSchema, NflHistoryResultSchema, NflHistorySampleSchema, NflSlateGameSchema, NflSlateLineSchema,
     NflSlateResponse, NflUnmatchedLineSchema, NflWeatherSchema,
@@ -299,6 +301,8 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
     prop_odds = await nfl_repo.get_slate_prop_odds(db, season, week)
     elo_by_game = await nfl_repo.get_slate_team_elo(db, season, week)
     elo_games = await nfl_repo.get_elo_games(db)
+    targets_rows = await targets_repo.get_targets_serving_lines(db, season, week)
+    unmatched_targets = await targets_repo.get_unmatched_targets_lines(db, season, week)
 
     # Everything below is CPU only. Run in a worker thread so the event loop keeps
     # answering /health and other visitors: inline, a cold week stalled the loop for
@@ -336,13 +340,15 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
                     market_is_stale=moneyline_is_stale(market_fetched_at, kickoffs.get(row["game_id"]), now),
                 )
             )
+        for row in targets_rows:
+            lines_by_game.setdefault(row.game_id, []).append(targets_slate_line(row))
         for game_lines in lines_by_game.values():
             # Current-season edges first, then stale-baseline edges, then unpriced rows.
             game_lines.sort(key=lambda item: slate_line_rank(item.edge, item.quality_flags))
 
         return NflSlateResponse(
-            season=season, week=week, game_count=len(games), line_count=len(line_rows),
-            unmatched_count=len(unmatched_rows),
+            season=season, week=week, game_count=len(games), line_count=len(line_rows) + len(targets_rows),
+            unmatched_count=len(unmatched_rows) + len(unmatched_targets),
             games=[
                 NflSlateGameSchema(
                     **game, **matchup_context.get(game["game_id"], {}), lines=lines_by_game.get(game["game_id"], []),
@@ -362,7 +368,7 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
                     line=row["line"], provider=row["provider"], fetched_at=row["fetched_at"],
                 )
                 for row in unmatched_rows
-            ],
+            ] + [NflUnmatchedLineSchema.model_validate(row, from_attributes=True) for row in unmatched_targets],
         )
 
     return await asyncio.to_thread(assemble)

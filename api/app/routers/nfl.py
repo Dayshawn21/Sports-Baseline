@@ -9,7 +9,7 @@ from app.config import settings
 from app.core.nfl_projection import NflHistoricalAverages, baseline_projection, quality_flags
 from app.core.production_settings import is_production
 from app.db.pool import get_db
-from app.nfl.markets import SUPPORTED_NFL_PROP_MARKETS, NflPropMarket
+from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import (
     NflCurrentWeekResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
@@ -83,7 +83,7 @@ async def get_projections(
         averages = NflHistoricalAverages(**row["averages"])
         flags = quality_flags(averages)
         confidence = "LEAN" if averages.games >= 8 else "PASS"
-        for market in SUPPORTED_NFL_PROP_MARKETS:
+        for market in NFL_V4_PROP_MARKETS:
             projections.append(NflProjectionSchema(
                 game_id=row["game_id"], player_id=row["player_id"], player_name=row["player_name"],
                 position=row["position"], market=market.value,

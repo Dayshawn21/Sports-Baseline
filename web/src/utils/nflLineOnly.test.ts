@@ -22,8 +22,8 @@ describe('lineOnlyGroups', () => {
       line({ market: 'receiving_targets', playerId: 4, playerName: 'Kyle Pitts', position: 'TE' }),
     ], 'all')
 
-    expect(groups.map(group => group.market)).toEqual(['receiving_targets', 'kicking_points', 'punts'])
-    expect(groups[1].rows.map(row => row.playerName)).toEqual(['Daniel Carlson', 'Nick Folk'])
+    expect(groups.map(group => group.market)).toEqual(['kicking_points', 'punts'])
+    expect(groups[0].rows.map(row => row.playerName)).toEqual(['Daniel Carlson', 'Nick Folk'])
   })
 
   it('collects every rung of a player line in line order', () => {

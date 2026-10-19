@@ -47,9 +47,23 @@ class NflPropMarket(StrEnum):
     RECEPTIONS = "receptions"
     ANYTIME_TOUCHDOWN = "anytime_touchdown"
     FANTASY_POINTS = "fantasy_points"
+    RECEIVING_TARGETS = "receiving_targets"
 
 
 SUPPORTED_NFL_PROP_MARKETS = frozenset(NflPropMarket)
+
+# v4's fitted inputs and forward sample must not grow when another model adds a market.
+NFL_V4_PROP_MARKETS = frozenset({
+    NflPropMarket.PASSING_YARDS,
+    NflPropMarket.PASSING_ATTEMPTS,
+    NflPropMarket.PASSING_COMPLETIONS,
+    NflPropMarket.RUSHING_YARDS,
+    NflPropMarket.RUSHING_ATTEMPTS,
+    NflPropMarket.RECEIVING_YARDS,
+    NflPropMarket.RECEPTIONS,
+    NflPropMarket.ANYTIME_TOUCHDOWN,
+    NflPropMarket.FANTASY_POINTS,
+})
 
 
 class NflLineOnlyMarket(StrEnum):
@@ -59,7 +73,6 @@ class NflLineOnlyMarket(StrEnum):
     item can grade the whole stored history. The values are stored and never renamed.
     """
 
-    RECEIVING_TARGETS = "receiving_targets"
     PASSING_TOUCHDOWNS = "passing_touchdowns"
     INTERCEPTIONS = "interceptions"
     RUSHING_RECEIVING_YARDS = "rushing_receiving_yards"
@@ -102,7 +115,7 @@ NFL_PROPS = SportPropConfig(
         "anytime touchdowns": NflPropMarket.ANYTIME_TOUCHDOWN,
         "anytime tds": NflPropMarket.ANYTIME_TOUCHDOWN,
         # Exact names from the 2026-10-05 board; the "(Combo)" variants stay unmapped.
-        "rec targets": NflLineOnlyMarket.RECEIVING_TARGETS,
+        "rec targets": NflPropMarket.RECEIVING_TARGETS,
         "pass tds": NflLineOnlyMarket.PASSING_TOUCHDOWNS,
         "int": NflLineOnlyMarket.INTERCEPTIONS,
         "rush+rec yds": NflLineOnlyMarket.RUSHING_RECEIVING_YARDS,

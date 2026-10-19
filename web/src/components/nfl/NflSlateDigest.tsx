@@ -10,7 +10,7 @@ export function NflSlateDigest({ items }: { items: NflSlateDigestItem[] }) {
       aria-label={`${item.playerName}, ${item.market}, ${item.matchup}, open game page`}>
       <strong>{item.playerName}</strong>
       <span className="slate-digest__what">{item.market} · {item.matchup}</span>
-      <span className="slate-digest__num"><span>line {item.line}</span><span>model {item.model}</span></span>
+      <span className="slate-digest__num"><span>line {item.line}</span><span>{item.modelLabel ?? 'model'} {item.model}</span></span>
       <span className="slate-digest__gap">gap {item.gap}</span>
     </Link>)}
   </SlateDigest>
