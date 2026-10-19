@@ -23,16 +23,18 @@
 > titles are implemented. The palette, fonts, and signal rules stay unchanged.
 > NBA has Slate and Model tabs; a separate NBA Props board is not yet a
 > build-plan item. Next for NFL props: a Rec Targets projection (item 39),
-> graded by 27j as its own sample.
+> graded by 27j as its own sample; its 2024 baseline (39a) is chosen, and
+> its P(over) fit (39b) is next.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
 **Regenerated:** 2026-10-18. The build plan is the progress authority where
-older project-plan prose disagrees. There are 108 completed leaf items out of
+older project-plan prose disagrees. There are 109 completed leaf items out of
 118; no feature is active. Item 39 was added and split into 39a-39d on
-2026-10-18. Feature 38 is merged and pushed to `master`.
+2026-10-18, and 39a was completed, merged and pushed the same day. Feature 38
+is merged and pushed to `master`.
 This overview refresh does not verify the latest hosted deployment.
 
 ## Problem
@@ -113,7 +115,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 34 | More NFL prop lines | Complete |
 | 35 | Line-only prop display | Complete |
 | 36 | NFL best line | Complete |
-| 39 | NFL Rec Targets projection | 39a-39d planned |
+| 39 | NFL Rec Targets projection | 39a complete; 39b-39d planned |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
 | 21 | WNBA support | Planned |
@@ -121,9 +123,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-Ten leaf items remain: parked 16f, conditional 25c and 27h, the four Rec
-Targets steps (39a-39d), then WNBA (21), three-way markets (22) and soccer
-(23). Item 39a is the first unconditional one in plan order. Adoption work requires the existing
+Nine leaf items remain: parked 16f, conditional 25c and 27h, the three
+remaining Rec Targets steps (39b-39d), then WNBA (21), three-way markets (22)
+and soccer (23). Item 39b is the first unconditional one in plan order. Adoption work requires the existing
 pre-registered verdicts; this refresh makes no new verdict or model claim.
 An NBA Props board would be a reviewed addition, not an existing unchecked item.
 
@@ -649,14 +651,14 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
-**Planned: NFL Rec Targets projection (item 39, added 2026-10-18)**
+**In progress: NFL Rec Targets projection (item 39, added 2026-10-18; 39a complete)**
 
 39. **NFL Rec Targets projection** - project PrizePicks Rec Targets lines
     (standard only), the first line-only market from item 34 to get a model.
 
-| Step | Planned outcome |
+| Step | Outcome |
 |---|---|
-| 39a | Choose the baseline on 2024 only, testing season-average, moneyline scaling and recent form in pre-registered order; version `nfl-targets-v1`; backtest only |
+| 39a | *Shipped 2026-10-18.* Baseline chosen on 2024 only from season-average, moneyline scaling and recent form in pre-registered order; both candidates rejected, so `nfl-targets-v1` is the season average; backtest only |
 | 39b | Fit P(over) on 2024 and check its display gate once on 2025; freeze the fit table; no production change |
 | 39c | Serve and freeze Rec Targets under its own model and P(over) versions; preserve the nine v4 markets and their sample |
 | 39d | Grade each model version separately in 27j and display the Rec Targets slices on `/nfl/model` |
@@ -683,6 +685,40 @@ price beats the market, not whether the model disagrees with it.
   `MODELLED_MARKET_FILTER`, which pulls it into the slate, 27a, frozen rows
   and 27j. The separate versions above are what keep that from resetting the
   existing sample.
+
+**What 39a found** (`python -m app.backtest.nfl_targets_projections --season 2024`,
+run once on 2024 REG weeks 1-18; archive `blueprint/history/features/39a-nfl-targets-baseline.md`):
+
+| Candidate vs incumbent | n | MAE change | Paired diff +/- SE | Verdict |
+|---|---:|---:|---:|---|
+| moneyline vs reference | 3,355 | +1.28% | +0.022 +/- 0.005 | reject |
+| recent_form vs reference | 3,355 | -0.40% | -0.007 +/- 0.006 | reject |
+
+- Reference MAE 1.698 pooled (RB 1.267, TE 1.701, WR 1.974), bias -0.165;
+  descriptive only.
+- **Coverage:** 5,200 completed RB/WR/TE player-games, 3,355 scored; 511 had
+  no baseline and 1,334 a thin one. No 2023 stats are stored, so 2024 weeks
+  1-4 score nothing and week 5 is the first scored week. Not backfilled.
+- **2025 holdout reads by 39a: 0.** Selection on 2024 is a development
+  choice, not validation.
+
+**What 39a fixed as load-bearing:**
+- **`nfl-targets-v1` is fixed** (`app/core/nfl_targets_projection.py`):
+  `round(B, 2)`, where `B` is the mean of valid (finite, nonnegative) target
+  counts in the season `choose_baseline_season` picks from per-season valid
+  counts; RB, WR and TE; completed REG history strictly before the target
+  week; at least `MIN_BASELINE_GAMES = 4` valid counts in that season, else a
+  null projection. No moneyline, recent-form, DVP or usage adjustment
+  (`SELECTED_MONEYLINE_SCALING` and `SELECTED_RECENT_FORM` are `False`,
+  pinned by a test). Any change needs a new version and probability fit.
+- **One call:** `project_targets(input)` with its defaults. 39b fits P(over)
+  on exactly this projection and eligibility; 39c serves the same call.
+- **Separate from v4:** a dedicated loader (`app/repositories/nfl_targets.py`)
+  and harness (`app/core/nfl_targets_backtest.py`), never `_slate_line` or
+  the 27b replay markets; no production module imports them, and
+  `receiving_targets` stays line-only until 39c.
+- **The CLI accepts 2024 only** and rejects any other season before it
+  imports the database module.
 
 **Shipped: public read-only demo (item 37, added 2026-10-15, complete 2026-10-16)**
 
@@ -747,8 +783,12 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
   import and no test connects. A test that needs a real database or key
   breaks CI.
 - **`.gitleaks.toml`** is the one place scan exceptions live, one path each
-  with a reason; today only a saved TennisAbstract page (Cloudflare's public
-  beacon token).
+  with a reason; today a saved TennisAbstract page (Cloudflare's public
+  beacon token) and, since fix 2026-10-18 (`gitleaks-nba-digest-key`), the
+  NBA digest test's `<gameId>-<playerId>-<market>` row key. That second one
+  extends the default `generic-api-key` rule with an `AND` allowlist (path
+  and value shape), because a top-level path allowlist skips the whole file
+  and `targetRules` suppressed nothing in gitleaks 8.28.0.
 - **History is not scanned:** the public repo starts from 37e's clean
   snapshot; the archived private repo's history still holds the
   rotated-out credentials.
