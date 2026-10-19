@@ -23,18 +23,20 @@
 > titles are implemented. The palette, fonts, and signal rules stay unchanged.
 > NBA has Slate and Model tabs; a separate NBA Props board is not yet a
 > build-plan item. Next for NFL props: a Rec Targets projection (item 39),
-> graded by 27j as its own sample; its 2024 baseline (39a) is chosen, and
-> its P(over) fit (39b) is next.
+> graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
+> P(over) failed the one 2025 check and stays hidden (39b), and serving and
+> freezing it (39c) is next.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
 **Regenerated:** 2026-10-18. The build plan is the progress authority where
-older project-plan prose disagrees. There are 109 completed leaf items out of
+older project-plan prose disagrees. There are 110 completed leaf items out of
 118; no feature is active. Item 39 was added and split into 39a-39d on
-2026-10-18, and 39a was completed, merged and pushed the same day. Feature 38
-is merged and pushed to `master`.
+2026-10-18; 39a was completed, merged and pushed that day, and 39b was
+completed and merged to local `master` the same day (not yet pushed when this
+refresh ran). Feature 38 is merged and pushed to `master`.
 This overview refresh does not verify the latest hosted deployment.
 
 ## Problem
@@ -115,7 +117,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 34 | More NFL prop lines | Complete |
 | 35 | Line-only prop display | Complete |
 | 36 | NFL best line | Complete |
-| 39 | NFL Rec Targets projection | 39a complete; 39b-39d planned |
+| 39 | NFL Rec Targets projection | 39a-39b complete; 39c-39d planned |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
 | 21 | WNBA support | Planned |
@@ -123,9 +125,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-Nine leaf items remain: parked 16f, conditional 25c and 27h, the three
-remaining Rec Targets steps (39b-39d), then WNBA (21), three-way markets (22)
-and soccer (23). Item 39b is the first unconditional one in plan order. Adoption work requires the existing
+Eight leaf items remain: parked 16f, conditional 25c and 27h, the two
+remaining Rec Targets steps (39c-39d), then WNBA (21), three-way markets (22)
+and soccer (23). Item 39c is the first unconditional one in plan order. Adoption work requires the existing
 pre-registered verdicts; this refresh makes no new verdict or model claim.
 An NBA Props board would be a reviewed addition, not an existing unchecked item.
 
@@ -507,6 +509,8 @@ paired difference below zero by more than 2 SE. Variants stack in build-plan
 order (27d on 27c, 27e on both). **The 2025 holdout has been used five
 times for projection verdicts** (F-02, 27c, 27d, 27e, 27f), plus a sixth read
 by 27g for a display-only distribution fit that takes no projection verdict.
+27k was the seventh read (rejected) and 39b's Rec Targets P(over) check the
+eighth (hidden, no projection verdict).
 Every adoption is confirmed forward by 27a's line grading. Fitted projection
 inputs are fitted on 2024 only, never on the holdout.
 
@@ -651,7 +655,7 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
-**In progress: NFL Rec Targets projection (item 39, added 2026-10-18; 39a complete)**
+**In progress: NFL Rec Targets projection (item 39, added 2026-10-18; 39a and 39b complete)**
 
 39. **NFL Rec Targets projection** - project PrizePicks Rec Targets lines
     (standard only), the first line-only market from item 34 to get a model.
@@ -659,7 +663,7 @@ price beats the market, not whether the model disagrees with it.
 | Step | Outcome |
 |---|---|
 | 39a | *Shipped 2026-10-18.* Baseline chosen on 2024 only from season-average, moneyline scaling and recent form in pre-registered order; both candidates rejected, so `nfl-targets-v1` is the season average; backtest only |
-| 39b | Fit P(over) on 2024 and check its display gate once on 2025; freeze the fit table; no production change |
+| 39b | *Shipped 2026-10-18.* P(over) fitted per position on 2024 and checked once on 2025 under 27g's display rule; **hidden** (ECE 0.043, worst bin 0.078); the frozen fit module holds no tables; no production change |
 | 39c | Serve and freeze Rec Targets under its own model and P(over) versions; preserve the nine v4 markets and their sample |
 | 39d | Grade each model version separately in 27j and display the Rec Targets slices on `/nfl/model` |
 
@@ -668,7 +672,8 @@ price beats the market, not whether the model disagrees with it.
   projection itself.
 - **P(over) is gated.** It is shown only if a fit on 2024 passes 27g's
   display rule on one 2025 check (the 2025 holdout's eighth read, counted in
-  the archive; 20g1's pattern for NBA).
+  the archive; 20g1's pattern for NBA). 39b's check failed, so Rec Targets
+  serves no P(over).
 - **Its own versions (load-bearing).** Predictions are frozen on the
   line-snapshot schedule (27i) under Rec Targets' own model and P(over)
   version strings. 27j grades them as a separate sample, so the running
@@ -719,6 +724,43 @@ run once on 2024 REG weeks 1-18; archive `blueprint/history/features/39a-nfl-tar
   `receiving_targets` stays line-only until 39c.
 - **The CLI accepts 2024 only** and rejects any other season before it
   imports the database module.
+
+**What 39b found** (`python -m app.backtest.nfl_targets_over_probability_fit --write`,
+run once on 2026-10-18; archive `blueprint/history/features/39b-nfl-targets-over-probability.md`):
+
+| Cases | Pairs | ECE | Worst bin | Brier vs normal | Verdict |
+|---:|---:|---:|---:|---|---|
+| 4,624 | 16,822 | 0.043 | 0.078 | 0.2022 vs 0.2033 | hide (ECE, worst bin) |
+
+- **Miscalibrated, not short of data:** it beats the normal on Brier, but ECE
+  is more than twice the 0.02 limit.
+- **The 2024 shape did not carry to 2025.** At the line nearest the
+  projection it predicts 0.434 over against 0.406 observed (normal 0.488);
+  every position overstates the over by 2.5 to 3.5 points. No position and no
+  projection tercile passes alone (information only).
+- **Small counts break ratio scaling,** as for 27g's receptions and 20g1's
+  blocks: low predictions (0.05, 0.17) went over 28% and 25%.
+- **Coverage:** the 2024 fit used 3,244 cases (39a's 3,355 less 111 that
+  project exactly 0 targets); 2025 scored 4,624 of 5,373 driver rows.
+- **2025 holdout reads by 39b: 1** (the eighth overall). A different method is
+  a new item, developed on 2024 first.
+
+**What 39b fixed as load-bearing:**
+- **`NFL_TARGETS_OVER_PROBABILITY_VERSION = "nfl-targets-pover-v1"`**
+  (`app/core/nfl_targets_over_probability.py`), separate from `nfl-pover-v1`;
+  the rule's constants (300 cases, ECE 0.02, bin gap 0.05, 200-pair bins) are
+  Rec Targets' own.
+- **The generated fit** (`app/core/nfl_targets_over_probability_fit.py`):
+  `FIT_SEASON = 2024`, `SCORED_SEASON = 2025`,
+  `FIT_PROJECTION_MODEL_VERSION = "nfl-targets-v1"`, `SHOWN = False`, and an
+  empty `QUANTILES_BY_POSITION` (keyed RB, WR, TE when shown). 39c reads
+  P(over) only while `SHOWN` is true and the fit's projection version matches
+  `NFL_TARGETS_MODEL_VERSION`; today that means null, never 0.5.
+- **Consequence for 39c and 39d:** frozen Rec Targets rows carry a projection
+  and no P(over), so 27i's rule can make no Rec Targets pick and its 27j
+  slices would accrue nothing until a later fit passes.
+- **The fit CLI has no season option** and fits 2024 before it loads any 2025
+  row; re-running it would read 2025 again.
 
 **Shipped: public read-only demo (item 37, added 2026-10-15, complete 2026-10-16)**
 
@@ -1976,3 +2018,11 @@ the request path the same way.
     rules the plan already states, so no plan edit was proposed. Its one new
     commitment, grading a market under its own model version so 27j runs
     per version, is recorded in the build-plan line and above.
+
+53. **Item 39's build-plan line reads as if Rec Targets will get a
+    P(over).** 39b's check hid it, so 39c serves and freezes a projection
+    with a null probability, and 39d's Rec Targets slices cannot accrue
+    picks under 27i's rule (it picks only on a side's probability). The line
+    still holds as written (P(over) was always conditional), but decide
+    whether 39d is still worth building now, or should wait for a later item
+    that fits a count-aware P(over) on 2024 first.
