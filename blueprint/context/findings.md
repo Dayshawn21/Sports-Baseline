@@ -83,41 +83,6 @@ unit tests alone cannot establish calibration or edge.
 Downgraded P2 to P3 on 2026-10-18 review: no defect to repair; a candidate
 build-plan item rather than a bug.
 
-### F-11 [P2] open - The Odds API NFL ingest stores in-play prices, and the slate's moneyline readers have no pre-kickoff cutoff
-
-**File:** api/app/ingest/nfl_odds.py:67; api/app/repositories/nfl.py:855; api/app/repositories/nfl.py:1937; api/app/repositories/nfl.py:1975
-**Found:** 2026-10-18 by /audit (scope: NFL prediction system and consumers; lenses: data quality, leakage, tests)
-**Why it matters:** `nfl_odds.run` matches every returned event to a
-`scheduled` game dated yesterday to 14 days out, and never compares kickoff
-with now. The Odds-API.io and anytime-TD ingests do (`nfl_odds_io.py:67`,
-`nfl_prop_odds.py:54`). The Odds API returns live events, and a game stays
-`scheduled` until the next morning's `nfl-scores.yml`. Read-only count of
-2026 rows:
-
-| Provider | Rows fetched at or after kickoff |
-|---|---|
-| `the_odds_api_eu` (Pinnacle) | 24 (8 per market): 7 games kicked off 2026-10-11 17:00, fetched 17:41 UTC; the London game 2026-10-18 13:30, fetched 15:51 UTC |
-| `the_odds_api_us` | 0 |
-| `odds_api_io`, anytime-TD prop odds | 0 |
-
-Both in-play batches came from the Sunday 12:10 UTC `nfl-prop-odds.yml` run
-starting 3.5 to 5.5 hours late. US rows are clean only because the US run is
-Tuesday-only. Current readers are protected: `bestLine` and line movement
-filter `fetched_at < start_utc`, and CLV reads US rows before kickoff. But
-`get_slate_market_probabilities` (moneyline used to scale 6 of 9 prop
-markets, live and in 27a replays) and `get_slate_matchup_context` (the slate
-row's displayed market) take the latest US row with no cutoff. One manual or
-rescheduled US run during games would put in-play prices into projections.
-27a's `MoneylineTiming` only counts such rows after the fact.
-**Suggested fix:** Skip events whose kickoff is at or before now in
-`nfl_odds.run` (match `nfl_odds_io.select_events`), with a test, and add
-`(g.start_utc IS NULL OR o.fetched_at < g.start_utc)` to the two slate
-readers. With zero post-kickoff US rows stored, slate and frozen outputs stay
-identical, which a before/after slate comparison can show. This is a data
-guard, not a model change; no forward validation needed. Leave the existing
-Pinnacle rows (append-only, already excluded by every reader).
-**Resolution:**
-
 ### F-12 [P2] unverified - Served P(over) runs below observed over rates in 2026, most on goblin lines
 
 **File:** api/app/services/nfl/slate.py:48; api/app/core/nfl_over_probability_fit.py; web/src/utils/nflSignal.ts:47

@@ -173,6 +173,38 @@ def test_matchup_context_uses_completed_games_before_the_selected_week() -> None
     assert "o.book = 'draftkings'" in session.statement
 
 
+def test_slate_moneyline_cutoff_preserves_games_without_eligible_odds() -> None:
+    session = _RecordingSession()
+    assert asyncio.run(nfl_repository.get_slate_market_probabilities(cast(AsyncSession, session), 2026, 7)) == {}
+
+    sql = _flat(session.statement)
+    join, where = sql.split("WHERE g.sport = 'nfl'", 1)
+    assert "LEFT JOIN sport_game_odds o" in join
+    assert "o.sport = 'nfl' AND o.provider = 'the_odds_api_us' AND o.game_id = g.id" in join
+    assert "o.market = 'moneyline' AND o.first_side = 'home'" in join
+    assert "AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc)" in join
+    assert "o.fetched_at < g.start_utc" not in where
+    assert "g.season = :season AND g.week = :week AND g.game_type = 'REG'" in where
+    assert "ORDER BY g.id, o.fetched_at DESC NULLS LAST, o.id DESC" in where
+    assert session.params == {"season": 2026, "week": 7}
+
+
+def test_slate_matchup_cutoff_applies_before_latest_market_selection() -> None:
+    session = _RecordingSession()
+    asyncio.run(get_slate_matchup_context(cast(AsyncSession, session), 2026, 7))
+
+    sql = _flat(session.statement)
+    latest, outer = sql.split("latest_odds AS (", 1)[1].split(") SELECT g.id, ml.book", 1)
+    assert "DISTINCT ON (g.id, o.market)" in latest
+    assert "o.sport = 'nfl' AND o.provider = 'the_odds_api_us' AND o.game_id = g.id" in latest
+    assert "g.season = :season AND g.week = :week AND g.game_type = 'REG'" in latest
+    assert "AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc) ORDER BY" in latest
+    assert "ORDER BY g.id, o.market, (o.book = 'draftkings') DESC, o.fetched_at DESC, o.id DESC" in latest
+    for alias, market in (("ml", "moneyline"), ("sp", "spread"), ("tot", "total")):
+        assert f"LEFT JOIN latest_odds {alias} ON {alias}.game_id = g.id AND {alias}.market = '{market}'" in outer
+    assert "o.fetched_at < g.start_utc" not in outer
+
+
 def test_missing_opponent_aggregate_remains_unavailable() -> None:
     assert _optional_averages({"opponent_games": None}, "opponent_") is None
 

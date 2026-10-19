@@ -1,7 +1,9 @@
 import asyncio
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import cast
+
+import pytest
 
 from app.core.nfl_odds import match_scheduled_game, parse_game_markets
 from app.ingest import nfl_odds
@@ -140,3 +142,61 @@ def test_run_persists_matched_markets_and_honors_quota_floor(monkeypatch) -> Non
     assert len(stored) == 3 and set(providers) == {"the_odds_api_us"}
     asyncio.run(nfl_odds.run(pinnacle=True))
     assert providers[3:] == ["the_odds_api_eu"] * 3
+
+
+@pytest.mark.parametrize("pinnacle", [False, True])
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize("seconds_to_kickoff", [-1, 0, 1, None])
+def test_run_checks_kickoff_after_fetch(
+    monkeypatch: pytest.MonkeyPatch, pinnacle: bool, dry_run: bool, seconds_to_kickoff: int | None,
+) -> None:
+    fetched_at = datetime(2026, 10, 18, 17, tzinfo=timezone.utc)
+    start = None if seconds_to_kickoff is None else fetched_at + timedelta(seconds=seconds_to_kickoff)
+    stored: list[str] = []
+    commits: list[bool] = []
+
+    class Clock(datetime):
+        current = fetched_at - timedelta(minutes=5)
+
+        @classmethod
+        def now(cls, tz=None):
+            assert tz is timezone.utc
+            return cls.current
+
+    class Session:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args: object): return None
+        async def commit(self): commits.append(True)
+
+    class Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args: object): return None
+
+    async def games(_: object, __: int) -> list[dict[str, object]]:
+        return [{"game_id": 7, "game_date": fetched_at.date(), "start_utc": start, "home_team": "DAL", "away_team": "CHI"}]
+
+    async def odds(*_: object) -> tuple[list[dict[str, object]], int]:
+        Clock.current = fetched_at
+        return [{"home_team": "Dallas Cowboys", "away_team": "Chicago Bears",
+                 "commence_time": "2026-10-18T17:00:00Z",
+                 "bookmakers": [{"key": "pinnacle" if pinnacle else "draftkings", "markets": _markets()}]}], 497
+
+    async def insert(*_: object, provider: str) -> int:
+        stored.append(provider)
+        return len(stored)
+
+    monkeypatch.setattr(nfl_odds, "datetime", Clock)
+    monkeypatch.setattr(nfl_odds, "SessionLocal", Session)
+    monkeypatch.setattr(nfl_odds.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(nfl_repo, "get_upcoming_games", games)
+    monkeypatch.setattr(nfl_odds, "_fetch_odds", odds)
+    monkeypatch.setattr(nfl_repo, "insert_game_odds_snapshot", insert)
+    monkeypatch.setattr(nfl_odds.settings, "the_odds_api_key", "test-key")
+
+    eligible = seconds_to_kickoff is None or seconds_to_kickoff > 0
+    assert asyncio.run(nfl_odds.run(pinnacle=pinnacle, dry_run=dry_run)) == {
+        "matched": int(eligible), "skipped": int(not eligible), "stored": 3 if eligible else 0,
+    }
+    provider = "the_odds_api_eu" if pinnacle else "the_odds_api_us"
+    assert stored == ([provider] * 3 if eligible and not dry_run else [])
+    assert commits == ([] if dry_run else [True])

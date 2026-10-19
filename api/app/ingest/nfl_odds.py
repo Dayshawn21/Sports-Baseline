@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 from typing import Mapping
 
 import httpx
@@ -70,6 +71,7 @@ async def run(days_ahead: int = 14, min_requests_remaining: int = DEFAULT_MIN_RE
     provider = THE_ODDS_API_EU if pinnacle else THE_ODDS_API_US
     async with SessionLocal() as db, httpx.AsyncClient() as client:
         games = await nfl_repo.get_upcoming_games(db, days_ahead)
+        starts = {game["game_id"]: game.get("start_utc") for game in games}
         events, remaining = await _fetch_odds(client, _provider_key(), pinnacle)
         if remaining is not None:
             logger.info("The Odds API credits remaining: %s", remaining)
@@ -82,6 +84,10 @@ async def run(days_ahead: int = 14, min_requests_remaining: int = DEFAULT_MIN_RE
                 counts["skipped"] += 1
                 continue
             game_id, provider_home_is_nfl_home = matched
+            start = starts.get(game_id)
+            if start is not None and start <= datetime.now(timezone.utc):
+                counts["skipped"] += 1
+                continue
             counts["matched"] += 1
             for book, markets in _bookmaker_sets(event):
                 for market in parse_game_markets(markets, provider_home_is_nfl_home, str(event["home_team"]), str(event["away_team"])):

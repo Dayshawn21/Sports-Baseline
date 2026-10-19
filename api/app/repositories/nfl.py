@@ -1944,6 +1944,7 @@ async def get_slate_market_probabilities(
             FROM sport_games g
             LEFT JOIN sport_game_odds o ON o.sport = 'nfl' AND o.provider = 'the_odds_api_us' AND o.game_id = g.id
                 AND o.market = 'moneyline' AND o.first_side = 'home'
+                AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc)
             WHERE g.sport = 'nfl' AND g.season = :season AND g.week = :week AND g.game_type = 'REG'
             ORDER BY g.id, o.fetched_at DESC NULLS LAST, o.id DESC
         """),
@@ -1990,6 +1991,7 @@ async def get_slate_matchup_context(db: AsyncSession, season: int, week: int) ->
             SELECT DISTINCT ON (g.id, o.market) g.id game_id, o.book, o.market, o.line, o.first_odds, o.second_odds
             FROM sport_games g JOIN sport_game_odds o ON o.sport = 'nfl' AND o.provider = 'the_odds_api_us' AND o.game_id = g.id
             WHERE g.sport = 'nfl' AND g.season = :season AND g.week = :week AND g.game_type = 'REG'
+              AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc)
             ORDER BY g.id, o.market, (o.book = 'draftkings') DESC, o.fetched_at DESC, o.id DESC
         )
         SELECT g.id, ml.book, ml.first_odds, ml.second_odds, sp.line, tot.line,
