@@ -31,6 +31,8 @@ class Prop:
     # Best-of format of the linked match. None when no match is linked, which is
     # why callers default to 3 rather than treating None as a format.
     best_of: Optional[int] = None
+    source_start_time: Optional[datetime] = None
+    match_start_time: Optional[datetime] = None
 
 
 async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
@@ -107,7 +109,10 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
                     )
                 )
             ) AS match_link_invalid,
-            COALESCE(relinked.best_of, m.best_of) AS best_of
+            COALESCE(relinked.best_of, m.best_of) AS best_of,
+            p.start_time AS source_start_time,
+            CASE WHEN relinked.id IS NOT NULL THEN relinked.start_utc
+                 ELSE m.start_utc END AS match_start_time
         FROM latest_props p
         LEFT JOIN players pl ON pl.id = p.player_id
         LEFT JOIN matches m ON m.id = p.match_id

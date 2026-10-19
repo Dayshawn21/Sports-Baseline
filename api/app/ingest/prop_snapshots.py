@@ -34,17 +34,18 @@ async def snapshot_props() -> dict[str, int]:
             line = lines[prop.id]
             reason = skip_reason(prop, line, now)
             if reason is None:
-                snapshots.append(to_snapshot(line))
+                snapshots.append(to_snapshot(prop, line, now))
             else:
                 skipped[reason] += 1
-        inserted = await insert_prop_projection_snapshots(db, snapshots)
+        result = await insert_prop_projection_snapshots(db, snapshots)
         await db.commit()
 
     counts = {
         "loaded": len(props),
         "eligible": len(snapshots),
-        "inserted": inserted,
-        "already_stored": len(snapshots) - inserted,
+        "inserted": result.inserted,
+        "already_stored": result.already_stored,
+        "skipped_started_at_insert": result.rejected_started,
     }
     counts.update({f"skipped_{reason}": n for reason, n in sorted(skipped.items())})
     return counts

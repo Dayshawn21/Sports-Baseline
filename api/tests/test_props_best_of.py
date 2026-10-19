@@ -19,17 +19,17 @@ def test_prop_exposes_best_of_defaulting_to_none():
     assert fields["best_of"].default is None
 
 
-def test_prop_best_of_is_the_last_positional_field():
+def test_prop_best_of_keeps_its_original_positional_index():
     # Both queries build rows with Prop(*r), so a column added anywhere but the
     # end silently shifts every field after it.
-    assert list(Prop.__dataclass_fields__)[-1] == "best_of"
+    assert list(Prop.__dataclass_fields__)[16] == "best_of"
 
 
 @pytest.mark.parametrize(
     "source_fn",
     [props_repo.get_today_props, props_repo.get_today_match_odds_as_props],
 )
-def test_every_prop_query_selects_best_of_last(source_fn):
+def test_every_prop_query_selects_best_of(source_fn):
     sql = inspect.getsource(source_fn)
     assert "best_of" in sql, "query does not select best_of"
     # The relinked match wins over the stored link, the same way surface and

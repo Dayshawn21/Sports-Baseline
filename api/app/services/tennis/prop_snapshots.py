@@ -14,9 +14,11 @@ from app.schemas.props import PropLine
 # Bump on any change to projection, probability, EV or tier logic, so grading
 # never pools tiers produced by different code.
 PROJECTION_VERSION = "props-v2"
+SNAPSHOT_ELIGIBILITY_POLICY = "pre-match-v1"
 
 SkipReason = Literal[
     "not_prizepicks", "missing_player", "missing_match", "no_start_time", "no_line", "started", "live",
+    "match_finished", "match_link_invalid",
 ]
 
 
@@ -44,6 +46,7 @@ class PropProjectionSnapshot:
     projection_status: str
     data_quality_flags: list[str]
     projection_inputs: dict[str, float | str]
+    snapshot_at: datetime
 
 
 def _flagged_live(prop: Prop) -> bool:
@@ -54,8 +57,7 @@ def _flagged_live(prop: Prop) -> bool:
 def skip_reason(prop: Prop, line: PropLine, now: datetime) -> SkipReason | None:
     """Why this projection cannot be stored as a pre-match prediction, or None if it can.
 
-    The live flag is checked even when the start is in the future: stored start
-    times can run hours late, and PrizePicks knows when a match is under way.
+    Known match status and either source's start can veto a later display time.
     """
     if line.source != "prizepicks":
         return "not_prizepicks"
@@ -63,21 +65,42 @@ def skip_reason(prop: Prop, line: PropLine, now: datetime) -> SkipReason | None:
         return "missing_player"
     if line.match_id is None:
         return "missing_match"
+    if prop.match_link_invalid:
+        return "match_link_invalid"
+    if prop.match_status in ("completed", "cancelled"):
+        return "match_finished"
+    if prop.match_status == "live" or _flagged_live(prop):
+        return "live"
     if line.start_time is None:
         return "no_start_time"
     if line.line is None:
         return "no_line"
-    if line.start_time <= now:
+    starts = [start for start in (prop.source_start_time, prop.match_start_time) if start is not None]
+    if not starts:
+        return "no_start_time"
+    if line.start_time <= now or any(start <= now for start in starts):
         return "started"
-    if _flagged_live(prop):
-        return "live"
     return None
 
 
-def to_snapshot(line: PropLine) -> PropProjectionSnapshot:
-    """The page's projection for an eligible line; call only when skip_reason is None."""
+def to_snapshot(prop: Prop, line: PropLine, snapshot_at: datetime) -> PropProjectionSnapshot:
+    """Freeze the page's projection with the source context observed at capture."""
+    if snapshot_at.tzinfo is None or snapshot_at.utcoffset() is None:
+        raise ValueError("snapshot_at must be timezone-aware")
     if line.player_id is None or line.match_id is None or line.start_time is None or line.line is None:
         raise ValueError(f"prop {line.id} is not snapshot-eligible; check skip_reason first")
+    if (prop.id, prop.player_id, prop.match_id) != (line.id, line.player_id, line.match_id):
+        raise ValueError("snapshot source and projection must identify the same resolved line")
+    reason = skip_reason(prop, line, snapshot_at)
+    if reason is not None:
+        raise ValueError(f"prop {line.id} is not snapshot-eligible: {reason}")
+    inputs = dict(line.projection_inputs)
+    inputs["snapshot_eligibility_policy"] = SNAPSHOT_ELIGIBILITY_POLICY
+    for key, start in (("source_start_time", prop.source_start_time), ("match_start_time", prop.match_start_time)):
+        if start is not None:
+            inputs[key] = start.isoformat()
+    if prop.match_status is not None:
+        inputs["match_status_at_capture"] = prop.match_status
     return PropProjectionSnapshot(
         prop_id=line.id,
         projection_version=PROJECTION_VERSION,
@@ -100,5 +123,6 @@ def to_snapshot(line: PropLine) -> PropProjectionSnapshot:
         market_total_games=line.market_total_games,
         projection_status=line.projection_status,
         data_quality_flags=list(line.data_quality_flags),
-        projection_inputs=dict(line.projection_inputs),
+        projection_inputs=inputs,
+        snapshot_at=snapshot_at,
     )

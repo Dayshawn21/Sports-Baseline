@@ -6,7 +6,9 @@ import pytest
 
 from app.repositories.props import Prop
 from app.schemas.props import PropLine
-from app.services.tennis.prop_snapshots import PROJECTION_VERSION, skip_reason, to_snapshot
+from app.services.tennis.prop_snapshots import (
+    PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
+)
 
 NOW = datetime(2026, 9, 25, 13, 30, tzinfo=timezone.utc)
 START = NOW + timedelta(hours=5)
@@ -17,6 +19,7 @@ def _prop(**kw) -> Prop:
         id=7, player_id=11, player_name="A Player", match_id=21, source="prizepicks",
         stat_type="Total Games", line=Decimal("21.5"), odds_type="standard",
         fetched_at=NOW - timedelta(hours=1), start_time=START,
+        source_start_time=START, match_start_time=START, match_status="scheduled",
         raw_json={"attributes": {"is_live": False, "in_game": False}},
     )
     fields.update(kw)
@@ -66,26 +69,99 @@ class TestSkipReason:
     def test_a_prop_with_no_raw_payload_is_not_live(self):
         assert skip_reason(_prop(raw_json=None), _line(), NOW) is None
 
+    @pytest.mark.parametrize(
+        ("status", "reason"),
+        [("live", "live"), ("completed", "match_finished"), ("cancelled", "match_finished")],
+    )
+    def test_known_match_status_overrides_future_starts_and_old_non_live_payload(self, status, reason):
+        assert skip_reason(_prop(match_status=status), _line(), NOW) == reason
+
+    def test_an_invalid_match_link_cannot_be_frozen(self):
+        assert skip_reason(_prop(match_link_invalid=True), _line(), NOW) == "match_link_invalid"
+
+    @pytest.mark.parametrize("field", ["source_start_time", "match_start_time"])
+    @pytest.mark.parametrize("offset", [timedelta(minutes=-1), timedelta(0)])
+    def test_either_start_at_or_before_capture_overrides_the_future_display_time(self, field, offset):
+        assert skip_reason(_prop(**{field: NOW + offset}), _line(), NOW) == "started"
+
+    @pytest.mark.parametrize("field", ["source_start_time", "match_start_time"])
+    def test_one_missing_start_can_use_the_other(self, field):
+        assert skip_reason(_prop(**{field: None}), _line(), NOW) is None
+
+    def test_a_future_display_time_cannot_replace_both_missing_source_times(self):
+        prop = _prop(source_start_time=None, match_start_time=None)
+        assert skip_reason(prop, _line(), NOW) == "no_start_time"
+
+    def test_a_delay_does_not_override_a_past_provider_start(self):
+        prop = _prop(source_start_time=NOW - timedelta(hours=1), match_start_time=START)
+        assert skip_reason(prop, _line(start_time=START), NOW) == "started"
+
+    def test_different_future_starts_are_eligible(self):
+        prop = _prop(source_start_time=START, match_start_time=START + timedelta(hours=2))
+        assert skip_reason(prop, _line(), NOW) is None
+
 
 class TestToSnapshot:
     def test_carries_the_page_projection(self):
-        snap = to_snapshot(_line())
+        line = _line()
+        snap = to_snapshot(_prop(), line, NOW)
         assert snap.projection_version == PROJECTION_VERSION
         assert (snap.prop_id, snap.player_id, snap.match_id) == (7, 11, 21)
         assert snap.line == 21.5 and isinstance(snap.line, float)
         assert (snap.recommendation, snap.confidence, snap.hit_probability) == ("UNDER", "LEAN", 0.56)
-        assert snap.projection_inputs == {"projection_source": "market_total"}
+        assert snap.snapshot_at == NOW
+        assert snap.projection_inputs == {
+            "projection_source": "market_total",
+            "snapshot_eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY,
+            "source_start_time": START.isoformat(),
+            "match_start_time": START.isoformat(),
+            "match_status_at_capture": "scheduled",
+        }
+        assert line.projection_inputs == {"projection_source": "market_total"}
         assert snap.data_quality_flags == ["small_sample"]
 
     def test_a_relinked_prop_keeps_the_match_the_page_projected_against(self):
         # get_today_props re-resolves stale links, so the PropLine's match wins.
-        assert to_snapshot(_line(match_id=99)).match_id == 99
+        assert to_snapshot(_prop(match_id=99), _line(match_id=99), NOW).match_id == 99
 
     def test_an_ineligible_line_is_refused(self):
         with pytest.raises(ValueError):
-            to_snapshot(_line(match_id=None))
+            to_snapshot(_prop(), _line(match_id=None), NOW)
 
     def test_a_pass_row_with_no_recommendation_still_maps(self):
-        snap = to_snapshot(_line(recommendation=None, confidence=None, hit_probability=None,
-                                 projection_status="unsupported_stat"))
+        snap = to_snapshot(_prop(), _line(recommendation=None, confidence=None, hit_probability=None,
+                                         projection_status="unsupported_stat"), NOW)
         assert snap.recommendation is None and snap.projection_status == "unsupported_stat"
+
+    @pytest.mark.parametrize("field", ["source_start_time", "match_start_time"])
+    def test_missing_timing_provenance_is_absent_instead_of_fabricated(self, field):
+        snap = to_snapshot(_prop(**{field: None}), _line(), NOW)
+        assert field not in snap.projection_inputs
+
+    def test_a_missing_match_status_is_preserved_as_unknown(self):
+        snap = to_snapshot(_prop(match_status=None), _line(), NOW)
+        assert "match_status_at_capture" not in snap.projection_inputs
+
+    @pytest.mark.parametrize("fields", [{"id": 88}, {"player_id": 44}, {"match_id": 99}])
+    def test_source_context_from_another_resolved_line_is_refused(self, fields):
+        with pytest.raises(ValueError, match="same resolved line"):
+            to_snapshot(_prop(**fields), _line(), NOW)
+
+    def test_serializing_cannot_bypass_the_live_guard(self):
+        with pytest.raises(ValueError, match="live"):
+            to_snapshot(_prop(match_status="live"), _line(), NOW)
+
+    def test_capture_clock_must_be_timezone_aware(self):
+        with pytest.raises(ValueError, match="timezone-aware"):
+            to_snapshot(_prop(), _line(), NOW.replace(tzinfo=None))
+
+    @pytest.mark.parametrize("field", ["source_start_time", "match_start_time"])
+    def test_earlier_correction_that_crosses_capture_cannot_be_frozen(self, field):
+        with pytest.raises(ValueError, match="started"):
+            to_snapshot(_prop(**{field: NOW}), _line(), NOW)
+
+    def test_a_delay_keeps_both_observed_times_not_just_the_later_one(self):
+        delayed = START + timedelta(hours=3)
+        snap = to_snapshot(_prop(match_start_time=delayed), _line(), NOW)
+        assert snap.projection_inputs["source_start_time"] == START.isoformat()
+        assert snap.projection_inputs["match_start_time"] == delayed.isoformat()

@@ -224,7 +224,7 @@ rows and reinterpret the fixed tier verdict: quantify affected existing rows
 in a separate evidence-integrity review and document any correction explicitly.
 The eligibility defect needs tests, not a new model fit; current verdicts stay
 as reported pending evidence of contamination.
-**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge.
+**Resolution:** Accepted by the owner on 2026-10-18 so F-10 lands before the 2026-10-20 13:00 UTC week-6 stats deadline. These are tennis findings unrelated to F-10, and will be repaired by `/fix F-03` onward right after the merge. Capture eligibility and timing provenance repaired and re-reviewed on 2026-10-18; see `tennis-prop-snapshot-eligibility/F-21` in `tennis-prop-snapshot-eligibility.md`. Legacy sample integrity remains a separate review.
 
 ### nfl-finished-week-stats/F-10 [P1] closed - NFL "finished week" ignores whether stats are loaded, so 27j can fix a verdict sample on a partial week
 

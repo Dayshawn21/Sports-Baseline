@@ -7,13 +7,13 @@ from datetime import datetime
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.tennis.prop_snapshots import PropProjectionSnapshot
+from app.services.tennis.prop_snapshots import SNAPSHOT_ELIGIBILITY_POLICY, PropProjectionSnapshot
 
 _COLUMNS = (
     "prop_id", "projection_version", "player_id", "match_id", "stat_type", "odds_type", "line",
     "start_time", "recommendation", "confidence", "hit_probability", "p_over", "p_under", "p_push",
     "stat_avg", "ev_pct", "break_even_pct", "matches_count", "market_total_games",
-    "projection_status", "data_quality_flags", "projection_inputs",
+    "projection_status", "data_quality_flags", "projection_inputs", "snapshot_at",
 )
 _RECORD_TYPES = (
     "prop_id bigint, projection_version text, player_id bigint, match_id bigint, stat_type text, "
@@ -21,31 +21,66 @@ _RECORD_TYPES = (
     "hit_probability double precision, p_over double precision, p_under double precision, "
     "p_push double precision, stat_avg double precision, ev_pct double precision, "
     "break_even_pct double precision, matches_count integer, market_total_games double precision, "
-    "projection_status text, data_quality_flags text[], projection_inputs jsonb"
+    "projection_status text, data_quality_flags text[], projection_inputs jsonb, snapshot_at timestamptz"
 )
 
 
-async def insert_prop_projection_snapshots(db: AsyncSession, snapshots: list[PropProjectionSnapshot]) -> int:
-    """Store snapshots, skipping any already stored for that prop row and version.
+@dataclass(frozen=True)
+class SnapshotInsertCounts:
+    inserted: int = 0
+    already_stored: int = 0
+    rejected_started: int = 0
+
+
+def _captured_prestart_sql(alias: str, clock: str) -> str:
+    # PostgreSQL LEAST ignores a missing start; two missing starts fail the comparison.
+    return f"""
+        {alias}.projection_inputs ->> 'snapshot_eligibility_policy' = :eligibility_policy
+        AND COALESCE({alias}.projection_inputs ->> 'match_status_at_capture', '')
+            NOT IN ('live', 'completed', 'cancelled')
+        AND {clock} < LEAST(
+            ({alias}.projection_inputs ->> 'source_start_time')::timestamptz,
+            ({alias}.projection_inputs ->> 'match_start_time')::timestamptz
+        )
+    """
+
+
+async def insert_prop_projection_snapshots(
+    db: AsyncSession, snapshots: list[PropProjectionSnapshot],
+) -> SnapshotInsertCounts:
+    """Insert once per prop/version, counting start-boundary rejections separately.
 
     One statement for the whole batch: the database is remote, and a round trip
     per prop would turn a daily slate of several hundred into minutes.
-    Returns how many rows were actually inserted.
     """
     if not snapshots:
-        return 0
+        return SnapshotInsertCounts()
     columns = ", ".join(_COLUMNS)
     result = await db.execute(
         text(f"""
-            INSERT INTO prop_projection_snapshots ({columns})
-            SELECT {columns}
-            FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS r({_RECORD_TYPES})
-            ON CONFLICT (prop_id, projection_version) DO NOTHING
-            RETURNING id
+            WITH candidates AS (
+                SELECT * FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS r({_RECORD_TYPES})
+            ), eligible AS (
+                SELECT * FROM candidates r
+                WHERE r.snapshot_at < r.start_time
+                  AND statement_timestamp() < r.start_time
+                  AND {_captured_prestart_sql('r', 'GREATEST(r.snapshot_at, statement_timestamp())')}
+            ), inserted AS (
+                INSERT INTO prop_projection_snapshots ({columns})
+                SELECT {columns} FROM eligible
+                ON CONFLICT (prop_id, projection_version) DO NOTHING
+                RETURNING id
+            )
+            SELECT (SELECT COUNT(*) FROM inserted) AS inserted,
+                   (SELECT COUNT(*) FROM eligible) - (SELECT COUNT(*) FROM inserted) AS already_stored,
+                   (SELECT COUNT(*) FROM candidates) - (SELECT COUNT(*) FROM eligible) AS rejected_started
         """),
-        {"rows": json.dumps([asdict(s) for s in snapshots], default=str)},
+        {
+            "rows": json.dumps([asdict(s) for s in snapshots], default=str),
+            "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY,
+        },
     )
-    return len(result.fetchall())
+    return SnapshotInsertCounts(**dict(result.mappings().one()))
 
 
 @dataclass(frozen=True)
@@ -82,7 +117,7 @@ async def get_graded_prop_snapshots(
     for the player page (32c).
     """
     player_filter = "AND s.player_id = :player_id" if player_id is not None else ""
-    params: dict[str, str | int] = {"version": version}
+    params: dict[str, str | int] = {"version": version, "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY}
     if player_id is not None:
         params["player_id"] = player_id
     rows = await db.execute(
@@ -95,6 +130,10 @@ async def get_graded_prop_snapshots(
             JOIN matches m ON m.id = s.match_id
             WHERE s.projection_version = :version
               AND s.snapshot_at < s.start_time
+              AND CASE WHEN s.projection_inputs ? 'snapshot_eligibility_policy' THEN (
+                  """ + _captured_prestart_sql('s', 's.snapshot_at') + """
+                  AND (m.start_utc IS NULL OR s.snapshot_at < m.start_utc)
+              ) ELSE TRUE END
               AND s.player_id IN (m.p1_id, m.p2_id)
               AND m.status = 'completed' AND m.winner_id IS NOT NULL
               """ + player_filter + """
