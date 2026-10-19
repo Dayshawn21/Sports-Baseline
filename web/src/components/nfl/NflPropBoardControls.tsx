@@ -32,7 +32,7 @@ export function NflPropBoardHead({ season, week, games, categories, onSeason, on
 
 export function NflMarketPills({ categories, selected, onSelect }: { categories: NflBoardCategory[], selected: string, onSelect: (market: string) => void }) {
   return <nav className="nfl-prop-pills" aria-label="Prop categories">
-    {categories.map(category => <button key={category.market} type="button" className={category.market === selected ? 'is-selected' : ''} aria-pressed={category.market === selected} onClick={() => onSelect(category.market)}>
+    {categories.map(category => <button key={category.market} type="button" className={[category.market === selected && 'is-selected', category.rateable.length === 0 && 'is-empty'].filter(Boolean).join(' ')} aria-pressed={category.market === selected} onClick={() => onSelect(category.market)}>
       {marketLabel(category.market)}<em>{category.rateable.length}</em>
     </button>)}
   </nav>

@@ -1,7 +1,7 @@
 import { Switch } from 'antd'
 import PageHead from '~/components/shared/PageHead'
 import type { TennisBoardCategory, TennisPropSource, TennisTourFilter } from '~/utils/tennisPropBoard'
-import { TENNIS_PROP_SOURCES, TENNIS_TOUR_FILTERS } from '~/utils/tennisPropBoard'
+import { TENNIS_PROP_SOURCES, TENNIS_TOUR_FILTERS, marketTitle } from '~/utils/tennisPropBoard'
 
 export function PropBoardHead({ lines, rateable, markets }: { lines: number, rateable: number, markets: number }) {
   return <PageHead
@@ -16,8 +16,8 @@ export function PropBoardHead({ lines, rateable, markets }: { lines: number, rat
 
 export function MarketPills({ categories, selected, onSelect }: { categories: TennisBoardCategory[], selected: string, onSelect: (market: string) => void }) {
   return <nav className="tennis-prop-pills" aria-label="Tennis prop categories">
-    {categories.map(category => <button key={category.market} type="button" className={category.market === selected ? 'is-selected' : ''} aria-pressed={category.market === selected} onClick={() => onSelect(category.market)}>
-      {category.label}<em>{category.rateable.length}</em>
+    {categories.map(category => <button key={category.market} type="button" className={[category.market === selected && 'is-selected', category.rateable.length === 0 && 'is-empty'].filter(Boolean).join(' ')} aria-pressed={category.market === selected} onClick={() => onSelect(category.market)}>
+      {marketTitle(category.market)}<em>{category.rateable.length}</em>
     </button>)}
   </nav>
 }
