@@ -340,7 +340,9 @@ def generate_market_odds_picks(
                 ev = expected_value(prob, odds)
                 kelly = compute_kelly_fraction(prob, odds)
                 market_prob = mkt_over if direction == "OVER" else mkt_under
-                assessment = assess_bettable_pick(prob, ev, kelly, odds_source="posted")
+                assessment = assess_bettable_pick(
+                    prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
+                )
                 if assessment is None:
                     continue
                 conf = assessment.confidence
@@ -407,7 +409,9 @@ def generate_market_odds_picks(
                     continue
                 ev = expected_value(prob, odds)
                 kelly = compute_kelly_fraction(prob, odds)
-                assessment = assess_bettable_pick(prob, ev, kelly, odds_source="posted")
+                assessment = assess_bettable_pick(
+                    prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
+                )
                 if assessment is None:
                     continue
                 conf = assessment.confidence

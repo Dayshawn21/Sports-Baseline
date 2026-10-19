@@ -1,5 +1,8 @@
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
+
+import pytest
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
@@ -118,7 +121,7 @@ def test_a_book_total_is_not_graded_against_itself():
         assert not any(p.label == "Total Games" for p in picks)
 
 
-def test_generate_market_odds_picks_includes_game_spread():
+def _game_spread_case() -> tuple[list[Prop], dict]:
     props = [
         Prop(
             id=2,
@@ -140,6 +143,41 @@ def test_generate_market_odds_picks_includes_game_spread():
         (10, "Hard"): _stats(10, 0.86, 0.28),
         (20, "Hard"): _stats(20, 0.77, 0.18),
     }
+    return props, rolling
+
+
+def _market_picks(flags: list[str], label: str) -> list:
+    pred = replace(_prediction(), quality_flags=flags)
+    if label == "Total Games":
+        picks = generate_market_odds_picks(pred, [_total_games_prop("18.5")], _two_big_servers(), (10, 20))
+    else:
+        props, rolling = _game_spread_case()
+        picks = generate_market_odds_picks(pred, props, rolling, (10, 20))
+    return [p for p in picks if p.label == label]
+
+
+@pytest.mark.parametrize("label", ["Total Games", "Game Spread"])
+def test_market_picks_take_the_predictions_downgrade_flags(label):
+    assert [p.confidence for p in _market_picks([], label)] == ["STRONG"]
+    downgraded = _market_picks(["stale_odds"], label)
+    assert [p.confidence for p in downgraded] == ["LEAN"]
+    assert "stale_odds" in downgraded[0].data_quality_flags
+
+
+@pytest.mark.parametrize("label", ["Total Games", "Game Spread"])
+def test_market_picks_are_dropped_on_unreliable_elo(label):
+    assert _market_picks(["elo_unreliable"], label) == []
+
+
+@pytest.mark.parametrize("label", ["Total Games", "Game Spread"])
+def test_market_picks_ignore_ml_flags(label):
+    picks = _market_picks(["ml_missing", "ml_not_trained_for_tour"], label)
+    assert [p.confidence for p in picks] == ["STRONG"]
+    assert "ml_missing" in picks[0].data_quality_flags
+
+
+def test_generate_market_odds_picks_includes_game_spread():
+    props, rolling = _game_spread_case()
 
     picks = generate_market_odds_picks(_prediction(), props, rolling, (10, 20))
 
