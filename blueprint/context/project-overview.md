@@ -11,20 +11,29 @@
 > scores, line-only PrizePicks lines and game odds stored, a display-only slate
 > and game page with a gray reference projection, P(over) for assists only,
 > pre-tip predictions frozen after each line snapshot, and a forward ranking
-> check on `/nba/model`, every slice accruing); WNBA and soccer follow. NFL best line (item 36) is complete: each side's
+> check on `/nba/model`, with slice results reported there); WNBA and soccer follow. NFL best line (item 36) is complete: each side's
 > best Bet365 or DraftKings price beside a Pinnacle fair price, on the game
-> page and slate card. Tennis model validation (item 26) found the market unbeaten, so
+> page and slate row. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
 > public read-only demo (item 37) is complete: live on Render, with the code
 > public at `github.com/Dayshawn21/Sports-Baseline`. The Lineform structural
-> redesign (item 38) is in progress: the shared command-bar shell, all three
-> table-first slates, and NFL prop rows are shipped; tennis and NBA prop rows,
-> command search, and the final shape-consistency pass remain. The palette,
-> fonts, and signal rules stay unchanged.
+> redesign (item 38) is complete: the shared command-bar shell, all three
+> table-first slates, tennis/NFL prop boards and NBA game-page prop rows,
+> command search, shared detail headings, CT labels and loaded detail tab
+> titles are implemented. The palette, fonts, and signal rules stay unchanged.
+> NBA has Slate and Model tabs; a separate NBA Props board is not yet a
+> build-plan item. Next for NFL props: a Rec Targets projection (item 39),
+> graded by 27j as its own sample.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
+
+**Regenerated:** 2026-10-18. The build plan is the progress authority where
+older project-plan prose disagrees. There are 108 completed leaf items out of
+118; no feature is active. Item 39 was added and split into 39a-39d on
+2026-10-18. Feature 38 is merged and pushed to `master`.
+This overview refresh does not verify the latest hosted deployment.
 
 ## Problem
 
@@ -63,8 +72,66 @@ multi-user:** one credential, no sign-up, no stored user data.
 
 ## Features
 
-Numbers are build-plan numbers and never change, so a shipped item can sit out of
-sequence.
+### Build-plan map
+
+This map follows the plan's order. Numbers are stable identifiers, so their
+order is not strictly numeric. The detailed notes below group related work
+and preserve the model, schema and operational constraints established by it.
+Checked items record completed work, including explicitly retired surfaces.
+
+| Item | Outcome | State |
+|---|---|---|
+| 1 | Match ingest | Complete |
+| 2 | Player identity resolution | Complete |
+| 3 | ELO ratings | Complete |
+| 4 | Rolling player stats | Complete |
+| 5 | Odds ingest | Complete |
+| 6 | Model ensemble | Complete |
+| 7 | Match predictions UI | Complete |
+| 8 | Best picks | Complete |
+| 9 | Props pipeline | Complete |
+| 10 | Bankroll builder | Built; hidden from nav |
+| 11 | Bet tracking | Built; later removed |
+| 12 | Admin surface | Complete |
+| 13 | Declare test dependencies | Complete |
+| 14 | Clean up one-off scripts | Complete |
+| 15 | Prediction accuracy pass | Complete |
+| 16 | Props coverage expansion | 16f parked |
+| 26 | Tennis model validation | Complete |
+| 17 | Multi-sport foundation | Complete |
+| 18 | NFL data sourcing | Complete |
+| 19 | NFL support | Complete |
+| 24 | NFL game-line model | Complete |
+| 28 | NFL game-line CLV check | Complete |
+| 29 | NFL game notes | Complete |
+| 30 | NFL team stats in game notes | Complete |
+| 31 | Web redesign | Complete |
+| 32 | Tennis detail pages | Complete |
+| 33 | NFL redesign and detail pages | Complete |
+| 25 | Market-relative prop rating | 25c conditional |
+| 27 | NFL prop probability model | 27h conditional |
+| 34 | More NFL prop lines | Complete |
+| 35 | Line-only prop display | Complete |
+| 36 | NFL best line | Complete |
+| 39 | NFL Rec Targets projection | 39a-39d planned |
+| 37 | Public read-only demo | Complete |
+| 20 | NBA support | Complete |
+| 21 | WNBA support | Planned |
+| 22 | Three-way market support | Planned |
+| 23 | Soccer support | Planned |
+| 38 | Structural redesign | Complete |
+
+Ten leaf items remain: parked 16f, conditional 25c and 27h, the four Rec
+Targets steps (39a-39d), then WNBA (21), three-way markets (22) and soccer
+(23). Item 39a is the first unconditional one in plan order. Adoption work requires the existing
+pre-registered verdicts; this refresh makes no new verdict or model claim.
+An NBA Props board would be a reviewed addition, not an existing unchecked item.
+
+### Detailed feature context
+
+Numerical results and samples below are dated observations from the completed
+work. Regenerating this overview does not read a holdout again, retune a rule,
+or establish a current slice verdict; the model reports carry those results.
 
 **Shipped: tennis**
 
@@ -362,7 +429,7 @@ card's closing lines are the last pre-kickoff line from one book (game notes'
   holdout again). Tests pin it to `nfl_over_probability_fit.py`, so
   regenerating the fit fails until the table is updated from the new run.
 
-**Next: market-relative prop rating (item 25, reopens NFL work)**
+**Conditional: market-relative prop rating (item 25; only 25c remains)**
 
 A cross-sport concern that surfaced through NFL, not further NFL modelling. The
 sportsbook prop prices item 19i stores are Yes-only, so their probabilities carry
@@ -383,7 +450,7 @@ regardless.
 > assessable until week 8 to 12 at the earliest, and may never be adopted. The
 > anytime-TD board stays at its handful of standard lines until then.
 
-**Next: NFL prop probability model (item 27, added 2026-09-26)**
+**Conditional: NFL prop probability model (item 27; only 27h remains)**
 
 A 2026-09-25 review found that the PrizePicks prop model behind most NFL edges
 (19e, 19g, 19h) was never validated. Graded on 2026 week 2 standard lines, it
@@ -582,6 +649,41 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
+**Planned: NFL Rec Targets projection (item 39, added 2026-10-18)**
+
+39. **NFL Rec Targets projection** - project PrizePicks Rec Targets lines
+    (standard only), the first line-only market from item 34 to get a model.
+
+| Step | Planned outcome |
+|---|---|
+| 39a | Choose the baseline on 2024 only, testing season-average, moneyline scaling and recent form in pre-registered order; version `nfl-targets-v1`; backtest only |
+| 39b | Fit P(over) on 2024 and check its display gate once on 2025; freeze the fit table; no production change |
+| 39c | Serve and freeze Rec Targets under its own model and P(over) versions; preserve the nine v4 markets and their sample |
+| 39d | Grade each model version separately in 27j and display the Rec Targets slices on `/nfl/model` |
+
+- **Baselines on 2024 only.** Candidate baselines are compared on 2024. There
+  is no incumbent projection, so no holdout verdict is taken on the
+  projection itself.
+- **P(over) is gated.** It is shown only if a fit on 2024 passes 27g's
+  display rule on one 2025 check (the 2025 holdout's eighth read, counted in
+  the archive; 20g1's pattern for NBA).
+- **Its own versions (load-bearing).** Predictions are frozen on the
+  line-snapshot schedule (27i) under Rec Targets' own model and P(over)
+  version strings. 27j grades them as a separate sample, so the running
+  `opponent-dvp-tg-blend-usage-snap-v4` sample for the nine existing markets
+  is untouched. Today 27j grades one model version per sport, so this item
+  makes the check run per version.
+- **Display.** The gap is gray and never a pick until Rec Targets' own 27j
+  slice reads `adopt`.
+- **Why Rec Targets first** (2026-10-18 read-only count): about 150 standard
+  player-games a week, all standard lines, and targets already feed the
+  receiving usage adjustment. The other line-only markets have about 32
+  distinct player-games a week, mostly goblin and demon rungs.
+- **Load-bearing (34a):** adding a market to `NflPropMarket` widens
+  `MODELLED_MARKET_FILTER`, which pulls it into the slate, 27a, frozen rows
+  and 27j. The separate versions above are what keep that from resetting the
+  existing sample.
+
 **Shipped: public read-only demo (item 37, added 2026-10-15, complete 2026-10-16)**
 
 A hosted portfolio demo: anonymous visitors browse every sport page, only the
@@ -682,7 +784,7 @@ My Bets removed, slate caching); item 37 finishes it, in this order:
 - **No server key (dev):** `keyRequired` is false and the page opens with no
   card; production cannot start without a key.
 
-**In progress: Lineform structural redesign (item 38, added 2026-10-16)**
+**Complete: Lineform structural redesign (item 38, completed 2026-10-18)**
 
 The app is renamed Lineform and restructured so every sport shares one shape.
 **Display only:** no page changes a probability, edge, rank, sort or pick, and
@@ -697,12 +799,12 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
 38c. **Tennis and NBA slates on the same shape** *(shipped 2026-10-17)* - both sports now use the shared table-first slate shape.
 38c1. **Tennis slate** *(shipped 2026-10-17)* - priced picks use the shared digest strip (green under the existing rule) above a match table whose rows expand inline with the best opportunity, model breakdown, serve and return, decision board, and match-page link; the side panel and pick cards are gone.
 38c2. **NBA slate** *(shipped 2026-10-17)* - one row per game replaces the cards, under a gray digest of upcoming standard lines ranked by normalized gap, one per player. This is the one NBA surface allowed to sort a gap; game-page props remain unranked and unsorted.
-38d. **Props as tables** *(in progress)* - replace NFL, tennis, and NBA prop cards with dense rows and evidence drawers without changing ranks, edges, or colors.
+38d. **Props as tables** *(complete)* - tennis/NFL prop boards and NFL/NBA game pages use dense rows and evidence drawers without changing ranks, edges, or colors.
 38d1. **NFL props as rows** *(shipped 2026-10-17)* - the prop board and game-page Props use dense rows per market; the board's side panel is now the game page's evidence drawer, and gray line-only props are plain rows without a drawer. Shared row styles and mini bars are ready for tennis and NBA.
-38d2. **Tennis prop board as rows** *(next)* - one row per line with rank, player and match, line, model, hit probability against break-even, EV, tier, and trust; evidence moves to a drawer and last-five bars stay there because they require a per-match request.
-38d3. **NBA game-page props as rows** *(planned)* - gray modelled and line-only props become rows with a detail drawer, while staying unranked and unsorted under 20g2.
-38e. **Command field** - a search in the top bar, focused with `/`, that filters the current slate as you type and jumps to a game, team or player from data the page already loaded; Enter opens the top match; a search button that expands on phones.
-38f. **Shape consistency pass** - model, game, match and player pages take the shared page head; game pages get an `h1`; times read `CT` everywhere; the defects from the 2026-10-16 polish captures that survive the new shape.
+38d2. **Tennis prop board as rows** *(complete)* - one row per line with rank, player and match, line, model, hit probability against break-even, EV, tier, and trust; evidence is in a drawer and last-five bars stay there because they require a per-match request.
+38d3. **NBA game-page props as rows** *(complete)* - gray modelled and line-only props are rows with a detail drawer, while staying unranked and unsorted under 20g2.
+38e. **Command field** *(complete)* - a search in the top bar, focused with `/`, filters the current slate and jumps to a game, team or player from data already loaded; Enter opens the top match; a search button expands on phones.
+38f. **Shape consistency pass** *(complete 2026-10-18)* - game, match and player pages use the shared page head, matching existing model heads; one `h1` per page, CT clocks, loaded detail tab titles, shared gray slate/prop panels and readable NBA phone rows. No backend or model changes.
 
 **What 38a fixed as load-bearing:**
 - **One top bar,** driven by `shellNav(pathname, adminVisible)` in
@@ -711,15 +813,16 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
   reads `menuSections`. No page carries its own view switch:
   `SportViewSwitch`, `NAV_ITEMS` and `navKeyForPath` are deleted. 38e's
   command field sits in this bar.
-- **Tab titles** come from `documentTitle(pathname)` (`<Page> · Lineform`;
-  detail pages read generic until 38f).
+- **Tab titles** have one writer, `DocumentTitleProvider` (38f). Loaded detail
+  pages register names from their existing query; unavailable states use
+  `documentTitle(pathname)`. Route and owner checks prevent stale detail titles.
 - **`PageHead`** (`web/src/components/shared/PageHead.tsx`) is the one page
   head: `title`, `meta` (a status line beside the title naming the period
   only, never counts the stats strip shows), `period` (previous and next
   paths), `actions`, `stats`. There is **no eyebrow and no subtitle**
   (decided at owner review, 2026-10-17); the head title is 34px. Every
-  slate, prop board, model page and How it works uses it; 38b to 38f add
-  pages to it rather than writing their own heads.
+  slate, prop board, model, game, match, player and How it works page uses it.
+  New pages reuse it rather than writing their own heads.
 - **Gutter:** the bar pads with the `is-wide` container's
   `clamp(20px, 3.2vw, 56px)` on desktop and 20px on phones, so the
   wordmark and page content share one left edge.
@@ -729,8 +832,8 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
   `web/src/utils/nflSlate.ts` (`NflSlateRowModel`, display strings keyed by
   `gameId`) feeds `NflSlateTable`; 38e's command field filters these rows.
   The NFL slate card (`NflSlateGameCard`, `nflSlateCard`, `topGameProps`,
-  `slateBoards`) is deleted; `nfl-slate-card.css` stays for the NBA card and
-  the row tags until 38c.
+  `slateBoards`) is deleted. Later slate tables preserve the row model and
+  shared tags rather than restoring game cards.
 - **The digest order is the board's.** `slateDigest(categories, limit = 4)`
   ranks a board built as of now (started games already dropped) by
   `compareBoardTiers`, then |edge share|, one line per player: the old card's
@@ -755,18 +858,24 @@ sketch `.impeccable/mocks/decision/command.html`, and product context
   `sportapp-web`, their URLs and the public repo name, which feed
   `CORS_ORIGINS` and `VITE_API_BASE_URL` (37d).
 
-**What 38c and 38d1 lock for the remaining redesign:**
+**What the completed redesign preserves:**
 
 - Tennis, NFL, and NBA slates now share the table-first shape while preserving
   each sport's existing signal rules: tennis priced picks may be green; NFL
   and NBA reference gaps stay gray.
 - NBA digest sorting is a narrow slate-only exception. NBA game-page props
   remain unranked and unsorted.
-- NFL establishes the shared prop-row and mini-bar presentation that 38d2 and
-  38d3 reuse; converting cards to rows does not change the underlying ranking,
-  edge, or color rules.
+- Tennis, NFL and NBA reuse shared prop-row styling; numeric values, ranking,
+  edge and color rules are unchanged. Tennis last-five bars remain in the
+  drawer; NBA props remain gray and unranked.
+- The command field filters only the current slate and uses data already
+  loaded. It adds no search endpoint or provider request.
+- Times use `America/Chicago` with the display label `CT` through winter and
+  summer. NBA's API date remains Eastern. New UI text stays at least 11px.
+- Acceptance evidence is in `blueprint/reference/38f/acceptance.md`;
+  completion archives are under `blueprint/history/features/38*.md`.
 
-**Next: tennis depth (item 16 stays open)**
+**Parked: tennis depth (item 16 stays open for 16f)**
 
 16e. **Prop stat expansion** *(shipped 2026-09-27)* - 1st Set Total Games and 1st Set Total Games Won are projected by an exact first-set chain on the two holds (`app/core/tennis_first_set.py`), flagged `ungraded_stat`, capped at LEAN, and skipped by best picks until 26f grades them. Snapshots moved to `props-v2`. The chain runs about +0.35 games high on 2026 first sets (`python -m app.backtest.tennis_first_set_level`); nothing was fitted. 1st Set Aces stays unsupported.
 16f. **Set-handicap projection** *(parked 2026-09-29)* - model tennis set-handicap lines only after provider line shapes are captured. They are not: `match_odds` holds 48 `set_handicap` rows (31 matches, 2026-08-24 to 09-25, all under the old `betonline.ag` name, none since the Bet365 rename), 29% of best-of-3 rows are +/-2.5 or +/-3.5 game lines the Bet365 parser misfiled, and 27 settled matches have a pre-start line. Revisit only if the provider starts offering set handicaps regularly.
@@ -895,7 +1004,7 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
     - 20f. **NBA projection backtest harness** *(shipped 2026-10-06)* - `python -m app.backtest.nba_projections [--season 2025] [--arms reference,last_10]` replays a season game by game from box scores dated before each game, scoring nine prop markets (double-double excluded) against a fixed `reference` arm under a pre-registered adoption rule. 2023-24 and 2024-25 box scores were backfilled for it.
     - 20g. **NBA projection and frozen predictions** *(complete 2026-10-07)* - a baseline projection passing 20f, frozen pre-tip predictions, the forward ranking check and a model page through the shared pipeline; edges stay gray until a slice verdict reads `adopt`. Split 2026-10-06:
       - 20g1. **NBA over-probability fit** *(shipped 2026-10-06; assists shown, eight markets hidden)* - P(over) per market from a distribution fitted on 2024-25 and checked once on the 2025-26 holdout under a pre-registered calibration rule; `python -m app.backtest.nba_over_probability_fit [--write]` and a frozen fit table.
-      - 20g2. **NBA projection on the game page** *(shipped 2026-10-07)* - `NbaPropMarket` and a modelled-market filter; game-page Props cards show the reference projection, its gap to the line and P(over) for assists, all gray, from `GET /nba/games/{id}/props`.
+      - 20g2. **NBA projection on the game page** *(shipped 2026-10-07)* - `NbaPropMarket` and a modelled-market filter; game-page Props show the reference projection, its gap to the line and P(over) for assists, all gray, from `GET /nba/games/{id}/props`. Item 38d3 changed the cards to rows and evidence drawers without changing these values.
       - 20g3. **Frozen NBA predictions** *(shipped 2026-10-07)* - `NbaPropSource` implements the full `SportPropSource` and joins `PROP_SOURCES`; `nba-prop-lines.yml` freezes predictions after each snapshot. First run: 190 opening-night lines (2026 week 1) frozen, all projected, 20 assists lines with P(over).
       - 20g4. **NBA ranking check and model page** *(shipped 2026-10-07)* - `python -m app.backtest.nba_ranking_check [--season N]`, also on the daily `nba-ingest.yml` Summary page, grades NBA's frozen rows under 27i's rule unchanged; `/nba/model` shows slice progress and verdicts, gray until decided. First read: season 2026, every slice accruing at 0 of 200 picks; picks can come only from assists, the one market with a P(over).
 
@@ -910,7 +1019,7 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
     - **Full game only.** `NBA_PROPS` (`app/nba/markets.py`) boards the `NBA` league alone. Halves, quarters and season lines are recognized but never stored (no stored data settles them); `NBAP` (preseason), `NBA4Q`, `NBASL` and `NBA SERIES` map to no segment.
     - **Ten line-only markets** (`NbaLineOnlyMarket`, stored strings never renamed): `points`, `rebounds`, `assists`, `threes_made`, `blocks`, `points_rebounds_assists`, `points_rebounds`, `points_assists`, `rebounds_assists`, `double_double`. Only stat names seen on a board are mapped; others log as unsupported until a `/fix` maps them. Fantasy Score needs PrizePicks' NBA formula confirmed first.
     - **One settlement rule:** `line_only_value` in `app/core/nba_line_only.py` (double-double: 10+ in two of points, rebounds, assists, steals, blocks). A DNP or missing stat gives None, never 0.
-    - **NBA has no modelled market.** Any later reader that projects, grades or freezes NBA lines must filter to modelled markets, as NFL's `MODELLED_MARKET_FILTER` does; 20g2 adds `NbaPropMarket`.
+    - **Market scope:** 20c initially stored every market line-only; 20g2 added `NbaPropMarket`. Any reader that projects, grades or freezes NBA lines must apply `NBA_MODELLED_MARKET_FILTER`, as NFL readers apply `MODELLED_MARKET_FILTER`. Line-only markets stay out of those paths.
     - **Linking** (`app/core/nba_resolution.py`): NFL's `resolve_player` and `find_game_id`, reused unchanged, after accent folding (`Egor Dëmin` to `Egor Demin`) and PrizePicks-to-ESPN team codes (`espn_team_code`: `NYK` `NY`, `SAS` `SA`, `GSW` `GS`, `NOP` `NO`, `UTA` `UTAH`, `WAS` `WSH`). **Position is never passed:** PrizePicks sends `F-C` or `G-F`, ESPN stores `G`, `F`, `C`, and a mismatch would read as a different player. NBA aliases are keyed from the folded name.
     - **`PropLineSource`** (`config`, `load_resolver`) is what storing lines needs; `SportPropSource` extends it for freezing and grading. NBA's `NbaPropSource` implemented only the first until 20g3, which made it a full `SportPropSource` in `PROP_SOURCES`.
 
@@ -924,7 +1033,7 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
     - **Market rule:** each market independently takes DraftKings' latest row, else the latest lowercase book, and names its book; win probability is the stored de-vigged `first_market_prob` (home). **Movement and history:** pre-tip rows only, one book per market (NFL's rule). Records count completed `REG` games only. `PRE` games are never served (404).
     - **One NBA game page.** The route `/nba/game/:gameId`; its hero and final block read the slate card model `nbaSlateCard` (`web/src/utils/nbaSlate.ts`). The card model itself is not load-bearing beyond the slate (33b's rule).
     - **Props is optional per sport.** `SportViewPaths.props` is optional and `SPORT_PAGES` requires a props page only when the registry promises one; 20g4 added NBA's Model view, and a later item would add its Props view (an NBA prop board, deferred at the 20g split), by adding paths and pages, nothing else.
-    - **Shared with NFL:** the NBA pages reuse the `nfl-slate*`, `nfl-game*` and `nfl-prop-card` classes under the `.nfl-slate` root (gray signal variables), `NflLineMovementChart` (prop narrowed to `homeTeam`, `awayTeam`, `startUtc`, `lineHistory`; optional `caveat`), and `lineOnlyBars`, `mainRung` and `overAgainstStandard` from `web/src/utils/nflLineOnly.ts`.
+    - **Shared with NFL:** the NBA pages reuse the `nfl-slate*` and `nfl-game*` classes under the `.nfl-slate` root (gray signal variables), shared prop-table styles since 38d3, `NflLineMovementChart` (prop narrowed to `homeTeam`, `awayTeam`, `startUtc`, `lineHistory`; optional `caveat`), and `lineOnlyBars`, `mainRung` and `overAgainstStandard` from `web/src/utils/nflLineOnly.ts`. The obsolete NBA prop-card stylesheet was deleted in 38d3.
     - **Times** are Central on the web; NBA "today" in the API is the Eastern date.
     - **Not yet known:** whether `nba_odds` stores rows after tip-off. If it does, a started game's "Latest stored price" may be in-play; closing lines and movement stay pre-tip.
 
@@ -1201,7 +1310,7 @@ creates them; unknowns are skipped and counted.
 - **`sport_teams`** - `team_code` (NFLverse codes for NFL), `name`, `conference`, `division`; **unique on** (`sport`, `team_code`)
 - **`sport_players`** - `source_player_id`, `name`, `position`, `team_id` (last-write-wins; NFL readers use the weekly roster instead, see below); **unique on** (`sport`, `source_player_id`)
 - **`sport_player_aliases`** - provider-name overrides: `player_id`, `alias_name`, `alias_name_norm`, `source`; **unique on** (`sport`, `alias_name_norm`)
-- **`sport_games`** - `source_game_id`, `season`, `week` (nullable; `CHECK (sport <> 'nfl' OR week IS NOT NULL)`, since NBA has no weeks), `game_type`, `game_date`, `start_utc`, `home_team_id`, `away_team_id`, `home_score`, `away_score`, `status`; **unique on** (`sport`, `source_game_id`). NFL-only nullable columns stay here (decided in 17b; other sports leave them NULL): from 19n (`0028`), NFLverse closing lines `spread_line` (expected home margin: positive = home favored), `total_line`, `home_moneyline`, `away_moneyline`, plus `roof`, `home_rest`, `away_rest`; from 24e (`0031`), `temp` (°F) and `wind` (mph) smallint, observed rather than forecast, NULL for indoor games and blanks; and `espn_event_id`
+- **`sport_games`** - `source_game_id`, `season`, `week` (nullable at the shared schema level; `CHECK (sport <> 'nfl' OR week IS NOT NULL)`; NBA ingest also assigns the regular-season Eastern week defined by 20a), `game_type`, `game_date`, `start_utc`, `home_team_id`, `away_team_id`, `home_score`, `away_score`, `status`; **unique on** (`sport`, `source_game_id`). NFL-only nullable columns stay here (decided in 17b; other sports leave them NULL): from 19n (`0028`), NFLverse closing lines `spread_line` (expected home margin: positive = home favored), `total_line`, `home_moneyline`, `away_moneyline`, plus `roof`, `home_rest`, `away_rest`; from 24e (`0031`), `temp` (°F) and `wind` (mph) smallint, observed rather than forecast, NULL for indoor games and blanks; and `espn_event_id`
 - **`sport_prop_lines`** - PrizePicks snapshots: `provider`, `provider_prop_id`, `market`, **`segment`**, `odds_type`, `line`, `start_time`, `player_id`, `game_id`, `fetched_at`, `raw_json`
 - **`sport_game_odds`** (19f, `0020`) - append-only: `game_id`, `book`, `market` (`moneyline` | `spread` | `total`), `line`, `first_side`/`second_side`, `first_odds`/`second_odds` (American), de-vigged `first_market_prob`/`second_market_prob`, `fetched_at`, `raw_json`. `provider` (36a, `0044`): `the_odds_api_us` (every row before 36a; the only feed pre-36a readers see), `the_odds_api_eu` (Pinnacle) or `odds_api_io` (Bet365, DraftKings); every reader names its provider, enforced by `tests/test_sport_game_odds_provider.py`
 - **`sport_prop_predictions`** (defined in `0015`, first written by 27i, reshaped in `0037`, NBA rows from 20g3) - one frozen pre-kickoff prediction per line snapshot and version: `prop_line_id`, `model_version`, `over_probability_version` (NULL when no P(over) was served), nullable `projection`, `p_over`, `p_under`, `edge`, `quality_flags`, `feature_snapshot` (baseline games and season, adjustments, line, odds type, market, segment, line fetch time), `generated_at` (always before kickoff); **unique on** (`prop_line_id`, `model_version`, `over_probability_version`) `NULLS NOT DISTINCT`, and never updated. `confidence` is unused. 27j grades each provider prop's latest frozen pre-kickoff row, at its own line.
@@ -1399,7 +1508,8 @@ one command-bar shell across every page (sport tabs, Slate / Props / Model, a
 `/` search that jumps to any game, team or player), a table-first slate shared
 by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
 expand inline instead of a side panel), and props shown as table rows instead
-of cards. The theme above is unchanged.
+of cards. Feature 38 is complete. NBA still has no standalone Props board;
+its prop tables live on game pages. The theme above is unchanged.
 
 Mobile is a real target: `useIsMobile` swaps the nav to a drawer.
 
@@ -1409,7 +1519,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 ### Web routes (HashRouter)
 
 - `/` - Tennis intelligence, the daily slate
-- `/tennis/board` - Tennis prop board (31c)
+- `/tennis/board` - Tennis prop board with dense rows and an evidence drawer (38d2); existing EV colors and ranking rules
 - `/tennis/match/:matchId` - Match detail page (32a)
 - `/tennis/model` - Model track record page (32b)
 - `/tennis/player/:playerId` - Player page (32c)
@@ -1418,10 +1528,10 @@ without reading everything. Quality flags and EV ranking cut the list down.
 - `/nfl/game/:gameId` - NFL game page (33a)
 - `/nfl/player/:playerId` - NFL player page (33c)
 - `/nfl/model` - NFL model track record page (33d)
-- `/nba` - NBA slate (20e2): one Eastern date (`?date=YYYY-MM-DD`, default today else the next game date), a summary strip and one card per game (market, line movement, records, prop line count, final score), each linking to the game page
-- `/nba/game/:gameId` - NBA game page (20e3), with gray Props cards (reference projection, gap, P(over) for assists) since 20g2
+- `/nba` - NBA slate (38c2): one Eastern date (`?date=YYYY-MM-DD`, default today else the next game date), a summary strip, gray reference digest and one table row per game, each linking to the game page
+- `/nba/game/:gameId` - NBA game page (20e3, 38d3, 38f), with the shared page head, gray modelled and line-only prop rows and evidence drawers; reference projection, gap and P(over) for assists remain unchanged
 - `/nba/model` - NBA model track record page (20g4): the forward ranking check's four slices, gray until decided
-- Tennis and NFL's view switch reads Slate / Props / Model; NBA's reads Slate / Model (`web/src/utils/sportNav.ts`)
+- The shared shell's view tabs read Slate / Props / Model for tennis and NFL, and Slate / Model for NBA (`web/src/utils/sportNav.ts`)
 - `/parlays` - Bankroll builder. Hidden from the nav since 2026-09-25; the route and API remain.
 - `/how-it-works` - public explainer (37b): pipeline, what each sport shows, how a model earns a pick
 - `/admin` - Admin surface: a sign-in card until the owner enters `ADMIN_API_KEY` (37a); its nav entry is hidden from visitors
@@ -1431,7 +1541,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 > sportsbook anytime-TD probability is displayed beside the model, not blended,
 > until build-plan item 25c passes its backtest; that item may then let it drive
 > edge and rank for anytime TD, and only anytime TD. Injury and depth flags warn
-> but never change an edge or its rank. The muted game model (slate cards and
+> but never change an edge or its rank. The muted game model (slate rows and
 > game page) is never colored as a signal, sorted by, or added to a signal board.
 
 ### API routes
@@ -1522,12 +1632,15 @@ the request path the same way.
 
 ## Open questions
 
-1. **Plan §4 data section is behind the code.** It says revision `0019` (now
-   `0041`: `0033` adds `player_match_stats`, `0034` adds
+1. **Plan §4 data section is behind the completed build plan.** It says
+   revision `0019`; the existing schema notes extend through `0045`
+   (`0033` adds `player_match_stats`, `0034` adds
    `prop_projection_snapshots`, `0035` adds the box-score join key, `0036` adds
    the 27f fantasy components, `0037` reshapes `nfl_prop_predictions` for 27i,
    `0038` rekeys box scores, `0039` to `0041` move seven NFL tables to
-   `sport_*` and add `sports`). It still describes the `nfl_*` tables as the
+   `sport_*` and add `sports`; `0042` adds kicking/punting stats, `0043`
+   adds NBA data, `0044` adds odds providers and `0045` adds report snapshots).
+   It still describes the `nfl_*` tables as the
    NFL schema, and does not list the 19n `sport_games` line columns or `end_zone_targets`, `sport_game_odds` (19f), the usage and red-zone
    columns (19h, 19j), `nfl_game_weather_snapshots`, `nfl_player_prop_odds`
    (19i), `nfl_player_weekly_rosters` (19k), `nfl_player_injuries` and
@@ -1801,16 +1914,25 @@ the request path the same way.
     secret scan, which run green on the public repo.
 
 49. **`project-plan.md` records the Lineform rename and item 38 only in its
-    header line and §7.** §3 (features) and §8 (deployment) still describe the
-    app without the new shell, and §8 keeps the `sportapp-*` service names,
-    which item 38 deliberately leaves unchanged. Decide whether §3 should name
-    the shared shell and table-first pages, and whether the Render services
-    are ever renamed (that would change `CORS_ORIGINS` and
-    `VITE_API_BASE_URL`).
+    header line and §7.** §3 could name the completed shared shell, table-first
+    slates and prop tables. Render's `sportapp-api` and `sportapp-web` names
+    are intentionally unchanged; they are not an incomplete rename.
 
-50. **Project-plan §7 overstates item 38's completion.** It says the app was
-    restructured with the `/` command search and props as table rows, while the
-    build plan still has 38d2 (tennis prop rows), 38d3 (NBA prop rows), 38e
-    (command search), and 38f (shape consistency) unchecked. Treat the build
-    plan as the progress authority; revise §7 to distinguish shipped and
-    planned redesign work, then re-run `/overview`.
+50. **Resolved (2026-10-18):** all of item 38 is checked off, including
+    38d2, 38d3, 38e and 38f. Project-plan §7's completed-redesign description
+    now agrees with the build plan. Implementation completion is separate
+    from verifying the latest Render deployment.
+
+51. **Remaining planning gaps, 2026-10-18:** the NBA Props board proposed in
+    conversation is not yet an approved build-plan item (see question 43).
+    Add it through `/feature`'s plan-addition review before building it.
+    WNBA/soccer schedule and stats providers are intentionally undecided.
+    Project-plan §2 still calls the demo planned while §8 and item 37 say
+    it is live; §4 says model files are ignored while §8 says they are tracked.
+    These prose gaps do not change the next feature's build order.
+
+52. **`project-plan.md` §3 does not mention item 39** (as open questions 27,
+    35, 43 and 45 found for other NFL items). It adds a modelled market under
+    rules the plan already states, so no plan edit was proposed. Its one new
+    commitment, grading a market under its own model version so 27j runs
+    per version, is recorded in the build-plan line and above.
