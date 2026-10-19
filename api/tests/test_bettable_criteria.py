@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from app.core.bettable_criteria import _BLOCKING_FLAGS, _DOWNGRADE_FLAGS, assess_bettable_pick
@@ -70,7 +72,7 @@ def test_imputed_odds_with_weak_data_downgrades_after_lock_cap():
     assert "small_sample" in result.data_quality_flags
 
 
-@pytest.mark.parametrize("flag", ["ml_missing", "elo_missing", "p1_elo_missing", "ml_not_trained_for_tour"])
+@pytest.mark.parametrize("flag", ["elo_missing", "p1_elo_missing", "market_missing"])
 def test_missing_model_inputs_downgrade_strong_to_lean(flag):
     result = assess_bettable_pick(0.64, 0.12, 0.03, data_quality_flags=[flag])
     assert result is not None
@@ -78,14 +80,33 @@ def test_missing_model_inputs_downgrade_strong_to_lean(flag):
     assert result.downgraded is True
 
 
-def test_every_missing_input_the_blend_reports_is_a_downgrade_flag():
+@pytest.mark.parametrize("flag", ["ml_missing", "ml_not_trained_for_tour"])
+def test_ml_flags_do_not_downgrade(flag):
+    result = assess_bettable_pick(0.64, 0.12, 0.03, data_quality_flags=[flag])
+    assert result is not None
+    assert result.confidence == "STRONG"
+    assert result.downgraded is False
+
+
+def test_every_missing_input_the_blend_reports_except_ml_is_a_downgrade_flag():
     # One source present at a time, so each run reports the other two as missing.
+    # ML is exempt: ensemble-v3 gives it no weight, and a no-market row (the v2 path,
+    # where ML counts) already downgrades on market_missing.
     emitted: set[str] = set()
     for source in ("elo_prob", "ml_prob", "market_prob"):
         emitted.update(blend(EnsembleInput(tour="ATP", **{source: 0.6})).quality_flags)
     missing = {flag for flag in emitted if flag.endswith("_missing")}
     assert missing == {"elo_missing", "ml_missing", "market_missing"}
-    assert missing <= _DOWNGRADE_FLAGS
+    assert missing - {"ml_missing"} <= _DOWNGRADE_FLAGS
+    assert "ml_missing" not in _DOWNGRADE_FLAGS
+
+
+def test_every_tier_flag_is_emitted_somewhere():
+    app_dir = Path(__file__).resolve().parents[1] / "app"
+    sources = [*(app_dir / "services" / "tennis").glob("*.py"), app_dir / "routers" / "props.py"]
+    emitting = "\n".join(path.read_text(encoding="utf-8") for path in sources)
+    orphans = {flag for flag in _DOWNGRADE_FLAGS | _BLOCKING_FLAGS if f'"{flag}"' not in emitting}
+    assert orphans == set()
 
 
 def test_unreliable_elo_hides_even_a_lock():

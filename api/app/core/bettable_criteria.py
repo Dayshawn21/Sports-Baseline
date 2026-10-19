@@ -11,16 +11,12 @@ MIN_IMPUTED_KELLY = 0.02
 _RANKS = {"LEAN": 1, "STRONG": 2, "LOCK": 3}
 _CONF_BY_RANK = {value: key for key, value in _RANKS.items()}
 # Names must match what the ensemble and feature builder emit; a name nothing emits
-# silently disables its downgrade.
+# silently disables its downgrade. No ML flag: ensemble-v3 gives v6 no weight (26d).
 _DOWNGRADE_FLAGS = {
     "small_sample",
     "stale_stats",
     "stale_odds",
-    "market_stale",
-    "fallback_stats",
     "market_missing",
-    "ml_missing",
-    "ml_not_trained_for_tour",
     "elo_missing",
     "p1_elo_missing",
     "p2_elo_missing",
