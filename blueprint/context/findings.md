@@ -70,24 +70,6 @@ to the model page (no new verdict). Any refit or method change is a new
 forward, never on the 2025 holdout again.
 **Resolution:**
 
-### F-13 [P3] open - The slate's line query has no pre-kickoff cutoff, unlike NBA's
-
-**File:** api/app/repositories/nfl.py:1159; api/app/services/nfl/track_record.py:66; api/app/ingest/prizepicks_props.py:85
-**Found:** 2026-10-18 by /audit (scope: NFL prediction system and consumers; lenses: leakage, correctness)
-**Why it matters:** `_LATEST_LINES_CTE` takes each provider prop's newest
-snapshot regardless of kickoff, and the PrizePicks ingest stores whatever the
-board returns with no start check. NBA's equivalent reads
-`(g.start_utc IS NULL OR l.fetched_at < g.start_utc)` (`nba.py:409`, `:452`,
-tested). Two latent effects: a started game's page would show a post-kickoff
-line beside a pre-game projection, and 27a would silently drop the call,
-because its edges are keyed by the latest snapshot id while
-`get_gradeable_prop_lines` grades the last pre-kickoff id. Freezing is safe
-(it only freezes unstarted games). Read-only count: 0 post-kickoff modelled
-snapshots among about 96,000 in 2026, so there is no current effect.
-**Suggested fix:** Join the game in the CTE and apply NBA's cutoff, with a
-recorded-SQL test. Output is identical on today's data. No model change.
-**Resolution:**
-
 ### F-14 [P3] open - Future-week slate snapshots from the 37d backfill are served at each week rollover, and the payload has no build time
 
 **File:** api/app/ingest/nfl_slate_snapshot.py:29; api/app/repositories/nfl.py:943; api/app/services/nfl/slate_cache.py:102

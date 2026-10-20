@@ -91,6 +91,24 @@ def _flat(statement: str) -> str:
     return " ".join(statement.split())
 
 
+@pytest.mark.parametrize("consumer", ["linked", "unmatched"])
+def test_slate_lines_select_the_latest_snapshot_before_kickoff(consumer: str) -> None:
+    session = _RecordingSession()
+    load_lines = get_slate_lines if consumer == "linked" else get_unmatched_slate_lines
+
+    assert asyncio.run(load_lines(cast(AsyncSession, session), 2026, 7)) == []
+
+    latest = _flat(session.statement.split("latest_lines AS (", 1)[1].split("\n    )", 1)[0])
+    assert session.params == {"season": 2026, "week": 7}
+    assert "SELECT DISTINCT ON (l.provider, l.provider_prop_id)" in latest
+    assert "JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id" in latest
+    assert (
+        f"WHERE l.sport = 'nfl' AND {nfl_repository.V4_MARKET_FILTER} "
+        "AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc) ORDER BY"
+    ) in latest
+    assert latest.endswith("ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC")
+
+
 def test_slate_team_comes_from_the_roster_as_of_the_slate_week() -> None:
     session = _RecordingSession()
 

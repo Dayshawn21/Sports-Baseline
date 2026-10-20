@@ -1164,7 +1164,9 @@ _LATEST_LINES_CTE = f"""
                l.id, l.provider, l.market, l.segment, l.line, l.start_time,
                l.fetched_at, l.player_id, l.game_id, l.odds_type, l.raw_json
         FROM sport_prop_lines l
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
         WHERE l.sport = 'nfl' AND {V4_MARKET_FILTER}
+          AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc)
         ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
     )
 """
