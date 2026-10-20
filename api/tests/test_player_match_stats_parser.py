@@ -95,6 +95,29 @@ def test_the_upsert_writes_and_refreshes_the_join_key():
         assert f"{column} = EXCLUDED.{column}" in session.statement
         assert f":{column}" in session.statement
     assert session.params[0]["opponent_name"] == "Alexander Zverev"
+    assert session.params[0]["source"] == "tennisabstract"
+
+
+def test_the_upsert_binds_an_explicit_source_for_every_row():
+    import asyncio
+    from typing import cast
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.repositories.player_match_stats import upsert_player_match_stats
+
+    class _Session:
+        statement = ""
+        params: list[dict] = []
+
+        async def execute(self, statement, params=None):
+            self.statement, self.params = " ".join(str(statement).split()), params
+
+    session = _Session()
+    stats = _parse_player_match_stats(17, [_row(), _row()], "20250921")
+    asyncio.run(upsert_player_match_stats(cast(AsyncSession, session), stats, source="tennismylife"))
+    assert ":player_id, :source, :source_match_key" in session.statement
+    assert [row["source"] for row in session.params] == ["tennismylife", "tennismylife"]
 
 
 def test_the_upsert_never_blanks_a_published_score_or_stat():

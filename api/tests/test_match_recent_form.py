@@ -61,7 +61,8 @@ class _Context:
 def _recent_form(monkeypatch, joins: dict) -> tuple[dict, list]:
     asked: list = []
 
-    async def candidates(_db, pairs):
+    async def candidates(_db, pairs, *, sources):
+        assert sources == ("tennisabstract", "tennismylife")
         asked.extend(pairs)
         return {pair: _Context(joined) for pair, joined in joins.items()}
 

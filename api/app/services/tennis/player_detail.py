@@ -146,7 +146,9 @@ async def _match_log(db: AsyncSession, player_id: int, limit: int) -> list[Match
     rows = await match_repo.get_player_matches(db, player_id, limit=limit)
     # join_box_score matches on opponent and set score, never on date: box scores
     # are dated by tournament start.
-    contexts = await box_score_repo.get_box_score_candidates(db, [(player_id, r.match_id) for r in rows])
+    contexts = await box_score_repo.get_box_score_candidates(
+        db, [(player_id, r.match_id) for r in rows], sources=("tennisabstract", "tennismylife"),
+    )
     entries = []
     for row in rows:
         context = contexts.get((player_id, row.match_id))
@@ -204,7 +206,10 @@ async def build_player_props(db: AsyncSession, player_id: int) -> Optional[Playe
     if await player_repo.get_player_header(db, player_id) is None:
         return None
     snapshots = await prop_snapshot_repo.get_graded_prop_snapshots(db, PROJECTION_VERSION, player_id=player_id)
-    contexts = await box_score_repo.get_box_score_candidates(db, sorted({(s.player_id, s.match_id) for s in snapshots}))
+    contexts = await box_score_repo.get_box_score_candidates(
+        db, sorted({(s.player_id, s.match_id) for s in snapshots}),
+        sources=("tennisabstract", "tennismylife"),
+    )
     rows = []
     for snapshot in snapshots:
         context = contexts.get((snapshot.player_id, snapshot.match_id))

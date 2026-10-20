@@ -71,6 +71,11 @@ These already exist and are working. This section describes the shipped app.
 - Head-to-head records, surface splits, and rolling player form
 - Match detail, player, and model track record pages (build-plan item 32),
   replacing the player comparison modal
+- TennisMyLife box scores fill match and player display gaps behind
+  TennisAbstract precedence (41a, implemented and verified locally 2026-10-20;
+  22,789 rows backfilled into the shared database). Grading stays
+  TennisAbstract-only and model inputs are unchanged. The daily GitHub workflow is configured locally;
+  runner verification and deployment of this code remain pending.
 
 **Betting surfaces**
 
@@ -218,7 +223,7 @@ because it is a pure client for an API that already exists.
 
 | Sport | Schedule | Stats / ratings | Odds | Props |
 |---|---|---|---|---|
-| Tennis | livetennisapi | TennisAbstract (ELO, per-match stats) | Odds-API.io | PrizePicks, DraftKings |
+| Tennis | livetennisapi | TennisAbstract (ELO, per-match stats, WTA 125); TennisMyLife (per-match stats for ATP, Challenger and WTA tour; MIT, daily CSVs) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly player stats | The Odds API (free plan: us books, Pinnacle via eu); Odds-API.io (Bet365, DraftKings; free plan's 2-book cap, shared with tennis) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display) | The Odds API (free plan, game lines only) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API | > TODO |

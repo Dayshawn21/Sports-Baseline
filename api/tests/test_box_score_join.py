@@ -1,4 +1,5 @@
 """A box score joins a match only when exactly one candidate survives every check."""
+from dataclasses import replace
 from datetime import date
 from itertools import count
 
@@ -132,3 +133,70 @@ def test_a_suffixed_opponent_now_joins():
     candidate = _candidate(opponent="Martin Damm", score="4-6 6-3 6-4")
     joined = join_box_score(FINAL_DAY, "W", "Martin Damm Jr", "4-6 6-3 6-4", [candidate])
     assert joined.reason == "joined"
+
+
+@pytest.mark.parametrize("aces, double_faults", [(12, 2), (0, None), (None, 0)])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_tennisabstract_stats_beat_tennismylife_regardless_of_order(aces, double_faults, reverse):
+    ta = replace(_candidate(), aces=aces, double_faults=double_faults)
+    tml = replace(_candidate(aces=7), source="tennismylife")
+    candidates = [tml, ta] if reverse else [ta, tml]
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, candidates)
+    assert joined.reason == "joined" and joined.candidate == ta
+
+
+@pytest.mark.parametrize("score", [None, FINAL.score])
+def test_tennismylife_stats_fill_a_tennisabstract_placeholder_or_score_only_row(score):
+    ta = replace(_placeholder(), score=score)
+    tml = replace(_candidate(), source="tennismylife")
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [ta, tml])
+    assert joined.reason == "joined" and joined.candidate == tml
+
+
+def test_tennismylife_alone_joins():
+    tml = replace(_candidate(), source="tennismylife")
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [tml])
+    assert joined.reason == "joined" and joined.candidate == tml
+
+
+def test_disagreeing_tennismylife_stats_remain_ambiguous():
+    first = replace(_candidate(aces=12), source="tennismylife")
+    second = replace(_candidate(aces=4), source="tennismylife")
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [_placeholder(), first, second])
+    assert joined.reason == "ambiguous" and joined.candidate is None
+
+
+def test_disagreeing_tennisabstract_stats_are_not_rescued_by_tennismylife():
+    first, second = _candidate(aces=12), _candidate(aces=4)
+    tml = replace(_candidate(), source="tennismylife")
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [first, second, tml])
+    assert joined.reason == "ambiguous" and joined.candidate is None
+
+
+def test_identical_tennismylife_copies_still_join_the_first_stored():
+    first = replace(_candidate(), source="tennismylife")
+    second = replace(first, stats_id=next(_ids))
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [second, first])
+    assert joined.reason == "joined" and joined.candidate == first
+
+
+@pytest.mark.parametrize("changes, reason", [
+    ({"opponent_name": "Novak Djokovic"}, "no_opponent_match"),
+    ({"score": "6-4 6-4"}, "score_mismatch"),
+    ({"result": "L"}, "no_candidate"),
+    ({"match_date": date(2026, 6, 1)}, "no_candidate"),
+])
+def test_tennismylife_still_has_to_match_all_facts(changes, reason):
+    tml = replace(_candidate(), source="tennismylife", **changes)
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [tml])
+    assert joined.reason == reason and joined.candidate is None
+
+
+@pytest.mark.parametrize("changes", [
+    {"opponent_name": "Novak Djokovic"}, {"score": "6-4 6-4"},
+])
+def test_a_rejected_tennisabstract_row_cannot_override_matching_tennismylife(changes):
+    ta = replace(_candidate(), **changes)
+    tml = replace(_candidate(), source="tennismylife")
+    joined = join_box_score(FINAL_DAY, "W", "Alexander Zverev", FINAL.score, [ta, tml])
+    assert joined.reason == "joined" and joined.candidate == tml

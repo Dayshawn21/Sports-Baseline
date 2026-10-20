@@ -1,4 +1,4 @@
-"""Deciding which TennisAbstract box score belongs to a stored match.
+"""Join TennisAbstract box scores to stored matches, with TennisMyLife filling gaps.
 
 Box scores are dated by tournament start, so date alone cannot tell a player's
 rounds apart. Opponent and score can. A candidate joins only when it is the one
@@ -39,6 +39,7 @@ class BoxScoreCandidate:
     break_chances_created: int | None = None
     break_points_faced: int | None = None
     break_points_saved: int | None = None
+    source: str = "tennisabstract"
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,10 @@ def join_box_score(
     agreeing = [c for c in same_opponent if not expected or not c.score or _sets(c.score) == expected]
     if not agreeing:
         return JoinResult(None, "score_mismatch")
+    if any(c.source == "tennisabstract" and (c.aces is not None or c.double_faults is not None) for c in agreeing):
+        agreeing = [c for c in agreeing if c.source != "tennismylife"]
+    elif any(c.source == "tennismylife" and (c.aces is not None or c.double_faults is not None) for c in agreeing):
+        agreeing = [c for c in agreeing if c.source != "tennisabstract"]
     if len(agreeing) == 1:
         return JoinResult(agreeing[0], "joined")
     real = [c for c in agreeing if not _is_empty(c)]

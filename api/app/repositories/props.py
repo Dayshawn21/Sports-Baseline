@@ -314,11 +314,13 @@ async def get_prizepicks_link_coverage(db: AsyncSession) -> PrizePicksCoverage:
                     EXISTS (
                         SELECT 1 FROM player_match_stats s
                         WHERE s.player_id = l.player_id AND s.result = l.result
+                          AND s.source = 'tennisabstract'
                           AND s.match_date = l.match_date
                     ) AS exact_date,
                     (
                         SELECT COUNT(*) FROM player_match_stats s
                         WHERE s.player_id = l.player_id AND s.result = l.result
+                          AND s.source = 'tennisabstract'
                           AND s.match_date BETWEEN l.match_date - 14 AND l.match_date + 3
                           AND (s.surface IS NULL OR l.surface IS NULL OR LOWER(s.surface) = l.surface)
                     ) AS window_candidates

@@ -24,20 +24,33 @@
 > NBA has Slate and Model tabs; a separate NBA Props board is not yet a
 > build-plan item. Next for NFL props: a Rec Targets projection (item 39),
 > graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
-> P(over) failed the one 2025 check and stays hidden (39b), and serving and
-> freezing it (39c) is next.
+> P(over) failed the one 2025 check and stays hidden (39b), and reference
+> serving, freezing and separate-version reporting are complete (39c-39d).
+> Rec Targets remains a gray reference without P(over) or probability picks.
+> WTA 125 testing (40a) kept the pooled Challenger blend;
+> the conditional serving change (40b) was dropped. TennisMyLife box-score
+> ingest (41a) is implemented and verified locally, with 22,789 player-match
+> rows backfilled into the shared database. Match and player displays fill
+> TennisAbstract gaps; grading and model inputs are unchanged. Workflow runner
+> verification and deployment remain pending. Next: an in-house ELO checked
+> before it serves (41b, 41c).
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-18. The build plan is the progress authority where
-older project-plan prose disagrees. There are 110 completed leaf items out of
-118; no feature is active. Item 39 was added and split into 39a-39d on
-2026-10-18; 39a was completed, merged and pushed that day, and 39b was
-completed and merged to local `master` the same day (not yet pushed when this
-refresh ran). Feature 38 is merged and pushed to `master`.
-This overview refresh does not verify the latest hosted deployment.
+**Regenerated:** 2026-10-20 from both planning docs for 41a's completion.
+The build plan is the progress authority where older
+project-plan prose disagrees; completed-work archives qualify implementation
+outcomes and preserve existing constraints. There are 115 checked leaf items
+out of 123, including the explicitly dropped 40b; eight remain unchecked. No
+feature or fix is active. Item 39 is complete, 40a retained the pooled blend,
+and the F-08 trainer repair is complete. Local `master` is at `17caa8f`
+(remote sync not checked by this refresh). 41a's code is on its feature branch,
+awaiting merge approval; its post-push runner check is recorded in its archive.
+In-house tennis ELO (41b) is the next available feature, ahead of WNBA (21);
+earlier unchecked leaves are parked or conditional. This refresh makes no new
+validation claim and does not verify the latest hosted deployment.
 
 ## Problem
 
@@ -102,6 +115,8 @@ Checked items record completed work, including explicitly retired surfaces.
 | 15 | Prediction accuracy pass | Complete |
 | 16 | Props coverage expansion | 16f parked |
 | 26 | Tennis model validation | Complete |
+| 40 | WTA 125 blend group | Complete: keep pooled; 40b dropped |
+| 41 | TennisMyLife match data | 41a locally complete; 41b next; 41c conditional |
 | 17 | Multi-sport foundation | Complete |
 | 18 | NFL data sourcing | Complete |
 | 19 | NFL support | Complete |
@@ -117,7 +132,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 34 | More NFL prop lines | Complete |
 | 35 | Line-only prop display | Complete |
 | 36 | NFL best line | Complete |
-| 39 | NFL Rec Targets projection | 39a-39b complete; 39c-39d planned |
+| 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
 | 21 | WNBA support | Planned |
@@ -125,10 +140,23 @@ Checked items record completed work, including explicitly retired surfaces.
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-Eight leaf items remain: parked 16f, conditional 25c and 27h, the two
-remaining Rec Targets steps (39c-39d), then WNBA (21), three-way markets (22)
-and soccer (23). Item 39c is the first unconditional one in plan order. Adoption work requires the existing
-pre-registered verdicts; this refresh makes no new verdict or model claim.
+Nine leaf items remain, with these gates:
+
+| Item | Outcome | Gate |
+|---|---|---|
+| 16f | Tennis set-handicap projection | Parked until regular, correctly identified provider lines exist |
+| 41b | In-house tennis ELO | Next available; read-only comparison under a rule pre-registered before any 2026 forward case is scored |
+| 41c | Serve in-house ELO | Conditional on 41b passing; dropped if it fails |
+| 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
+| 27h | NFL probability-based ranking | Requires an `adopt` verdict for the specific 27j slice; no verdict read here |
+| 21 | WNBA support | Choose schedule/stats sources when specifying it |
+| 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
+| 23 | Soccer support | Depends on three-way markets and sport-specific sources |
+
+Use `/feature 41b` for the next available feature. Rec Targets reporting now
+describes coverage and settlement, but cannot accrue probability-based picks
+while P(over) is hidden. Adoption work still requires the pre-registered
+verdicts; this refresh makes no new verdict or model claim.
 An NBA Props board would be a reviewed addition, not an existing unchecked item.
 
 ### Detailed feature context
@@ -141,7 +169,7 @@ or establish a current slice verdict; the model reports carry those results.
 
 1. **Match ingest** - ATP and WTA matches from livetennisapi, today plus tomorrow.
 2. **Player identity resolution** - aliases and slugs reconciling names across four sources.
-3. **ELO ratings** - overall and per-surface from TennisAbstract, refreshed weekly.
+3. **ELO ratings** - overall and per-surface from TennisAbstract, refreshed daily by the local `Lineform ingest_daily` task since fix `elo-refresh-local` (Cloudflare blocks GitHub's runners).
 4. **Rolling player stats** - serve and return form over rolling windows, with surface and contextual splits.
 5. **Odds ingest** - timestamped book odds for staleness detection (the plan names The Odds API; tennis actually uses Odds-API.io, see Open questions).
 6. **Model ensemble** - *the headline feature.* Blends ELO, LightGBM, and de-vigged market probability with tour-specific weights, emitting quality flags.
@@ -567,11 +595,13 @@ so item 34 stores more markets now, before any projection exists.
 
 - **Store only (load-bearing since 34a).** A line-only market never reaches
   the slate, the prop board, frozen predictions (27i), 27a line grading or
-  the 27j ranking check. `MODELLED_MARKET_FILTER` in
-  `app/repositories/nfl.py` keeps `_LATEST_LINES_CTE`,
-  `get_gradeable_prop_lines` and `get_frozen_coverage` on the 9
-  `NflPropMarket` markets; any new reader that projects, grades or freezes
-  lines must apply it. `NflLineOnlyMarket` holds the stored-only markets,
+  the 27j ranking check. Since 39c, the serving universe has ten
+  `NflPropMarket` markets, including Rec Targets. `V4_MARKET_FILTER` pins
+  existing v4 projection, replay, 27a grading, frozen ranking and coverage
+  readers to their original nine markets before latest-row selection;
+  `MODELLED_MARKET_FILTER` describes the wider modelled universe. New
+  readers must apply the filter for their model. `NflLineOnlyMarket` holds
+  the eight remaining stored-only markets,
   whose stored strings are never renamed. Moving a market into
   `NflPropMarket` (a later projecting item) widens the filter automatically.
 - **34a first run (2026-10-05, MNF board):** 958 lines stored and linked;
@@ -585,7 +615,7 @@ so item 34 stores more markets now, before any projection exists.
 
 **Shipped: line-only prop display (item 35, added and complete 2026-10-05)**
 
-35. **Line-only prop display** *(shipped 2026-10-05)* - all 9 line-only markets from item 34 on the game page, as gray "Other lines" cards (`.nfl-prop-card` in `.nfl-prop-grid`) under the modelled props, Full game only and under the same position filter. Each card shows a player's current PrizePicks rungs, gray bars for their last 5 games with the standard line dashed, and "over N of 5"; never a pick, edge, model or drawer.
+35. **Line-only prop display** *(shipped 2026-10-05)* - originally all nine line-only markets from item 34 on the game page; 39c promotes Rec Targets, leaving eight. Item 38d1 changed the gray "Other lines" cards to rows. Each shows current PrizePicks rungs and recent stored results, Full game only and under the same position filter; never a pick, edge, model or drawer.
 
 - **Load-bearing:** `line_only_value(market, row)` in `app/core/nfl_line_only.py`
   is the one settlement rule for every line-only market (a coverage test
@@ -655,7 +685,7 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
-**In progress: NFL Rec Targets projection (item 39, added 2026-10-18; 39a and 39b complete)**
+**Complete: NFL Rec Targets projection (item 39; 39a-39d complete)**
 
 39. **NFL Rec Targets projection** - project PrizePicks Rec Targets lines
     (standard only), the first line-only market from item 34 to get a model.
@@ -664,8 +694,8 @@ price beats the market, not whether the model disagrees with it.
 |---|---|
 | 39a | *Shipped 2026-10-18.* Baseline chosen on 2024 only from season-average, moneyline scaling and recent form in pre-registered order; both candidates rejected, so `nfl-targets-v1` is the season average; backtest only |
 | 39b | *Shipped 2026-10-18.* P(over) fitted per position on 2024 and checked once on 2025 under 27g's display rule; **hidden** (ECE 0.043, worst bin 0.078); the frozen fit module holds no tables; no production change |
-| 39c | Serve and freeze Rec Targets under its own model and P(over) versions; preserve the nine v4 markets and their sample |
-| 39d | Grade each model version separately in 27j and display the Rec Targets slices on `/nfl/model` |
+| 39c | *Implemented and verified locally 2026-10-19.* Serve gray reference rows and freeze under `nfl-targets-v1`; probability fields and served probability version are null; preserve the nine v4 markets and their sample |
+| 39d | *Implemented and verified locally 2026-10-19.* Settle targets and report their coverage under their own identity through API, CLI, workflow Summary and `/nfl/model`; P(over) remains hidden and probability picks stay zero |
 
 - **Baselines on 2024 only.** Candidate baselines are compared on 2024. There
   is no incumbent projection, so no holdout verdict is taken on the
@@ -674,22 +704,25 @@ price beats the market, not whether the model disagrees with it.
   display rule on one 2025 check (the 2025 holdout's eighth read, counted in
   the archive; 20g1's pattern for NBA). 39b's check failed, so Rec Targets
   serves no P(over).
-- **Its own versions (load-bearing).** Predictions are frozen on the
-  line-snapshot schedule (27i) under Rec Targets' own model and P(over)
-  version strings. 27j grades them as a separate sample, so the running
-  `opponent-dvp-tg-blend-usage-snap-v4` sample for the nine existing markets
-  is untouched. Today 27j grades one model version per sport, so this item
-  makes the check run per version.
+- **Its own versions (load-bearing).** 39c freezes predictions on the
+  line-snapshot schedule (27i) under `nfl-targets-v1`. The candidate
+  probability method is `nfl-targets-pover-v1`, but its served version is
+  NULL while hidden. The default 27j report remains on
+  `opponent-dvp-tg-blend-usage-snap-v4` and `nfl-pover-v1` for the nine v4
+  markets. 39d adds a separate targets record without changing v4's sample.
+  A future served probability needs a separately reviewed version/sample;
+  never pool it with today's null-probability rows.
 - **Display.** The gap is gray and never a pick until Rec Targets' own 27j
   slice reads `adopt`.
 - **Why Rec Targets first** (2026-10-18 read-only count): about 150 standard
   player-games a week, all standard lines, and targets already feed the
   receiving usage adjustment. The other line-only markets have about 32
   distinct player-games a week, mostly goblin and demon rungs.
-- **Load-bearing (34a):** adding a market to `NflPropMarket` widens
-  `MODELLED_MARKET_FILTER`, which pulls it into the slate, 27a, frozen rows
-  and 27j. The separate versions above are what keep that from resetting the
-  existing sample.
+- **Load-bearing (39c):** adding a market to `NflPropMarket` widens the
+  modelled universe, not every model's readers. The dedicated targets
+  loader and assembler serve the new rows; explicit v4 filters keep targets
+  out of legacy projections, replay, 27a and v4's 27j report. Targets has
+  its own 39d loaders and report identity.
 
 **What 39a found** (`python -m app.backtest.nfl_targets_projections --season 2024`,
 run once on 2024 REG weeks 1-18; archive `blueprint/history/features/39a-nfl-targets-baseline.md`):
@@ -720,8 +753,8 @@ run once on 2024 REG weeks 1-18; archive `blueprint/history/features/39a-nfl-tar
   on exactly this projection and eligibility; 39c serves the same call.
 - **Separate from v4:** a dedicated loader (`app/repositories/nfl_targets.py`)
   and harness (`app/core/nfl_targets_backtest.py`), never `_slate_line` or
-  the 27b replay markets; no production module imports them, and
-  `receiving_targets` stays line-only until 39c.
+  the 27b replay markets. 39c adds live inputs and a dedicated serving
+  assembler without importing the replay harness into production.
 - **The CLI accepts 2024 only** and rejects any other season before it
   imports the database module.
 
@@ -758,9 +791,79 @@ run once on 2026-10-18; archive `blueprint/history/features/39b-nfl-targets-over
   `NFL_TARGETS_MODEL_VERSION`; today that means null, never 0.5.
 - **Consequence for 39c and 39d:** frozen Rec Targets rows carry a projection
   and no P(over), so 27i's rule can make no Rec Targets pick and its 27j
-  slices would accrue nothing until a later fit passes.
+  probability-pick slices remain `insufficient` with zero picks until a
+  separately validated probability exists. Coverage and settled calls can
+  accrue independently.
 - **The fit CLI has no season option** and fits 2024 before it loads any 2025
   row; re-running it would read 2025 again.
+
+**What 39c fixed as load-bearing** (completed 2026-10-19):
+
+- **Eligibility:** linked RB/WR/TE, REG weeks 1-18, full-game standard
+  lines only. History is completed REG games strictly before the target
+  week; count finite, nonnegative targets, including valid zeros. At least
+  four valid counts in the chosen baseline season; otherwise projection
+  and gap are null. Live line selection has a strict pre-kickoff cutoff.
+- **One serving call:** `services/nfl/targets.py` uses `project_targets`
+  defaults and the hidden-fit guard. No DVP, usage, moneyline, wind or
+  recent-form adjustment is applied. Inapplicable evidence is null.
+- **Mixed-model freezing:** each slate row supplies its own model version.
+  Targets carry null `p_over`, `p_under` and `over_probability_version`.
+  The existing insert-only key handles a null probability version with
+  `NULLS NOT DISTINCT`. Unknown-start and started games are not frozen;
+  historical rows are never backfilled.
+- **Display:** slate, Props board, game and player flows show discoverable,
+  unranked Rec Targets reference rows and truthful evidence. The gap stays
+  gray; no OVER/UNDER recommendation or duplicate line-only targets row.
+- **Version boundaries:** ten modelled markets, nine explicit v4 markets,
+  eight line-only markets. 39d settles targets using the `targets` stat
+  under its own identity and preserves existing v4 sample selection.
+- **Recorded proof:** 625 web tests, production build and 2,888 API tests
+  passed. A fixed-input comparison preserved all 9,317 v4 rows after adding
+  132 targets rows; the read-only freeze preview included seven targets.
+  The approved Week 6 stored-slate refresh was read back and verified on
+  normal localhost pages. Code is merged and pushed; hosted rollout and
+  actual targets frozen-row inserts were not verified by this refresh.
+
+**What 39d fixed as load-bearing** (completed 2026-10-19;
+archive `blueprint/history/features/39d-nfl-targets-forward-check.md`):
+
+- **Separate reports:** `GET /nfl/model/ranking?season=<year>` defaults to
+  `opponent-dvp-tg-blend-usage-snap-v4`; explicit `model_version` accepts
+  that version or `nfl-targets-v1`. No API `all` selector or arbitrary model
+  discovery. Targets reports JSON null for `overProbabilityVersion`.
+- **Targets selection:** dedicated NFL-scoped readers select linked RB/WR/TE,
+  completed REG weeks 1-18, full-game standard `receiving_targets` lines and
+  `nfl-targets-v1` with a null probability version before latest-row selection.
+  Both line fetch and prediction generation precede known kickoff strictly.
+  Settle the frozen line against observed `targets`, never receptions or
+  today's projection. Unknown/invalid stats are explicit exclusions; valid
+  zero targets remain zero. Reuse the finished-week stats-loaded guard.
+- **Coverage is independent of picks:** count eligible provider props and
+  whether each has any eligible frozen prediction of the same identity;
+  a newer unfrozen line does not erase an older frozen call. Settled calls
+  can accrue without P(over); `withPOver`, picks and bets remain zero.
+- **Consumer parity:** API and CLI share report construction. The CLI defaults
+  to v4; `--model-version all` prints v4 then targets as separate records,
+  and the weekly `nfl-ingest.yml` Summary uses that selector after stats load.
+  `/nfl/model` has independent V4 and Rec Targets sections and query states;
+  targets shows two neutral standard slices and explains `Not accruing`.
+  The API retains four canonical slices. No combined sample or adoption count.
+- **Isolation and cost:** API cache keys include season/model/probability
+  version, web query keys include season/model, and failures stay isolated.
+  Retain the 15-minute single-flight cache and batched repository reads;
+  no slate replay or per-player query. Fixed-input v4 and NBA records matched
+  their pre-change values. The recorded additional targets load took 0.413 s
+  with zero frozen targets rows; this is local current-volume evidence, not
+  production memory or future-volume proof.
+- **Recorded evidence:** 630 web tests, production build and 3,005 API tests
+  passed, with API/CLI/browser and read-only PostgreSQL checks. The 2026
+  sample had zero frozen targets rows and 284 eligible props across weeks
+  4-6. Populated settlement and failure paths used labelled fixtures; no rows
+  were inserted to manufacture a sample. Existing browser console warnings
+  were recorded, so this is not a clean-console claim. Code is merged and
+  pushed; current hosted rollout and frozen-row population were not checked
+  by this overview. No holdout was rerun.
 
 **Shipped: public read-only demo (item 37, added 2026-10-15, complete 2026-10-16)**
 
@@ -976,6 +1079,81 @@ same "backtest before adoption" rule as items 19j to 19n, 24 and 25.
 26e. **Box-score join key** *(shipped)* - store opponent and round on `player_match_stats` so aces, double-fault and break-point props join to exactly one box score, then settle those stats through 26b's report.
 26f. **Prop projection snapshots** *(shipped; evidence accrues daily from 2026-09-25)* - store the projection, hit probability and confidence tier when a prop is fetched, so calibration by tier is graded forward on pre-match predictions only.
 
+**Complete: WTA 125 blend group (item 40, verdict 2026-10-19: keep pooled)**
+
+40a. **WTA 125 blend backtest** - tested the WTA coefficients and a 125-only fit against 26d's pooled Challenger blend. On 970 verified 2026 WTA 125 cases, both candidates failed G1 (beat the incumbent) and passed G2 (no worse than the close). Keep the pooled group.
+40b. **Serve the WTA 125 group** - dropped under 40a's pre-registered rule, not implemented. No routing, serving coefficients, model version or `SPORT_STATUS` change.
+
+- **Why it was tested:** livetennisapi files WTA 125 draws under `challenger`,
+  so `matches.tour` is `CHALLENGER` and they take the Challenger
+  coefficients (`a` 1.11, `b` +0.08); only `display_tour` labels them
+  WTA 125. 26d's D4 fitted that group on Valuebetennis `Challenger`, both
+  genders pooled. The WTA group leans away from ELO (`a` 1.46, `b` -0.42).
+- **Population:** the women's Valuebetennis `Challenger` category also
+  contains ITF events. A frozen tournament-and-season crosswalk verified
+  against official WTA metadata identifies the WTA 125 subset; the category
+  alone is insufficient.
+- **Rules carried from 26c and 26d:** candidates were fitted on 2022 only;
+  the comparison rule was fixed before scoring. G1 requires paired
+  candidate-minus-incumbent log loss `mean + 2.5 * SE < 0`; G2 requires
+  candidate-minus-close `mean - 2 * SE <= 0`. Both gates must pass.
+- **Evidence boundary:** 2023-2025 was already read twice and was not fresh
+  evidence. 40a scored its frozen 2026 sample once; it is now read evidence
+  too. No further tuning or repeat verdict follows from this refresh.
+- **Data:** the six downloaded Valuebetennis files remain gitignored under
+  `api/data/valuebetennis/`. The recorded result and rule live in
+  `blueprint/history/features/40a-wta125-blend-backtest.md`.
+
+**TennisMyLife match data (item 41: 41a locally complete, ELO planned)**
+
+TennisMyLife (`stats.tennismylife.org`) publishes free match CSVs, MIT
+licensed and updated daily, in the Sackmann column shape: tournament, date,
+round, score, both players' rank, hand and age, and per-player aces, double
+faults, serve points, first serves in and won, second serves won, service
+games, and break points saved and faced. Files cover ATP (per year plus
+`ongoing_tourneys.csv`), Challenger, ATP qualifying and WTA tour. There is no
+WTA 125, ITF or odds data, and the site flags its WTA files as less reliable.
+
+41a. **Box-score ingest, locally complete** - seven yearly/ongoing CSV files for ATP, Challenger, ATP qualifying and WTA, one batched name index and idempotent upserts under source `tennismylife`. Match recent form, player match logs and player past-prop displays opt in; TennisAbstract stats take precedence. Grading readers remain TennisAbstract-only by default; no projection, rolling-stat or model change. The configured 11:00 UTC daily job and manual dispatch await post-push runner verification.
+41b. **In-house ELO** - overall and surface ELO computed from TennisMyLife history by 26c's method, stored beside TennisAbstract's under its own source, and compared read-only under a rule pre-registered before any 2026 forward case is scored; no serving change.
+41c. **Serve in-house ELO** - conditional on 41b passing: the ensemble reads the in-house ELO under a new model version, and the local `Lineform ingest_daily` ELO step is retired; dropped if 41b fails.
+
+- **41a completion evidence (2026-10-20):** the owner-approved 2026 backfill
+  stored 22,789 rows; the repeat added no rows. All 70,587 TennisAbstract rows
+  retained the same stored facts, and both grading CLIs were byte-for-byte
+  identical immediately before and after. A local browser check showed six
+  aces and three double faults for Svitolina versus Noskova on the player log
+  and match recent form. Verify passed (632 web tests, build, 3,109 API tests).
+  A recent comparable WTA sample had zero disagreements in aces, DFs and
+  shared break-point counts across 514 player-matches; this is source agreement,
+  not model validation. Archive: `blueprint/history/features/41a-tennismylife-box-score-ingest.md`.
+  Code deployment and GitHub runner acceptance remain unverified.
+- **Why:** TennisAbstract's ELO page is blocked from GitHub's runners
+  (Cloudflare), which is why ELO runs on the owner's PC. Its player match
+  pages still work from Actions, so for box scores the gain is coverage, not
+  a fix. The 26d blend was fitted on ELO computed from match history, while
+  serving reads TennisAbstract's ELO.
+- **Read-only probe (2026-10-20, before the item was added):** TennisMyLife
+  rows paired with 4,015 stored `player_match_stats` rows since 2026-09-01
+  (ATP 763, Challenger 2,358, WTA 894). Where both had stats, aces, double
+  faults and break points agreed on all but one row of 3,452, and service
+  games on all but four. TennisMyLife had stats for 558 stored rows that
+  have none and 5 the other way, and held 443 player-matches for tracked
+  players that are not stored at all. The files had that day's matches. The
+  host is plain nginx, not Cloudflare; a GitHub runner download was not
+  tested.
+- **Constraints carried into the specs:**
+  - TennisAbstract stays the source for WTA 125 box scores and for
+    `player_rolling_stats`. Moving rolling stats or prop projections to
+    TennisMyLife would change `PROJECTION_VERSION` and is not in item 41.
+  - `player_match_stats` is unique per (`player_id`, `source`,
+    `source_match_key`), so the same match from two sources would be two
+    rows. Readers must still get one row per match, and
+    `join_box_score`'s exactly-one rule must not become ambiguous.
+  - Any ELO serving change takes a new model version and a check
+    pre-registered before scoring. The 2023-2025 tennis holdout is already
+    read twice, and 2026 since 40a, so neither is fresh evidence.
+
 **What 26a and 26b found** (archived under `blueprint/history/features/`):
 
 - **26a:** the de-vigged market beat every component on log loss, within about
@@ -1037,9 +1215,28 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
   auto-switches to a retired model.
 - **Model routing.** v6 LightGBM is computed for ATP and WTA only. Challenger
   and WTA 125 matches get no ML probability (`ml_not_trained_for_tour`).
+  WTA 125 is stored as `CHALLENGER` and takes the Challenger blend group
+  (40a tested alternatives and kept that group; 40b was dropped).
+- **Future training policy** (completed F-08 repair, 2026-10-19; archive
+  `blueprint/history/fixes/tennis-calibration-test-isolation.md`): future v7
+  bundles always retain sigmoid calibration fitted on validation predictions.
+  Final test outcomes affect descriptive reports only; fit/report failure
+  aborts before bundle writes. Metadata records the fixed policy and fitting
+  partition. Synthetic tests reverse final test labels/loss rankings without
+  changing the model or calibrator. The live registry still supports only
+  v6/v5/v4; current artifacts, ensemble weights and 26c/26d decisions are
+  unchanged. No real retraining or holdout scoring occurred. Any future
+  candidate adoption requires separately specified forward validation.
 - **Missing inputs.** Unknown rank, age and ELO reach the model as NaN, as in
   training.
-- **Confidence.** Missing-input quality flags lower a pick's tier.
+- **Confidence.** Missing-input quality flags lower a pick's tier one step
+  (`_DOWNGRADE_FLAGS` in `app/core/bettable_criteria.py`); `elo_unreliable`
+  hides it. ML flags (`ml_missing`, `ml_not_trained_for_tour`) no longer
+  downgrade, because `ensemble-v3` gives v6 no weight (fix
+  `tennis-ml-tier-flags`); a test fails if either list names a flag no tennis
+  code emits. The moneyline pick and, since fix `tennis-market-pick-flags`,
+  the priced Total Games and Game Spread picks receive the prediction's
+  flags. Unpriced derived and serve-edge picks do not (finding F-09).
 - **Moneyline source.** The newest odds run wins; ties break DraftKings, then
   Bet365 (formerly stored as `betonline.ag`), then Betfair. Spread and total
   picks use each book's newest line only.
@@ -1211,8 +1408,9 @@ under different spellings.
 - `status` (text, default `scheduled`, indexed)
 - `sofascore_id`, `livetennis_id` (int), `created_at`, `updated_at`
 
-> **Locked shape, and the main target of item 17.** `match_key` uniqueness and the
-> `p1`/`p2` ordering are assumed by ingest, prediction, props linking, and bets.
+> **Locked tennis shape, left outside item 17's team-sport convergence.**
+> `match_key` uniqueness and the `p1`/`p2` ordering are assumed by ingest,
+> prediction and props linking. Broader convergence waits for item 22.
 > Tennis-only assumptions that must generalize: `surface`, `round`, `best_of`; two
 > `players` rather than two *teams*; `p1_*`/`p2_*` naming that presumes two
 > outcomes; tennis-specific `player_rolling_stats` columns; and tennis-only
@@ -1246,8 +1444,9 @@ DISTINCT`** so `surface IS NULL` (all surfaces) still upserts. Requires PostgreS
 
 ### PlayerMatchStats (`player_match_stats`, `0033`, join key `0035`, stable key `0038`)
 
-Per-match box scores parsed from TennisAbstract: the input for settling aces,
-double-fault and break-point props.
+Per-match box scores parsed from TennisAbstract and, since 41a, TennisMyLife.
+Only TennisAbstract feeds the grading reports; display readers explicitly opt
+in to TennisMyLife gap filling after the opponent and score checks.
 
 - `player_id` -> `players.id` (cascade), `source` (text), `source_match_key`
   (text); **unique on** (`player_id`, `source`, `source_match_key`)
@@ -1258,6 +1457,9 @@ double-fault and break-point props.
   missing tournament, round or opponent (pre-26e legacy) keep the raw-row hash.
   `0038` merged 644 duplicate groups and left a `player_match_stats_pre_0038`
   snapshot for its downgrade (see Open questions).
+- **TennisMyLife key (41a):** `sha256("tml-v1|<tourney_id>|<round>|<opponent>")`,
+  with the opponent trimmed and lowercased; source `tennismylife` keeps it
+  separate from TennisAbstract. `match_date` is the CSV's `tourney_date`.
 - `match_date` (date, **the tournament start**; indexed with `player_id`),
   `surface`, `result` (text)
 - `aces`, `double_faults`, `service_games`, `break_points_faced`,
@@ -1395,7 +1597,7 @@ creates them; unknowns are skipped and counted.
 - **`sport_games`** - `source_game_id`, `season`, `week` (nullable at the shared schema level; `CHECK (sport <> 'nfl' OR week IS NOT NULL)`; NBA ingest also assigns the regular-season Eastern week defined by 20a), `game_type`, `game_date`, `start_utc`, `home_team_id`, `away_team_id`, `home_score`, `away_score`, `status`; **unique on** (`sport`, `source_game_id`). NFL-only nullable columns stay here (decided in 17b; other sports leave them NULL): from 19n (`0028`), NFLverse closing lines `spread_line` (expected home margin: positive = home favored), `total_line`, `home_moneyline`, `away_moneyline`, plus `roof`, `home_rest`, `away_rest`; from 24e (`0031`), `temp` (°F) and `wind` (mph) smallint, observed rather than forecast, NULL for indoor games and blanks; and `espn_event_id`
 - **`sport_prop_lines`** - PrizePicks snapshots: `provider`, `provider_prop_id`, `market`, **`segment`**, `odds_type`, `line`, `start_time`, `player_id`, `game_id`, `fetched_at`, `raw_json`
 - **`sport_game_odds`** (19f, `0020`) - append-only: `game_id`, `book`, `market` (`moneyline` | `spread` | `total`), `line`, `first_side`/`second_side`, `first_odds`/`second_odds` (American), de-vigged `first_market_prob`/`second_market_prob`, `fetched_at`, `raw_json`. `provider` (36a, `0044`): `the_odds_api_us` (every row before 36a; the only feed pre-36a readers see), `the_odds_api_eu` (Pinnacle) or `odds_api_io` (Bet365, DraftKings); every reader names its provider, enforced by `tests/test_sport_game_odds_provider.py`
-- **`sport_prop_predictions`** (defined in `0015`, first written by 27i, reshaped in `0037`, NBA rows from 20g3) - one frozen pre-kickoff prediction per line snapshot and version: `prop_line_id`, `model_version`, `over_probability_version` (NULL when no P(over) was served), nullable `projection`, `p_over`, `p_under`, `edge`, `quality_flags`, `feature_snapshot` (baseline games and season, adjustments, line, odds type, market, segment, line fetch time), `generated_at` (always before kickoff); **unique on** (`prop_line_id`, `model_version`, `over_probability_version`) `NULLS NOT DISTINCT`, and never updated. `confidence` is unused. 27j grades each provider prop's latest frozen pre-kickoff row, at its own line.
+- **`sport_prop_predictions`** (defined in `0015`, first written by 27i, reshaped in `0037`, NBA rows from 20g3, targets freezing from 39c) - one frozen pre-kickoff prediction per line snapshot and version: `prop_line_id`, `model_version`, `over_probability_version` (NULL when no P(over) was served), nullable `projection`, `p_over`, `p_under`, `edge`, `quality_flags`, `feature_snapshot` (baseline games and season, adjustments, line, odds type, market, segment, line fetch time), `generated_at` (always before kickoff); **unique on** (`prop_line_id`, `model_version`, `over_probability_version`) `NULLS NOT DISTINCT`, and never updated. `confidence` is unused. 27j grades each provider prop's latest frozen pre-kickoff row, at its own line. Targets use `nfl-targets-v1` and a null probability version; 39d selects and settles them as a separate report without changing the v4 sample.
 
 > **Load-bearing (17a, 17b):**
 > - Every read and write of a `sport_*` table carries its sport filter
@@ -1502,7 +1704,7 @@ outcomes are driven more by volume.
 - **SQLAlchemy 2.0 async + psycopg3** - all DB access, through `app/repositories/`
 - **Alembic** - every schema change, sequentially numbered
 - **Pydantic 2 + pydantic-settings** - request/response schemas and env config
-- **LightGBM / XGBoost / scikit-learn / joblib** - models and isotonic calibration (scikit-learn also fits the NFL backtests)
+- **LightGBM / XGBoost / scikit-learn / joblib** - models and calibration; the future tennis v7 policy uses validation-fitted sigmoid calibration (scikit-learn also fits the NFL backtests)
 - **Playwright / httpx / requests / tenacity** - ingest and retry
 
 **Frontend**
@@ -1517,7 +1719,7 @@ outcomes are driven more by volume.
 
 | Sport | Schedule | Stats / ratings | Odds | Props |
 |---|---|---|---|---|
-| Tennis | livetennisapi | TennisAbstract | Odds-API.io | PrizePicks, DraftKings |
+| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps; 41a locally complete, shared DB backfilled; ELO still planned) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display) | The Odds API (free plan, game lines only) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
@@ -1632,7 +1834,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 |---|---|
 | `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `players/stats`, `players/compare`, `bankroll/today`, `parlays/suggested` |
 | `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk`, `bet` (Bet365 props) |
-| `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
+| `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
 | `/nba` | `slate?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
 | `/admin` | `session`, `players/flagged`, `players/{id}/fetch-stats`, `players/{id}/fetch-elo`, `players/{id}/set-elo` (all need `X-API-Key` when a key is set) |
 | root | `/health` |
@@ -1678,10 +1880,14 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
   - `tennis-ingest.yml` - tennis ingest jobs; the 13:30 UTC `predictions` job
     also stores PrizePicks projection snapshots (26f); the daily `player-stats`
     job also refetches yesterday's players, so box scores land after the match
-    (26e)
-  - **A local scheduled task, `ingest_daily`, also runs ingest from the working
-    folder** against the same database, using whatever branch is checked out
-    (found in 26e)
+    (26e). 41a adds a locally configured `tennismylife` job at 11:00 UTC daily
+    and by manual dispatch; its first GitHub runner test awaits approved push.
+  - **A local Windows scheduled task, `Lineform ingest_daily`** (daily 12:00
+    local, registered 2026-10-18), runs `api/ingest_daily.bat` from its own
+    folder against the same database, using whatever branch is checked out.
+    It holds the TennisAbstract ELO refresh, which left `tennis-ingest.yml`
+    because Cloudflare returns 403 to GitHub's runners (fix
+    `elo-refresh-local`). It runs only while the PC is on.
   - `nfl-ingest.yml` (Tuesday) - NFLverse stats, team ELO recompute, red-zone counts, team efficiency, snap counts, weekly rosters, injuries, depth charts, NFL game odds, prop relink, then the prop-market holdout, PrizePicks line grading, game-line CLV and forward ranking check reports (read-only, on the Summary page)
   - `nfl-prop-odds.yml` (Wednesday 23:10, Thursday 18:10, Saturday 23:10, Sunday 12:10 UTC; windows 30, 8, 50, 40 hours) - refresh rosters, injuries, and depth charts, then anytime-TD prices with `--confirm-spend`, credit floor 50. About 32 credits a week. Off-the-hour times and early runs exist because GitHub started week-2 runs 2-3 hours late.
   - `nfl-prop-lines.yml` (Thursday 20:00, Saturday 23:00, Sunday 15:00, Monday 20:00 UTC) - free PrizePicks NFL line snapshots before kickoff, the line history item 27 grades, then (27i) `app.ingest.nfl_prop_predictions` freezes the slate's predictions for every line not yet kicked off. Since 17b's `0041` it needs a database at `0041` and code on the shared tables, so the branch is pushed in the same sitting as any destructive migration.
@@ -1786,10 +1992,11 @@ the request path the same way.
     prop modelling, because the prop model was found unvalidated and at coin-flip
     accuracy. The NFL stack stays in scope for item 17's convergence.
 
-13. **Item 25's evidence does not exist yet, by construction.** The Odds API
-    sells current markets only, so `nfl_player_prop_odds` begins at item 19i:
-    one week and zero settled player-games. 25a and 25b are buildable now; 25c
-    cannot be assessed until a forward holdout accrues, and a failed backtest is
+13. **Item 25 requires forward evidence, not a historical rerun.** The Odds API
+    sells current markets only, so `nfl_player_prop_odds` begins at item 19i.
+    Its initial planning read had one week and zero settled player-games;
+    that is a dated observation, not a current count. 25a and 25b are complete;
+    25c waits for its pre-registered forward evidence, and a failed backtest is
     a live outcome given that 19j, 19n, 24b, 24c, and 24e all failed theirs.
 
 14. **Bankroll builder retired from the UI, still in the plan.** Build-plan item 10
@@ -2005,7 +2212,7 @@ the request path the same way.
     now agrees with the build plan. Implementation completion is separate
     from verifying the latest Render deployment.
 
-51. **Remaining planning gaps, 2026-10-18:** the NBA Props board proposed in
+51. **Remaining planning gaps, refreshed 2026-10-19:** the NBA Props board proposed in
     conversation is not yet an approved build-plan item (see question 43).
     Add it through `/feature`'s plan-addition review before building it.
     WNBA/soccer schedule and stats providers are intentionally undecided.
@@ -2019,10 +2226,29 @@ the request path the same way.
     commitment, grading a market under its own model version so 27j runs
     per version, is recorded in the build-plan line and above.
 
-53. **Item 39's build-plan line reads as if Rec Targets will get a
-    P(over).** 39b's check hid it, so 39c serves and freezes a projection
-    with a null probability, and 39d's Rec Targets slices cannot accrue
-    picks under 27i's rule (it picks only on a side's probability). The line
-    still holds as written (P(over) was always conditional), but decide
-    whether 39d is still worth building now, or should wait for a later item
-    that fits a count-aware P(over) on 2024 first.
+53. **Item 39 is complete without a served P(over).** Its build-plan line
+    makes probability conditional, and 39b's check hid it. 39c serves/freezes
+    null-probability reference rows; completed 39d settles and reports them
+    separately. Coverage and settled calls can grow while probability picks
+    stay zero. A different probability method is new, separately reviewed
+    work, with no historical holdout reuse or implied approval in this refresh.
+
+54. **Build-plan item 3 still reads "weekly refresh"** for ELO. Since fix
+    `elo-refresh-local` it runs daily on the local scheduled task. The
+    checked line can stay as history; reword it if the plan should match.
+
+55. **`project-plan.md` §3 does not mention item 40** (as question 15 found
+    for item 26). The build plan now records 40a's keep-pooled verdict and
+    40b's explicit cancellation. Its checked status means the investigation
+    is complete, not that a new WTA 125 serving group shipped.
+
+56. **The checked item 35 still describes nine line-only markets.** That is
+    its original scope; 39c promotes Rec Targets and leaves eight. New
+    specifications must distinguish the ten-market serving universe from
+    the nine-market v4 projection and grading subset.
+
+57. **Item 41's deployment boundary remains explicit.** The project plan now
+    records the implemented second box-score source. 41a's local code and
+    shared-database backfill are verified; the new GitHub job has not run on a
+    runner and deployment of this code has not been checked. 41b/41c remain
+    planned; no ELO serving change follows from the data-source addition.
