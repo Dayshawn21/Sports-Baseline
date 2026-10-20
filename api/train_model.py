@@ -4,6 +4,11 @@ train_model.py — LightGBM tennis match prediction training pipeline.
 Exports training data from PostgreSQL, trains tour-split LightGBM models
 with Optuna hyperparameter tuning, walk-forward CV, and calibration.
 
+Future v7 candidates always retain sigmoid calibration fitted on validation
+predictions. Test metrics are descriptive and cannot select calibration.
+Calibration or reporting failure aborts before bundle writes. v7 is not enabled
+in ModelRegistry; serving adoption requires separately planned forward validation.
+
 Run:
     python train_model.py                          # train both ATP & WTA
     python train_model.py --tour ATP               # ATP only
@@ -27,6 +32,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
+from sklearn.linear_model import LogisticRegression
 
 try:
     import optuna
@@ -38,10 +44,9 @@ logger = logging.getLogger("train_model")
 
 MODELS_DIR = Path(__file__).parent / "models"
 
-# Bundles are written under this version. v5 is deliberately skipped over rather than
-# overwritten: it is the 217-row model this rebuild exists to replace, and keeping it on
-# disk preserves the evidence of what went wrong.
-MODEL_VERSION = "v6"
+# Keep the existing serving bundles intact while the new policy awaits forward validation.
+MODEL_VERSION = "v7"
+CALIBRATION_POLICY = "always_sigmoid_validation_v1"
 
 # Feature lists per tour.
 #
@@ -535,6 +540,11 @@ def _optuna_tune(X_train, y_train, X_val, y_val, features: list[str],
     return best
 
 
+def _fit_calibration(y_val_prob: np.ndarray, y_val: np.ndarray) -> LogisticRegression:
+    """Fit the fixed sigmoid policy using validation inputs only."""
+    return LogisticRegression().fit(y_val_prob.reshape(-1, 1), y_val)
+
+
 def train_tour(df: pd.DataFrame, tour: str, features: list[str],
                use_optuna: bool = True, n_optuna_trials: int = 80) -> dict:
     """Train a LightGBM model for a single tour."""
@@ -622,8 +632,9 @@ def train_tour(df: pd.DataFrame, tour: str, features: list[str],
         valid_sets=[des], callbacks=callbacks,
     )
 
-    # Evaluate
     y_val_prob = model.predict(X_val)
+    calib_model = _fit_calibration(y_val_prob, y_val)
+
     y_test_prob = model.predict(X_test)
     val_metrics = _eval_metrics(y_val, y_val_prob)
     test_metrics = _eval_metrics(y_test, y_test_prob)
@@ -632,34 +643,11 @@ def train_tour(df: pd.DataFrame, tour: str, features: list[str],
     logger.info("  Test: acc=%.3f auc=%.3f logloss=%.4f",
                 test_metrics["accuracy"], test_metrics["auc"], test_metrics["log_loss"])
 
-    # Calibration: Platt scaling fit on the validation predictions.
-    #
-    # This used to wrap LogisticRegression in CalibratedClassifierCV(cv="prefit"), which
-    # sklearn 1.8 removed. The wrapper was doing nothing useful anyway: with cv="prefit"
-    # and a one-column input of predicted probabilities, it is just fitting a logistic
-    # curve from raw probability to outcome. Fitting that directly is the same thing and
-    # keeps the predict_proba interface ModelRegistry expects.
-    calib_method = "sigmoid"
-    try:
-        from sklearn.linear_model import LogisticRegression
-        calib_model = LogisticRegression()
-        calib_model.fit(y_val_prob.reshape(-1, 1), y_val)
-        y_test_calib = calib_model.predict_proba(y_test_prob.reshape(-1, 1))[:, 1]
-        test_calib_metrics = _eval_metrics(y_test, y_test_calib)
-        logger.info("  Test (calibrated): acc=%.3f auc=%.3f logloss=%.4f",
-                     test_calib_metrics["accuracy"], test_calib_metrics["auc"],
-                     test_calib_metrics["log_loss"])
-
-        # Only use calibration if it improves log_loss
-        use_calibration = test_calib_metrics["log_loss"] < test_metrics["log_loss"]
-        if not use_calibration:
-            logger.info("  Calibration did NOT improve log_loss, using raw probs")
-            calib_model = None
-            test_calib_metrics = test_metrics
-    except Exception as e:
-        logger.warning("  Calibration failed: %s", e)
-        calib_model = None
-        test_calib_metrics = test_metrics
+    y_test_calib = calib_model.predict_proba(y_test_prob.reshape(-1, 1))[:, 1]
+    test_calib_metrics = _eval_metrics(y_test, y_test_calib)
+    logger.info("  Test (calibrated, descriptive only): acc=%.3f auc=%.3f logloss=%.4f",
+                test_calib_metrics["accuracy"], test_calib_metrics["auc"],
+                test_calib_metrics["log_loss"])
 
     # Walk-forward CV
     logger.info("  Running walk-forward CV...")
@@ -694,13 +682,6 @@ def train_tour(df: pd.DataFrame, tour: str, features: list[str],
     meta_path = MODELS_DIR / f"lgbm_tennis_{version}_{tour_lower}_meta.json"
     calib_path = MODELS_DIR / f"lgbm_tennis_{version}_{tour_lower}_calibration.joblib"
 
-    model.save_model(str(model_path))
-    feat_path.write_text("\n".join(features) + "\n")
-
-    if calib_model:
-        joblib.dump(calib_model, calib_path)
-        logger.info("  Saved calibration to %s", calib_path)
-
     meta = {
         "model_version": version,
         "engine": "lgbm",
@@ -733,12 +714,19 @@ def train_tour(df: pd.DataFrame, tour: str, features: list[str],
         },
         "betting_simulation": betting_sim,
         "feature_importance_gain": {k: str(int(v)) for k, v in importance.items()},
-        "calibration": calib_method if calib_model else "none",
+        "calibration": "sigmoid",
+        "calibration_policy": CALIBRATION_POLICY,
+        "calibration_fit_partition": "val",
         "optuna_tuned": use_optuna,
         "params": {k: v for k, v in params.items()
                    if k not in ("monotone_constraints",)},
     }
-    meta_path.write_text(json.dumps(meta, indent=2))
+    meta_json = json.dumps(meta, indent=2)
+    model.save_model(str(model_path))
+    feat_path.write_text("\n".join(features) + "\n")
+    joblib.dump(calib_model, calib_path)
+    meta_path.write_text(meta_json)
+    logger.info("  Saved calibration to %s", calib_path)
     logger.info("  Saved model to %s", model_path)
     logger.info("  Saved meta to %s", meta_path)
 

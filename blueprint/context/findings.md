@@ -38,27 +38,6 @@ and existing forward grading suffice. Do not pool model versions or change the
 coverage gap, not a correctness risk to served output.
 **Resolution:**
 
-### F-08 [P2] open - Training chooses whether to serve calibration using test outcomes
-
-**File:** api/train_model.py:646; api/train_model.py:654
-**Found:** 2026-10-18 by /audit (scope: tennis prediction training/serving boundary; lenses: evaluation leakage, tests)
-**Why it matters:** The calibration curve is fitted on validation predictions,
-but whether it is retained is decided by comparing calibrated and raw log loss
-on `y_test`. That makes the nominal test set part of model selection. The
-registry loads the saved calibration artifact when present. This is a confirmed
-evaluation-design defect in the training code, not evidence that future match
-results enter an ordinary live request, and not a new assessment of historical
-v6 performance. No training, test-data export, artifact metrics review or
-historical scoring was run in this audit. Its direct forecast impact is limited
-to the ML component and no-market fallback; market-priced v3 gives ML zero weight.
-**Suggested fix:** In a future training version, pre-register the calibration
-choice or select it using development-only folds; keep final test labels out of
-the selection function. A synthetic test should show that altering test labels
-cannot change the selected artifact. Any newly trained/calibrated serving
-artifact still needs forward validation. Preserve the current artifacts and all
-26c/26d decisions; the already-read 2023-2025 holdout is not fresh evidence.
-**Resolution:**
-
 ### F-09 [P3] unverified - Derived and serve-edge confidence is not validated by the existing grading
 
 **File:** api/app/services/tennis/best_picks.py:513; api/app/services/tennis/best_picks.py:595; api/app/services/tennis/best_picks.py:681; web/src/utils/tennisPropBoard.ts:142
