@@ -187,6 +187,10 @@ Two apps, two command sets. Paths are relative to the repo root.
   to report matched and stored market counts without database writes)
 - ELO: `python -m app.ingest.elo --web`
 - Player stats: `python -m app.ingest.player_stats --today-only`
+- TennisMyLife box scores: `python -m app.ingest.tennismylife [--days-back 21]
+  [--since YYYY-MM-DD] [--dry-run]` (tracked players only; TennisAbstract
+  remains authoritative, and TennisMyLife fills display gaps without changing
+  grading or model inputs)
 - PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
   predictions; safe to re-run, a stored prop row is skipped)
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]

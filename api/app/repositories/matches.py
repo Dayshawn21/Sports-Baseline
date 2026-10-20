@@ -169,7 +169,9 @@ async def get_recent_completed_matches(
     # opponent and set score instead.
     joins = {
         pair: context.join()
-        for pair, context in (await get_box_score_candidates(db, [(row[0], row[6]) for row in recent])).items()
+        for pair, context in (await get_box_score_candidates(
+            db, [(row[0], row[6]) for row in recent], sources=("tennisabstract", "tennismylife"),
+        )).items()
     }
     result: dict[int, list[RecentMatchResult]] = {player_id: [] for player_id in player_ids}
     for player_id, match_date, opponent_name, score, outcome, is_p2, match_id in recent:

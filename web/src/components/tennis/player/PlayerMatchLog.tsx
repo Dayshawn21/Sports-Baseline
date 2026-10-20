@@ -49,8 +49,8 @@ export default function PlayerMatchLog({ query }: { query: UseQueryResult<Player
         </table>
       </div>
       <p className="tennis-player-note">
-        Last {log.length} completed matches. Box scores come from TennisAbstract and join by opponent and score; a
-        dash means none joined, as for team events such as the Davis Cup, which TennisAbstract does not carry.
+        Last {log.length} completed matches. TennisAbstract box scores take precedence, with TennisMyLife filling
+        gaps. Rows join by opponent and score; a dash means no matching count is available.
       </p>
     </>
   )

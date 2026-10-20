@@ -266,7 +266,8 @@ def _patch_log(monkeypatch, contexts):
     async def matches(_db, _pid, *, limit=None, since=None):
         return [_log_row(1), _log_row(2)][:limit]
 
-    async def candidates(_db, pairs):
+    async def candidates(_db, pairs, *, sources):
+        assert sources == ("tennisabstract", "tennismylife")
         return {pair: ctx for pair, ctx in contexts.items() if pair in pairs}
 
     monkeypatch.setattr(player_detail.match_repo, "get_player_matches", matches)
@@ -364,7 +365,8 @@ def _patch_props(monkeypatch, snapshots):
         seen["args"] = (version, player_id)
         return snapshots
 
-    async def candidates(_db, _pairs):
+    async def candidates(_db, _pairs, *, sources):
+        assert sources == ("tennisabstract", "tennismylife")
         return {}
 
     monkeypatch.setattr(player_detail.prop_snapshot_repo, "get_graded_prop_snapshots", graded)

@@ -37,7 +37,9 @@ class PlayerMatchStat:
     score: Optional[str] = None
 
 
-async def upsert_player_match_stats(db: AsyncSession, stats: list[PlayerMatchStat]) -> None:
+async def upsert_player_match_stats(
+    db: AsyncSession, stats: list[PlayerMatchStat], *, source: str = "tennisabstract",
+) -> None:
     """Store player-oriented raw match statistics without duplicating a source row."""
     if not stats:
         return
@@ -50,7 +52,7 @@ async def upsert_player_match_stats(db: AsyncSession, stats: list[PlayerMatchSta
                 break_points_saved, break_chances_created, break_points_converted,
                 opponent_name, round, tournament, score, fetched_at
             ) VALUES (
-                :player_id, 'tennisabstract', :source_match_key, :match_date, :surface, :result,
+                :player_id, :source, :source_match_key, :match_date, :surface, :result,
                 :aces, :double_faults, :service_games, :break_points_faced,
                 :break_points_saved, :break_chances_created, :break_points_converted,
                 :opponent_name, :round, :tournament, :score, now()
@@ -78,6 +80,7 @@ async def upsert_player_match_stats(db: AsyncSession, stats: list[PlayerMatchSta
         [
             {
                 "player_id": stat.player_id,
+                "source": source,
                 "source_match_key": stat.source_match_key,
                 "match_date": stat.match_date,
                 "surface": stat.surface,
@@ -140,16 +143,19 @@ def group_candidate_rows(rows: list[dict]) -> dict[tuple[int, int], BoxScoreCont
                 break_chances_created=row["break_chances_created"],
                 break_points_faced=row.get("break_points_faced"),
                 break_points_saved=row.get("break_points_saved"),
+                source=row["source"],
             ))
     return grouped
 
 
 async def get_box_score_candidates(
     db: AsyncSession, pairs: list[tuple[int, int]],
+    *, sources: tuple[str, ...] = ("tennisabstract",),
 ) -> dict[tuple[int, int], BoxScoreContext]:
     """Every box score a settled (player, match) pair could belong to, with the match's own facts.
 
     The window is wide on purpose; join_box_score narrows it by opponent and score.
+    Readers must explicitly opt in to sources beyond TennisAbstract.
     """
     if not pairs:
         return {}
@@ -164,7 +170,7 @@ async def get_box_score_candidates(
                 (m.winner_id = m.p1_id) AS p1_won,
                 CASE WHEN m.winner_id = pr.player_id THEN 'W' ELSE 'L' END AS result,
                 opp.name AS opponent_name,
-                s.id AS stats_id, s.match_date AS stats_date, s.result AS stats_result,
+                s.id AS stats_id, s.source, s.match_date AS stats_date, s.result AS stats_result,
                 s.opponent_name AS stats_opponent_name, s.score AS stats_score,
                 s.aces, s.double_faults, s.break_points_converted, s.break_chances_created,
                 s.break_points_faced, s.break_points_saved
@@ -173,6 +179,7 @@ async def get_box_score_candidates(
             JOIN players opp ON opp.id = CASE WHEN m.p1_id = pr.player_id THEN m.p2_id ELSE m.p1_id END
             LEFT JOIN player_match_stats s
               ON s.player_id = pr.player_id
+             AND s.source = ANY(:sources)
              AND s.match_date BETWEEN m.match_date - CAST(:days_before AS int)
                                   AND m.match_date + CAST(:days_after AS int)
             ORDER BY pr.player_id, pr.match_id, s.id
@@ -180,6 +187,7 @@ async def get_box_score_candidates(
         {
             "player_ids": [player_id for player_id, _ in pairs],
             "match_ids": [match_id for _, match_id in pairs],
+            "sources": list(sources),
             "days_before": WINDOW_BEFORE.days,
             "days_after": WINDOW_AFTER.days,
         },

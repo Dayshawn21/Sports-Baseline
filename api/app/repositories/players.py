@@ -11,6 +11,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tennis_player import EloSnapshot, ServeReturnStats
+from app.core.tennismylife import PlayerNameIndex
 
 # Spelling variants that must collapse onto one canonical player.
 #
@@ -153,6 +154,16 @@ async def resolve_player(db: AsyncSession, name: str, tour: str) -> Optional[Pla
     )
     r = row.fetchone()
     return Player(*r) if r else None
+
+
+async def get_player_name_index(db: AsyncSession) -> PlayerNameIndex:
+    """Load canonical names and aliases once for batched, read-only resolution."""
+    players = await db.execute(text("SELECT name_norm, tour, id FROM players"))
+    aliases = await db.execute(text("SELECT alias_name_norm, canonical_player_id FROM player_aliases"))
+    return PlayerNameIndex(
+        canonical={(name_norm, tour): player_id for name_norm, tour, player_id in players.fetchall()},
+        aliases={name_norm: player_id for name_norm, player_id in aliases.fetchall()},
+    )
 
 
 async def upsert_player(

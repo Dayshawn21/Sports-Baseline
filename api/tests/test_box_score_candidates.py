@@ -74,6 +74,7 @@ def _row(stats_id, **kw) -> dict:
         stats_id=stats_id, stats_date=date(2026, 6, 29), stats_result="W",
         stats_opponent_name="Alexander Zverev", stats_score="6-7(7) 7-6(2) 6-3 6-4",
         aces=12, double_faults=2, break_points_converted=3, break_chances_created=7,
+        source="tennisabstract",
     )
     row.update(kw)
     return row
@@ -85,6 +86,12 @@ def test_rows_group_per_pair_with_a_winner_first_match_score():
     assert context.match_score_winner_first == "6-7 7-6 6-3 6-4"
     assert [c.stats_id for c in context.candidates] == [1, 2]
     assert context.candidates[0].break_chances_created == 7
+
+
+@pytest.mark.parametrize("source", ["tennisabstract", "tennismylife"])
+def test_candidate_keeps_its_source(source):
+    grouped = group_candidate_rows([_row(1, source=source)])
+    assert grouped[(11, 21)].candidates[0].source == source
 
 
 def test_a_pair_with_no_box_score_keeps_an_empty_candidate_list():
