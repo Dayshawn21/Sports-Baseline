@@ -68,6 +68,25 @@ def test_a_line_served_without_p_over_is_a_call_but_never_a_pick() -> None:
     assert (check.funnel.calls, check.funnel.with_p_over, check.funnel.picks) == (1, 0, 0)
 
 
+def test_a_null_report_probability_version_never_uses_unversioned_probabilities() -> None:
+    frozen = _frozen(over_probability_version=None, p_over=0.9)
+    call = to_frozen_call(frozen, (3,), MODEL, None)
+
+    assert isinstance(call, FrozenCall)
+    assert call.p_over is None and call.p_under is None
+    assert slice_results([call]).funnel.picks == 0
+
+
+def test_a_null_report_probability_version_excludes_a_named_method() -> None:
+    assert to_frozen_call(_frozen(), (3,), MODEL, None) == "wrong_version"
+
+
+def test_a_named_report_keeps_its_existing_null_row_acceptance() -> None:
+    call = _call(_frozen(over_probability_version=None, p_over=0.7))
+
+    assert (call.p_over, call.p_under) == (0.7, 0.30000000000000004)
+
+
 def test_ladder_rungs_of_one_bet_collapse_to_one_pick() -> None:
     rungs = [_call(_frozen(i, odds_type="demon", line=line, p_over=0.6)) for i, line in enumerate((65.5, 75.5), 1)]
 

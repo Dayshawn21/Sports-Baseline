@@ -151,8 +151,9 @@ jobs:
       # and prints, writes nothing; 27h reads its slice verdicts.
       - name: Report forward ranking check
         run: |
+          set -o pipefail
           cd api
-          python -m app.backtest.nfl_ranking_check | tee ranking_check_report.txt
+          python -m app.backtest.nfl_ranking_check --model-version all | tee ranking_check_report.txt
           {
             echo '## NFL forward ranking check'
             echo '```'

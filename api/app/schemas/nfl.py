@@ -518,10 +518,13 @@ class _NflTrackRecordModel(_CamelModel):
 
 
 Signal = Literal["positive", "neutral", "negative"]
+NflRankingModelVersion = Literal["opponent-dvp-tg-blend-usage-snap-v4", "nfl-targets-v1"]
 
 
 class NflModelRankingResponse(PropRankingResponse):
     """27j's record, in the shape every sport's ranking check shares (20g4)."""
+
+    over_probability_version: str | None
 
 
 class NflClvRuleSchema(_NflTrackRecordModel):

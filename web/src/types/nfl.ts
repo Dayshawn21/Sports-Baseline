@@ -453,7 +453,9 @@ export interface NflGameNotesResponse {
 /** Model track record (33d). Signals come from the API's 2 SE rules, never from a raw number here. */
 export type NflRankingSlice = PropRankingSlice
 
-export type NflModelRanking = PropRankingRecord
+export type NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4' | 'nfl-targets-v1'
+
+export type NflModelRanking = PropRankingRecord<string | null>
 
 export interface NflHitRow {
   calls: number

@@ -1,9 +1,36 @@
-import type { NflModelClv, NflModelRanking } from '~/types/nfl'
-import type { PropRankingSlice } from '~/types/propRanking'
+import type { NflModelClv, NflModelRanking, NflRankingModelVersion } from '~/types/nfl'
+import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import { sampleProgress } from '~/utils/trackRecord'
 
 type SliceVerdict = PropRankingSlice['verdict']
 type ClvVerdict = NflModelClv['markets'][number]['verdict']
+
+export const NFL_V4_RANKING_MODEL: NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4'
+export const NFL_TARGETS_RANKING_MODEL: NflRankingModelVersion = 'nfl-targets-v1'
+
+export function rankingParams(season: number, modelVersion: NflRankingModelVersion = NFL_V4_RANKING_MODEL) {
+  return modelVersion === NFL_V4_RANKING_MODEL ? { season } : { season, model_version: modelVersion }
+}
+
+export function rankingQueryKey(season: number | null, modelVersion: NflRankingModelVersion = NFL_V4_RANKING_MODEL) {
+  return ['nfl', 'model', 'ranking', { season, modelVersion }] as const
+}
+
+export function rankingPresentation(data: PropRankingRecord<string | null>, referenceOnly = false) {
+  return {
+    slices: referenceOnly ? data.slices.filter((slice) => slice.oddsType === 'standard') : data.slices,
+    probabilityVersion: data.overProbabilityVersion ?? 'Not served',
+    empty: data.frozenRows === 0,
+  }
+}
+
+export function rankingSliceStatus(slice: PropRankingSlice, referenceOnly = false) {
+  return {
+    label: referenceOnly ? 'Not accruing' : verdictLabel(slice.verdict),
+    signal: referenceOnly ? 'neutral' as const : slice.signal,
+    noPicks: referenceOnly ? 'No probability picks' : 'No picks yet',
+  }
+}
 
 const ODDS_TYPE_LABELS: Record<PropRankingSlice['oddsType'], string> = {
   standard: 'Standard', goblin: 'Goblin', demon: 'Demon',
@@ -42,6 +69,7 @@ const PENDING = '—'
 
 /** The summary strip; each figure waits for its own section, so one slow endpoint never blanks the rest. */
 export function summaryCounts(ranking: NflModelRanking | undefined, clv: NflModelClv | undefined): SummaryCounts {
+  if (ranking?.modelVersion === NFL_TARGETS_RANKING_MODEL) ranking = undefined
   const adopted = ranking?.slices.filter((s) => s.verdict === 'adopt').length
   const decided = clv?.markets.filter((m) => m.verdict !== 'accruing')
   const passed = decided?.filter((m) => m.verdict === 'pass').length

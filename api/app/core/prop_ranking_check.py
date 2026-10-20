@@ -60,7 +60,7 @@ class RankingCheck:
 
 
 def to_frozen_call(
-    frozen: FrozenLine, finished_periods: Collection[int], model_version: str, over_probability_version: str,
+    frozen: FrozenLine, finished_periods: Collection[int], model_version: str, over_probability_version: str | None,
 ) -> FrozenCall | Exclusion:
     """A settled over-or-under call, or the reason the frozen line cannot be one."""
     if frozen.model_version != model_version or frozen.over_probability_version not in (None, over_probability_version):
@@ -74,7 +74,9 @@ def to_frozen_call(
     outcome: Side = "over" if frozen.outcome == "over" else "under"
     return FrozenCall(
         line_id=frozen.line_id, period=frozen.period, player_id=frozen.player_id, game_id=frozen.game_id,
-        market=frozen.market, odds_type=frozen.odds_type or "", p_over=frozen.p_over, p_under=frozen.p_under,
+        market=frozen.market, odds_type=frozen.odds_type or "",
+        p_over=frozen.p_over if over_probability_version is not None else None,
+        p_under=frozen.p_under if over_probability_version is not None else None,
         outcome=outcome,
     )
 

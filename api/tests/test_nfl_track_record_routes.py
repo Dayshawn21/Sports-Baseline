@@ -33,9 +33,9 @@ def _client() -> TestClient:
 def test_ranking_route_serializes_in_camel_case(monkeypatch):
     seasons = []
 
-    async def record(_db, season):
+    async def record(_db, season, model_version=track_record.NFL_PROJECTION_MODEL_VERSION):
         seasons.append(season)
-        return build_ranking_record(_inputs([_call(i) for i in range(3)]), season, GRADED_AT)
+        return build_ranking_record(_inputs([_call(i) for i in range(3)]), season, GRADED_AT, model_version)
 
     monkeypatch.setattr(track_record, "get_ranking_record", record)
 
@@ -82,7 +82,7 @@ def test_prop_lines_route_serializes_in_camel_case(monkeypatch):
 
 
 def test_routes_503_when_grading_failed(monkeypatch):
-    async def failed(_db, _season):
+    async def failed(_db, _season, _model_version=track_record.NFL_PROJECTION_MODEL_VERSION):
         return None
 
     monkeypatch.setattr(track_record, "get_ranking_record", failed)

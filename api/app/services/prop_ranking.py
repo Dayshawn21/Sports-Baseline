@@ -8,15 +8,35 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.prop_ranking_check import PERIOD_NOT_FINISHED, PickFunnel, slice_results, to_frozen_call
+from app.core.prop_ranking_check import PERIOD_NOT_FINISHED, FrozenLine, PickFunnel, slice_results, to_frozen_call
 from app.core.prop_ranking_rule import (
     MIN_PERIODS, MIN_PICK_MARGIN, MIN_PICKS, FrozenCall, Side, SliceResult, SliceVerdict,
 )
+from app.core.prop_sports import SportPropConfig
 from app.core.track_record import Signal, verdict_signal
-from app.services.sport_props import SportPropSource
+
+
+class RankingSource(Protocol):
+    """The read-only subset a single model needs from its sport."""
+
+    @property
+    def config(self) -> SportPropConfig: ...
+
+    @property
+    def model_version(self) -> str: ...
+
+    @property
+    def over_probability_version(self) -> str | None: ...
+
+    async def frozen_lines(self, db: AsyncSession, season: int) -> list[FrozenLine]: ...
+
+    async def finished_periods(self, db: AsyncSession, season: int) -> set[int]: ...
+
+    async def frozen_coverage(self, db: AsyncSession, season: int) -> dict[int, tuple[int, int]]: ...
 
 
 @dataclass(frozen=True)
@@ -28,7 +48,7 @@ class RankingCalls:
     finished_periods: set[int]
 
 
-async def load_ranking_calls(db: AsyncSession, source: SportPropSource, season: int) -> RankingCalls:
+async def load_ranking_calls(db: AsyncSession, source: RankingSource, season: int) -> RankingCalls:
     """Each provider prop's latest frozen pre-start row as a settled call, or the reason it is not one."""
     frozen = await source.frozen_lines(db, season)
     finished = await source.finished_periods(db, season)
@@ -80,7 +100,7 @@ class RankingRecord:
     graded_at: datetime
     season: int
     model_version: str
-    over_probability_version: str
+    over_probability_version: str | None
     rule: RankingRule
     finished_weeks: list[int]
     last_settled_week: int | None
@@ -111,7 +131,7 @@ def _slice_row(odds_type: str, side: Side, result: SliceResult) -> RankingSliceR
 
 
 def build_ranking_record(
-    inputs: RankingCalls, season: int, graded_at: datetime, model_version: str, over_probability_version: str,
+    inputs: RankingCalls, season: int, graded_at: datetime, model_version: str, over_probability_version: str | None,
 ) -> RankingRecord:
     """The page's record; the period reads as weeks, the period of every sport graded so far."""
     check = slice_results(inputs.calls)

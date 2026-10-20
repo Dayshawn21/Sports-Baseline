@@ -28,12 +28,14 @@ from app.core.nfl_over_probability_fit_report import (
     FIT_MARKETS, FIT_PROJECTION_MODEL_VERSION, FIT_SEASON, FitMarketRow,
 )
 from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
+from app.core.nfl_targets_projection import NFL_TARGETS_MODEL_VERSION
 from app.core.prop_ranking_rule import BREAK_EVEN_BY_ODDS_TYPE
 from app.core.track_record import Signal, rate_signal, verdict_signal
 from app.repositories import nfl as nfl_repo
 from app.services import prop_ranking
-from app.services.nfl.slate import OVER_PROBABILITY_VERSION, build_slate
-from app.services.prop_ranking import RankingCalls, RankingRecord, display_standard_error
+from app.services.nfl.slate import build_slate
+from app.services.nfl.targets_ranking import NflTargetsRankingSource
+from app.services.prop_ranking import RankingCalls, RankingRecord, RankingSource, display_standard_error
 from app.services.sport_registry import prop_source
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
@@ -81,9 +83,19 @@ async def load_line_grading(db: AsyncSession, season: int) -> LineGradingInputs:
     return LineGradingInputs(results, edges, p_overs, MoneylineTiming(games_graded, after_kickoff))
 
 
-async def load_ranking_calls(db: AsyncSession, season: int) -> RankingCalls:
+def ranking_source(model_version: str = NFL_PROJECTION_MODEL_VERSION) -> RankingSource:
+    if model_version == NFL_PROJECTION_MODEL_VERSION:
+        return prop_source("nfl")
+    if model_version == NFL_TARGETS_MODEL_VERSION:
+        return NflTargetsRankingSource()
+    raise ValueError(f"Unknown NFL ranking model: {model_version}")
+
+
+async def load_ranking_calls(
+    db: AsyncSession, season: int, model_version: str = NFL_PROJECTION_MODEL_VERSION,
+) -> RankingCalls:
     """Each provider prop's latest frozen pre-kickoff row as a settled call, or the reason it is not one."""
-    return await prop_ranking.load_ranking_calls(db, prop_source("nfl"), season)
+    return await prop_ranking.load_ranking_calls(db, ranking_source(model_version), season)
 
 
 async def load_clv_grades(db: AsyncSession, season: int) -> list[ClvMarketGrade]:
@@ -93,9 +105,12 @@ async def load_clv_grades(db: AsyncSession, season: int) -> list[ClvMarketGrade]
     return [grade_market(games, models, "spread"), grade_market(games, models, "total")]
 
 
-def build_ranking_record(inputs: RankingCalls, season: int, graded_at: datetime) -> RankingRecord:
+def build_ranking_record(
+    inputs: RankingCalls, season: int, graded_at: datetime, model_version: str = NFL_PROJECTION_MODEL_VERSION,
+) -> RankingRecord:
+    source = ranking_source(model_version)
     return prop_ranking.build_ranking_record(
-        inputs, season, graded_at, NFL_PROJECTION_MODEL_VERSION, OVER_PROBABILITY_VERSION,
+        inputs, season, graded_at, source.model_version, source.over_probability_version,
     )
 
 
@@ -349,12 +364,17 @@ _CLV: TimedSingleFlight[ClvRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
 _LINES: TimedSingleFlight[LineRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
 
 
-async def get_ranking_record(db: AsyncSession, season: int) -> RankingRecord | None:
+async def get_ranking_record(
+    db: AsyncSession, season: int, model_version: str = NFL_PROJECTION_MODEL_VERSION,
+) -> RankingRecord | None:
     """None when grading failed; the failure is shared for the cache window too."""
-    async def fetch() -> RankingRecord:
-        return build_ranking_record(await load_ranking_calls(db, season), season, datetime.now(UTC))
+    source = ranking_source(model_version)
 
-    return await _RANKING.get(season, fetch)
+    async def fetch() -> RankingRecord:
+        inputs = await load_ranking_calls(db, season, model_version)
+        return build_ranking_record(inputs, season, datetime.now(UTC), model_version)
+
+    return await _RANKING.get((season, source.model_version, source.over_probability_version), fetch)
 
 
 async def get_clv_record(db: AsyncSession, season: int) -> ClvRecord | None:

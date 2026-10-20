@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { NflClvMarket, NflClvRow, NflModelClv, NflModelRanking, NflRankingSlice } from '~/types/nfl'
-import { signedPoints, sliceLabel, sliceProgress, summaryCounts, verdictLabel } from '~/utils/nflTrackRecord'
+import {
+  NFL_TARGETS_RANKING_MODEL, NFL_V4_RANKING_MODEL, rankingParams, rankingPresentation, rankingQueryKey,
+  rankingSliceStatus, signedPoints, sliceLabel, sliceProgress, summaryCounts, verdictLabel,
+} from '~/utils/nflTrackRecord'
 
 function slice(verdict: NflRankingSlice['verdict']): NflRankingSlice {
   return {
@@ -61,6 +64,12 @@ describe('sliceProgress', () => {
 })
 
 describe('summaryCounts', () => {
+  it('keeps a targets record out of the v4 summary while retaining the CLV figures', () => {
+    const targets = { ...ranking(['adopt'], 6), modelVersion: NFL_TARGETS_RANKING_MODEL, overProbabilityVersion: null }
+    expect(summaryCounts(targets, clv(['pass']))).toEqual({
+      slicesAdopted: '\u2014', gameLineVerdicts: '1 of 1', gameLinePasses: '1 passed', lastSettledWeek: '\u2014',
+    })
+  })
   it('counts adopted slices, decided and passed game-line verdicts, and the last settled week', () => {
     const counts = summaryCounts(
       ranking(['adopt', 'insufficient', 'reject', 'insufficient']),
@@ -78,6 +87,51 @@ describe('summaryCounts', () => {
     })
     expect(summaryCounts(ranking([], null), undefined).lastSettledWeek).toBe('None yet')
     expect(summaryCounts(undefined, clv(['accruing', 'accruing'])).gameLineVerdicts).toBe('0 of 2')
+  })
+})
+
+describe('model-specific ranking queries', () => {
+  it('canonicalizes omitted and explicit v4 selectors, and separates targets and seasons', () => {
+    expect(rankingParams(2026)).toEqual({ season: 2026 })
+    expect(rankingParams(2026, NFL_V4_RANKING_MODEL)).toEqual({ season: 2026 })
+    expect(rankingParams(2026, NFL_TARGETS_RANKING_MODEL)).toEqual({ season: 2026, model_version: 'nfl-targets-v1' })
+    expect(rankingQueryKey(2026)).toEqual(rankingQueryKey(2026, NFL_V4_RANKING_MODEL))
+    expect(rankingQueryKey(2026)).not.toEqual(rankingQueryKey(2026, NFL_TARGETS_RANKING_MODEL))
+    expect(rankingQueryKey(2026, NFL_TARGETS_RANKING_MODEL)).not.toEqual(rankingQueryKey(2027, NFL_TARGETS_RANKING_MODEL))
+    expect(rankingQueryKey(null)).not.toEqual(rankingQueryKey(2026))
+  })
+})
+
+describe('reference ranking presentation', () => {
+  const standard = slice('insufficient')
+  const record: NflModelRanking = {
+    ...ranking([]), modelVersion: NFL_TARGETS_RANKING_MODEL, overProbabilityVersion: null,
+    slices: [standard, { ...standard, side: 'under' }, { ...standard, oddsType: 'goblin' }, { ...standard, oddsType: 'demon' }],
+  }
+
+  it('shows only supported reference slices and labels a null probability version truthfully', () => {
+    const view = rankingPresentation(record, true)
+    expect(view.slices.map((s) => sliceLabel(s.oddsType, s.side))).toEqual(['Standard over', 'Standard under'])
+    expect(view.probabilityVersion).toBe('Not served')
+    expect(view.empty).toBe(true)
+    expect(rankingPresentation({ ...record, frozenRows: 12 }, true).empty).toBe(false)
+  })
+
+  it('keeps reference status neutral and explains why zero picks do not accrue', () => {
+    expect(rankingSliceStatus({ ...standard, verdict: 'adopt', signal: 'positive' }, true)).toEqual({
+      label: 'Not accruing', signal: 'neutral', noPicks: 'No probability picks',
+    })
+  })
+
+  it('preserves all slices, probability versions and signal labels for default v4/NBA rendering', () => {
+    const named = { ...record, overProbabilityVersion: 'nba-pover-v1' }
+    const view = rankingPresentation(named)
+    expect(view.slices).toBe(named.slices)
+    expect(view.probabilityVersion).toBe('nba-pover-v1')
+    expect(rankingSliceStatus({ ...standard, verdict: 'adopt', signal: 'positive' })).toEqual({
+      label: 'Adopt', signal: 'positive', noPicks: 'No picks yet',
+    })
+    expect(rankingSliceStatus(standard).label).toBe('Accruing')
   })
 })
 

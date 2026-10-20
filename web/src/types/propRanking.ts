@@ -15,11 +15,11 @@ export interface PropRankingSlice {
 }
 
 /** `/nfl/model/ranking` and `/nba/model/ranking` (20g4); a sport's adoption item reads its slice verdicts here. */
-export interface PropRankingRecord {
+export interface PropRankingRecord<P extends string | null = string> {
   gradedAt: string
   season: number
   modelVersion: string
-  overProbabilityVersion: string
+  overProbabilityVersion: P
   rule: { minPicks: number, minWeeks: number, minPickMargin: number }
   finishedWeeks: number[]
   lastSettledWeek: number | null

@@ -1,9 +1,10 @@
 import client from './client'
 import type {
   NflCurrentWeek, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
-  NflModelRanking,
+  NflModelRanking, NflRankingModelVersion,
   NflPlayerDetail, NflSlateResponse,
 } from '~/types/nfl'
+import { rankingParams } from '~/utils/nflTrackRecord'
 
 // The hosted demo builds a cold week in about 34 s (2026-10-16), and a second week
 // waits for the first, since the API builds one at a time.
@@ -42,8 +43,8 @@ export async function fetchNflPlayer(playerId: number): Promise<NflPlayerDetail>
   return data
 }
 
-export async function fetchNflModelRanking(season: number): Promise<NflModelRanking> {
-  const { data } = await client.get<NflModelRanking>('/nfl/model/ranking', { params: { season } })
+export async function fetchNflModelRanking(season: number, modelVersion?: NflRankingModelVersion): Promise<NflModelRanking> {
+  const { data } = await client.get<NflModelRanking>('/nfl/model/ranking', { params: rankingParams(season, modelVersion) })
   return data
 }
 

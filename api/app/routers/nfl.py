@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.nfl_projection import NflHistoricalAverages, baseline_projection, quality_flags
+from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION, NflHistoricalAverages, baseline_projection, quality_flags
 from app.core.production_settings import is_production
 from app.db.pool import get_db
 from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
@@ -16,7 +16,7 @@ from app.schemas.nfl import (
     NflLineOnlyPropsResponse,
     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
-    NflSlateResponse,
+    NflRankingModelVersion, NflSlateResponse,
 )
 from app.services.nfl.game_detail import build_game_detail
 from app.services.nfl.game_notes import build_game_notes
@@ -127,8 +127,12 @@ async def get_game_notes(
 
 
 @router.get("/model/ranking", response_model=NflModelRankingResponse)
-async def get_model_ranking(season: int, db: AsyncSession = Depends(get_db)) -> NflModelRankingResponse:
-    record = await track_record.get_ranking_record(db, season)
+async def get_model_ranking(
+    season: int,
+    model_version: NflRankingModelVersion = NFL_PROJECTION_MODEL_VERSION,
+    db: AsyncSession = Depends(get_db),
+) -> NflModelRankingResponse:
+    record = await track_record.get_ranking_record(db, season, model_version)
     if record is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
     return NflModelRankingResponse.model_validate(record)
