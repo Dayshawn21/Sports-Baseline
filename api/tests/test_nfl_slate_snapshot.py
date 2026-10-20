@@ -85,11 +85,14 @@ def test_stored_text_decodes_to_the_body_the_route_sent():
 
 
 class TestParseWeeks:
-    def test_current_adds_the_week_before(self):
-        assert parse_weeks("current", 6) == [5, 6]
+    def test_current_refreshes_previous_current_and_next_week(self):
+        assert parse_weeks("current", 6) == [5, 6, 7]
 
     def test_week_one_has_no_week_before(self):
-        assert parse_weeks("current", 1) == [1]
+        assert parse_weeks("current", 1) == [1, 2]
+
+    def test_last_week_has_no_week_after(self):
+        assert parse_weeks("current", 18) == [17, 18]
 
     def test_current_needs_a_loaded_week(self):
         with pytest.raises(ValueError):

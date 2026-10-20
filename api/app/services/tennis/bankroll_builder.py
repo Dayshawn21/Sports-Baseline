@@ -7,7 +7,7 @@ ranks every pick by composite value, and suggests optimal 2-leg parlays.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import combinations
 from typing import Optional

@@ -7,14 +7,6 @@
 > finding is `open` or `fixed`, then archives resolved findings with the work
 > and resets this file.
 
-### F-20 [P3] open - Bankroll builder retains an unused dataclasses import
-
-**File:** api/app/services/tennis/bankroll_builder.py:10
-**Found:** 2026-10-18 by /audit (scope: imports in the two F-19 modules; lens: quality). Present before this fix.
-**Why it matters:** `field` is imported from `dataclasses` but has no name load in the module, contrary to the no-unused-import convention. No runtime behavior is affected.
-**Suggested fix:** Remove `field` from the import during a future cleanup.
-**Resolution:** Open, nonblocking. F-19's three named imports are repaired and closed independently.
-
 ### F-09 [P3] unverified - Derived and serve-edge confidence is not validated by the existing grading
 
 **File:** api/app/services/tennis/best_picks.py:513; api/app/services/tennis/best_picks.py:595; api/app/services/tennis/best_picks.py:681; web/src/utils/tennisPropBoard.ts:142
@@ -68,24 +60,6 @@ rule from this read. If pursued, add a reporting-only frozen-row calibration
 to the model page (no new verdict). Any refit or method change is a new
 `nfl-pover-v2` under a rule fixed before reading its outcomes, validated
 forward, never on the 2025 holdout again.
-**Resolution:**
-
-### F-14 [P3] open - Future-week slate snapshots from the 37d backfill are served at each week rollover, and the payload has no build time
-
-**File:** api/app/ingest/nfl_slate_snapshot.py:29; api/app/repositories/nfl.py:943; api/app/services/nfl/slate_cache.py:102
-**Found:** 2026-10-18 by /audit (scope: NFL report snapshots; lens: data quality)
-**Why it matters:** `report_snapshots` holds 2026 weeks 7 to 18 built
-2026-10-16 20:08 to 20:09 UTC (`--weeks all` backfill). `--weeks current`
-writes only the current week and the one before. The current week rolls 12
-hours after the last kickoff (Tuesday about 12:15 UTC), and the first refresh
-after that is `nfl-weather.yml` at 14:00 UTC (subject to the same cron
-delays). In between, production serves a copy several days old for the new
-week. `NflSlateResponse` carries no computed time, so neither the page nor a
-reader can tell. No wrong-week or cross-season serving was found: the key is
-`(nfl_slate_week_<N>, season)` and the request names both.
-**Suggested fix:** Have `current` also write the next week, or stop
-backfilling future weeks; optionally expose the snapshot's `computed_at`.
-Tests on `parse_weeks`. Display freshness only, no model change.
 **Resolution:**
 
 ## Tennis audit evidence, 2026-10-18

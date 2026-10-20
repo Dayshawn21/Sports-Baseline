@@ -233,10 +233,10 @@ Things that are easy to get wrong:
 - **Memory.** The API runs on the always-on `0.5c-512mb` plan, with 512 MB.
   Production never builds a heavy report on request; it serves copies
   stored in `report_snapshots` and returns 503 when one is missing:
-  - `/nfl/slate`: `python -m app.ingest.nfl_slate_snapshot` (the current
-    week and the one before; `--weeks all` backfills). The four NFL
-    workflows that write slate inputs run it as their last step, so any new
-    slate input's writer must refresh it too.
+  - `/nfl/slate`: `python -m app.ingest.nfl_slate_snapshot` (the previous,
+    current and next week, bounded to weeks 1-18; `--weeks all` backfills).
+    The four NFL workflows that write slate inputs run it as their last step,
+    so any new slate input's writer must refresh it too.
   - `/nfl/model/prop-lines`: `python -m app.ingest.nfl_model_snapshot`, run
     by `nfl-ingest.yml`.
 

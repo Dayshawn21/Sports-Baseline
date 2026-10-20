@@ -7,8 +7,9 @@ stored copy.
 Run from api/: python -m app.ingest.nfl_slate_snapshot [--season 2026]
     [--weeks current | all | 5,6] [--dry-run]
 
-`current` stores the current week and the one before it, so the week that just
-ended picks up its final scores.
+`current` stores the previous, current and next regular-season week, so the
+week that just ended picks up final scores and the upcoming week is refreshed
+before rollover.
 """
 from __future__ import annotations
 
@@ -29,7 +30,10 @@ def parse_weeks(value: str, current_week: int | None) -> list[int]:
     if value == "current":
         if current_week is None:
             raise ValueError("No current NFL week: no regular-season game is loaded")
-        return [week for week in (current_week - 1, current_week) if week >= 1]
+        return [
+            week for week in (current_week - 1, current_week, current_week + 1)
+            if 1 <= week <= REGULAR_SEASON_WEEKS
+        ]
     weeks = sorted({int(part) for part in value.split(",") if part.strip()})
     if not weeks or weeks[0] < 1 or weeks[-1] > REGULAR_SEASON_WEEKS:
         raise ValueError(f"Weeks must be 1 to {REGULAR_SEASON_WEEKS}: {value!r}")
