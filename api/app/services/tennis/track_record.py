@@ -18,6 +18,7 @@ from app.backtest.tennis_prop_snapshots import GradedPick, grade
 from app.backtest.tennis_predictions import (
     CLV_MIN_GAP,
     DEFAULT_MODEL_VERSION,
+    ENSEMBLE_MARKET_COMPONENTS,
     GROUPS,
     MARKET_COMPONENTS,
     Component,
@@ -124,6 +125,7 @@ class PredictionGrading:
     model_version: str
     counts: GradingCounts
     groups: list[GroupScores]
+    ensemble_market_groups: list[GroupScores]
     calibration: list[CalibrationSeries]
     clv: list[ClvLine]
     versions: list[VersionCount]
@@ -144,14 +146,16 @@ def _common(rows: list[GradedPrediction], components: tuple[Component, ...]) -> 
     return [r for r in rows if all(get(r) is not None for _, get in components)]
 
 
-def _group_scores(group: str, rows: list[GradedPrediction]) -> GroupScores:
-    subset = _common(rows, MARKET_COMPONENTS)
+def _group_scores(
+    group: str, rows: list[GradedPrediction], table_components: tuple[Component, ...] = _TABLE_COMPONENTS,
+) -> GroupScores:
+    subset = _common(rows, table_components)
     if not subset:
         return GroupScores(group, 0, [])
     outcomes = [r.p1_won for r in subset]
     market = [r.market_prob for r in subset]
     components = []
-    for name, get in _TABLE_COMPONENTS:
+    for name, get in table_components:
         probabilities = [get(r) for r in subset]
         score = score_component(probabilities, outcomes)
         vs_market = None
@@ -200,6 +204,9 @@ def build_prediction_grading(
         model_version=model_version,
         counts=counts,
         groups=[_group_scores(group, subset) for group, subset in by_group.items()],
+        ensemble_market_groups=[
+            _group_scores(group, subset, ENSEMBLE_MARKET_COMPONENTS) for group, subset in by_group.items()
+        ],
         calibration=_calibration(by_group[_POOLED_GROUP]),
         clv=clv,
         versions=version_counts(rows, DEFAULT_MODEL_VERSION),

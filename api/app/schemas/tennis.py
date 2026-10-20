@@ -335,6 +335,7 @@ class ModelPredictionsResponse(_TrackRecordModel):
     model_version: str
     counts: GradingCountsSchema
     groups: list[GroupScoresSchema]
+    ensemble_market_groups: list[GroupScoresSchema]
     calibration: list[CalibrationSeriesSchema]
     clv: list[ClvLineSchema]
     versions: list[VersionCountSchema]

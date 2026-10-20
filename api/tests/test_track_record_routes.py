@@ -61,6 +61,21 @@ def test_predictions_route_grades_the_requested_version(monkeypatch):
     assert body["counts"]["graded"] == 1
 
 
+def test_predictions_route_serializes_no_ml_pair_without_expanding_all_four_sample(monkeypatch):
+    version = "ensemble-v3+lgbm-none"
+    _rows_loader(monkeypatch, [_row(1, tour="CHALLENGER", ml=None, version=version)])
+
+    body = _client().get("/tennis/model/predictions", params={"model_version": version}).json()
+
+    pair = next(g for g in body["ensembleMarketGroups"] if g["group"] == "CHALLENGER")
+    assert pair["n"] == 1
+    assert [c["name"] for c in pair["components"]] == ["market", "ensemble"]
+    assert pair["components"][1]["vsMarket"]["standardError"] is None
+    assert pair["components"][1]["vsMarket"]["signal"] == "neutral"
+    assert all(g["n"] == 0 for g in body["groups"])
+    assert all(s["bins"] == [] for s in body["calibration"])
+
+
 def test_predictions_route_defaults_to_the_served_version_with_nothing_settled(monkeypatch):
     _rows_loader(monkeypatch, [_row(1)])
 

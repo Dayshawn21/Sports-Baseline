@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ModelPredictionsResponse, ModelVersionCount, TrackCalibrationBin, TrackGroupScores } from '~/types/tennis'
-import { calibrationPoints, ensembleVerdictText, rateRange, sampleProgress, seMultiple, signalClass, unsettledVersionNote, versionOptions } from '~/utils/trackRecord'
+import { calibrationPoints, ensembleVerdictText, pairedLossText, rateRange, sampleProgress, seMultiple, signalClass, unsettledVersionNote, versionOptions } from '~/utils/trackRecord'
 
 function group(signal: 'positive' | 'neutral' | null, n = 308): TrackGroupScores {
   return {
@@ -53,6 +53,18 @@ describe('ensembleVerdictText', () => {
   })
 })
 
+describe('pairedLossText', () => {
+  it('shows signed loss differences with one standard error', () => {
+    expect(pairedLossText({ mean: -0.01234, standardError: 0.00321, signal: 'positive' })).toBe('-0.0123 +/- 0.0032')
+    expect(pairedLossText({ mean: 0.01234, standardError: 0.00321, signal: 'neutral' })).toBe('+0.0123 +/- 0.0032')
+  })
+
+  it('distinguishes singleton uncertainty from an observed zero error', () => {
+    expect(pairedLossText({ mean: 0, standardError: null, signal: 'neutral' })).toBe('+0.0000 (SE unavailable)')
+    expect(pairedLossText({ mean: 0, standardError: 0, signal: 'neutral' })).toBe('+0.0000 +/- 0.0000')
+  })
+})
+
 describe('calibrationPoints', () => {
   const box = { left: 30, right: 310, top: 10, bottom: 250 }
 
@@ -98,6 +110,7 @@ function predictions(modelVersion: string, graded: number, versions: ModelVersio
     modelVersion,
     counts: { settled: 0, otherVersions: 0, incomplete: 0, graded, withMarket: 0, withClose: 0 },
     groups: [],
+    ensembleMarketGroups: [],
     calibration: [],
     clv: [],
     versions,

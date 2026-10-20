@@ -1,4 +1,4 @@
-import type { ModelPredictionsResponse, ModelVersionCount, TrackCalibrationBin, TrackGroupScores, TrackSignal } from '~/types/tennis'
+import type { LossComparison, ModelPredictionsResponse, ModelVersionCount, TrackCalibrationBin, TrackGroupScores, TrackSignal } from '~/types/tennis'
 
 /** Green and red come only from a server-side 2 SE signal, never from a raw number. */
 export function signalClass(signal: TrackSignal): string {
@@ -14,6 +14,13 @@ export function seMultiple(mean: number, standardError: number | null): string {
 }
 
 export type EnsembleVerdict = 'Ahead' | 'Not ahead' | 'No data'
+
+export function pairedLossText(comparison: LossComparison): string {
+  const mean = `${comparison.mean >= 0 ? '+' : ''}${comparison.mean.toFixed(4)}`
+  return comparison.standardError == null
+    ? `${mean} (SE unavailable)`
+    : `${mean} +/- ${comparison.standardError.toFixed(4)}`
+}
 
 export function ensembleVerdictText(group: TrackGroupScores | undefined): EnsembleVerdict {
   const ensemble = group?.components.find((c) => c.name === 'ensemble')

@@ -30,7 +30,7 @@ export default function ModelVerdictCards({ modelVersion }: { modelVersion?: str
 
   return (
     <section className="tennis-model-verdicts" aria-label="Headline verdicts">
-      <VerdictCard label="Ensemble vs market" query={predictions} render={(data) => {
+      <VerdictCard label="Ensemble vs market · ATP+WTA all-four sample" query={predictions} render={(data) => {
         const pooled = data.groups.find((g) => g.group === 'ATP+WTA')
         const verdict = ensembleVerdictText(pooled)
         const market = pooled?.components.find((c) => c.name === 'market')

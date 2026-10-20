@@ -32,14 +32,19 @@ export default function TennisModelPage() {
         <div className="tennis-model-version">
           <span className="tennis-model-version__label">Model version</span>
           <Select aria-label="Model version" value={predictions.data.modelVersion} onChange={setModelVersion}
-            options={versionOptions(predictions.data.versions)} popupMatchSelectWidth={false} />
+            options={versionOptions(predictions.data.versions)} />
           {versionNote && <p className="tennis-model-version__note">{versionNote}</p>}
         </div>
       )}
 
       <ModelVerdictCards modelVersion={modelVersion} />
 
-      <h2 className="tennis-model-heading">Match winner · components against the market</h2>
+      <h2 className="tennis-model-heading">Match winner · ensemble versus market</h2>
+      <ModelSection query={predictions} loading="Grading ensemble-market pairs...">
+        {(data) => <ModelComponentTable data={data} sample="ensemble-market" />}
+      </ModelSection>
+
+      <h2 className="tennis-model-heading">Match winner · all-four sample</h2>
       <div className="tennis-model-grid">
         <ModelSection query={predictions} loading="Grading predictions...">
           {(data) => <>

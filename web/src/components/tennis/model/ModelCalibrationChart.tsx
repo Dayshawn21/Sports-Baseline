@@ -51,7 +51,8 @@ export default function ModelCalibrationChart({ series }: { series: TrackCalibra
           </svg>
         )}
       <p className="tennis-model-note">
-        ATP and WTA, {matches.toLocaleString()} matches. Predicted p1 win chance (x) against the actual win rate (y)
+        ATP+WTA all-four sample, {matches.toLocaleString()} matches with ensemble, market, ELO and ML probabilities.
+        Predicted p1 win chance (x) against the actual win rate (y)
         in 10-point bins; dot size is the bin&apos;s match count. The dashed line is perfect calibration.
       </p>
     </div>

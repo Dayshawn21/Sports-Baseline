@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from math import log
 
 import pytest
 
@@ -12,12 +13,12 @@ START = datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc)
 
 def _row(i: int, tour: str = "ATP", *, p1_won: bool = True, market: float | None = 0.6,
          ensemble: float | None = 0.65, close: float | None = None, version: str = MODEL,
-         completed: bool = True, ml: float | None = 0.62) -> GradedPrediction:
+         completed: bool = True, ml: float | None = 0.62, elo: float | None = 0.6) -> GradedPrediction:
     start = START + timedelta(hours=i)
     return GradedPrediction(
         match_id=i, tour=tour, start_utc=start, generated_at=start - timedelta(hours=2),
         model_version=version, p1_won=p1_won, completed_score=completed,
-        elo_prob=0.6, ml_prob=ml, market_prob=market, ensemble_prob=ensemble,
+        elo_prob=elo, ml_prob=ml, market_prob=market, ensemble_prob=ensemble,
         market_book="draftkings", closing_market_prob=close,
     )
 
@@ -97,6 +98,62 @@ def test_calibration_is_pooled_atp_and_wta_only():
     assert sum(b.n for b in calibration[0].bins) == 2
 
 
+@pytest.mark.parametrize("elo,ml,ensemble", [(0.6, None, 0.65), (None, None, 0.6), (0.99, None, 0.6)])
+def test_ensemble_market_pair_does_not_require_ml_or_usable_elo(elo, ml, ensemble):
+    grading = build_prediction_grading(
+        [_row(1, tour="CHALLENGER", elo=elo, ml=ml, ensemble=ensemble)], MODEL, GRADED_AT,
+    )
+    pair = next(g for g in grading.ensemble_market_groups if g.group == "CHALLENGER")
+
+    assert pair.n == 1
+    assert [c.name for c in pair.components] == ["market", "ensemble"]
+    market, candidate = pair.components
+    assert market.log_loss == pytest.approx(-log(0.6))
+    assert market.brier == pytest.approx(0.4 ** 2)
+    assert market.vs_market is None
+    assert candidate.log_loss == pytest.approx(-log(ensemble))
+    assert candidate.brier == pytest.approx((1 - ensemble) ** 2)
+    assert candidate.vs_market.mean == pytest.approx(log(0.6 / ensemble))
+    assert candidate.vs_market.standard_error is None
+    assert candidate.vs_market.signal == "neutral"
+    assert _group(grading, "CHALLENGER").n == 0
+    assert all(g.n == 0 for g in grading.ensemble_market_groups if g.group != "CHALLENGER")
+    assert all(not s.bins for s in grading.calibration)
+
+
+def test_ensemble_market_pair_uses_its_own_sample_and_paired_error():
+    rows = [_row(1, ensemble=0.8), _row(2, ensemble=0.3, p1_won=False, ml=None)]
+    grading = build_prediction_grading(rows, MODEL, GRADED_AT)
+    pair = next(g for g in grading.ensemble_market_groups if g.group == "ATP")
+    candidate = pair.components[1]
+    differences = [log(0.6 / 0.8), log(0.4 / 0.7)]
+
+    assert pair.n == 2
+    assert pair.components[0].log_loss == pytest.approx((-log(0.6) - log(0.4)) / 2)
+    assert candidate.log_loss == pytest.approx((-log(0.8) - log(0.7)) / 2)
+    assert candidate.brier == pytest.approx((0.2 ** 2 + 0.3 ** 2) / 2)
+    assert candidate.vs_market.mean == pytest.approx(sum(differences) / 2)
+    assert candidate.vs_market.standard_error == pytest.approx(abs(differences[0] - differences[1]) / 2)
+    assert candidate.vs_market.signal == "positive"
+    assert _group(grading, "ATP").n == 1
+    assert sum(b.n for b in grading.calibration[0].bins) == 1
+
+
+def test_ensemble_market_pair_excludes_missing_probabilities_incomplete_and_other_versions():
+    rows = [
+        _row(1, ml=None), _row(2, market=None), _row(3, ensemble=None),
+        _row(4, completed=False), _row(5, version="ensemble-v3+lgbm-none"),
+        _row(6, tour="WTA", elo=None), _row(7, tour="CHALLENGER", ml=None),
+    ]
+    grading = build_prediction_grading(rows, MODEL, GRADED_AT)
+
+    assert {g.group: g.n for g in grading.ensemble_market_groups} == {
+        "ATP": 1, "WTA": 1, "ATP+WTA": 2, "CHALLENGER": 1,
+    }
+    assert all(g.n == 0 for g in grading.groups)
+    assert all(not s.bins for s in grading.calibration)
+
+
 def test_versions_lead_with_the_served_one_then_the_newest_predicted():
     rows = [_row(1, version="ensemble-v1+lgbm-v5"), _row(2), _row(3), _row(4, version="ensemble-v2+lgbm-v6")]
 
@@ -123,6 +180,7 @@ def test_no_rows_gives_empty_sections():
 
     assert grading.counts.graded == 0
     assert all(g.n == 0 for g in grading.groups)
+    assert all(g.n == 0 and g.components == [] for g in grading.ensemble_market_groups)
     assert all(s.bins == [] for s in grading.calibration)
     assert grading.graded_at == GRADED_AT
 

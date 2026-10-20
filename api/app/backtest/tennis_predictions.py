@@ -14,6 +14,7 @@ import sys
 from typing import Callable, Optional
 
 from app.core.tennis_grading import calibration_bins, clv_summary, paired_loss_difference, score_component
+from app.core.track_record import loss_signal
 from app.repositories.predictions import GradedPrediction
 from app.services.tennis.ensemble import ENSEMBLE_VERSION
 
@@ -27,6 +28,10 @@ MODEL_COMPONENTS: tuple[Component, ...] = (
     ("ensemble", lambda r: r.ensemble_prob),
 )
 MARKET_COMPONENTS: tuple[Component, ...] = MODEL_COMPONENTS + (("market", lambda r: r.market_prob),)
+ENSEMBLE_MARKET_COMPONENTS: tuple[Component, ...] = (
+    ("market", lambda r: r.market_prob),
+    ("ensemble", lambda r: r.ensemble_prob),
+)
 
 # Challenger ML probabilities before 2026-09-25 came from the WTA model, so
 # Challenger is never pooled with the tours the models were trained on.
@@ -90,6 +95,30 @@ def _calibration_section(rows: list[GradedPrediction]) -> list[str]:
     return lines
 
 
+def _ensemble_market_section(rows: list[GradedPrediction]) -> list[str]:
+    lines = _score_table(
+        "Ensemble versus market (requires only ensemble and market; log loss, Brier)",
+        rows, ENSEMBLE_MARKET_COMPONENTS,
+    )
+    lines.extend([
+        "  Market-free fallback rows are excluded; this comparison does not validate that fallback.",
+        "  Paired ensemble-minus-market log loss (negative favors ensemble; +/- one standard error):",
+    ])
+    for group, tours in GROUPS:
+        subset = _common([r for r in rows if r.tour in tours], ENSEMBLE_MARKET_COMPONENTS)
+        if not subset:
+            lines.append(f"  {group:<11}n=0 (no ensemble-market pairs)")
+            continue
+        diff = paired_loss_difference(
+            [r.ensemble_prob for r in subset], [r.market_prob for r in subset],
+            [r.p1_won for r in subset],
+        )
+        se = f"{diff.standard_error:.4f}" if diff.standard_error is not None else "n/a"
+        signal = loss_signal(diff.mean, diff.standard_error)
+        lines.append(f"  {group:<11}n={len(subset):<5} ensemble {diff.mean:+.4f} +/- {se}  signal={signal}")
+    return lines
+
+
 def _clv_line(label: str, rows: list[GradedPrediction], min_gap: float) -> str:
     summary = clv_summary([(r.ensemble_prob, r.market_prob, r.closing_market_prob) for r in rows], min_gap)
     rate = f"{summary.toward_rate:.1%}" if summary.toward_rate is not None else "n/a"
@@ -126,6 +155,7 @@ def report(rows: list[GradedPrediction], model_version: str = DEFAULT_MODEL_VERS
         _score_table("Against the market (same matches for every column)", graded, MARKET_COMPONENTS),
         _paired_section(graded),
         _calibration_section(graded),
+        _ensemble_market_section(graded),
         _clv_section(graded),
     ]
     return "\n\n".join("\n".join(section) for section in sections)

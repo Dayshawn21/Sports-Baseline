@@ -390,6 +390,7 @@ export interface ModelPredictionsResponse {
     withClose: number
   }
   groups: TrackGroupScores[]
+  ensembleMarketGroups: TrackGroupScores[]
   calibration: TrackCalibrationSeries[]
   clv: TrackClvLine[]
   versions: ModelVersionCount[]

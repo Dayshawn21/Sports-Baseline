@@ -15,29 +15,6 @@
 **Suggested fix:** Remove `field` from the import during a future cleanup.
 **Resolution:** Open, nonblocking. F-19's three named imports are repaired and closed independently.
 
-### F-07 [P3] open - Prediction grading has no loss comparison for the served no-ML path
-
-**File:** api/app/services/tennis/track_record.py:147; api/app/services/tennis/track_record.py:165; api/app/backtest/tennis_predictions.py:31
-**Found:** 2026-10-18 by /audit (scope: tennis prediction system; lenses: correctness, calibration coverage, tests)
-**Why it matters:** Loss tables and calibration require every member of
-`MARKET_COMPONENTS`, including ML, even though current Challenger predictions
-intentionally have no ML and market-anchored v3 assigns ML zero weight. The
-existing endpoint, read on 2026-10-18, returned 455 completed
-`ensemble-v3+lgbm-none` predictions with 212 market prices, but all four score
-groups had n=0 and no component rows. Challenger CLV still reports 135 eligible
-nonzero gaps, confirming this is not simply an empty version. Separately,
-market-free fallback rows cannot appear in the market-paired table by design;
-the endpoint should not be described as validating that fallback.
-**Suggested fix:** Add an explicitly labelled ensemble-versus-market paired
-comparison requiring only those two probabilities. Keep the original all-four
-comparison and its common-row contract intact, with separate counts for any
-ELO/ML comparisons. Test a Challenger row with ML=None, plus missing/gated ELO
-and market-free rows. This is reporting coverage, not a model change; tests
-and existing forward grading suffice. Do not pool model versions or change the
-26d adoption rule. Downgraded P2 to P3 on 2026-10-18 review: a reporting
-coverage gap, not a correctness risk to served output.
-**Resolution:**
-
 ### F-09 [P3] unverified - Derived and serve-edge confidence is not validated by the existing grading
 
 **File:** api/app/services/tennis/best_picks.py:513; api/app/services/tennis/best_picks.py:595; api/app/services/tennis/best_picks.py:681; web/src/utils/tennisPropBoard.ts:142
@@ -128,26 +105,6 @@ reader can tell. No wrong-week or cross-season serving was found: the key is
 backfilling future weeks; optionally expose the snapshot's `computed_at`.
 Tests on `parse_weeks`. Display freshness only, no model change.
 **Resolution:**
-
-### F-15 [P3] fixed - Frozen-row grading loader does not apply MODELLED_MARKET_FILTER
-
-**File:** api/app/repositories/nfl.py:2244
-**Found:** 2026-10-18 by /audit (scope: NFL frozen predictions; lens: correctness)
-**Why it matters:** The 34a rule says every reader that projects, grades or
-freezes lines applies `MODELLED_MARKET_FILTER`. `get_frozen_gradeable_lines`
-grades but relies on the freeze having written modelled lines only (true
-today: rows come from `build_slate`, whose CTE filters). A line-only row
-written by any other path would reach 27j, where `STAT_COLUMN_BY_MARKET`
-has no column and it would settle as `void_dnp` rather than fail loudly.
-**Suggested fix:** Add the filter to the `frozen` CTE and a recorded-SQL test,
-matching `get_gradeable_prop_lines` and `get_frozen_coverage`. Output is
-identical today.
-**Resolution:** Fixed by 39c Step 1, approved 2026-10-19. The frozen CTE now
-applies `V4_MARKET_FILTER`, the explicit nine-market subset of the modelled
-universe, before latest-row selection. Recorded-SQL and mixed-market predicate
-tests cover the guard in `test_nfl_v4_markets.py`. Full Verify passed (612 web
-tests, production build, 2,836 API tests). Awaiting independent `/audit`
-re-review; this repair does not close the finding.
 
 ## Tennis audit evidence, 2026-10-18
 
