@@ -107,7 +107,7 @@ export function NbaPropTable({ market, cards, selectedPlayerId, onOpen, injuryRe
   return <table className="prop-table nba-prop-table" aria-label={`${nbaMarketLabel(market)} props`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} selected={card.playerId === selectedPlayerId} onOpen={() => onOpen(card)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
+    <tbody>{cards.map(card => <PropRow key={card.playerId} rowKey={`${market}:${card.playerId}`} card={card} market={market} selected={card.playerId === selectedPlayerId} onOpen={() => onOpen(card)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 
@@ -148,7 +148,7 @@ export function NbaLineOnlyTable({ market, rows, selectedPlayerId, onOpen, injur
   return <table className="prop-table nba-line-only-table" aria-label={`${nbaMarketLabel(market)} other lines`}>
     <colgroup>{LINE_ONLY_COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{LINE_ONLY_COLUMNS.map(([key, label]) => <th key={key} className={key === 'line' ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} row={row} market={market} selected={row.playerId === selectedPlayerId} onOpen={() => onOpen(row)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
+    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} rowKey={`${market}:${row.playerId}`} row={row} market={market} selected={row.playerId === selectedPlayerId} onOpen={() => onOpen(row)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 

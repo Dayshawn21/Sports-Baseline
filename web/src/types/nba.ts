@@ -109,6 +109,30 @@ export interface NbaLineHistory {
 export interface NbaGameDetail extends NbaSlateGame {
   lineHistory: NbaLineHistory[]
   injuryReport: NbaInjuryReport
+  teamStats: NbaTeamStatsContext | null
+}
+
+export type NbaTeamStat = 'points' | 'rebounds' | 'assists' | 'threes_made' | 'blocks'
+
+export interface NbaTeamStatRate {
+  perGame: number | null
+  rank: number | null
+  games: number
+  rankedTeams: number
+}
+
+export interface NbaTeamSeasonStats {
+  team: string
+  completedGames: number
+  stats: Record<NbaTeamStat, { for: NbaTeamStatRate, allowed: NbaTeamStatRate }>
+}
+
+export interface NbaTeamStatsContext {
+  season: number
+  beforeDate: string
+  basis: 'stored_player_box_scores'
+  away: NbaTeamSeasonStats
+  home: NbaTeamSeasonStats
 }
 
 export interface NbaInjury {
@@ -157,6 +181,7 @@ export interface NbaLineOnlyProps {
   gameId: number
   lines: NbaLineOnlyLine[]
   injuryReport: NbaInjuryReport
+  teamStats: NbaTeamStatsContext | null
 }
 
 export type NbaPropFlag = 'few_prior_games' | 'low_minutes' | 'no_over_probability' | 'integer_line'
@@ -180,6 +205,7 @@ export interface NbaProps {
   modelVersion: string
   lines: NbaPropLine[]
   injuryReport: NbaInjuryReport
+  teamStats: NbaTeamStatsContext | null
 }
 
 export interface NbaPropBoardGame {
@@ -191,6 +217,7 @@ export interface NbaPropBoardGame {
   lines: NbaPropLine[]
   lineOnlyLines: NbaLineOnlyLine[]
   injuryReport: NbaInjuryReport
+  teamStats: NbaTeamStatsContext | null
 }
 
 /** `GET /nba/props`: one Eastern game date, with the game endpoints' line payloads. */

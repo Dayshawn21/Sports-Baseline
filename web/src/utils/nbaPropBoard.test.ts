@@ -27,7 +27,7 @@ function other(overrides: Partial<NbaLineOnlyLine> = {}): NbaLineOnlyLine {
 function game(overrides: Partial<NbaPropBoardGame> = {}): NbaPropBoardGame {
   return {
     gameId: 1, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z',
-    status: 'scheduled', lines: [line()], lineOnlyLines: [], injuryReport: UNAVAILABLE_NBA_INJURIES, ...overrides,
+    status: 'scheduled', lines: [line()], lineOnlyLines: [], injuryReport: UNAVAILABLE_NBA_INJURIES, teamStats: null, ...overrides,
   }
 }
 
@@ -55,7 +55,7 @@ describe('nbaPropBoard', () => {
     expect(result).toHaveLength(3)
     expect(new Set(result.map(row => row.key)).size).toBe(3)
     expect(result.find(row => row.key === 'modelled:2:assists:1')?.game).toEqual({
-      gameId: 2, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z', status: 'scheduled', injuryReport: UNAVAILABLE_NBA_INJURIES,
+      gameId: 2, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z', status: 'scheduled', injuryReport: UNAVAILABLE_NBA_INJURIES, teamStats: null,
     })
   })
 

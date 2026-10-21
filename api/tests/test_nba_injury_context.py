@@ -165,6 +165,7 @@ def test_actual_service_builders_use_the_same_batch_context_even_with_no_props(m
         "get_game": game(), "get_game_dates": [NOW.date()], "get_games_on": [game()],
         "get_modelled_lines": [], "get_line_only_lines": [], "get_date_modelled_lines": {},
         "get_date_line_only_lines": {}, "get_game_line_history": [],
+        "get_team_box_games": [],
     }.items():
         monkeypatch.setattr(nba_repo, name, AsyncMock(return_value=value))
     reader = AsyncMock(return_value={7: snapshot()})

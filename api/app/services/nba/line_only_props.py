@@ -17,8 +17,10 @@ from app.nba.markets import NBA_MARKETS, nba_market
 from app.repositories import nba as nba_repo
 from app.schemas.nba import (
     NbaInjuryReportSchema, NbaInjurySchema, NbaLineOnlyLineSchema, NbaLineOnlyPropsResponse, NbaLineOnlyRecentSchema,
+    NbaTeamStatsContextSchema,
 )
 from app.services.nba.injuries import injury_index, load_injury_reports
+from app.services.nba.team_stats import load_team_stats, team_stats_schema
 
 _MARKET_ORDER = {market.value: index for index, market in enumerate(NBA_MARKETS)}
 
@@ -34,18 +36,20 @@ async def build_line_only_props(
     player_ids = sorted({int(str(line["player_id"])) for line in lines})
     recent_rows = await nba_repo.get_recent_box_scores(db, player_ids, cast(dt.date, game["game_date"])) if player_ids else []
     reports = await load_injury_reports(db, [game], as_of)
-    return line_only_props(game_id, lines, recent_rows, reports[game_id])
+    contexts = await load_team_stats(db, [game])
+    return line_only_props(game_id, lines, recent_rows, reports[game_id], team_stats_schema(contexts[game_id]))
 
 
 def line_only_props(
     game_id: int, lines: Sequence[Mapping[str, object]], recent_rows: Sequence[Mapping[str, object]],
     report: NbaInjuryReportSchema | None = None,
+    team_stats: NbaTeamStatsContextSchema | None = None,
 ) -> NbaLineOnlyPropsResponse:
     report = report if report is not None else NbaInjuryReportSchema()
     injuries = injury_index(report)
     rows_by_player = group_by_player(recent_rows)
     return NbaLineOnlyPropsResponse(
-        game_id=game_id, injury_report=report,
+        game_id=game_id, injury_report=report, team_stats=team_stats,
         lines=[
             NbaLineOnlyLineSchema(**line_fields(line, injuries), recent=recent_values(line, rows_by_player))
             for line in ordered_lines(lines)

@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 from collections.abc import Iterable, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import cast
 
 from sqlalchemy import RowMapping, bindparam, text
@@ -21,6 +21,7 @@ from app.core.nba_line_only import LINE_ONLY_COLUMNS
 from app.core.nba_projection_backtest import REFERENCE_GAMES, NbaHistoryRow
 from app.core.nba_prop_predictions import NbaFreezeLine, settle_frozen
 from app.core.nba_slate import NbaResult
+from app.core.nba_team_stats import TEAM_STATS, TeamBoxGame, TeamBoxSide
 from app.core.prop_ranking_check import FrozenLine
 from app.ingest.hoopr_nba import NbaGame, NbaPlayerGame
 from app.nba.markets import NbaLineOnlyMarket, NbaPropMarket
@@ -320,6 +321,61 @@ async def get_completed_results(db: AsyncSession, seasons: Sequence[int]) -> lis
         WHERE g.sport = 'nba' AND g.game_type = 'REG' AND g.status = 'completed' AND g.season = ANY(:seasons)
     """), {"seasons": list(seasons)})
     return [NbaResult(*row) for row in rows.fetchall()]
+
+
+async def get_team_box_games(db: AsyncSession, season: int, before: dt.date) -> list[TeamBoxGame]:
+    """League-wide grouped boxes, retaining games without boxes for coverage counts."""
+    totals = []
+    for stat in TEAM_STATS:
+        column = "three_pointers_made" if stat == "threes_made" else stat
+        totals.append(f"""
+            CASE WHEN COUNT(*) FILTER (
+                WHERE s.{column} IS NULL OR s.{column} < 0 OR s.season <> g.season
+            ) > 0 THEN NULL ELSE SUM(s.{column}) END AS {stat}
+        """)
+    rows = await db.execute(text(f"""
+        WITH eligible_games AS (
+            SELECT g.id AS game_id, g.season, g.game_date, g.home_score, g.away_score,
+                   home.team_code AS home_team, away.team_code AS away_team
+            FROM sport_games g
+            JOIN sport_teams home ON home.sport = 'nba' AND home.id = g.home_team_id
+            JOIN sport_teams away ON away.sport = 'nba' AND away.id = g.away_team_id
+            WHERE g.sport = 'nba' AND g.season = :season AND g.game_date < :before
+              AND g.game_type = 'REG' AND g.status = 'completed'
+        ), side_totals AS (
+            SELECT s.game_id, s.team_id, s.opponent_team_id, s.did_not_play,
+                   COUNT(*) AS player_rows, {', '.join(totals)}
+            FROM nba_player_game_stats s JOIN eligible_games g ON g.game_id = s.game_id
+            GROUP BY s.game_id, s.team_id, s.opponent_team_id, s.did_not_play
+        )
+        SELECT g.*, s.player_rows, s.did_not_play, team.team_code AS team,
+               opponent.team_code AS opponent, {', '.join(f's.{stat}' for stat in TEAM_STATS)}
+        FROM eligible_games g LEFT JOIN side_totals s ON s.game_id = g.game_id
+        LEFT JOIN sport_teams team ON team.sport = 'nba' AND team.id = s.team_id
+        LEFT JOIN sport_teams opponent ON opponent.sport = 'nba' AND opponent.id = s.opponent_team_id
+        ORDER BY g.game_date, g.game_id, s.team_id, s.opponent_team_id, s.did_not_play
+    """), {"season": season, "before": before})
+    return _team_box_games(list(rows.mappings()))
+
+
+def _team_box_games(rows: Sequence[RowMapping]) -> list[TeamBoxGame]:
+    games: dict[int, TeamBoxGame] = {}
+    sides: dict[int, list[TeamBoxSide]] = {}
+    for row in rows:
+        game_id = row["game_id"]
+        if game_id not in games:
+            games[game_id] = TeamBoxGame(
+                season=row["season"], game_date=row["game_date"], home_team=row["home_team"],
+                away_team=row["away_team"], home_score=row["home_score"], away_score=row["away_score"], sides=(),
+            )
+            sides[game_id] = []
+        if row["player_rows"] is not None:
+            # Unknown shared-table identities must invalidate the box, not disappear in an inner join.
+            sides[game_id].append(TeamBoxSide(
+                team=row["team"] or "", opponent=row["opponent"] or "", player_rows=row["player_rows"],
+                did_not_play=row["did_not_play"], totals={stat: row[stat] for stat in TEAM_STATS},
+            ))
+    return [replace(game, sides=tuple(sides[game_id])) for game_id, game in games.items()]
 
 
 async def get_latest_market_rows(db: AsyncSession, game_ids: Sequence[int]) -> list[dict[str, object]]:

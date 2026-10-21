@@ -69,7 +69,7 @@ def test_recent_values_are_the_players_settled_market_newest_first() -> None:
 
 def test_response_serializes_camel_case() -> None:
     payload = props_response(21320, [_line(1, "Amy", "assists", 4.5)], {1: _prior(1, 20)}, []).model_dump(by_alias=True)
-    assert {"gameId", "modelVersion", "lines", "injuryReport"} == payload.keys()
+    assert {"gameId", "modelVersion", "lines", "injuryReport", "teamStats"} == payload.keys()
     assert {"playerId", "gamesInSample", "priorMinutes", "pOver", "pUnder", "overProbabilityVersion", "flags",
             "recent", "gap", "projection", "fetchedAt"} <= payload["lines"][0].keys()
 

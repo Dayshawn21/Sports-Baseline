@@ -21,7 +21,8 @@ FETCHED = dt.datetime(2026, 10, 20, 15, tzinfo=dt.UTC)
 
 
 def _game(game_id: int, status: str = "scheduled", start: dt.datetime | None = FETCHED) -> dict[str, object]:
-    return {"game_id": game_id, "away_team": "NY", "home_team": "BOS", "start_utc": start, "status": status}
+    return {"game_id": game_id, "away_team": "NY", "home_team": "BOS", "start_utc": start,
+            "status": status, "season": 2026, "game_date": DATE}
 
 
 def _line(player_id: int, name: str, market: str, line: float, odds_type: str = "standard") -> dict[str, object]:
@@ -106,7 +107,8 @@ def test_board_serializes_game_and_line_fields_in_camel_case() -> None:
     assert payload["previousDate"] is None and payload["nextDate"] is None
     assert payload["modelVersion"] == "nba-reference-v1"
     game = payload["games"][0]
-    assert game.keys() == {"gameId", "awayTeam", "homeTeam", "startUtc", "status", "lines", "lineOnlyLines", "injuryReport"}
+    assert game.keys() == {"gameId", "awayTeam", "homeTeam", "startUtc", "status", "lines", "lineOnlyLines",
+                           "injuryReport", "teamStats"}
     assert game["startUtc"] == "2026-10-20T15:00:00Z"
     assert {"playerId", "playerName", "fetchedAt", "gamesInSample", "pOver"} <= game["lines"][0].keys()
     assert {"playerId", "playerName", "fetchedAt", "recent"} <= game["lineOnlyLines"][0].keys()
@@ -115,6 +117,7 @@ def test_board_serializes_game_and_line_fields_in_camel_case() -> None:
 def _repository(monkeypatch: pytest.MonkeyPatch, **results: object) -> Mock:
     repository = Mock()
     monkeypatch.setattr(injury_repo, "get_game_snapshots", AsyncMock(return_value={}))
+    results.setdefault("get_team_box_games", [])
     for name, result in results.items():
         reader = AsyncMock(return_value=result)
         repository.attach_mock(reader, name)
@@ -141,8 +144,13 @@ def test_service_reads_date_lines_then_all_players_once(monkeypatch: pytest.Monk
         call.get_game_dates(db), call.get_games_on(db, DATE), call.get_date_modelled_lines(db, DATE),
         call.get_date_line_only_lines(db, DATE), call.get_prior_games(db, [1, 2, 3], DATE),
         call.get_recent_box_scores(db, [1, 2, 3], DATE),
+        call.get_team_box_games(db, 2026, DATE),
     ]
-    assert response == prop_board_response(DATE, PREVIOUS, NEXT, games, modelled, line_only, prior, recent)
+    expected = prop_board_response(DATE, PREVIOUS, NEXT, games, modelled, line_only, prior, recent)
+    assert [game.model_dump(exclude={"team_stats"}) for game in response.games] == [
+        game.model_dump(exclude={"team_stats"}) for game in expected.games
+    ]
+    assert all(game.team_stats is not None and game.team_stats.before_date == DATE for game in response.games)
 
 
 @pytest.mark.parametrize(("requested", "today", "resolved", "previous", "following", "has_games"), [
@@ -154,7 +162,7 @@ def test_service_resolves_navigation_and_skips_player_reads_without_lines(
     monkeypatch: pytest.MonkeyPatch, requested: dt.date | None, today: dt.date, resolved: dt.date,
     previous: dt.date | None, following: dt.date | None, has_games: bool,
 ) -> None:
-    games = [_game(10)] if has_games else []
+    games = [{**_game(10), "game_date": resolved}] if has_games else []
     repository = _repository(
         monkeypatch, get_game_dates=[PREVIOUS, DATE, NEXT], get_games_on=games,
         get_date_modelled_lines={}, get_date_line_only_lines={},
@@ -167,5 +175,6 @@ def test_service_resolves_navigation_and_skips_player_reads_without_lines(
     assert repository.mock_calls == [
         call.get_game_dates(db), call.get_games_on(db, resolved), call.get_date_modelled_lines(db, resolved),
         call.get_date_line_only_lines(db, resolved),
-    ]
-    assert response == prop_board_response(resolved, previous, following, games, {}, {}, {}, [])
+    ] + ([call.get_team_box_games(db, 2026, resolved)] if has_games else [])
+    assert response.date == resolved and response.previous_date == previous and response.next_date == following
+    assert all(game.lines == [] and game.line_only_lines == [] and game.team_stats is not None for game in response.games)

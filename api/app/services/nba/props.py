@@ -16,9 +16,10 @@ from app.core.nba_projection import project_line
 from app.core.nba_projection_backtest import NBA_PROJECTION_MODEL_VERSION, NbaHistoryRow
 from app.nba.markets import NbaPropMarket
 from app.repositories import nba as nba_repo
-from app.schemas.nba import NbaInjuryReportSchema, NbaPropLineSchema, NbaPropsResponse
+from app.schemas.nba import NbaInjuryReportSchema, NbaPropLineSchema, NbaPropsResponse, NbaTeamStatsContextSchema
 from app.services.nba.injuries import injury_index, load_injury_reports
 from app.services.nba.line_only_props import group_by_player, line_fields, ordered_lines, recent_values
+from app.services.nba.team_stats import load_team_stats, team_stats_schema
 
 
 async def build_props(
@@ -34,7 +35,8 @@ async def build_props(
     prior = await nba_repo.get_prior_games(db, player_ids, game_date) if player_ids else {}
     recent_rows = await nba_repo.get_recent_box_scores(db, player_ids, game_date) if player_ids else []
     reports = await load_injury_reports(db, [game], as_of)
-    return props_response(game_id, lines, prior, recent_rows, reports[game_id])
+    contexts = await load_team_stats(db, [game])
+    return props_response(game_id, lines, prior, recent_rows, reports[game_id], team_stats_schema(contexts[game_id]))
 
 
 def props_response(
@@ -43,6 +45,7 @@ def props_response(
     prior_by_player: Mapping[int, Sequence[NbaHistoryRow]],
     recent_rows: Sequence[Mapping[str, object]],
     report: NbaInjuryReportSchema | None = None,
+    team_stats: NbaTeamStatsContextSchema | None = None,
 ) -> NbaPropsResponse:
     report = report if report is not None else NbaInjuryReportSchema()
     injuries = injury_index(report)
@@ -57,4 +60,5 @@ def props_response(
         ))
     return NbaPropsResponse(
         game_id=game_id, model_version=NBA_PROJECTION_MODEL_VERSION, lines=served, injury_report=report,
+        team_stats=team_stats,
     )

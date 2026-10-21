@@ -44,8 +44,8 @@ export default function NbaPropBoardMarket({ group, modelVersion }: Props) {
       title={selected ? <Link to={`/nba/game/${selected.game.gameId}`}>{selected.game.awayTeam} @ {selected.game.homeTeam}</Link> : null}
       className="nfl-slate nba-prop-drawer" destroyOnHidden>
       {selected && (selected.kind === 'modelled'
-        ? <NbaPropEvidencePanel kind="modelled" market={group.market} row={selected.row} modelVersion={modelVersion} injuryReport={selected.game.injuryReport} startUtc={selected.game.startUtc} />
-        : <NbaPropEvidencePanel kind="line-only" market={group.market} row={selected.row} injuryReport={selected.game.injuryReport} startUtc={selected.game.startUtc} />)}
+        ? <NbaPropEvidencePanel kind="modelled" market={group.market} row={selected.row} modelVersion={modelVersion} injuryReport={selected.game.injuryReport} startUtc={selected.game.startUtc} teamStats={selected.game.teamStats} />
+        : <NbaPropEvidencePanel kind="line-only" market={group.market} row={selected.row} injuryReport={selected.game.injuryReport} startUtc={selected.game.startUtc} teamStats={selected.game.teamStats} />)}
     </Drawer>
   </>
 }

@@ -69,9 +69,9 @@ describe('injury grouping', () => {
   it('keeps injury/report context tied to each game without changing order', () => {
     const games = [
       { gameId: 7, awayTeam: 'NY', homeTeam: 'BOS', startUtc: TIP, status: 'scheduled',
-        lines: [line()], lineOnlyLines: [], injuryReport: REPORT },
+        lines: [line()], lineOnlyLines: [], injuryReport: REPORT, teamStats: null },
       { gameId: 8, awayTeam: 'NY', homeTeam: 'BOS', startUtc: TIP, status: 'scheduled',
-        lines: [line({ injury: null })], lineOnlyLines: [], injuryReport: UNAVAILABLE_NBA_INJURIES },
+        lines: [line({ injury: null })], lineOnlyLines: [], injuryReport: UNAVAILABLE_NBA_INJURIES, teamStats: null },
     ]
     const rows = nbaPropBoard(games).find(group => group.market === 'assists')!.rows
     expect(rows.map(row => row.game.gameId)).toEqual([7, 8])

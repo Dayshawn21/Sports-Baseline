@@ -1,0 +1,4283 @@
+{
+  "capturedAt": "2026-10-21T20:33:55.144552+00:00",
+  "historical": {
+    "gameId": 25794,
+    "season": 2024,
+    "week": 25,
+    "gameType": "REG",
+    "gameDate": "2025-04-13",
+    "startUtc": "2025-04-13T19:30:00Z",
+    "status": "completed",
+    "awayTeam": "DEN",
+    "homeTeam": "HOU",
+    "awayTeamName": "Denver Nuggets",
+    "homeTeamName": "Houston Rockets",
+    "awayScore": 126,
+    "homeScore": 111,
+    "awayRecord": {
+      "wins": 49,
+      "losses": 32
+    },
+    "homeRecord": {
+      "wins": 52,
+      "losses": 29
+    },
+    "propLineCount": 0,
+    "moneyline": null,
+    "spread": null,
+    "total": null,
+    "lineMovement": [],
+    "lineHistory": [],
+    "injuryReport": {
+      "source": "ESPN",
+      "fetchedAt": null,
+      "freshness": "unavailable",
+      "injuries": []
+    },
+    "teamStats": {
+      "season": 2024,
+      "beforeDate": "2025-04-13",
+      "basis": "stored_player_box_scores",
+      "away": {
+        "team": "DEN",
+        "completedGames": 81,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": 120.7,
+              "rank": 3,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 116.9,
+              "rank": 24,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": 45.7,
+              "rank": 3,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 42.4,
+              "rank": 5,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": 31.0,
+              "rank": 1,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 29.0,
+              "rank": 28,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": 12.0,
+              "rank": 28,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 14.1,
+              "rank": 20,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": 4.9,
+              "rank": 14,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 5.1,
+              "rank": 18,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          }
+        }
+      },
+      "home": {
+        "team": "HOU",
+        "completedGames": 81,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": 114.3,
+              "rank": 14,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 109.6,
+              "rank": 6,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": 48.5,
+              "rank": 1,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 42.1,
+              "rank": 3,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": 23.2,
+              "rank": 28,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 23.4,
+              "rank": 2,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": 12.7,
+              "rank": 20,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 12.3,
+              "rank": 2,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": 5.0,
+              "rank": 13,
+              "games": 81,
+              "rankedTeams": 30
+            },
+            "allowed": {
+              "perGame": 5.7,
+              "rank": 28,
+              "games": 81,
+              "rankedTeams": 30
+            }
+          }
+        }
+      }
+    }
+  },
+  "game": {
+    "gameId": 21318,
+    "season": 2026,
+    "week": 1,
+    "gameType": "REG",
+    "gameDate": "2026-10-20",
+    "startUtc": "2026-10-21T01:50:00Z",
+    "status": "completed",
+    "awayTeam": "OKC",
+    "homeTeam": "SA",
+    "awayTeamName": "Oklahoma City Thunder",
+    "homeTeamName": "San Antonio Spurs",
+    "awayScore": 116,
+    "homeScore": 104,
+    "awayRecord": {
+      "wins": 0,
+      "losses": 0
+    },
+    "homeRecord": {
+      "wins": 0,
+      "losses": 0
+    },
+    "propLineCount": 1163,
+    "moneyline": {
+      "book": "draftkings",
+      "homeOdds": -102,
+      "awayOdds": -118,
+      "homeWinProbability": 0.4826358742837298,
+      "fetchedAt": "2026-10-21T00:47:13.733073Z"
+    },
+    "spread": {
+      "book": "draftkings",
+      "homeLine": 1.5,
+      "homeOdds": -112,
+      "awayOdds": -108,
+      "fetchedAt": "2026-10-21T00:47:13.733073Z"
+    },
+    "total": {
+      "book": "draftkings",
+      "line": 229.5,
+      "overOdds": -115,
+      "underOdds": -105,
+      "fetchedAt": "2026-10-21T00:47:13.733073Z"
+    },
+    "lineMovement": [
+      {
+        "market": "spread",
+        "book": "draftkings",
+        "openLine": -1.5,
+        "currentLine": 1.5,
+        "openFetchedAt": "2026-10-06T14:34:47.527155Z",
+        "currentFetchedAt": "2026-10-21T00:47:13.733073Z"
+      },
+      {
+        "market": "total",
+        "book": "draftkings",
+        "openLine": 230.5,
+        "currentLine": 229.5,
+        "openFetchedAt": "2026-10-06T14:34:47.527155Z",
+        "currentFetchedAt": "2026-10-21T00:47:13.733073Z"
+      }
+    ],
+    "lineHistory": [
+      {
+        "market": "spread",
+        "book": "draftkings",
+        "steps": [
+          {
+            "fetchedAt": "2026-10-06T14:34:47.527155Z",
+            "line": -1.5
+          },
+          {
+            "fetchedAt": "2026-10-18T00:10:38.652484Z",
+            "line": -2.5
+          },
+          {
+            "fetchedAt": "2026-10-20T19:07:07.833441Z",
+            "line": 1.5
+          }
+        ]
+      },
+      {
+        "market": "total",
+        "book": "draftkings",
+        "steps": [
+          {
+            "fetchedAt": "2026-10-06T14:34:47.527155Z",
+            "line": 230.5
+          },
+          {
+            "fetchedAt": "2026-10-18T00:10:38.652484Z",
+            "line": 231.5
+          },
+          {
+            "fetchedAt": "2026-10-20T19:07:07.833441Z",
+            "line": 230.5
+          },
+          {
+            "fetchedAt": "2026-10-21T00:47:13.733073Z",
+            "line": 229.5
+          }
+        ]
+      }
+    ],
+    "injuryReport": {
+      "source": "ESPN",
+      "fetchedAt": null,
+      "freshness": "unavailable",
+      "injuries": []
+    },
+    "teamStats": {
+      "season": 2026,
+      "beforeDate": "2026-10-20",
+      "basis": "stored_player_box_scores",
+      "away": {
+        "team": "OKC",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      },
+      "home": {
+        "team": "SA",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "props": {
+    "gameId": 21318,
+    "modelVersion": "nba-reference-v1",
+    "lines": [
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "goblin",
+        "line": 6.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 6.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "goblin",
+        "line": 7.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 5.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "goblin",
+        "line": 8.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 4.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "goblin",
+        "line": 9.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 3.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "goblin",
+        "line": 10.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "standard",
+        "line": 11.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "demon",
+        "line": 12.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "demon",
+        "line": 13.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "demon",
+        "line": 14.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -1.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "demon",
+        "line": 19.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -6.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points",
+        "oddsType": "demon",
+        "line": 24.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 28.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 24.0
+          }
+        ],
+        "injury": null,
+        "projection": 12.9,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -11.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "goblin",
+        "line": 1.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "goblin",
+        "line": 2.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "standard",
+        "line": 3.0,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.1,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "demon",
+        "line": 3.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "demon",
+        "line": 4.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -1.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "demon",
+        "line": 5.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -2.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "demon",
+        "line": 6.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -3.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds",
+        "oddsType": "demon",
+        "line": 7.5,
+        "fetchedAt": "2026-10-20T20:03:37.235002Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 4.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -4.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "goblin",
+        "line": 1.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.45,
+        "pOver": 0.8239313135505292,
+        "pUnder": 0.17606868644947082,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "goblin",
+        "line": 2.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.45,
+        "pOver": 0.6702569589897702,
+        "pUnder": 0.3297430410102298,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "demon",
+        "line": 3.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.45,
+        "pOver": 0.5191651666473116,
+        "pUnder": 0.4808348333526884,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "demon",
+        "line": 4.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.55,
+        "pOver": 0.3732291107673855,
+        "pUnder": 0.6267708892326145,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "demon",
+        "line": 5.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -1.55,
+        "pOver": 0.2539511882866313,
+        "pUnder": 0.7460488117133687,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "assists",
+        "oddsType": "demon",
+        "line": 6.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 5.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 4.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 10.0
+          }
+        ],
+        "injury": null,
+        "projection": 3.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -2.55,
+        "pOver": 0.17197612306081667,
+        "pUnder": 0.8280238769391833,
+        "overProbabilityVersion": "nba-pover-v1",
+        "flags": []
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "threes_made",
+        "oddsType": "goblin",
+        "line": 0.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 2.0
+          }
+        ],
+        "injury": null,
+        "projection": 1.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.6,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "threes_made",
+        "oddsType": "demon",
+        "line": 1.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 2.0
+          }
+        ],
+        "injury": null,
+        "projection": 1.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "threes_made",
+        "oddsType": "demon",
+        "line": 2.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 2.0
+          }
+        ],
+        "injury": null,
+        "projection": 1.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -1.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "threes_made",
+        "oddsType": "demon",
+        "line": 3.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 2.0
+          }
+        ],
+        "injury": null,
+        "projection": 1.1,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -2.4,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "blocks",
+        "oddsType": "demon",
+        "line": 0.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 0.0
+          }
+        ],
+        "injury": null,
+        "projection": 0.25,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.25,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "blocks",
+        "oddsType": "demon",
+        "line": 1.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 1.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 0.0
+          }
+        ],
+        "injury": null,
+        "projection": 0.25,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -1.25,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "goblin",
+        "line": 11.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 8.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "goblin",
+        "line": 14.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 5.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "goblin",
+        "line": 15.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 4.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "goblin",
+        "line": 16.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 3.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "standard",
+        "line": 17.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "goblin",
+        "line": 17.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "demon",
+        "line": 18.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "demon",
+        "line": 19.5,
+        "fetchedAt": "2026-10-20T20:03:37.235002Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "demon",
+        "line": 24.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -4.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "demon",
+        "line": 29.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -9.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds_assists",
+        "oddsType": "demon",
+        "line": 31.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 13.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 35.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 38.0
+          }
+        ],
+        "injury": null,
+        "projection": 19.95,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -11.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "goblin",
+        "line": 8.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 7.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "goblin",
+        "line": 9.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 6.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "goblin",
+        "line": 11.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 4.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "goblin",
+        "line": 13.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "standard",
+        "line": 14.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "demon",
+        "line": 15.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "standard",
+        "line": 15.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "demon",
+        "line": 16.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "demon",
+        "line": 19.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -3.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_rebounds",
+        "oddsType": "demon",
+        "line": 28.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 10.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 8.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 31.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 28.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.0,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -12.5,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 8.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 8.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 9.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 7.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 11.5,
+        "fetchedAt": "2026-10-19T21:11:15.041565Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 5.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 11.5,
+        "fetchedAt": "2026-10-20T20:03:37.235002Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 5.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 12.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 4.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "goblin",
+        "line": 13.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 3.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "standard",
+        "line": 14.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "demon",
+        "line": 15.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "demon",
+        "line": 16.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.35,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "demon",
+        "line": 19.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -2.65,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "demon",
+        "line": 27.5,
+        "fetchedAt": "2026-10-20T20:03:37.235002Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -10.65,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "points_assists",
+        "oddsType": "demon",
+        "line": 27.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 3.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 12.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 32.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 34.0
+          }
+        ],
+        "injury": null,
+        "projection": 16.85,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -10.65,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "goblin",
+        "line": 3.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 3.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "goblin",
+        "line": 4.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 2.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "goblin",
+        "line": 5.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "standard",
+        "line": 6.0,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 1.05,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "demon",
+        "line": 6.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": 0.55,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "demon",
+        "line": 7.5,
+        "fetchedAt": "2026-10-20T01:06:29.881222Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -0.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "demon",
+        "line": 9.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -2.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      },
+      {
+        "playerId": 322630,
+        "playerName": "Ajay Mitchell",
+        "position": "G",
+        "team": "OKC",
+        "market": "rebounds_assists",
+        "oddsType": "demon",
+        "line": 12.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 6.0
+          },
+          {
+            "gameDate": "2026-05-20",
+            "opponent": "SA",
+            "value": 2.0
+          },
+          {
+            "gameDate": "2026-05-18",
+            "opponent": "SA",
+            "value": 9.0
+          },
+          {
+            "gameDate": "2026-05-11",
+            "opponent": "LAL",
+            "value": 7.0
+          },
+          {
+            "gameDate": "2026-05-09",
+            "opponent": "LAL",
+            "value": 14.0
+          }
+        ],
+        "injury": null,
+        "projection": 7.05,
+        "gamesInSample": 20,
+        "priorMinutes": 29.5,
+        "gap": -5.45,
+        "pOver": null,
+        "pUnder": null,
+        "overProbabilityVersion": null,
+        "flags": [
+          "no_over_probability"
+        ]
+      }
+    ],
+    "injuryReport": {
+      "source": "ESPN",
+      "fetchedAt": null,
+      "freshness": "unavailable",
+      "injuries": []
+    },
+    "teamStats": {
+      "season": 2026,
+      "beforeDate": "2026-10-20",
+      "basis": "stored_player_box_scores",
+      "away": {
+        "team": "OKC",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      },
+      "home": {
+        "team": "SA",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "plain": {
+    "gameId": 21318,
+    "lines": [
+      {
+        "playerId": 322608,
+        "playerName": "Alex Caruso",
+        "position": "G",
+        "team": "OKC",
+        "market": "double_double",
+        "oddsType": "demon",
+        "line": 0.5,
+        "fetchedAt": "2026-10-21T00:38:41.682084Z",
+        "recent": [
+          {
+            "gameDate": "2026-05-30",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-28",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-26",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-24",
+            "opponent": "SA",
+            "value": 0.0
+          },
+          {
+            "gameDate": "2026-05-22",
+            "opponent": "SA",
+            "value": 0.0
+          }
+        ],
+        "injury": null
+      }
+    ],
+    "injuryReport": {
+      "source": "ESPN",
+      "fetchedAt": null,
+      "freshness": "unavailable",
+      "injuries": []
+    },
+    "teamStats": {
+      "season": 2026,
+      "beforeDate": "2026-10-20",
+      "basis": "stored_player_box_scores",
+      "away": {
+        "team": "OKC",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      },
+      "home": {
+        "team": "SA",
+        "completedGames": 0,
+        "stats": {
+          "points": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "rebounds": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "assists": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "threes_made": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          },
+          "blocks": {
+            "for": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            },
+            "allowed": {
+              "perGame": null,
+              "rank": null,
+              "games": 0,
+              "rankedTeams": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "sampledPlayersOnly": true
+}

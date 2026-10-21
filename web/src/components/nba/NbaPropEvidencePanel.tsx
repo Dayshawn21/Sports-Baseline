@@ -1,6 +1,7 @@
 import type { NbaLineOnlyRow } from '~/utils/nbaLineOnly'
-import type { NbaInjuryReport } from '~/types/nba'
+import type { NbaInjuryReport, NbaTeamStatsContext } from '~/types/nba'
 import { NbaInjuryEvidence } from '~/components/nba/NbaInjury'
+import { NbaOpponentEvidence } from '~/components/nba/NbaOpponentEvidence'
 import { nbaMarketLabel, nbaRecentValueLabel } from '~/utils/nbaLineOnly'
 import { nbaPropFlagText, signedGap, type NbaPropCard } from '~/utils/nbaProps'
 
@@ -37,6 +38,7 @@ function Recent({ market, recent }: { market: string, recent: NbaLineOnlyRow['re
 interface InjuryContext {
   injuryReport: NbaInjuryReport
   startUtc: string | null
+  teamStats: NbaTeamStatsContext | null
 }
 
 interface ModelledProps extends InjuryContext {
@@ -54,7 +56,7 @@ interface LineOnlyProps extends InjuryContext {
 
 type Props = ModelledProps | LineOnlyProps
 
-function Modelled({ row, market, modelVersion, injuryReport, startUtc }: Omit<ModelledProps, 'kind'>) {
+function Modelled({ row, market, modelVersion, injuryReport, startUtc, teamStats }: Omit<ModelledProps, 'kind'>) {
   return <>
     <Header playerName={row.playerName} position={row.position} team={row.team} market={market} />
     <p className="nba-prop-evidence__caveat">Reference projection only. No pick, rank, or signal.</p>
@@ -65,6 +67,7 @@ function Modelled({ row, market, modelVersion, injuryReport, startUtc }: Omit<Mo
       <div><dt>Gap</dt><dd>{row.projectionRow?.gap ?? '--'}</dd></div>
       <div><dt>P(over)</dt><dd>{row.projectionRow?.pOver ?? '--'}</dd></div>
     </dl>
+    <NbaOpponentEvidence context={teamStats} team={row.team} market={market} />
     <section className="nba-prop-evidence__section">
       <h4>PrizePicks rungs</h4>
       <div className="nba-prop-evidence__rungs is-modelled">
@@ -87,11 +90,12 @@ function Modelled({ row, market, modelVersion, injuryReport, startUtc }: Omit<Mo
   </>
 }
 
-function LineOnly({ row, market, injuryReport, startUtc }: Omit<LineOnlyProps, 'kind'>) {
+function LineOnly({ row, market, injuryReport, startUtc, teamStats }: Omit<LineOnlyProps, 'kind'>) {
   return <>
     <Header playerName={row.playerName} position={row.position} team={row.team} market={market} />
     <p className="nba-prop-evidence__caveat">Recent results only. This market is not modelled.</p>
     <NbaInjuryEvidence injury={row.injury} report={injuryReport} startUtc={startUtc} now={new Date()} />
+    <NbaOpponentEvidence context={teamStats} team={row.team} market={market} />
     <section className="nba-prop-evidence__section">
       <h4>PrizePicks rungs</h4>
       <div className="nba-prop-evidence__rungs">
@@ -108,7 +112,7 @@ function LineOnly({ row, market, injuryReport, startUtc }: Omit<LineOnlyProps, '
 export default function NbaPropEvidencePanel(props: Props) {
   return <div className="nba-prop-evidence">
     {props.kind === 'modelled'
-      ? <Modelled row={props.row} market={props.market} modelVersion={props.modelVersion} injuryReport={props.injuryReport} startUtc={props.startUtc} />
-      : <LineOnly row={props.row} market={props.market} injuryReport={props.injuryReport} startUtc={props.startUtc} />}
+      ? <Modelled row={props.row} market={props.market} modelVersion={props.modelVersion} injuryReport={props.injuryReport} startUtc={props.startUtc} teamStats={props.teamStats} />
+      : <LineOnly row={props.row} market={props.market} injuryReport={props.injuryReport} startUtc={props.startUtc} teamStats={props.teamStats} />}
   </div>
 }

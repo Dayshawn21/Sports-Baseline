@@ -1,0 +1,27 @@
+{
+  "historicalSeason": 2024,
+  "beforeDate": "2025-04-13",
+  "historicalGameId": 25794,
+  "groupedGames": 1216,
+  "groupedSides": 4541,
+  "queryPlanMs": {
+    "planning": 2.156,
+    "execution": 38.285
+  },
+  "queryPlanRoot": "Sort",
+  "queryPlanRows": 4541,
+  "groupedReadAndMathSeconds": 0.384,
+  "pythonTracedPeakMiB": 4.27,
+  "sampleHomeTeam": "HOU",
+  "sampleCompletedGames": 81,
+  "samplePointsGames": 81,
+  "currentGameId": 21318,
+  "currentDate": "2026-10-20",
+  "currentModelledLines": 1150,
+  "currentLineOnlyLines": 13,
+  "boardGames": 3,
+  "boardJsonBytes": 1868118,
+  "fourAssembliesSeconds": 1.639,
+  "parity": true,
+  "readOnly": true
+}
