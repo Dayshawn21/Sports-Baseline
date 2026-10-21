@@ -12,6 +12,7 @@ import datetime as dt
 import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
+from typing import cast
 
 from sqlalchemy import RowMapping, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -389,27 +390,51 @@ NBA_MODELLED_MARKET_FILTER = "l.market IN ({})".format(", ".join(f"'{market.valu
 
 async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict[str, object]]:
     """Each linked full-game line-only prop on one served game, at its last snapshot before tip-off."""
-    return await _game_prop_lines(db, game_id, _LINE_ONLY_MARKET_FILTER)
+    rows = await _game_prop_lines(db, "l.game_id = :game_id", {"game_id": game_id}, _LINE_ONLY_MARKET_FILTER)
+    return [{key: value for key, value in row.items() if key != "game_id"} for row in rows]
 
 
 async def get_modelled_lines(db: AsyncSession, game_id: int) -> list[dict[str, object]]:
     """Each linked full-game modelled prop on one served game, at its last snapshot before tip-off (20g2)."""
-    return await _game_prop_lines(db, game_id, NBA_MODELLED_MARKET_FILTER)
+    rows = await _game_prop_lines(db, "l.game_id = :game_id", {"game_id": game_id}, NBA_MODELLED_MARKET_FILTER)
+    return [{key: value for key, value in row.items() if key != "game_id"} for row in rows]
 
 
-async def _game_prop_lines(db: AsyncSession, game_id: int, market_filter: str) -> list[dict[str, object]]:
+async def get_date_modelled_lines(db: AsyncSession, game_date: dt.date) -> dict[int, list[dict[str, object]]]:
+    """The date's modelled lines, grouped by served game."""
+    rows = await _game_prop_lines(db, "g.game_date = :game_date", {"game_date": game_date}, NBA_MODELLED_MARKET_FILTER)
+    return _group_game_prop_lines(rows)
+
+
+async def get_date_line_only_lines(db: AsyncSession, game_date: dt.date) -> dict[int, list[dict[str, object]]]:
+    """The date's line-only props, grouped by served game."""
+    rows = await _game_prop_lines(db, "g.game_date = :game_date", {"game_date": game_date}, _LINE_ONLY_MARKET_FILTER)
+    return _group_game_prop_lines(rows)
+
+
+def _group_game_prop_lines(rows: list[dict[str, object]]) -> dict[int, list[dict[str, object]]]:
+    grouped: dict[int, list[dict[str, object]]] = {}
+    for row in rows:
+        game_id = cast(int, row.pop("game_id"))
+        grouped.setdefault(game_id, []).append(row)
+    return grouped
+
+
+async def _game_prop_lines(
+    db: AsyncSession, condition: str, params: dict[str, object], market_filter: str,
+) -> list[dict[str, object]]:
     rows = await db.execute(text(f"""
         SELECT DISTINCT ON (l.provider, l.provider_prop_id)
                l.player_id, p.name, p.position, l.raw_json ->> 'player_team', l.market, l.odds_type,
-               l.line, l.fetched_at
+               l.line, l.fetched_at, l.game_id
         FROM sport_prop_lines l
         JOIN sport_games g ON g.sport = 'nba' AND g.id = l.game_id
         JOIN sport_players p ON p.sport = 'nba' AND p.id = l.player_id
-        WHERE l.sport = 'nba' AND l.game_id = :game_id AND l.segment = 'full_game' AND {_SERVED_GAME_TYPES}
+        WHERE l.sport = 'nba' AND {condition} AND l.segment = 'full_game' AND {_SERVED_GAME_TYPES}
           AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc) AND {market_filter}
         ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
-    """), {"game_id": game_id})
-    keys = ("player_id", "player_name", "position", "team", "market", "odds_type", "line", "fetched_at")
+    """), params)
+    keys = ("player_id", "player_name", "position", "team", "market", "odds_type", "line", "fetched_at", "game_id")
     return [{**dict(zip(keys, row)), "line": float(row[6])} for row in rows.fetchall()]
 
 

@@ -142,6 +142,24 @@ class NbaPropsResponse(_CamelModel):
     lines: list[NbaPropLineSchema]
 
 
+class NbaPropBoardGameSchema(_CamelModel):
+    game_id: int
+    away_team: str
+    home_team: str
+    start_utc: dt.datetime | None
+    status: str
+    lines: list[NbaPropLineSchema]
+    line_only_lines: list[NbaLineOnlyLineSchema]
+
+
+class NbaPropBoardResponse(_CamelModel):
+    date: dt.date
+    previous_date: dt.date | None
+    next_date: dt.date | None
+    model_version: str
+    games: list[NbaPropBoardGameSchema]
+
+
 class NbaSlateResponse(_CamelModel):
     date: dt.date
     previous_date: dt.date | None

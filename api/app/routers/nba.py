@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.pool import get_db
 from app.schemas.nba import (
     NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
-    NbaSlateResponse,
+    NbaPropBoardResponse, NbaSlateResponse,
 )
 from app.services.nba import track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
+from app.services.nba.prop_board import build_prop_board
 from app.services.nba.props import build_props
 from app.services.nba.slate import build_slate
 from app.services.nba.slate_gaps import build_slate_gaps
@@ -32,6 +33,11 @@ async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_
 @router.get("/slate/gaps", response_model=NbaSlateGapsResponse)
 async def get_slate_gaps(date: dt.date, db: AsyncSession = Depends(get_db)) -> NbaSlateGapsResponse:
     return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC))
+
+
+@router.get("/props", response_model=NbaPropBoardResponse)
+async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NbaPropBoardResponse:
+    return await build_prop_board(db, date, dt.datetime.now(EASTERN).date())
 
 
 @router.get("/games/{game_id}", response_model=NbaGameDetailResponse)

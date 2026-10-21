@@ -21,8 +21,9 @@
 > table-first slates, tennis/NFL prop boards and NBA game-page prop rows,
 > command search, shared detail headings, CT labels and loaded detail tab
 > titles are implemented. The palette, fonts, and signal rules stay unchanged.
-> NBA has Slate and Model tabs; a separate NBA Props board is not yet a
-> build-plan item. Next for NFL props: a Rec Targets projection (item 39),
+> NBA has Slate and Model tabs; an NBA prop board (item 42, added
+> 2026-10-21) is planned as its Props view, followed by display-only NBA
+> injuries and team stats (42c, 42d). Next for NFL props: a Rec Targets projection (item 39),
 > graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
 > P(over) failed the one 2025 check and stays hidden (39b), and reference
 > serving, freezing and separate-version reporting are complete (39c-39d).
@@ -31,26 +32,28 @@
 > the conditional serving change (40b) was dropped. TennisMyLife box-score
 > ingest (41a) is implemented and verified locally, with 22,789 player-match
 > rows backfilled into the shared database. Match and player displays fill
-> TennisAbstract gaps; grading and model inputs are unchanged. Workflow runner
-> verification and deployment remain pending. Next: an in-house ELO checked
-> before it serves (41b, 41c).
+> TennisAbstract gaps; grading and model inputs are unchanged. The in-house
+> ELO shadow comparison (41b) is engineered and activated locally, its
+> forward verdict accruing from 2026-10-22 with zero observations; serving
+> it (41c) stays conditional. Workflow runner verification and deployment
+> remain pending for both. Next: the NBA prop board (item 42).
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-20 from both planning docs for 41a's completion.
+**Regenerated:** 2026-10-21 from both planning docs, for 41b's completion
+and the approved addition of item 42 (NBA prop board).
 The build plan is the progress authority where older
 project-plan prose disagrees; completed-work archives qualify implementation
-outcomes and preserve existing constraints. There are 115 checked leaf items
-out of 123, including the explicitly dropped 40b; eight remain unchecked. No
-feature or fix is active. Item 39 is complete, 40a retained the pooled blend,
-and the F-08 trainer repair is complete. Local `master` is at `17caa8f`
-(remote sync not checked by this refresh). 41a's code is on its feature branch,
-awaiting merge approval; its post-push runner check is recorded in its archive.
-In-house tennis ELO (41b) is the next available feature, ahead of WNBA (21);
-earlier unchecked leaves are parked or conditional. This refresh makes no new
-validation claim and does not verify the latest hosted deployment.
+outcomes and preserve existing constraints. There are 116 checked leaf items
+out of 127, including the explicitly dropped 40b; eleven remain unchecked.
+42a (NBA prop board API) is specced in `current-feature.md`, not started. Local `master` is at `2e12f73` with 41a and 41b
+merged (remote sync not checked by this refresh); both post-push runner
+checks are recorded in their archives. The NBA prop board (42a-42d) is the
+next available work, ahead of WNBA (21); earlier unchecked leaves are parked or
+conditional. This refresh makes no new validation claim and does not verify
+the latest hosted deployment.
 
 ## Problem
 
@@ -116,7 +119,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 16 | Props coverage expansion | 16f parked |
 | 26 | Tennis model validation | Complete |
 | 40 | WTA 125 blend group | Complete: keep pooled; 40b dropped |
-| 41 | TennisMyLife match data | 41a locally complete; 41b next; 41c conditional |
+| 41 | TennisMyLife match data | 41a, 41b locally complete; 41c conditional |
 | 17 | Multi-sport foundation | Complete |
 | 18 | NFL data sourcing | Complete |
 | 19 | NFL support | Complete |
@@ -135,29 +138,32 @@ Checked items record completed work, including explicitly retired surfaces.
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
+| 42 | NBA prop board | 42a next; 42b-42d planned |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-Nine leaf items remain, with these gates:
+Eleven leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
 | 16f | Tennis set-handicap projection | Parked until regular, correctly identified provider lines exist |
-| 41b | In-house tennis ELO | Next available; read-only comparison under a rule pre-registered before any 2026 forward case is scored |
-| 41c | Serve in-house ELO | Conditional on 41b passing; dropped if it fails |
+| 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for the specific 27j slice; no verdict read here |
+| 42a | NBA prop board API | Specced; display only, no validation gate |
+| 42b | NBA prop board page | After 42a; reads its response |
+| 42c | NBA injuries | ESPN keyless snapshot feed, new table and schedule; display only, never a model input (no history to backtest) |
+| 42d | NBA team stats | From stored box scores, no new source; display only, never a model input |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Use `/feature 41b` for the next available feature. Rec Targets reporting now
+Use `/feature 42` for the next available feature. Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
-An NBA Props board would be a reviewed addition, not an existing unchecked item.
 
 ### Detailed feature context
 
@@ -1104,7 +1110,7 @@ same "backtest before adoption" rule as items 19j to 19n, 24 and 25.
   `api/data/valuebetennis/`. The recorded result and rule live in
   `blueprint/history/features/40a-wta125-blend-backtest.md`.
 
-**TennisMyLife match data (item 41: 41a locally complete, ELO planned)**
+**TennisMyLife match data (item 41: 41a and 41b locally complete, 41c conditional)**
 
 TennisMyLife (`stats.tennismylife.org`) publishes free match CSVs, MIT
 licensed and updated daily, in the Sackmann column shape: tournament, date,
@@ -1115,7 +1121,7 @@ games, and break points saved and faced. Files cover ATP (per year plus
 WTA 125, ITF or odds data, and the site flags its WTA files as less reliable.
 
 41a. **Box-score ingest, locally complete** - seven yearly/ongoing CSV files for ATP, Challenger, ATP qualifying and WTA, one batched name index and idempotent upserts under source `tennismylife`. Match recent form, player match logs and player past-prop displays opt in; TennisAbstract stats take precedence. Grading readers remain TennisAbstract-only by default; no projection, rolling-stat or model change. The configured 11:00 UTC daily job and manual dispatch await post-push runner verification.
-41b. **In-house ELO** - overall and surface ELO computed from TennisMyLife history by 26c's method, stored beside TennisAbstract's under its own source, and compared read-only under a rule pre-registered before any 2026 forward case is scored; no serving change.
+41b. **In-house ELO, locally complete (2026-10-21)** - overall and surface ELO replayed from TennisMyLife results (2021 onward, full opponent network) with 26c's constants, stored as source `tennismylife-elo-v1` in a separate `tennis_elo_snapshots` table (`0046`), never in `player_elo`; immutable pre-match comparison pairs in `tennis_elo_comparisons` (`0047`). A non-inferiority rule (log-loss margin 0.005) was pre-registered before any forward case. Shadow activated 2026-10-21; first eligible UTC day 2026-10-22; all report groups accruing with zero observations. No serving change. The first real freeze and GitHub runner acceptance are post-completion checks in the archive (`blueprint/history/features/41b-tennis-inhouse-elo.md`). Commands are in `AGENTS.md` (`app.ingest.tennis_elo`, `app.ingest.tennis_elo_comparison`, `app.backtest.tennis_elo`).
 41c. **Serve in-house ELO** - conditional on 41b passing: the ensemble reads the in-house ELO under a new model version, and the local `Lineform ingest_daily` ELO step is retired; dropped if 41b fails.
 
 - **41a completion evidence (2026-10-20):** the owner-approved 2026 backfill
@@ -1374,7 +1380,14 @@ stack.** Item 22 is split from 23 because draws are the one genuinely hard chang
 
 ## Data model
 
-PostgreSQL via Alembic, sequentially numbered, **currently at revision `0045`**
+> **Planned (42a-42d, no schema yet):** `GET /nba/props?date=`
+> (`NbaPropBoardResponse`: date, adjacent dates, model version, games in tip
+> order each with the game page's own `lines` and `lineOnlyLines`) is fixed by
+> the 42a spec. 42c adds a new NBA injury snapshot table (ESPN athlete and team
+> ids, status, detail, fetch time); its columns are fixed by 42c's spec. 42d
+> reads only `nba_player_game_stats` and `sport_games`.
+
+PostgreSQL via Alembic, sequentially numbered, **currently at revision `0047`**
 (the plan still says `0019`; see Open questions). All primary keys are
 `BigInteger` autoincrement. Timestamps are `TIMESTAMPTZ`.
 
@@ -1719,9 +1732,9 @@ outcomes are driven more by volume.
 
 | Sport | Schedule | Stats / ratings | Odds | Props |
 |---|---|---|---|---|
-| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps; 41a locally complete, shared DB backfilled; ELO still planned) | Odds-API.io | PrizePicks, DraftKings |
+| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
-| NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display) | The Odds API (free plan, game lines only) | PrizePicks |
+| NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display; ingest planned in 42c) | The Odds API (free plan, game lines only) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
 
 **Backtest-only source:** 26c reads Valuebetennis season CSVs (ATP and WTA
@@ -1815,6 +1828,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 - `/nba` - NBA slate (38c2): one Eastern date (`?date=YYYY-MM-DD`, default today else the next game date), a summary strip, gray reference digest and one table row per game, each linking to the game page
 - `/nba/game/:gameId` - NBA game page (20e3, 38d3, 38f), with the shared page head, gray modelled and line-only prop rows and evidence drawers; reference projection, gap and P(over) for assists remain unchanged
 - `/nba/model` - NBA model track record page (20g4): the forward ranking check's four slices, gray until decided
+- `/nba/board` - *planned (item 42):* NBA prop board, one Eastern date and one market, gray rows ordered by tip time then player, never sorted by gap or P(over); injury tags (42c) and the opponent's allowed rank for the market (42d) as display context
 - The shared shell's view tabs read Slate / Props / Model for tennis and NFL, and Slate / Model for NBA (`web/src/utils/sportNav.ts`)
 - `/parlays` - Bankroll builder. Hidden from the nav since 2026-09-25; the route and API remain.
 - `/how-it-works` - public explainer (37b): pipeline, what each sport shows, how a model earns a pick
@@ -1835,7 +1849,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 | `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `players/stats`, `players/compare`, `bankroll/today`, `parlays/suggested` |
 | `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk`, `bet` (Bet365 props) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
-| `/nba` | `slate?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
+| `/nba` | `slate?date=`, `slate/gaps?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
 | `/admin` | `session`, `players/flagged`, `players/{id}/fetch-stats`, `players/{id}/fetch-elo`, `players/{id}/set-elo` (all need `X-API-Key` when a key is set) |
 | root | `/health` |
 
@@ -2164,9 +2178,8 @@ the request path the same way.
     question 35 found for item 33's NFL pages). Add them if they are a lasting
     part of the NBA experience. The open in-play odds
     question (whether `nba_odds` stores rows after tip-off) is checkable once
-    games start on 2026-10-20. The 20g split (2026-10-06) also left no
-    build-plan item for an NBA prop board (`/nba/board`, the Props view 20e2's
-    registry change anticipated); add one if it is wanted now that 20g4 is complete.
+    games start on 2026-10-20. The NBA prop board the 20g split left out is
+    now build-plan item 42 (added 2026-10-21).
 
 44. **Resolved (2026-10-07):** the two gaps had separate causes.
     - **NFL:** the 2026-10-06 `nfl-ingest.yml` run failed at its first step
@@ -2212,10 +2225,9 @@ the request path the same way.
     now agrees with the build plan. Implementation completion is separate
     from verifying the latest Render deployment.
 
-51. **Remaining planning gaps, refreshed 2026-10-19:** the NBA Props board proposed in
-    conversation is not yet an approved build-plan item (see question 43).
-    Add it through `/feature`'s plan-addition review before building it.
-    WNBA/soccer schedule and stats providers are intentionally undecided.
+51. **Remaining planning gaps, refreshed 2026-10-21:** the NBA prop board
+    is now approved as item 42; `project-plan.md` §3 does not name it, as
+    question 43 found for the other NBA pages. WNBA/soccer schedule and stats providers are intentionally undecided.
     Project-plan §2 still calls the demo planned while §8 and item 37 say
     it is live; §4 says model files are ignored while §8 says they are tracked.
     These prose gaps do not change the next feature's build order.
@@ -2250,5 +2262,6 @@ the request path the same way.
 57. **Item 41's deployment boundary remains explicit.** The project plan now
     records the implemented second box-score source. 41a's local code and
     shared-database backfill are verified; the new GitHub job has not run on a
-    runner and deployment of this code has not been checked. 41b/41c remain
-    planned; no ELO serving change follows from the data-source addition.
+    runner and deployment of this code has not been checked. 41b is
+    engineered and in shadow with the same runner/deployment boundary; 41c
+    remains conditional, and no ELO serving change follows from either.

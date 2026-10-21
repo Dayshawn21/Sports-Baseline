@@ -1,7 +1,9 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from typing import cast
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
@@ -11,6 +13,7 @@ from app.core.nba_prop_predictions import NbaFreezeLine
 from app.core.prop_ranking_check import FrozenLine
 from app.repositories.nba import (
     NBA_MODELLED_MARKET_FILTER, get_current_week, get_finished_weeks, get_frozen_coverage, get_frozen_gradeable_lines,
+    get_date_line_only_lines, get_date_modelled_lines,
     get_line_only_lines, get_modelled_lines, get_prior_games, get_projection_history, get_week_modelled_lines,
 )
 
@@ -102,6 +105,63 @@ def test_line_only_lines_read_double_double_only() -> None:
 
     assert "l.market IN ('double_double')" in session.statement
     assert NBA_MODELLED_MARKET_FILTER not in session.statement
+
+
+DateLineReader = Callable[[AsyncSession, date], Awaitable[dict[int, list[dict[str, object]]]]]
+GameLineReader = Callable[[AsyncSession, int], Awaitable[list[dict[str, object]]]]
+
+
+def _prop_row(game_id: int = 11, player_id: int = 7) -> dict[str, object]:
+    return {
+        "player_id": player_id, "player_name": "Test Player", "position": "G", "team": "BOS",
+        "market": "assists", "odds_type": "standard", "line": "4.5",
+        "fetched_at": datetime(2026, 10, 20, 16, 30, tzinfo=UTC), "game_id": game_id,
+    }
+
+
+@pytest.mark.parametrize(("reader", "market_filter"), [
+    (get_date_modelled_lines, NBA_MODELLED_MARKET_FILTER),
+    (get_date_line_only_lines, "l.market IN ('double_double')"),
+])
+def test_date_lines_bind_date_and_keep_serving_filters(reader: DateLineReader, market_filter: str) -> None:
+    session = _RecordingSession([])
+
+    assert asyncio.run(reader(cast(AsyncSession, session), date(2026, 10, 20))) == {}
+
+    assert session.params == {"game_date": date(2026, 10, 20)}
+    assert "g.game_date = :game_date" in session.statement
+    assert ":game_id" not in session.statement
+    for alias in ("l", "g", "p"):
+        assert f"{alias}.sport = 'nba'" in session.statement
+    assert "l.segment = 'full_game'" in session.statement
+    assert "g.game_type IN ('REG', 'PIN', 'PST')" in session.statement
+    assert "(g.start_utc IS NULL OR l.fetched_at < g.start_utc)" in session.statement
+    assert market_filter in session.statement
+    assert "DISTINCT ON (l.provider, l.provider_prop_id)" in session.statement
+    assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in session.statement
+
+
+@pytest.mark.parametrize("reader", [get_date_modelled_lines, get_date_line_only_lines])
+def test_date_lines_group_games_preserve_line_order_and_strip_game_id(reader: DateLineReader) -> None:
+    rows = [_prop_row(), _prop_row(game_id=12, player_id=8), _prop_row(player_id=9)]
+    session = _RecordingSession(rows)
+
+    grouped = asyncio.run(reader(cast(AsyncSession, session), date(2026, 10, 20)))
+
+    assert grouped == {
+        11: [{key: 4.5 if key == "line" else value for key, value in row.items() if key != "game_id"}
+             for row in (rows[0], rows[2])],
+        12: [{key: 4.5 if key == "line" else value for key, value in rows[1].items() if key != "game_id"}],
+    }
+
+
+@pytest.mark.parametrize("reader", [get_modelled_lines, get_line_only_lines])
+def test_game_lines_keep_their_original_keys_and_numeric_line(reader: GameLineReader) -> None:
+    row = _prop_row()
+
+    lines = asyncio.run(reader(cast(AsyncSession, _RecordingSession([row])), 11))
+
+    assert lines == [{key: 4.5 if key == "line" else value for key, value in row.items() if key != "game_id"}]
 
 
 def test_prior_games_read_the_last_twenty_played_games_of_any_season() -> None:
