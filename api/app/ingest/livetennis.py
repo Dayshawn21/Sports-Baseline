@@ -88,6 +88,36 @@ class TierBlocked(Exception):
     """Raised when the API returns 403 upgrade_required for the current plan."""
 
 
+class DailyQuotaExhausted(Exception):
+    """The provider explicitly reports a spent daily allowance."""
+
+
+class LiveTennisClient(httpx.AsyncClient):
+    """Remember daily exhaustion across pairings, pages, and windows in one run."""
+
+    daily_quota_detail: str | None = None
+
+
+def _daily_quota_detail(response: httpx.Response) -> str | None:
+    if response.status_code != 429:
+        return None
+    try:
+        payload: object = response.json()
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    detail = payload.get("detail")
+    if not isinstance(detail, str):
+        return None
+    message = detail.lower()
+    if "daily request allowance" in message and (
+        "spent" in message or "exhausted" in message
+    ):
+        return detail
+    return None
+
+
 class FatalStatus(Exception):
     """A 4xx that will not change on retry (bad request, ambiguous name, auth)."""
 
@@ -116,7 +146,7 @@ def _log_tier_hint(status_code: int, path: str, body: str) -> None:
         )
     elif status_code == 429:
         logger.warning(
-            "%s: HTTP 429 — rate limited (free = 30/min, 100/day). "
+            "%s: HTTP 429 — rate limited. "
             "Check GET /usage, which is quota-exempt. %s", path, snippet
         )
     else:
@@ -124,11 +154,20 @@ def _log_tier_hint(status_code: int, path: str, body: str) -> None:
 
 
 async def _get(client: httpx.AsyncClient, path: str, params: Optional[dict] = None) -> Any:
-    """GET with linear backoff on 429. Raises TierBlocked on 403."""
+    """Retry temporary limits; stop paid requests after explicit daily exhaustion."""
+    if isinstance(client, LiveTennisClient) and client.daily_quota_detail and path != "/usage":
+        raise DailyQuotaExhausted(client.daily_quota_detail)
     last_error: Exception | None = None
     for attempt in range(1, 4):
         try:
             r = await client.get(f"{BASE_URL}{path}", params=params, timeout=REQUEST_TIMEOUT)
+
+            detail = _daily_quota_detail(r)
+            if detail is not None:
+                if isinstance(client, LiveTennisClient):
+                    client.daily_quota_detail = detail
+                logger.warning("%s: daily quota exhausted; stopping provider requests. %s", path, detail)
+                raise DailyQuotaExhausted(detail)
 
             if r.status_code == 429 and attempt < 3:
                 # Prefer the server's own backoff hint when it sends one.
@@ -152,7 +191,7 @@ async def _get(client: httpx.AsyncClient, path: str, params: Optional[dict] = No
 
             r.raise_for_status()
             return r.json()
-        except (TierBlocked, FatalStatus):
+        except (TierBlocked, FatalStatus, DailyQuotaExhausted):
             raise
         except Exception as e:
             last_error = e
@@ -185,7 +224,14 @@ async def _get_paginated(client: httpx.AsyncClient, path: str, params: dict) -> 
     rows: list[dict] = []
     offset = 0
     for _ in range(MAX_PAGES):
-        payload = await _get(client, path, {**params, "limit": PAGE_LIMIT, "offset": offset})
+        try:
+            payload = await _get(client, path, {**params, "limit": PAGE_LIMIT, "offset": offset})
+        except DailyQuotaExhausted:
+            # Keep earlier pages so their matches can still be committed.
+            # Partial history must never replace a complete stored H2H total.
+            if path != "/matches":
+                raise
+            break
         page = _unwrap(payload)
         rows.extend(page)
         if not page or not _has_more(payload, len(page)):
@@ -539,6 +585,8 @@ async def fetch_matches(
     records: dict[int, dict] = {}
     for status in statuses:
         for tour in tours:
+            if isinstance(client, LiveTennisClient) and client.daily_quota_detail:
+                return list(records.values())
             params = {
                 "status": status,
                 "tour": tour,
@@ -797,6 +845,9 @@ async def write_to_db(
             logger.warning("H2H needs BASIC — skipping H2H for the rest of this run")
             h2h_blocked = True
             continue
+        except DailyQuotaExhausted:
+            h2h_blocked = True
+            continue
         except Exception as e:
             logger.debug("  h2h failed for %s vs %s: %s", rec["p1_name"], rec["p2_name"], e)
             continue
@@ -922,7 +973,7 @@ async def run(
     )
 
     headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
-    async with httpx.AsyncClient(headers=headers) as client:
+    async with LiveTennisClient(headers=headers) as client:
         usage = await fetch_usage(client)
         if usage:
             tier = usage.get("tier")
@@ -948,6 +999,8 @@ async def run(
             records = await fetch_matches(client, win_from, win_to, tours, statuses)
             logger.info("Normalized %d singles matches", len(records))
             if not records:
+                if client.daily_quota_detail:
+                    break
                 logger.warning("No matches returned for this window.")
                 continue
             totals["records"] += len(records)
@@ -973,6 +1026,18 @@ async def run(
 
             if dry_run:
                 _report_unmatched(summary["unmatched"], known_names)
+
+            if client.daily_quota_detail:
+                break
+
+        if client.daily_quota_detail:
+            logger.warning(
+                "Ingest incomplete: daily quota exhausted; %s fetched records "
+                "(%d matches, %d H2H pairings). Remaining enrichment/windows skipped.",
+                "dry-run processed" if dry_run else "saved",
+                totals["written"], totals["h2h"],
+            )
+            return
 
         if not totals["records"]:
             logger.warning("No matches returned — nothing to write.")
