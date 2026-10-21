@@ -7,7 +7,7 @@ import '~/components/shared/prop-table.css'
 import '~/components/tennis/tennis-slate.css'
 import './tennis-prop-table.css'
 
-const OTHER_LINES_NOTE = 'Unlinked, stale, unsupported, or thin-sample lines remain visible for review but are excluded from the ranking.'
+const OTHER_LINES_NOTE = 'Excluded from ranking. These may be unpriced, have no positive EV, or have missing, stale, unsupported, or thin-sample data. View evidence for each line\'s context.'
 
 export interface TennisPropTableRow {
   row: TennisBoardLine
@@ -18,11 +18,11 @@ function Player({ card, selected, onOpen }: { card: TennisPropCardModel, selecte
   const tone = tourTone(card.tour, card.tour)
   return <>
     <span className="prop-table__player-name">
-      <button type="button" className="prop-table__open" aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
+      <button type="button" className="prop-table__open" aria-pressed={selected} aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}`} onClick={onOpen}>{card.playerName}</button>
       {tone && <span className={`tennis-tour-tag is-${tone}`}>{card.tour}</span>}
     </span>
     <small title={card.meta}>{card.meta || 'Match unavailable'}</small>
-    <small>{card.startText}</small>
+    <small className="tennis-prop-table__start">{card.startText}</small>
   </>
 }
 
@@ -70,7 +70,7 @@ function PropRow({ item: { row, rank }, selected, onOpen }: { item: TennisPropTa
     <td className="tennis-prop-table__hit" data-label="hit"><HitAgainstBreakEven card={card} /></td>
     <td className={`prop-table__end is-num tennis-prop-table__ev${card.evTone ? ` is-${card.evTone}` : ''}`} data-label="EV">{card.evText}</td>
     <td className="tennis-prop-table__tier" data-label="tier">{card.confidence ?? '--'}</td>
-    <td><Trust card={card} /></td>
+    <td><Trust card={card} /><button type="button" className="tennis-prop-text-action tennis-prop-table__evidence" aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}, ${row.statType.replaceAll('_', ' ')}, ${card.valueText}`} onClick={() => onOpen(row)}>View evidence</button></td>
   </tr>
 }
 
@@ -91,12 +91,12 @@ interface Props {
 /** One market's tennis lines in the board's existing rank order. */
 export function TennisPropTable({ category, rateable, other, selectedId, onOpen }: Props) {
   const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} selected={item.row.id === selectedId} onOpen={onOpen} />
-  return <table className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
+  return <table id="tennis-prop-lines" className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>
       {rateable.map(renderRow)}
-      {other.length > 0 && <tr className="prop-table__divider"><td colSpan={COLUMNS.length}><strong>Not rateable</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
+      {other.length > 0 && <tr className="prop-table__divider"><td colSpan={COLUMNS.length}><strong>Reference lines</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
       {other.map(renderRow)}
     </tbody>
   </table>

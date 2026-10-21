@@ -51,13 +51,17 @@ export default function TennisPropBoardPage() {
     {(prizePicks.isError || draftKings.isError || betOnline.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={categories} selected={category.market} onSelect={setMarket} />}
     <PropBoardFilters source={source} tour={tour} showAll={showAll} onSource={setSource} onTour={setTour} onShowAll={setShowAll} />
-    {category ? <section className="prop-table-panel" aria-label="Prop lines">
-      {category.rateable.length === 0 && <p className="tennis-prop-empty">No actionable {category.label.toLowerCase()} lines on this slate.</p>}
+    {category ? <section className="prop-table-panel" aria-label={`${category.label} prop lines`}>
+      <div className="tennis-prop-availability">
+        <p role="status">Ranked lines: {category.rateable.length}. Reference lines: {category.other.length}{category.other.length > 0 ? showAll ? ' (shown).' : ' (hidden).' : '.'}</p>
+        {category.other.length > 0 && <button type="button" className="tennis-prop-text-action" aria-expanded={showAll} aria-controls="tennis-prop-lines" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide reference lines' : 'Show reference lines'} ({category.other.length})</button>}
+      </div>
+      <p className="tennis-prop-evidence-hint">View evidence for recent matches, projection inputs, and quality notes.</p>
       <TennisPropTable category={category} selectedId={selected?.id ?? null} onOpen={row => setSelectedId(row.id)}
         rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
         other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
-    </section> : <div className="tennis-prop-empty-state">No current tennis prop lines are loaded for this source. Try another provider or run the prop ingest.</div>}
-    <Drawer open={selected !== null} onClose={() => setSelectedId(null)} width={isMobile ? '100%' : 460} title={null} className="tennis-prop-drawer" destroyOnHidden>
+    </section> : <div className="tennis-prop-empty-state">No tennis prop lines are available for these filters. Try a different source or tour.</div>}
+    <Drawer open={selected !== null} onClose={() => setSelectedId(null)} width={isMobile ? '100%' : 460} title={null} aria-label={`Prop evidence for ${selected?.playerName ?? 'selected player'}`} className="tennis-prop-drawer" destroyOnHidden>
       {selected && <TennisPropEvidencePanel row={selected} />}
     </Drawer>
   </div></div>

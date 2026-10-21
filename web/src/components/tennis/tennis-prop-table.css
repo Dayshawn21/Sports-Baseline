@@ -33,15 +33,44 @@
 .tennis-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
 .tennis-prop-table__trust.is-flagged { color: var(--caution); }
 
-.tennis-prop-empty,
 .tennis-prop-empty-state {
   margin: 0;
-  padding: var(--space-5) 0;
+  padding: var(--space-6) 0;
   color: var(--text-secondary);
   font-size: 13px;
 }
 
-.tennis-prop-empty-state { padding: var(--space-6) 0; }
+.tennis-prop-availability {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+.tennis-prop-availability p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.tennis-prop-evidence-hint { margin: var(--space-2) 0 var(--space-4); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.tennis-prop-text-action {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: 500 12px var(--font-body);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: normal;
+  cursor: pointer;
+}
+.tennis-prop-text-action:hover { color: var(--text-secondary); }
+.tennis-prop-text-action:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
+.tennis-prop-table__evidence { display: block; font-size: 11px; }
+.tennis-prop-table .prop-table__open,
+.tennis-prop-table .prop-table__player small,
+.tennis-prop-table .tennis-prop-table__line small,
+.tennis-prop-table .tennis-prop-table__hit small { white-space: normal; overflow-wrap: anywhere; }
+
+@media (pointer: coarse) {
+  .tennis-prop-text-action { min-height: 44px; }
+}
 
 .tennis-prop-drawer .ant-drawer-body { padding: 0; overflow-x: hidden; }
 .tennis-prop-drawer .tennis-prop-evidence {
@@ -58,6 +87,7 @@
 }
 
 @media (max-width: 600px) {
+  .tennis-prop-text-action { min-height: 44px; }
   .tennis-prop-table tbody tr { gap: 4px 6px; }
   .tennis-prop-table__line { flex-basis: 108px; }
   .tennis-prop-table__hit { flex: 0 1 82px; min-width: 72px; }
@@ -66,5 +96,4 @@
   .tennis-prop-table__tier { display: none; }
   .tennis-prop-table__mobile-tier { display: inline; }
   .tennis-prop-table td:last-child { min-width: 0; }
-  .tennis-prop-table .prop-table__player small:last-child { display: none; }
 }

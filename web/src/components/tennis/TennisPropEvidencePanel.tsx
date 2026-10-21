@@ -73,15 +73,18 @@ function RecentBars({ row, players }: { row: TennisBoardLine, players: PlayerRec
   </section>
 }
 
-/** One line for the stacked mobile layout, where the panel sits away from its card. */
-function MobileSummary({ row }: { row: TennisBoardLine }) {
+function LineSummary({ row }: { row: TennisBoardLine }) {
   const card = propCard(row)
   const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''
-  return <div className="tennis-prop-evidence__summary">
-    <span className={`tennis-prop-evidence__pick${side}`}>{card.pickLabel}</span>
-    <b>{card.valueText}</b>
-    {card.evText !== '--' && <span className={`tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>{card.evText} EV</span>}
-  </div>
+  return <>
+    <p>{row.matchup ?? 'Match unavailable'}</p>
+    <p>{card.startText}</p>
+    <div className="tennis-prop-evidence__summary">
+      <span className={`tennis-prop-evidence__pick${side}`}>{card.pickLabel}</span>
+      <b>{card.valueText}</b>
+      {card.evText !== '--' && <span className={`tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>{card.evText} EV</span>}
+    </div>
+  </>
 }
 
 function ContextFacts({ row }: { row: TennisBoardLine }) {
@@ -101,7 +104,7 @@ export default function TennisPropEvidencePanel({ row, ref }: { row: TennisBoard
     <header>
       <h2>{row.playerName ?? 'Unknown player'}</h2>
       <p>{marketLabel(row.statType)} · {sourceLabel(row.source)}</p>
-      <MobileSummary row={row} />
+      <LineSummary row={row} />
     </header>
     <section className="tennis-prop-evidence__reason"><span>Why this signal</span><p>{signalSummary(row)}</p></section>
     <ContextFacts row={row} />
