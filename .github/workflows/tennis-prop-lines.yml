@@ -1,0 +1,38 @@
+name: Tennis PrizePicks Prop Lines
+
+on:
+  # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  prizepicks:
+    name: PrizePicks Props Ingest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Ingest PrizePicks props
+        run: |
+          cd api
+          python -m app.ingest.prizepicks

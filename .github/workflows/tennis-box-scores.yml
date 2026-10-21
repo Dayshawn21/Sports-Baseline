@@ -1,0 +1,106 @@
+name: Tennis Box Scores and Candidate ELO
+
+on:
+  # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which operation to run"
+        required: true
+        type: choice
+        default: "tennismylife"
+        options:
+          - tennismylife
+          - tennis-elo
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  tennismylife:
+    name: TennisMyLife Box Scores
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'tennismylife'
+      || (github.event_name == 'schedule' && github.event.schedule == '0 11 * * *')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Ingest TennisMyLife box scores
+        run: |
+          cd api
+          python -m app.ingest.tennismylife
+
+  tennis-elo:
+    name: Daily Candidate Tennis ELO
+    needs: tennismylife
+    if: |
+      always() && !cancelled() && (
+        (needs.tennismylife.result == 'success')
+        || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'tennis-elo'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: tennis-elo-candidate-refresh
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - name: Install dependencies
+        run: pip install -r api/requirements.txt
+      - name: Pin UTC cache day
+        id: utc
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      # Exact day and implementation/identity pins only. Never fall back to yesterday.
+      - name: Restore original daily ELO inputs
+        id: inputs
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            api/data/tennismylife-elo/files
+            api/data/tennismylife-elo/manifests
+          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv') }}
+      - name: Refresh isolated candidate ratings
+        working-directory: api
+        run: python -m app.ingest.tennis_elo --write
+      # A database-only retry cannot recreate the original immutable source files.
+      # Fail closed if this day's cache was lost; next day's refresh starts anew.
+      - name: Validate complete snapshot and original files
+        working-directory: api
+        run: python -m app.ingest.tennis_elo_comparison --check-snapshot
+      - name: Check cache day before sharing
+        env:
+          SNAPSHOT_DAY: ${{ steps.utc.outputs.day }}
+        run: test "$(date -u +%F)" = "$SNAPSHOT_DAY"
+      - name: Share original daily ELO inputs
+        if: steps.inputs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            api/data/tennismylife-elo/files
+            api/data/tennismylife-elo/manifests
+          key: ${{ steps.inputs.outputs.cache-primary-key }}

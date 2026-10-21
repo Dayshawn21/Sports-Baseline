@@ -275,6 +275,12 @@ Things that are easy to get wrong:
 
 ### Repository (37e)
 
+Tennis Actions are split by operation into six workflows. See
+`docs/tennis-actions.md` for schedules, manual choices, and dependent ELO jobs.
+This operational guide supersedes the older combined-workflow description in
+the generated project overview until its next regeneration. The split is local
+until separately approved merge/push; GitHub runner acceptance remains pending.
+
 - **Public:** `Dayshawn21/Sports-Baseline` (remote `origin`). Render, CI and
   every cron run from its `master`.
 - **History:** it starts from one snapshot commit (`2312f3a`). Everything

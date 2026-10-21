@@ -1,0 +1,40 @@
+name: Tennis Player Stats
+
+on:
+  # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+# TennisAbstract ELO refresh remains local in api/ingest_daily.bat.
+
+jobs:
+  player-stats:
+    name: Player Stats Backfill
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Backfill player stats
+        run: |
+          cd api
+          python -m app.ingest.player_stats --today-only --match-days-back 1 --match-days-ahead 1 --skip-computed-today

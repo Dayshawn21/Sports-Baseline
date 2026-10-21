@@ -1,0 +1,42 @@
+name: Tennis Game Odds
+
+on:
+  # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  schedule:
+    - cron: "10 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+
+# Keep the 14h window and four-hour cadence: cover the prediction cycle
+# while controlling provider requests and staying within the 6h stale threshold.
+
+jobs:
+  odds:
+    name: Odds Refresh
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Refresh odds
+        run: |
+          cd api
+          python -m app.ingest.odds_api --hours-ahead 14

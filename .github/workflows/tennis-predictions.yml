@@ -1,0 +1,95 @@
+name: Tennis Predictions and Shadow Freeze
+
+on:
+  # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  schedule:
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which operation to run"
+        required: true
+        type: choice
+        default: "predictions"
+        options:
+          - predictions
+          - tennis-elo-comparison
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  predictions:
+    name: Daily Prediction Persistence
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'predictions'
+      || (github.event_name == 'schedule' && github.event.schedule == '30 13 * * *')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Persist daily predictions
+        run: |
+          cd api
+          python -m app.ingest.predictions
+
+      # After predictions, so the props page's win probabilities are today's.
+      - name: Snapshot PrizePicks projections
+        run: |
+          cd api
+          python -m app.ingest.prop_snapshots
+
+  tennis-elo-comparison:
+    name: Freeze Candidate Tennis ELO Shadow
+    needs: predictions
+    if: |
+      always() && !cancelled() && (
+        (needs.predictions.result == 'success')
+        || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'tennis-elo-comparison'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: tennis-elo-shadow-freeze
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - name: Install dependencies
+        run: pip install -r api/requirements.txt
+      - name: Pin UTC cache day
+        id: utc
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore original daily ELO inputs
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            api/data/tennismylife-elo/files
+            api/data/tennismylife-elo/manifests
+          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv') }}
+      # Inactive experiments skip cleanly. Active cache misses retain coverage
+      # attempts but freeze no pairs. No fallback source and no automatic scoring.
+      - name: Freeze reviewed forward experiment
+        working-directory: api
+        run: python -m app.ingest.tennis_elo_comparison --scheduled
