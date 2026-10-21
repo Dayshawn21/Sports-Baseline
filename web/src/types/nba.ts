@@ -157,3 +157,22 @@ export interface NbaProps {
   modelVersion: string
   lines: NbaPropLine[]
 }
+
+export interface NbaPropBoardGame {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+  lines: NbaPropLine[]
+  lineOnlyLines: NbaLineOnlyLine[]
+}
+
+/** `GET /nba/props`: one Eastern game date, with the game endpoints' line payloads. */
+export interface NbaPropBoardResponse {
+  date: string
+  previousDate: string | null
+  nextDate: string | null
+  modelVersion: string
+  games: NbaPropBoardGame[]
+}

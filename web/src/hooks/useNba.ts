@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
+import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaPropBoard, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
 import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 
@@ -7,6 +7,14 @@ export function useNbaSlate(date: string | null) {
   return useQuery({
     queryKey: ['nba', 'slate', date],
     queryFn: () => fetchNbaSlate(date),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useNbaPropBoard(date: string | null) {
+  return useQuery({
+    queryKey: ['nba', 'prop-board', date],
+    queryFn: () => fetchNbaPropBoard(date),
     staleTime: 5 * 60 * 1000,
   })
 }

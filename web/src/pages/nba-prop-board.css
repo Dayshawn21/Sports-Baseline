@@ -1,0 +1,11 @@
+.nba-prop-board__legend {
+  margin: var(--space-4) 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.nba-prop-board__rows { margin-top: var(--space-4); }
+.nba-prop-board .nfl-prop-pills button:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+}

@@ -10,6 +10,7 @@ describe('sportViewForPath', () => {
     expect(sportViewForPath('/nfl/board')).toBe('props')
     expect(sportViewForPath('/nfl/model')).toBe('model')
     expect(sportViewForPath('/nba')).toBe('slate')
+    expect(sportViewForPath('/nba/board')).toBe('props')
     expect(sportViewForPath('/nba/model')).toBe('model')
   })
 
@@ -49,8 +50,14 @@ describe('SPORTS registry', () => {
 })
 
 describe('NBA', () => {
-  it('has a slate and a track record page, and no props view until it has a prop board', () => {
-    expect(sportViews('nba')).toEqual([{ view: 'slate', path: '/nba' }, { view: 'model', path: '/nba/model' }])
+  it('has slate, props and model views', () => {
+    expect(sportViews('nba')).toEqual([
+      { view: 'slate', path: '/nba' }, { view: 'props', path: '/nba/board' }, { view: 'model', path: '/nba/model' },
+    ])
+  })
+
+  it('names the Props view in the document title', () => {
+    expect(documentTitle('/nba/board')).toBe('NBA props · Lineform')
   })
 })
 
@@ -84,7 +91,8 @@ describe('shellNav', () => {
   })
 
   it('lists only the views a sport has', () => {
-    expect(shellNav('/nba/model', false).views.map(view => view.label)).toEqual(['Slate', 'Model'])
+    expect(shellNav('/nba/model', false).views.map(view => view.label)).toEqual(['Slate', 'Props', 'Model'])
+    expect(shellNav('/nba/board', false).views.filter(view => view.active).map(view => view.view)).toEqual(['props'])
   })
 
   it('keeps the sport but no view on a detail page', () => {
@@ -139,7 +147,7 @@ describe('menuSections', () => {
     expect(menuSections(false)).toEqual([
       { label: 'Tennis', items: [{ key: '/', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
       { label: 'NFL', items: [{ key: '/nfl', label: 'Slate' }, { key: '/nfl/board', label: 'Props' }, { key: '/nfl/model', label: 'Model' }] },
-      { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/model', label: 'Model' }] },
+      { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/board', label: 'Props' }, { key: '/nba/model', label: 'Model' }] },
       { label: null, items: [{ key: '/how-it-works', label: 'How it works' }] },
     ])
   })
