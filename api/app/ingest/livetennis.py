@@ -37,6 +37,7 @@ from typing import Any, Iterable, Optional, TypedDict
 import httpx
 
 from app.core.tennis_format import infer_best_of_or_none
+from app.core.tennis_surface_overrides import apply_surface_override
 
 from app.ingest.log_config import configure_ingest_logging
 
@@ -382,13 +383,20 @@ def normalize_match(raw: dict) -> Optional[dict]:
     if match_date is None:
         return None
 
+    tournament_id = _text_field(raw.get("tournament_id"))
+    surface, indoor = apply_surface_override(
+        tournament_id,
+        _map_surface(raw.get("surface")),
+        raw.get("indoor") if isinstance(raw.get("indoor"), bool) else None,
+    )
+
     return {
         "match_id": match_id,
         "day": match_date,
         "start_utc": start_utc,
         "tour": tour,
         "tournament": (raw.get("tournament") or "").strip() or None,
-        "surface": _map_surface(raw.get("surface")),
+        "surface": surface,
         # round_code is the archive's controlled vocabulary (F/SF/QF/R32/...),
         # which is what feature_builder.ROUND_ORDINALS keys on. The free-text
         # `round` label is not.
@@ -420,8 +428,8 @@ def normalize_match(raw: dict) -> Optional[dict]:
         "p1_country": p1["country"], "p2_country": p2["country"],
         # Court type is on the match, not the tournament: an event can move
         # matches indoors for weather without changing its own record.
-        "indoor": raw.get("indoor") if isinstance(raw.get("indoor"), bool) else None,
-        "tournament_id": _text_field(raw.get("tournament_id")),
+        "indoor": indoor,
+        "tournament_id": tournament_id,
         # Player-level circuit, used only when creating a player. A women's 125
         # draw arrives with tour=challenger, so without this the new player row
         # would be stored as CHALLENGER and lose the gender for good.

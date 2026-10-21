@@ -26,6 +26,20 @@ function boardRow(line: ReturnType<typeof moneylineBoardRows>[number]): TennisBo
 }
 
 describe('propCard', () => {
+  it.each(['match_finished', 'match_link_invalid'])('labels an unlinked %s row as finished', flag => {
+    const finished = row({ matchup: null, surface: 'Clay', dataQualityFlags: [flag] })
+    expect(propCard(finished).meta).toBe('Match finished · Tokyo')
+    expect(propCard({ ...finished, tournament: null }).meta).toBe('Match finished')
+  })
+
+  it('leaves unavailable match metadata empty', () => {
+    expect(propCard(row({ matchup: null, tour: null, surface: null, tournament: null, dataQualityFlags: [] })).meta).toBe('')
+  })
+
+  it.each(['match_finished', 'match_link_invalid'])('preserves a relinked matchup despite %s', flag => {
+    expect(propCard(row({ dataQualityFlags: [flag] })).meta).toBe('Ben Shelton vs Jakub Mensik · Tokyo')
+  })
+
   it('shows a standard prop the way the table cells did', () => {
     const card = propCard(row())
     expect(card).toMatchObject({

@@ -144,6 +144,26 @@ def _match(**overrides):
     return base
 
 
+@pytest.mark.parametrize("tournament_id", ["14767", "14763"])
+def test_normalize_match_corrects_lyon_surface(tournament_id: str) -> None:
+    rec = livetennis.normalize_match(_match(
+        tournament="Lyon", tournament_id=tournament_id, surface="clay", indoor=None,
+    ))
+    assert rec is not None
+    assert rec["surface"] == "Hard"
+    assert rec["indoor"] is True
+    assert rec["tournament_id"] == tournament_id
+
+
+def test_normalize_match_preserves_other_lyon_edition() -> None:
+    rec = livetennis.normalize_match(_match(
+        tournament="Lyon", tournament_id="99999", surface="clay", indoor=False,
+    ))
+    assert rec is not None
+    assert rec["surface"] == "Clay"
+    assert rec["indoor"] is False
+
+
 def test_normalize_match_maps_every_stored_field():
     rec = livetennis.normalize_match(_match())
     assert rec["match_id"] == 1

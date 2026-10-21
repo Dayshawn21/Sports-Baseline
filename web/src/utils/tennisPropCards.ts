@@ -65,10 +65,12 @@ function breakEvenLabel(row: TennisBoardLine, breakEven: number | null): string 
 export function propCard(row: TennisBoardLine): TennisPropCardModel {
   const priced = isMoneyline(row) || isWinASet(row)
   const breakEven = clampPct(row.breakEvenPct)
+  const matchFinished = !row.matchup && row.dataQualityFlags?.some(flag => flag === 'match_finished' || flag === 'match_link_invalid')
+  const matchMeta = matchFinished ? 'Match finished' : row.matchup ?? [row.tour, row.surface].filter(Boolean).join(' · ')
   return {
     key: `${row.source}-${row.id}`,
     playerName: row.playerName ?? 'Unknown player',
-    meta: [row.matchup ?? [row.tour, row.surface].filter(Boolean).join(' · '), row.tournament].filter(Boolean).join(' · '),
+    meta: [matchMeta, row.tournament].filter(Boolean).join(' · '),
     startText: startLabel(row.startTime),
     tour: row.tour,
     confidence: row.confidence,
