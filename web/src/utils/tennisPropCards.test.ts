@@ -66,6 +66,28 @@ describe('propCard', () => {
     expect(propCard(row({ evPct: 0 })).evTone).toBeNull()
   })
 
+  it.each(['demon', 'goblin'])('labels %s overs as availability, preserving the tier and PASS status', oddsType => {
+    expect(propCard(row({ oddsType, confidence: 'PASS', evPct: 3.5 }))).toMatchObject({
+      pickLabel: 'OVER only', payoutTier: oddsType, confidence: 'PASS', evText: '+3.5%', evTone: null,
+    })
+    expect(propCard(row({ oddsType, confidence: 'STRONG' }))).toMatchObject({
+      pickLabel: 'OVER only', evTone: 'positive',
+    })
+  })
+
+  it.each([
+    [3.5, '+3.5%'], [-3.5, '-3.5%'], [0, '+0.0%'], [null, '--'],
+  ] as const)('keeps PASS EV %s neutral without hiding its value', (evPct, evText) => {
+    expect(propCard(row({ confidence: 'PASS', evPct }))).toMatchObject({ evText, evTone: null })
+  })
+
+  it('preserves directions for standard, priced-book, missing and under rows', () => {
+    expect(propCard(row({ confidence: 'PASS' })).pickLabel).toBe('OVER')
+    expect(propCard(row({ source: 'draftkings', oddsType: 'demon' })).pickLabel).toBe('OVER')
+    expect(propCard(row({ oddsType: 'demon', recommendation: null })).pickLabel).toBe('--')
+    expect(propCard(row({ oddsType: 'demon', recommendation: 'UNDER' })).pickLabel).toBe('UNDER')
+  })
+
   it('carries the demon and goblin payout tiers, and none for priced books', () => {
     expect(propCard(row({ oddsType: 'demon' })).payoutTier).toBe('demon')
     expect(propCard(row({ oddsType: 'goblin' })).breakEvenLabel).toBe('Break-even 57.7% · goblin')

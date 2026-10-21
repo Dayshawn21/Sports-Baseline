@@ -64,6 +64,9 @@ function breakEvenLabel(row: TennisBoardLine, breakEven: number | null): string 
 /** What one prop card shows, in the same strings the board table showed. */
 export function propCard(row: TennisBoardLine): TennisPropCardModel {
   const priced = isMoneyline(row) || isWinASet(row)
+  const tier = payoutTier(row)
+  const direction = row.recommendation?.toUpperCase() ?? '--'
+  const overOnly = direction === 'OVER' && (tier === 'demon' || tier === 'goblin')
   const breakEven = clampPct(row.breakEvenPct)
   const matchFinished = !row.matchup && row.dataQualityFlags?.some(flag => flag === 'match_finished' || flag === 'match_link_invalid')
   const matchMeta = matchFinished ? 'Match finished' : row.matchup ?? [row.tour, row.surface].filter(Boolean).join(' · ')
@@ -74,10 +77,10 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     startText: startLabel(row.startTime),
     tour: row.tour,
     confidence: row.confidence,
-    payoutTier: payoutTier(row),
+    payoutTier: tier,
     flags: row.dataQualityFlags ?? [],
     isUnder: row.recommendation === 'UNDER',
-    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : row.recommendation?.toUpperCase() ?? '--',
+    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : overOnly ? 'OVER only' : direction,
     valueLabel: isMoneyline(row) ? 'Odds' : isWinASet(row) ? 'Market' : 'Line',
     valueText: valueText(row),
     unit: priced ? null : marketLabel(row.statType).toLowerCase(),
@@ -86,7 +89,7 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     breakEvenPct: breakEven,
     breakEvenLabel: breakEvenLabel(row, breakEven),
     evText: row.evPct == null ? '--' : `${signed(row.evPct, 1)}%`,
-    evTone: evTone(row.evPct),
+    evTone: row.confidence === 'PASS' ? null : evTone(row.evPct),
     opponentText: row.opponentStatAvg == null ? null : `Opp allows ${row.opponentStatAvg.toFixed(1)}`,
     trust: trustLabel(row),
     source: sourceLabel(row.source),
