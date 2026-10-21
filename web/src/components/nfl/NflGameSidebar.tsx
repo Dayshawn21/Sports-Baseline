@@ -44,6 +44,16 @@ function DepthChanges({ notes }: { notes: NflGameNotes }) {
   </Card>
 }
 
+export function NflGameAvailability({ notes, isLoading, isError }: { notes: NflGameNotes | undefined, isLoading: boolean, isError: boolean }) {
+  return <section className="nfl-game-availability" aria-label="Player availability">
+    {notes ? <details>
+      <summary><span>Player availability</span><small>{notes.injuries.length} on injury report · {notes.depthChanges.length} depth changes</small></summary>
+      <div className="nfl-game-availability__body"><Injuries notes={notes} /><DepthChanges notes={notes} /></div>
+      <p className="nfl-game-note">Display context only. These reports do not change projections or ranks.</p>
+    </details> : <p className="nfl-game-availability__status">{isLoading ? 'Loading player availability...' : isError ? 'Player availability could not load. Check the latest team reports before using these comparisons.' : 'No player availability notes stored for this game.'}</p>}
+  </section>
+}
+
 function FormRow({ form }: { form: NflTeamForm }) {
   const rest = restLabel(form)
   return <div className="nfl-game-side__form">
@@ -57,8 +67,7 @@ export function NflGameSidebar({ notes, isLoading, isError }: { notes: NflGameNo
   if (isLoading) return <aside className="nfl-game-side"><Card title="Game notes"><Empty text="Loading injuries, depth and team stats..." /></Card></aside>
   if (isError || !notes) return <aside className="nfl-game-side"><Card title="Game notes"><Empty text={isError ? 'Game notes are unavailable right now.' : 'No notes stored for this game.'} /></Card></aside>
   return <aside className="nfl-game-side" aria-label="Game notes">
-    <Injuries notes={notes} />
-    <DepthChanges notes={notes} />
+    <div className="nfl-game-side__availability"><Injuries notes={notes} /><DepthChanges notes={notes} /></div>
     <Card title="Form and rest"><FormRow form={notes.awayForm} /><FormRow form={notes.homeForm} /></Card>
     <p className="nfl-game-note is-inline">Context only. Injuries, depth, form and team stats never change an edge or its rank.</p>
   </aside>

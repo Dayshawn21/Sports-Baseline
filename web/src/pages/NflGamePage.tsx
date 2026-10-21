@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { NflBestLineCard } from '~/components/nfl/NflBestLineCard'
 import { NflGameHero, NflGameMarketBlock } from '~/components/nfl/NflGameHero'
 import { NflGameProps } from '~/components/nfl/NflGameProps'
-import { NflGameSidebar } from '~/components/nfl/NflGameSidebar'
+import { NflGameAvailability, NflGameSidebar } from '~/components/nfl/NflGameSidebar'
 import { NflLineMovementChart } from '~/components/nfl/NflLineMovementChart'
 import { NflTeamStatsMatchup } from '~/components/nfl/NflTeamStatsMatchup'
 import ErrorState from '~/components/shared/ErrorState'
@@ -57,6 +57,7 @@ export default function NflGamePage() {
         {detail.data.status === 'scheduled' && gameNotes && <NflBestLineCard bestLine={gameNotes.bestLine} homeTeam={detail.data.homeTeam} awayTeam={detail.data.awayTeam} />}
         <NflLineMovementChart detail={detail.data} />
         {gameNotes && <NflTeamStatsMatchup notes={gameNotes} />}
+        <NflGameAvailability notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
         {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
       </div>
       <NflGameSidebar notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />

@@ -86,7 +86,7 @@ function PropRow({ item: { row, rank }, category, selected, inGame, now, onOpen 
     <td className="is-num" data-label="line">{card.lineText}</td>
     <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}</td>
     <td className="prop-table__end is-num nfl-prop-table__gap"><Gap card={card} note={edgeNote(category)} /></td>
-    <td className="nfl-prop-table__bars"><MiniBars bars={recentBars(row)} empty="No history" title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
+    <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
     <td><Sample card={card} /></td>
   </tr>
 }

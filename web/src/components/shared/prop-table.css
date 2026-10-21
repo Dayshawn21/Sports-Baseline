@@ -36,6 +36,17 @@
   font-size: 12px;
 }
 
+.mini-bars-button {
+  display: block; width: 100%; min-width: 44px; min-height: 44px; padding: 10px 0;
+  border: 0; border-radius: 3px; background: none; color: var(--text-primary); cursor: pointer;
+}
+.mini-bars-button:hover, .mini-bars-button[aria-expanded="true"] { background: var(--bg-raised); }
+.mini-bars-button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.mini-bars-history { max-width: 260px; color: var(--text-primary); font-size: 13px; line-height: 1.5; }
+.mini-bars-history p { margin: 0 0 8px; color: var(--text-secondary); }
+.mini-bars-history p:last-child { margin: 8px 0 0; }
+.mini-bars-history ol { margin: 0; padding-left: 20px; font-family: var(--font-mono); }
+
 /* One prop line per row, after the slate tables (38b). Each sport sets its column widths and signal colors;
    this file adds none. Below 1100px rows wrap to two lines: cells with order 1 to 2 lead, the rest follow. */
 .prop-table-panel {

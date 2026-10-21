@@ -66,6 +66,16 @@ describe('nflGameProps', () => {
     expect(nflGameProps(withHalf, 1, 'all', 'q1', BEFORE)).toEqual([])
   })
 
+  it('keeps partial-game lines out of the full-game view including its alternate lines', () => {
+    const mixed = [game(1, '2026-09-20T17:00:00Z', [
+      line(11), line(12, { segment: 'first_half' }), line(13, { segment: 'q1' }),
+      line(14, { oddsType: 'goblin' }),
+    ])]
+    const markets = nflGameProps(mixed, 1, 'all', 'full_game', BEFORE)
+    expect(markets.flatMap(item => item.rateable.map(entry => entry.row.lineId))).toEqual([11])
+    expect(markets.flatMap(item => item.other.map(row => row.lineId))).toEqual([14])
+  })
+
   it('is empty for an unknown game or one without lines', () => {
     expect(nflGameProps(WEEK, 99, 'all', 'full_game', BEFORE)).toEqual([])
     expect(nflGameProps([game(3, null, [])], 3, 'all', 'full_game', BEFORE)).toEqual([])

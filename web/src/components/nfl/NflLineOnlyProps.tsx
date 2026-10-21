@@ -14,8 +14,6 @@ function rungLabel(line: number, oddsType: string | null): string {
 function Row({ row, market }: { row: NflLineOnlyRow, market: string }) {
   const main = mainRung(row)
   const others = row.rungs.filter(rung => rung !== main)
-  // Oldest to newest, the same order as the bars beside it.
-  const values = [...row.recent].reverse().map(game => game.value ?? '--').join(' · ')
   return <tr>
     <td className="prop-table__player">
       <Link className="prop-table__open" to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link>
@@ -23,8 +21,8 @@ function Row({ row, market }: { row: NflLineOnlyRow, market: string }) {
     </td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? ''}</small></td>
     <td className="nfl-line-only-table__also" data-label="also">{others.length ? others.map(rung => rungLabel(rung.line, rung.oddsType)).join(' · ') : '--'}</td>
-    <td title={values ? `Last games, oldest to newest: ${values}` : undefined}>
-      <MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${bar.value} vs ${bar.opponentTeam ?? '--'}`} />
+    <td>
+      <MiniBars interactive bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${bar.value} vs ${bar.opponentTeam ?? '--'}`} />
     </td>
     <td className="prop-table__end is-num">{row.count ? `over ${row.overCount} of ${row.count}` : '--'}</td>
   </tr>
@@ -35,8 +33,9 @@ export function NflLineOnlyProps({ gameId, position }: { gameId: number, positio
   const query = useNflLineOnlyProps(gameId)
   const groups = query.data ? lineOnlyGroups(query.data.lines, position) : []
   if (query.isSuccess && groups.length === 0) return null
-  return <section className="nfl-line-only" aria-label="Other lines">
-    <h3 className="nfl-game-label">Other lines <small>not modelled · recent results only</small></h3>
+  return <details className="nfl-line-only" aria-label="Other markets">
+    <summary><span>Other markets{query.isSuccess ? ` · ${groups.length}` : ''}</span><small>Recent results only · no model comparison</small></summary>
+    <div className="nfl-line-only__body">
     {query.isLoading && <p className="nfl-line-only__status">Loading other lines...</p>}
     {query.isError && <p className="nfl-line-only__status">Other lines could not load.</p>}
     {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
@@ -47,5 +46,6 @@ export function NflLineOnlyProps({ gameId, position }: { gameId: number, positio
         <tbody>{group.rows.map(row => <Row key={row.playerId} row={row} market={group.market} />)}</tbody>
       </table>
     </div>)}
-  </section>
+    </div>
+  </details>
 }
