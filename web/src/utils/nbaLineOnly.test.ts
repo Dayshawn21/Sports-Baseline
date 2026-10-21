@@ -9,7 +9,7 @@ function recent(...values: Array<number | null>): NbaLineOnlyRecent[] {
 
 function line(overrides: Partial<NbaLineOnlyLine>): NbaLineOnlyLine {
   return {
-    playerId: 1, playerName: 'Jayson Tatum', position: 'F', team: 'BOS', market: 'points',
+    playerId: 1, playerName: 'Jayson Tatum', position: 'F', team: 'BOS', market: 'points', injury: null,
     oddsType: 'standard', line: 26.5, fetchedAt: '2026-10-06T16:30:00Z', recent: recent(30, 22, 28, 19, 31), ...overrides,
   }
 }

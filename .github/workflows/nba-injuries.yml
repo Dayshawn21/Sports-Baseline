@@ -1,0 +1,36 @@
+name: NBA Injury Snapshots
+
+on:
+  schedule:
+    - cron: "43 */2 * 1-6,10-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nba-injuries
+  cancel-in-progress: false
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  injuries:
+    name: ESPN NBA Injuries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - name: Install dependencies
+        working-directory: api
+        run: pip install -r requirements.txt
+      - name: Snapshot ESPN NBA injuries
+        working-directory: api
+        run: python -m app.ingest.nba_injuries

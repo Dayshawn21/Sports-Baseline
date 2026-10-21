@@ -223,6 +223,12 @@ Two apps, two command sets. Paths are relative to the repo root.
 - NBA props: `python -m app.ingest.prizepicks_nba [--dry-run]` (full-game
   lines, every market line-only until 20g; add `--relink` to re-resolve stored
   lines to players and games without a provider request)
+- NBA injuries: `python -m app.ingest.nba_injuries [--dry-run]` (ESPN keyless
+  display snapshots; dry run fetches and reads player IDs without writing).
+  Migration `0048` must be applied manually before real writes/API reads.
+  `nba-injuries.yml` refreshes every two hours at minute 43 UTC, October-June,
+  independently of PrizePicks. Six-hour freshness and historical pre-tip
+  selection remain visible. See `docs/nba-injuries.md` for operational limits.
 - NBA game odds: `python -m app.ingest.nba_odds [--days-ahead 2]
   [--min-credits 100] [--dry-run]` (3 The Odds API credits a run, dry run
   included; skips the paid call below the credit floor or with no game in the

@@ -1,0 +1,10 @@
+{
+  "fixtureGames": 7,
+  "fixtureRawLines": 16,
+  "withInjuriesBytes": 10970,
+  "withoutInjuriesBytes": 5348,
+  "addedBytes": 5622,
+  "meanPureContextMillisecondsPerSevenGames": 0.0392,
+  "injuryQueriesForFixtureDate": 1,
+  "productionBenchmark": false
+}

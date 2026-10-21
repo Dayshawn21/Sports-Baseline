@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-10-21T17:52:32Z",
+  "status": "success",
+  "season": {
+    "year": 2027,
+    "type": 2,
+    "name": "Regular Season",
+    "displayName": "2026-27"
+  },
+  "injuries": [
+    {
+      "id": "1",
+      "displayName": "Atlanta Hawks",
+      "injuries": [
+        {
+          "status": "Out",
+          "date": "2026-10-19T19:38Z",
+          "shortComment": "Edited fixture comment.",
+          "details": {
+            "fantasyStatus": {
+              "description": "OUT",
+              "abbreviation": "OUT"
+            },
+            "type": "Foot",
+            "location": "Leg",
+            "detail": "Fracture",
+            "side": "Left",
+            "returnDate": "2026-11-20"
+          },
+          "athlete": {
+            "displayName": "Mouhamed Gueye",
+            "links": [
+              {
+                "href": "https://www.espn.com/nba/player/_/id/4712863/mouhamed-gueye"
+              }
+            ],
+            "team": {
+              "id": "1",
+              "abbreviation": "ATL"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "displayName": "Chicago Bulls",
+      "injuries": [
+        {
+          "status": "Day-To-Day",
+          "date": "2026-10-20T18:46Z",
+          "shortComment": "Edited fixture comment.",
+          "details": {
+            "fantasyStatus": {
+              "description": "GTD",
+              "abbreviation": "GTD"
+            },
+            "type": "Groin",
+            "location": "Groin",
+            "side": "Right",
+            "returnDate": "2026-10-21"
+          },
+          "athlete": {
+            "displayName": "Leonard Miller",
+            "links": [
+              {
+                "href": "https://www.espn.com/nba/player/_/id/5044385/leonard-miller"
+              }
+            ],
+            "team": {
+              "id": "4",
+              "abbreviation": "CHI"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "displayName": "LA Clippers",
+      "injuries": [
+        {
+          "status": "Out",
+          "date": "2026-09-28T18:01Z",
+          "shortComment": "Edited fixture comment.",
+          "details": {
+            "fantasyStatus": {
+              "description": "OUT",
+              "abbreviation": "OUT"
+            },
+            "type": "Achilles",
+            "location": "Leg",
+            "detail": "Surgery",
+            "side": "Not Specified",
+            "returnDate": "2026-11-08"
+          },
+          "athlete": {
+            "displayName": "Brandon Ingram",
+            "links": [
+              {
+                "href": "https://www.espn.com/nba/player/_/id/3913176/brandon-ingram"
+              }
+            ],
+            "team": {
+              "id": "28",
+              "abbreviation": "TOR"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

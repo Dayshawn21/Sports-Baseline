@@ -1,4 +1,4 @@
-import type { NbaLineOnlyLine, NbaLineOnlyRecent } from '~/types/nba'
+import type { NbaInjury, NbaLineOnlyLine, NbaLineOnlyRecent } from '~/types/nba'
 import { overAgainstStandard, type NflLineOnlyRung } from '~/utils/nflLineOnly'
 
 const DOUBLE_DOUBLE = 'double_double'
@@ -31,6 +31,7 @@ export interface NbaLineOnlyRow {
   playerName: string
   position: string | null
   team: string | null
+  injury: NbaInjury | null
   rungs: NflLineOnlyRung[]
   recent: NbaLineOnlyRecent[]
   overCount: number | null
@@ -63,7 +64,7 @@ export function nbaLineOnlyGroups(lines: NbaLineOnlyLine[]): NbaLineOnlyGroup[] 
         const [first] = playerLines
         const rungs = playerLines.map(line => ({ line: line.line, oddsType: line.oddsType })).sort((a, b) => a.line - b.line)
         return {
-          playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team,
+          playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team, injury: first.injury ?? null,
           rungs, recent: first.recent, ...overAgainstStandard(rungs, first.recent),
         }
       }).sort((a, b) => a.playerName.localeCompare(b.playerName)),

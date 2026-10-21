@@ -1,0 +1,791 @@
+{
+  "evidence": {
+    "fixture": true,
+    "clock": "2026-10-21T18:11:30+00:00",
+    "postgresql": "read-only CTEs; no physical tables or writes",
+    "cases": {
+      "7": {
+        "freshness": "fresh",
+        "fetchedAt": "2026-10-21T17:11:30Z",
+        "teamListEntries": 4,
+        "modelledTags": [
+          "Out",
+          "Out",
+          null
+        ],
+        "plainTags": [
+          "Day-To-Day"
+        ],
+        "boardGameParity": true
+      },
+      "8": {
+        "freshness": "fresh",
+        "fetchedAt": "2026-10-21T17:11:30Z",
+        "teamListEntries": 4,
+        "modelledTags": [
+          "Out"
+        ],
+        "plainTags": [
+          "Day-To-Day"
+        ],
+        "boardGameParity": true
+      },
+      "9": {
+        "freshness": "fresh",
+        "fetchedAt": "2026-10-21T10:11:30Z",
+        "teamListEntries": 0,
+        "modelledTags": [
+          null
+        ],
+        "plainTags": [
+          null
+        ],
+        "boardGameParity": true
+      },
+      "10": {
+        "freshness": "unavailable",
+        "fetchedAt": null,
+        "teamListEntries": 0,
+        "modelledTags": [
+          null
+        ],
+        "plainTags": [
+          null
+        ],
+        "boardGameParity": true
+      },
+      "11": {
+        "freshness": "unavailable",
+        "fetchedAt": null,
+        "teamListEntries": 0,
+        "modelledTags": [
+          null
+        ],
+        "plainTags": [
+          null
+        ],
+        "boardGameParity": true
+      },
+      "12": {
+        "freshness": "stale",
+        "fetchedAt": "2026-10-20T22:11:30Z",
+        "teamListEntries": 4,
+        "modelledTags": [
+          "Out"
+        ],
+        "plainTags": [
+          "Day-To-Day"
+        ],
+        "boardGameParity": true
+      },
+      "15": {
+        "freshness": "stale",
+        "fetchedAt": "2026-10-21T10:11:30Z",
+        "teamListEntries": 0,
+        "modelledTags": [
+          null
+        ],
+        "plainTags": [
+          null
+        ],
+        "boardGameParity": true
+      }
+    },
+    "missingGameStatus": 404,
+    "boardPayloadBytes": 10970,
+    "excludedPreseasonAndOtherSport": true,
+    "sqlCalls": [
+      [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        15
+      ],
+      [
+        7
+      ],
+      [
+        7
+      ],
+      [
+        7
+      ],
+      [
+        8
+      ],
+      [
+        8
+      ],
+      [
+        8
+      ],
+      [
+        9
+      ],
+      [
+        9
+      ],
+      [
+        9
+      ],
+      [
+        10
+      ],
+      [
+        10
+      ],
+      [
+        10
+      ],
+      [
+        11
+      ],
+      [
+        11
+      ],
+      [
+        11
+      ],
+      [
+        12
+      ],
+      [
+        12
+      ],
+      [
+        12
+      ],
+      [
+        15
+      ],
+      [
+        15
+      ],
+      [
+        15
+      ],
+      [
+        13,
+        14
+      ]
+    ]
+  },
+  "board": {
+    "date": "2026-10-21",
+    "previousDate": null,
+    "nextDate": null,
+    "modelVersion": "nba-reference-v1",
+    "games": [
+      {
+        "gameId": 7,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-21T20:11:30Z",
+        "status": "scheduled",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          },
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 6.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": -1.5,
+            "pOver": 0.291259765625,
+            "pUnder": 0.708740234375,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          },
+          {
+            "playerId": 3,
+            "playerName": "Fixture player 3",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null,
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            }
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": "2026-10-21T17:11:30Z",
+          "freshness": "fresh",
+          "injuries": [
+            {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "104",
+              "playerId": null,
+              "playerName": "Fixture athlete 104",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "103",
+              "playerId": 3,
+              "playerName": "Fixture athlete 103",
+              "team": "NY",
+              "athleteTeam": "TOR",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            }
+          ]
+        }
+      },
+      {
+        "gameId": 8,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-21T17:41:30Z",
+        "status": "completed",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            }
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": "2026-10-21T17:11:30Z",
+          "freshness": "fresh",
+          "injuries": [
+            {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "104",
+              "playerId": null,
+              "playerName": "Fixture athlete 104",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            },
+            {
+              "espnAthleteId": "103",
+              "playerId": 3,
+              "playerName": "Fixture athlete 103",
+              "team": "NY",
+              "athleteTeam": "TOR",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-21T17:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-21T17:11:30Z"
+            }
+          ]
+        }
+      },
+      {
+        "gameId": 9,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-21T11:11:30Z",
+        "status": "completed",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null,
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": "2026-10-21T10:11:30Z",
+          "freshness": "fresh",
+          "injuries": []
+        }
+      },
+      {
+        "gameId": 10,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-20T21:11:30Z",
+        "status": "completed",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null,
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": null,
+          "freshness": "unavailable",
+          "injuries": []
+        }
+      },
+      {
+        "gameId": 11,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": null,
+        "status": "scheduled",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null,
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": null,
+          "freshness": "unavailable",
+          "injuries": []
+        }
+      },
+      {
+        "gameId": 12,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-21T06:11:30Z",
+        "status": "completed",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            },
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            }
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": "2026-10-20T22:11:30Z",
+          "freshness": "stale",
+          "injuries": [
+            {
+              "espnAthleteId": "102",
+              "playerId": 2,
+              "playerName": "Fixture athlete 102",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Day-To-Day",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            },
+            {
+              "espnAthleteId": "104",
+              "playerId": null,
+              "playerName": "Fixture athlete 104",
+              "team": "BOS",
+              "athleteTeam": "BOS",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            },
+            {
+              "espnAthleteId": "101",
+              "playerId": 1,
+              "playerName": "Fixture athlete 101",
+              "team": "NY",
+              "athleteTeam": "NY",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            },
+            {
+              "espnAthleteId": "103",
+              "playerId": 3,
+              "playerName": "Fixture athlete 103",
+              "team": "NY",
+              "athleteTeam": "TOR",
+              "status": "Out",
+              "detail": "Synthetic ankle detail",
+              "sourceUpdatedAt": "2026-10-20T22:01:30Z",
+              "returnDate": null,
+              "fetchedAt": "2026-10-20T22:11:30Z"
+            }
+          ]
+        }
+      },
+      {
+        "gameId": 15,
+        "awayTeam": "NY",
+        "homeTeam": "BOS",
+        "startUtc": "2026-10-21T17:11:30Z",
+        "status": "completed",
+        "lines": [
+          {
+            "playerId": 1,
+            "playerName": "Fixture player 1",
+            "position": "G",
+            "team": "NY",
+            "market": "assists",
+            "oddsType": "standard",
+            "line": 4.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null,
+            "projection": 5.0,
+            "gamesInSample": 20,
+            "priorMinutes": 32.0,
+            "gap": 0.5,
+            "pOver": 0.5111811926605505,
+            "pUnder": 0.4888188073394495,
+            "overProbabilityVersion": "nba-pover-v1",
+            "flags": []
+          }
+        ],
+        "lineOnlyLines": [
+          {
+            "playerId": 2,
+            "playerName": "Fixture player 2",
+            "position": "G",
+            "team": "BOS",
+            "market": "double_double",
+            "oddsType": "standard",
+            "line": 0.5,
+            "fetchedAt": "2026-10-21T16:11:30Z",
+            "recent": [],
+            "injury": null
+          }
+        ],
+        "injuryReport": {
+          "source": "ESPN",
+          "fetchedAt": "2026-10-21T10:11:30Z",
+          "freshness": "stale",
+          "injuries": []
+        }
+      }
+    ]
+  }
+}

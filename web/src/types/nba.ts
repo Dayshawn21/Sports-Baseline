@@ -108,6 +108,27 @@ export interface NbaLineHistory {
 /** `GET /nba/games/{id}`: the slate's game plus its line history. */
 export interface NbaGameDetail extends NbaSlateGame {
   lineHistory: NbaLineHistory[]
+  injuryReport: NbaInjuryReport
+}
+
+export interface NbaInjury {
+  espnAthleteId: string
+  playerId: number | null
+  playerName: string
+  team: string
+  athleteTeam: string | null
+  status: string
+  detail: string | null
+  sourceUpdatedAt: string | null
+  returnDate: string | null
+  fetchedAt: string
+}
+
+export interface NbaInjuryReport {
+  source: 'ESPN'
+  fetchedAt: string | null
+  freshness: 'fresh' | 'stale' | 'unavailable'
+  injuries: NbaInjury[]
 }
 
 export interface NbaLineOnlyRecent {
@@ -128,12 +149,14 @@ export interface NbaLineOnlyLine {
   fetchedAt: string
   /** The player's last 5 played games before this one, newest first. */
   recent: NbaLineOnlyRecent[]
+  injury: NbaInjury | null
 }
 
 /** `GET /nba/games/{id}/line-only-props`: never a projection, edge or rank. */
 export interface NbaLineOnlyProps {
   gameId: number
   lines: NbaLineOnlyLine[]
+  injuryReport: NbaInjuryReport
 }
 
 export type NbaPropFlag = 'few_prior_games' | 'low_minutes' | 'no_over_probability' | 'integer_line'
@@ -156,6 +179,7 @@ export interface NbaProps {
   gameId: number
   modelVersion: string
   lines: NbaPropLine[]
+  injuryReport: NbaInjuryReport
 }
 
 export interface NbaPropBoardGame {
@@ -166,6 +190,7 @@ export interface NbaPropBoardGame {
   status: string
   lines: NbaPropLine[]
   lineOnlyLines: NbaLineOnlyLine[]
+  injuryReport: NbaInjuryReport
 }
 
 /** `GET /nba/props`: one Eastern game date, with the game endpoints' line payloads. */

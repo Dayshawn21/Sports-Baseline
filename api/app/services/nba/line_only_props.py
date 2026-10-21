@@ -15,27 +15,39 @@ from app.core.nba_line_only import line_only_value
 from app.core.nba_names import espn_team_code
 from app.nba.markets import NBA_MARKETS, nba_market
 from app.repositories import nba as nba_repo
-from app.schemas.nba import NbaLineOnlyLineSchema, NbaLineOnlyPropsResponse, NbaLineOnlyRecentSchema
+from app.schemas.nba import (
+    NbaInjuryReportSchema, NbaInjurySchema, NbaLineOnlyLineSchema, NbaLineOnlyPropsResponse, NbaLineOnlyRecentSchema,
+)
+from app.services.nba.injuries import injury_index, load_injury_reports
 
 _MARKET_ORDER = {market.value: index for index, market in enumerate(NBA_MARKETS)}
 
 
-async def build_line_only_props(db: AsyncSession, game_id: int) -> NbaLineOnlyPropsResponse | None:
+async def build_line_only_props(
+    db: AsyncSession, game_id: int, as_of: dt.datetime | None = None,
+) -> NbaLineOnlyPropsResponse | None:
+    as_of = as_of if as_of is not None else dt.datetime.now(dt.UTC)
     game = await nba_repo.get_game(db, game_id)
     if game is None:
         return None
     lines = await nba_repo.get_line_only_lines(db, game_id)
     player_ids = sorted({int(str(line["player_id"])) for line in lines})
     recent_rows = await nba_repo.get_recent_box_scores(db, player_ids, cast(dt.date, game["game_date"])) if player_ids else []
-    return line_only_props(game_id, lines, recent_rows)
+    reports = await load_injury_reports(db, [game], as_of)
+    return line_only_props(game_id, lines, recent_rows, reports[game_id])
 
 
-def line_only_props(game_id: int, lines: Sequence[Mapping[str, object]], recent_rows: Sequence[Mapping[str, object]]) -> NbaLineOnlyPropsResponse:
+def line_only_props(
+    game_id: int, lines: Sequence[Mapping[str, object]], recent_rows: Sequence[Mapping[str, object]],
+    report: NbaInjuryReportSchema | None = None,
+) -> NbaLineOnlyPropsResponse:
+    report = report if report is not None else NbaInjuryReportSchema()
+    injuries = injury_index(report)
     rows_by_player = group_by_player(recent_rows)
     return NbaLineOnlyPropsResponse(
-        game_id=game_id,
+        game_id=game_id, injury_report=report,
         lines=[
-            NbaLineOnlyLineSchema(**line_fields(line), recent=recent_values(line, rows_by_player))
+            NbaLineOnlyLineSchema(**line_fields(line, injuries), recent=recent_values(line, rows_by_player))
             for line in ordered_lines(lines)
         ],
     )
@@ -53,9 +65,13 @@ def group_by_player(rows: Sequence[Mapping[str, object]]) -> dict[object, list[M
     return grouped
 
 
-def line_fields(line: Mapping[str, object]) -> dict[str, object]:
+def line_fields(
+    line: Mapping[str, object], injuries: Mapping[tuple[int, str], NbaInjurySchema],
+) -> dict[str, object]:
     """A stored line with its provider team as the ESPN code the game's teams use."""
-    return {**line, "team": espn_team_code(cast(str | None, line["team"]))}
+    team = espn_team_code(cast(str | None, line["team"]))
+    injury = injuries.get((int(str(line["player_id"])), team)) if team is not None else None
+    return {**line, "team": team, "injury": injury}
 
 
 def recent_values(

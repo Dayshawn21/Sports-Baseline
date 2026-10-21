@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.schemas.prop_ranking import PropRankingResponse
@@ -11,6 +11,26 @@ from app.schemas.prop_ranking import PropRankingResponse
 
 class _CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class NbaInjurySchema(_CamelModel):
+    espn_athlete_id: str
+    player_id: int | None
+    player_name: str
+    team: str
+    athlete_team: str | None
+    status: str
+    detail: str | None
+    source_updated_at: dt.datetime | None
+    return_date: str | None
+    fetched_at: dt.datetime
+
+
+class NbaInjuryReportSchema(_CamelModel):
+    source: Literal["ESPN"] = "ESPN"
+    fetched_at: dt.datetime | None = None
+    freshness: Literal["fresh", "stale", "unavailable"] = "unavailable"
+    injuries: list[NbaInjurySchema] = Field(default_factory=list)
 
 
 class NbaRecordSchema(_CamelModel):
@@ -93,6 +113,7 @@ class NbaLineHistorySchema(_CamelModel):
 class NbaGameDetailResponse(NbaSlateGameSchema):
     """The game page's anchor; later game-level display context extends it."""
     line_history: list[NbaLineHistorySchema]
+    injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
 
 
 class NbaLineOnlyRecentSchema(_CamelModel):
@@ -114,12 +135,14 @@ class NbaLineOnlyLineSchema(_CamelModel):
     fetched_at: dt.datetime
     # Last played games before this one, newest first.
     recent: list[NbaLineOnlyRecentSchema]
+    injury: NbaInjurySchema | None = None
 
 
 class NbaLineOnlyPropsResponse(_CamelModel):
     """Every NBA market is line-only until 20g: never a projection, edge or rank."""
     game_id: int
     lines: list[NbaLineOnlyLineSchema]
+    injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
 
 
 class NbaPropLineSchema(NbaLineOnlyLineSchema):
@@ -140,6 +163,7 @@ class NbaPropsResponse(_CamelModel):
     game_id: int
     model_version: str
     lines: list[NbaPropLineSchema]
+    injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
 
 
 class NbaPropBoardGameSchema(_CamelModel):
@@ -150,6 +174,7 @@ class NbaPropBoardGameSchema(_CamelModel):
     status: str
     lines: list[NbaPropLineSchema]
     line_only_lines: list[NbaLineOnlyLineSchema]
+    injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
 
 
 class NbaPropBoardResponse(_CamelModel):

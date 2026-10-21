@@ -1,0 +1,10 @@
+.nba-injury-tag {
+  display: inline-block; max-width: 100%; padding: 2px 6px; margin-top: 4px;
+  border: 1px solid var(--border-subtle); border-radius: 3px; color: var(--text-secondary);
+  font: 500 11px/1.4 var(--font-body); white-space: normal; overflow-wrap: anywhere;
+}
+.nba-injury-evidence { overflow-wrap: anywhere; }
+.nba-injury-evidence__times { margin: 12px 0 0; font-size: 12px; }
+.nba-injury-evidence__times > div + div { margin-top: 8px; }
+.nba-injury-evidence__times dt { color: var(--text-secondary); }
+.nba-injury-evidence__times dd { margin: 3px 0 0; color: var(--text-primary); }

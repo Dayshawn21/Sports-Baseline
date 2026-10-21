@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NbaGameHero, NbaGameMarket } from '~/components/nba/NbaGameHero'
+import { NbaGameInjuries } from '~/components/nba/NbaGameInjuries'
 import { NbaLineOnlyProps } from '~/components/nba/NbaLineOnlyProps'
 import { NbaProps } from '~/components/nba/NbaProps'
 import { NflLineMovementChart } from '~/components/nfl/NflLineMovementChart'
@@ -53,8 +54,9 @@ export default function NbaGamePage() {
       <div className="nfl-game-main">
         <NbaGameMarket detail={detail.data} card={card} />
         <NflLineMovementChart detail={detail.data} caveat="Before tip-off" />
-        <NbaProps gameId={detail.data.gameId} />
-        <NbaLineOnlyProps gameId={detail.data.gameId} />
+        <NbaGameInjuries detail={detail.data} />
+        <NbaProps key={`props:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
+        <NbaLineOnlyProps key={`other:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
       </div>
     </div>
   </div></div>

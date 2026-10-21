@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.nba_line_only import LINE_ONLY_COLUMNS
 from app.core.nba_projection_backtest import NbaHistoryRow
 from app.repositories import nba as nba_repo
+from app.repositories import nba_injuries as injury_repo
 from app.services.nba.line_only_props import line_only_props
 from app.services.nba.prop_board import build_prop_board, prop_board_response
 from app.services.nba.props import props_response
@@ -105,7 +106,7 @@ def test_board_serializes_game_and_line_fields_in_camel_case() -> None:
     assert payload["previousDate"] is None and payload["nextDate"] is None
     assert payload["modelVersion"] == "nba-reference-v1"
     game = payload["games"][0]
-    assert game.keys() == {"gameId", "awayTeam", "homeTeam", "startUtc", "status", "lines", "lineOnlyLines"}
+    assert game.keys() == {"gameId", "awayTeam", "homeTeam", "startUtc", "status", "lines", "lineOnlyLines", "injuryReport"}
     assert game["startUtc"] == "2026-10-20T15:00:00Z"
     assert {"playerId", "playerName", "fetchedAt", "gamesInSample", "pOver"} <= game["lines"][0].keys()
     assert {"playerId", "playerName", "fetchedAt", "recent"} <= game["lineOnlyLines"][0].keys()
@@ -113,6 +114,7 @@ def test_board_serializes_game_and_line_fields_in_camel_case() -> None:
 
 def _repository(monkeypatch: pytest.MonkeyPatch, **results: object) -> Mock:
     repository = Mock()
+    monkeypatch.setattr(injury_repo, "get_game_snapshots", AsyncMock(return_value={}))
     for name, result in results.items():
         reader = AsyncMock(return_value=result)
         repository.attach_mock(reader, name)

@@ -9,7 +9,7 @@ function recent(...values: Array<number | null>): NbaLineOnlyRecent[] {
 
 function line(overrides: Partial<NbaPropLine>): NbaPropLine {
   return {
-    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'assists',
+    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'assists', injury: null,
     oddsType: 'standard', line: 9.5, fetchedAt: '2026-10-06T16:30:00Z', recent: recent(5, 8, 9, 6, 10),
     projection: 8, gamesInSample: 20, priorMinutes: 41.4, gap: -1.5,
     pOver: 0.345, pUnder: 0.655, overProbabilityVersion: 'nba-pover-v1', flags: [], ...overrides,

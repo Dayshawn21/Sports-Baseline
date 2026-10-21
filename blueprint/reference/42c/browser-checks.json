@@ -1,0 +1,172 @@
+{
+  "fixture": true,
+  "viewports": [
+    1440,
+    1000,
+    390
+  ],
+  "boardChecks": [
+    {
+      "width": 1440,
+      "board": true,
+      "out": true,
+      "dayToDay": true,
+      "keyboardFocusRestored": true,
+      "noExtraRequests": true,
+      "viewport": 1440,
+      "document": 1440,
+      "tags": [
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "width": 1000,
+      "board": true,
+      "out": true,
+      "dayToDay": true,
+      "keyboardFocusRestored": true,
+      "noExtraRequests": true,
+      "viewport": 1000,
+      "document": 1000,
+      "tags": [
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "board": true,
+      "out": true,
+      "dayToDay": true,
+      "keyboardFocusRestored": true,
+      "noExtraRequests": true,
+      "viewport": 390,
+      "document": 390,
+      "tags": [
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        },
+        {
+          "font": "11px",
+          "color": "rgb(154, 154, 163)",
+          "overflow": false
+        }
+      ]
+    }
+  ],
+  "gameChecks": [
+    {
+      "width": 1440,
+      "modelled": true,
+      "lineOnly": true,
+      "noOverflow": true,
+      "noDrawerRequests": true
+    },
+    {
+      "width": 1000,
+      "modelled": true,
+      "lineOnly": true,
+      "noOverflow": true,
+      "noDrawerRequests": true
+    },
+    {
+      "width": 390,
+      "modelled": true,
+      "lineOnly": true,
+      "noOverflow": true,
+      "noDrawerRequests": true
+    }
+  ],
+  "teamChecks": [
+    {
+      "width": 1440,
+      "teams": true,
+      "injuryOnlyPlayer": true,
+      "teamMismatchNote": true,
+      "noOverflow": true,
+      "drawerScreenshotsSettled": true
+    },
+    {
+      "width": 1000,
+      "teams": true,
+      "injuryOnlyPlayer": true,
+      "teamMismatchNote": true,
+      "noOverflow": true,
+      "drawerScreenshotsSettled": true
+    },
+    {
+      "width": 390,
+      "teams": true,
+      "injuryOnlyPlayer": true,
+      "teamMismatchNote": true,
+      "noOverflow": true,
+      "drawerScreenshotsSettled": true
+    }
+  ],
+  "stateChecks": [
+    {
+      "gameId": 12,
+      "text": "Stale report. Last available ESPN snapshot."
+    },
+    {
+      "gameId": 10,
+      "text": "Injury report unavailable."
+    },
+    {
+      "gameId": 9,
+      "text": "No injury reported by ESPN for this player."
+    }
+  ],
+  "longDetailNoOverflow": true,
+  "errors": [],
+  "requestCount": 20
+}

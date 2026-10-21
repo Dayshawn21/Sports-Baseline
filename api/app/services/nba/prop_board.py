@@ -9,12 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.nba_projection_backtest import NBA_PROJECTION_MODEL_VERSION, NbaHistoryRow
 from app.core.nba_slate import adjacent_dates, slate_date
 from app.repositories import nba as nba_repo
-from app.schemas.nba import NbaPropBoardGameSchema, NbaPropBoardResponse
+from app.schemas.nba import NbaInjuryReportSchema, NbaPropBoardGameSchema, NbaPropBoardResponse
+from app.services.nba.injuries import load_injury_reports
 from app.services.nba.line_only_props import line_only_props
 from app.services.nba.props import props_response
 
 
-async def build_prop_board(db: AsyncSession, requested: dt.date | None, today: dt.date) -> NbaPropBoardResponse:
+async def build_prop_board(
+    db: AsyncSession, requested: dt.date | None, today: dt.date, as_of: dt.datetime | None = None,
+) -> NbaPropBoardResponse:
+    as_of = as_of if as_of is not None else dt.datetime.now(dt.UTC)
     game_dates = await nba_repo.get_game_dates(db)
     date = slate_date(requested, today, game_dates)
     previous_date, next_date = adjacent_dates(date, game_dates)
@@ -27,7 +31,8 @@ async def build_prop_board(db: AsyncSession, requested: dt.date | None, today: d
     })
     prior = await nba_repo.get_prior_games(db, player_ids, date) if player_ids else {}
     recent = await nba_repo.get_recent_box_scores(db, player_ids, date) if player_ids else []
-    return prop_board_response(date, previous_date, next_date, games, modelled, line_only, prior, recent)
+    reports = await load_injury_reports(db, games, as_of)
+    return prop_board_response(date, previous_date, next_date, games, modelled, line_only, prior, recent, reports)
 
 
 def prop_board_response(
@@ -39,15 +44,18 @@ def prop_board_response(
     line_only_by_game: Mapping[int, Sequence[Mapping[str, object]]],
     prior_by_player: Mapping[int, Sequence[NbaHistoryRow]],
     recent_rows: Sequence[Mapping[str, object]],
+    reports: Mapping[int, NbaInjuryReportSchema] | None = None,
 ) -> NbaPropBoardResponse:
     served = []
     for game in games:
         game_id = int(str(game["game_id"]))
+        report = reports.get(game_id) if reports is not None else None
         served.append(NbaPropBoardGameSchema(
             game_id=game_id, away_team=str(game["away_team"]), home_team=str(game["home_team"]),
             start_utc=cast(dt.datetime | None, game["start_utc"]), status=str(game["status"]),
-            lines=props_response(game_id, modelled_by_game.get(game_id, []), prior_by_player, recent_rows).lines,
-            line_only_lines=line_only_props(game_id, line_only_by_game.get(game_id, []), recent_rows).lines,
+            lines=props_response(game_id, modelled_by_game.get(game_id, []), prior_by_player, recent_rows, report).lines,
+            line_only_lines=line_only_props(game_id, line_only_by_game.get(game_id, []), recent_rows, report).lines,
+            injury_report=report if report is not None else NbaInjuryReportSchema(),
         ))
     return NbaPropBoardResponse(
         date=date, previous_date=previous_date, next_date=next_date,

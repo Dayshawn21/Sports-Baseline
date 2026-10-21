@@ -1,6 +1,9 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { NbaInjuryTag } from '~/components/nba/NbaInjury'
+import type { NbaInjury, NbaInjuryReport } from '~/types/nba'
+import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
 import { lineOnlyBars, mainRung } from '~/utils/nflLineOnly'
 import type { NbaPropCard } from '~/utils/nbaProps'
@@ -15,14 +18,17 @@ interface PlayerProps {
   market: string
   selected: boolean
   onOpen: () => void
+  injury: NbaInjury | null
+  freshness: NbaInjuryReport['freshness']
 }
 
-function Player({ playerName, position, team, market, selected, onOpen }: PlayerProps) {
+function Player({ playerName, position, team, market, selected, onOpen, injury, freshness }: PlayerProps) {
   return <span className="nba-prop-table__player">
     <span className="nba-prop-table__team" aria-hidden="true">{team ?? '--'}</span>
     <span>
       <button type="button" className="prop-table__open" aria-pressed={selected} onClick={onOpen}>{playerName}</button>
       <small>{position ? `${position} · ` : ''}{nbaMarketLabel(market)}</small>
+      <NbaInjuryTag injury={injury} freshness={freshness} />
     </span>
   </span>
 }
@@ -54,6 +60,8 @@ interface RowContextProps {
   game?: NbaBoardGameContext
   now?: Date
   rowKey?: string
+  injuryReport?: NbaInjuryReport
+  startUtc?: string | null
 }
 
 function GameCells({ game, now }: { game: NbaBoardGameContext, now: Date }) {
@@ -64,9 +72,10 @@ function GameCells({ game, now }: { game: NbaBoardGameContext, now: Date }) {
   </>
 }
 
-function PropRow({ card, market, selected, onOpen, game, now, rowKey }: RowContextProps & { card: NbaPropCard }) {
+function PropRow({ card, market, selected, onOpen, game, now, rowKey, injuryReport, startUtc }: RowContextProps & { card: NbaPropCard }) {
+  const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
   return <tr data-row-key={rowKey} className={`is-row${selected ? ' is-selected' : ''}`} onClick={event => openFromRow(event, onOpen)}>
-    <td className="prop-table__lead"><Player playerName={card.playerName} position={card.position} team={card.team} market={market} selected={selected} onOpen={onOpen} /></td>
+    <td className="prop-table__lead"><Player playerName={card.playerName} position={card.position} team={card.team} market={market} selected={selected} onOpen={onOpen} injury={card.injury} freshness={freshness} /></td>
     <td className="nba-prop-table__line" data-label="line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionRow?.projection ?? '--'}</td>
     <td className="prop-table__end is-num" data-label="gap">{card.projectionRow?.gap ?? '--'}</td>
@@ -89,13 +98,16 @@ interface ModelledTableProps {
   cards: NbaPropCard[]
   selectedPlayerId: number | null
   onOpen: (card: NbaPropCard) => void
+  injuryReport: NbaInjuryReport
+  startUtc: string | null
+  now: Date
 }
 
-export function NbaPropTable({ market, cards, selectedPlayerId, onOpen }: ModelledTableProps) {
+export function NbaPropTable({ market, cards, selectedPlayerId, onOpen, injuryReport, startUtc, now }: ModelledTableProps) {
   return <table className="prop-table nba-prop-table" aria-label={`${nbaMarketLabel(market)} props`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} selected={card.playerId === selectedPlayerId} onOpen={() => onOpen(card)} />)}</tbody>
+    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} selected={card.playerId === selectedPlayerId} onOpen={() => onOpen(card)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 
@@ -103,12 +115,13 @@ function rungText(line: number, oddsType: string | null): string {
   return oddsType && oddsType !== 'standard' ? `${line} ${oddsType}` : `${line}`
 }
 
-function LineOnlyRow({ row, market, selected, onOpen, game, now, rowKey }: RowContextProps & { row: NbaLineOnlyRow }) {
+function LineOnlyRow({ row, market, selected, onOpen, game, now, rowKey, injuryReport, startUtc }: RowContextProps & { row: NbaLineOnlyRow }) {
+  const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
   const main = mainRung(row)
   const also = row.rungs.filter(rung => rung !== main).map(rung => rungText(rung.line, rung.oddsType)).join(' · ')
   const count = row.count === null ? '--' : row.count > 0 ? `over ${row.overCount} of ${row.count}` : 'No earlier games'
   return <tr data-row-key={rowKey} className={`is-row${selected ? ' is-selected' : ''}`} onClick={event => openFromRow(event, onOpen)}>
-    <td className="prop-table__lead"><Player playerName={row.playerName} position={row.position} team={row.team} market={market} selected={selected} onOpen={onOpen} /></td>
+    <td className="prop-table__lead"><Player playerName={row.playerName} position={row.position} team={row.team} market={market} selected={selected} onOpen={onOpen} injury={row.injury} freshness={freshness} /></td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? 'standard'}</small></td>
     <td className="nba-line-only-table__also" data-label="also">{also || '--'}</td>
     <td><MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
@@ -126,13 +139,16 @@ interface LineOnlyTableProps {
   rows: NbaLineOnlyRow[]
   selectedPlayerId: number | null
   onOpen: (row: NbaLineOnlyRow) => void
+  injuryReport: NbaInjuryReport
+  startUtc: string | null
+  now: Date
 }
 
-export function NbaLineOnlyTable({ market, rows, selectedPlayerId, onOpen }: LineOnlyTableProps) {
+export function NbaLineOnlyTable({ market, rows, selectedPlayerId, onOpen, injuryReport, startUtc, now }: LineOnlyTableProps) {
   return <table className="prop-table nba-line-only-table" aria-label={`${nbaMarketLabel(market)} other lines`}>
     <colgroup>{LINE_ONLY_COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{LINE_ONLY_COLUMNS.map(([key, label]) => <th key={key} className={key === 'line' ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} row={row} market={market} selected={row.playerId === selectedPlayerId} onOpen={() => onOpen(row)} />)}</tbody>
+    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} row={row} market={market} selected={row.playerId === selectedPlayerId} onOpen={() => onOpen(row)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 

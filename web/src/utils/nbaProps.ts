@@ -1,4 +1,4 @@
-import type { NbaLineOnlyRecent, NbaPropFlag, NbaPropLine } from '~/types/nba'
+import type { NbaInjury, NbaLineOnlyRecent, NbaPropFlag, NbaPropLine } from '~/types/nba'
 import { NBA_LINE_ONLY_MARKETS } from '~/utils/nbaLineOnly'
 import { mainRung, overAgainstStandard } from '~/utils/nflLineOnly'
 
@@ -27,6 +27,7 @@ export interface NbaPropCard {
   playerName: string
   position: string | null
   team: string | null
+  injury: NbaInjury | null
   rungs: NbaPropRung[]
   main: NbaPropRung
   /** Every rung but the main one, with its own P(over) when served: `9.5 demon · 31%`. */
@@ -100,7 +101,7 @@ function card(playerLines: NbaPropLine[]): NbaPropCard {
   const main = mainRung({ rungs })
   const flag = main.flags[0]
   return {
-    playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team,
+    playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team, injury: first.injury ?? null,
     rungs, main, also: rungs.filter(rung => rung !== main).map(rungLabel),
     projectionRow: projectionRow(first.projection, main),
     gamesInSample: first.gamesInSample,

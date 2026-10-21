@@ -4,10 +4,11 @@ import { NBA_LINE_ONLY_MARKETS, nbaLineOnlyGroups } from '~/utils/nbaLineOnly'
 import { nbaBoardGameLabels, nbaBoardMarket, nbaBoardPath, nbaPropBoard } from '~/utils/nbaPropBoard'
 import { parseSlateDate } from '~/utils/nbaSlate'
 import { nbaPropGroups } from '~/utils/nbaProps'
+import { UNAVAILABLE_NBA_INJURIES } from '~/utils/nbaInjuries'
 
 function line(overrides: Partial<NbaPropLine> = {}): NbaPropLine {
   return {
-    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'assists',
+    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'assists', injury: null,
     oddsType: 'standard', line: 9.5, fetchedAt: '2026-10-21T16:00:00Z',
     recent: [{ gameDate: '2026-10-20', opponent: 'NY', value: 0 }],
     projection: 8, gamesInSample: 20, priorMinutes: 30, gap: -1.5,
@@ -18,7 +19,7 @@ function line(overrides: Partial<NbaPropLine> = {}): NbaPropLine {
 
 function other(overrides: Partial<NbaLineOnlyLine> = {}): NbaLineOnlyLine {
   return {
-    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'double_double',
+    playerId: 1, playerName: 'Cade Cunningham', position: 'G', team: 'DET', market: 'double_double', injury: null,
     oddsType: 'standard', line: 0.5, fetchedAt: '2026-10-21T16:00:00Z', recent: [], ...overrides,
   }
 }
@@ -26,7 +27,7 @@ function other(overrides: Partial<NbaLineOnlyLine> = {}): NbaLineOnlyLine {
 function game(overrides: Partial<NbaPropBoardGame> = {}): NbaPropBoardGame {
   return {
     gameId: 1, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z',
-    status: 'scheduled', lines: [line()], lineOnlyLines: [], ...overrides,
+    status: 'scheduled', lines: [line()], lineOnlyLines: [], injuryReport: UNAVAILABLE_NBA_INJURIES, ...overrides,
   }
 }
 
@@ -54,7 +55,7 @@ describe('nbaPropBoard', () => {
     expect(result).toHaveLength(3)
     expect(new Set(result.map(row => row.key)).size).toBe(3)
     expect(result.find(row => row.key === 'modelled:2:assists:1')?.game).toEqual({
-      gameId: 2, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z', status: 'scheduled',
+      gameId: 2, awayTeam: 'DET', homeTeam: 'NY', startUtc: '2026-10-22T00:00:00Z', status: 'scheduled', injuryReport: UNAVAILABLE_NBA_INJURIES,
     })
   })
 

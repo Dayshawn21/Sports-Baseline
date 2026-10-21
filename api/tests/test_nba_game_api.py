@@ -91,7 +91,7 @@ def test_game_detail_keeps_the_slate_game_and_reduces_history_to_line_changes() 
         {"market": "total", "book": "fanduel", "line": 221.5, "fetched_at": FETCHED},
     ]
     detail = game_detail(game, rows)
-    assert detail.model_dump(exclude={"line_history"}) == game.model_dump()
+    assert detail.model_dump(exclude={"line_history", "injury_report"}) == game.model_dump()
     histories = {history.market: (history.book, [step.line for step in history.steps]) for history in detail.line_history}
     assert histories == {"spread": ("draftkings", [-2.5, -3.5]), "total": ("fanduel", [221.5])}
 

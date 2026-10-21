@@ -60,10 +60,10 @@
 .nba-prop-evidence__section h4 { margin: 0 0 8px; font: 700 13px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
 .nba-prop-evidence__section h4 small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
 .nba-prop-evidence__rungs { display: grid; grid-template-columns: 1fr 1fr; font: 400 12px var(--font-mono); }
-.nba-prop-evidence__rungs.is-modelled { grid-template-columns: repeat(5, minmax(52px, 1fr)) minmax(120px, 2fr); }
+.nba-prop-evidence__rungs.is-modelled { grid-template-columns: minmax(44px, 1fr) minmax(76px, 1.4fr) repeat(3, minmax(48px, 1fr)) minmax(96px, 1.8fr); }
 .nba-prop-evidence__rungs > span { padding: 6px 8px; color: var(--text-muted); font: 700 11px var(--font-display); text-transform: uppercase; }
 .nba-prop-evidence__rung { display: contents; }
-.nba-prop-evidence__rung > * { padding: 8px; border-top: 1px solid var(--border-subtle); }
+.nba-prop-evidence__rung > * { min-width: 0; padding: 8px; border-top: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
 .nba-prop-evidence__recent { border-top: 1px solid var(--border-subtle); }
 .nba-prop-evidence__recent > div { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); font: 400 12px var(--font-mono); }
 .nba-prop-evidence__recent b { color: var(--text-primary); }

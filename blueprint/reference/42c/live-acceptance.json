@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-21T19:52:58.081683+00:00",
+  "fixture": false,
+  "routes": [
+    {
+      "gameId": 21316,
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "boardGameParity": true,
+      "teamInjuries": 6
+    },
+    {
+      "gameId": 21317,
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "boardGameParity": true,
+      "teamInjuries": 4
+    }
+  ],
+  "boardStatus": 200,
+  "boardBytes": 5129575,
+  "boardSeconds": 1.492,
+  "games": 11,
+  "rawLines": 8097,
+  "taggedLines": 332,
+  "reportStates": [
+    "fresh"
+  ],
+  "databaseRevision": "0048",
+  "snapshotRows": 1,
+  "storedInjuries": 80,
+  "latestSnapshot": {
+    "id": 1,
+    "fetchedAt": "2026-10-21T19:52:03.805522+00:00",
+    "entryCount": 80
+  }
+}
