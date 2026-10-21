@@ -191,6 +191,27 @@ Two apps, two command sets. Paths are relative to the repo root.
   [--since YYYY-MM-DD] [--dry-run]` (tracked players only; TennisAbstract
   remains authoritative, and TennisMyLife fills display gaps without changing
   grading or model inputs)
+- Candidate tennis ELO: `python -m app.ingest.tennis_elo` (dry run by
+  default; `--write` stores an isolated, immutable current-UTC-day roster;
+  `--manifest <path>` reuses reviewed cached inputs). Runs after the 11:00 UTC
+  TennisMyLife job, with a separate `tennis-elo` dispatch choice. It never
+  replaces TennisAbstract or the served ELO source.
+- Tennis ELO shadow freeze: `python -m app.ingest.tennis_elo_comparison`
+  (dry run by default; `--write` requires reviewed activation and the first
+  full UTC day; `--cycle <aware-ISO-time>` retries an immutable cycle).
+  `--scheduled` skips inactive/partial-first-day experiments cleanly; it runs
+  after the 13:30 UTC predictions and existing prop snapshots, or by the
+  `tennis-elo-comparison` dispatch choice. `--check-snapshot` only validates
+  today's complete roster and original cached files. The jobs share an exact
+  UTC-day/pinned-implementation Actions cache. Missing or invalid originals
+  freeze no pairs; active cycles retain eligible attempts for coverage. Never
+  substitute newly downloaded files for the originals of a stored daily roster.
+- Tennis ELO report: `python -m app.backtest.tennis_elo --count` (default,
+  no winners or losses loaded). `--score --group ATP|WTA|ATP_CHALLENGER`
+  requires a separate once-only scoring approval after the sample matures.
+  Preserve `api/data/tennismylife-elo/reports/` with the experiment evidence:
+  its locked sample/report artifacts prevent repeating the test. No workflow
+  scores or activates the experiment automatically.
 - PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
   predictions; safe to re-run, a stored prop row is skipped)
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, TypedDict
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -570,25 +570,34 @@ async def get_player_match_history(
     }
 
 
+class MatchOdds(TypedDict):
+    book: str
+    p1_odds: int | None
+    p2_odds: int | None
+    line: float | None
+    fetched_at: datetime | None
+    row_id: int
+
+
 async def get_latest_odds_batch(
     db: AsyncSession, match_ids: list[int], market: str = "moneyline"
-) -> dict[int, dict]:
+) -> dict[int, MatchOdds]:
     """Fetch most recent odds for multiple matches in one query."""
     if not match_ids:
         return {}
     rows = await db.execute(
         text("""
             SELECT DISTINCT ON (match_id)
-                match_id, book, p1_odds, p2_odds, line, fetched_at
+                match_id, book, p1_odds, p2_odds, line, fetched_at, id
             FROM match_odds
             WHERE match_id = ANY(:ids) AND market = :mkt
             ORDER BY match_id, fetched_at DESC, """ + _BOOK_PRIORITY_SQL + """
         """),
         {"ids": match_ids, "mkt": market},
     )
-    result = {}
+    result: dict[int, MatchOdds] = {}
     for r in rows.fetchall():
-        result[r[0]] = {"book": r[1], "p1_odds": r[2], "p2_odds": r[3], "line": r[4], "fetched_at": r[5]}
+        result[r[0]] = {"book": r[1], "p1_odds": r[2], "p2_odds": r[3], "line": r[4], "fetched_at": r[5], "row_id": r[6]}
     return result
 
 

@@ -59,6 +59,19 @@ class TestQueriesBreakTiesByBook:
         order_by = _order_by(session.statement)
         assert order_by.index("fetched_at DESC") < order_by.index("CASE LOWER(book)")
 
+    def test_batch_retains_selected_odds_row_identity_for_shadow_provenance(self):
+        class Rows:
+            def fetchall(self):
+                return [(50, "draftkings", -110, -110, None, None, 1234)]
+
+        class Session:
+            async def execute(self, statement, params):
+                return Rows()
+
+        odds = asyncio.run(get_latest_odds_batch(cast(AsyncSession, Session()), [50]))
+        assert odds[50]["row_id"] == 1234 and odds[50]["book"] == "draftkings"
+        assert (odds[50]["p1_odds"], odds[50]["p2_odds"]) == (-110, -110)
+
     def test_batch_orders_by_recency_then_book(self):
         session = _RecordingSession()
         asyncio.run(get_latest_odds_batch(cast(AsyncSession, session), [1, 2]))

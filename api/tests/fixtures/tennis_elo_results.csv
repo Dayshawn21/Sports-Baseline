@@ -1,0 +1,6 @@
+tourney_id,tourney_name,tourney_date,tourney_level,match_num,round,surface,winner_id,winner_name,loser_id,loser_name,score,best_of
+2021-synthetic,Synthetic Tour,20210104,250,1,R32,Hard,A001,Player One,B002,Player Two,6-4 6-3,3
+2021-synthetic,Synthetic Tour,20210104,250,2,R32,Clay,B002,Player Two,C003,Player Three,6-7(4) 7-6(2) 6-2,3
+2021-synthetic,Synthetic Tour,20210104,250,3,R32,Grass,A001,Player One,C003,Player Three,6-4 6-3 RET,3
+2021-synthetic,Synthetic Tour,20210104,250,4,R32,Hard,A001,Player One,C003,Player Three,W/O,3
+2021-synthetic,Synthetic Tour,20210104,250,5,R32,Carpet,A001,Player One,C003,Player Three,6-4 2-1,3

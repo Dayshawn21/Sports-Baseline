@@ -51,6 +51,9 @@ api/models/tennis_training_*.csv
 # Valuebetennis season CSVs for the 26c backtest, downloaded once by hand (CC BY 4.0).
 api/data/valuebetennis/
 
+# Immutable source files and manifests for candidate tennis ELO (41b).
+api/data/tennismylife-elo/
+
 # Playwright MCP writes snapshots and screenshots here during manual UI checks.
 .playwright-mcp/
 

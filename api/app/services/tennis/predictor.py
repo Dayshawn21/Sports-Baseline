@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.odds import american_to_prob, devig_two_way, odds_are_stale
 from app.core.tennis_format import display_tour, infer_best_of
+from app.ml.asof_features import HistoryIndex
+from app.ml.elo_history import EloIndex
 from app.ml.registry import ModelRegistry
 from app.repositories import matches as match_repo
 from app.repositories import players as player_repo
@@ -236,6 +238,7 @@ def _build_prediction(
     history: dict[int, dict],
     asof: Optional[dict] = None,
     prior_matches: Optional[int] = None,
+    now: datetime | None = None,
 ) -> PredictionOutput:
     """Build a PredictionOutput from pre-fetched cache dicts (no DB calls)."""
     p1 = players.get(match.p1_id)
@@ -262,7 +265,7 @@ def _build_prediction(
     match_odds = odds.get(match.id)
     p1_odds = match_odds["p1_odds"] if match_odds else None
     p2_odds = match_odds["p2_odds"] if match_odds else None
-    odds_stale = odds_are_stale(match_odds.get("fetched_at") if match_odds else None)
+    odds_stale = odds_are_stale(match_odds.get("fetched_at") if match_odds else None, now=now)
 
     _empty_history = {"rest_days": None, "experience": 0.0, "matches_10d": 0.0, "matches_30d": 0.0, "streak": 0.0, "last_surface": None}
     p1_history = history.get(match.p1_id, _empty_history)
@@ -353,22 +356,37 @@ async def predict_today(
     return await predict_matches(db, registry, today_matches, ref_date)
 
 
-async def predict_matches(
-    db: AsyncSession,
-    registry: ModelRegistry,
-    today_matches: list[Match],
-    ref_date: date,
-) -> list[PredictionOutput]:
-    """Predict the given matches through the slate's batch path.
+@dataclass
+class PredictionBatch:
+    players: dict[int, Player]
+    elo: dict[int, PlayerElo]
+    stats: dict[tuple[int, str | None], PlayerRollingStats]
+    ctx_last90: dict[tuple[int, str | None, str], PlayerRollingStats]
+    ctx_top20: dict[tuple[int, str | None, str], PlayerRollingStats]
+    ctx_top50: dict[tuple[int, str | None, str], PlayerRollingStats]
+    odds: dict[int, match_repo.MatchOdds]
+    h2h: dict[tuple[int, int, str | None], dict[str, int]]
+    history: dict[int, dict[str, float | str | None]]
+    history_index: HistoryIndex
+    elo_index: EloIndex
 
-    The match page predicts one match through here too, so it can never show a
-    probability the slate would not. Uses batch DB queries instead of per-match
-    queries to avoid timeouts.
-    """
-    if not today_matches:
-        return []
+    def prior_counts(self, match: Match) -> tuple[int, int]:
+        on = match.match_date or date.today()
+        return tuple(int(self.history_index.form(pid, on)["experience"]) for pid in (match.p1_id, match.p2_id))
 
-    # ── Batch prefetch all data ───────────────────────────────────────────────
+    def build(self, registry: ModelRegistry, match: Match, *, now: datetime | None = None) -> PredictionOutput:
+        return _build_prediction(
+            registry, match, self.players, self.elo, self.stats,
+            self.ctx_last90, self.ctx_top20, self.ctx_top50, self.odds, self.h2h, self.history,
+            asof=asof_features(self.history_index, self.elo_index, match),
+            prior_matches=min_prior_matches(self.history_index, match), now=now,
+        )
+
+
+async def load_prediction_batch(
+    db: AsyncSession, today_matches: list[Match], ref_date: date,
+) -> PredictionBatch:
+    """Load the slate inputs once, also used by the isolated ELO shadow CLI."""
     all_player_ids = list({pid for m in today_matches for pid in (m.p1_id, m.p2_id)})
     match_ids = [m.id for m in today_matches]
 
@@ -395,29 +413,25 @@ async def predict_matches(
     history_cache = await match_repo.get_player_match_history_batch(db, all_player_ids, ref_date)
     history_index, elo_index = await _history_cache.get(db)
 
-    # ── Predict from cache (no more DB calls) ────────────────────────────────
-    # Pure CPU, so it runs in a worker thread: on the event loop it held every
-    # other request for seconds on the hosted instance (37e).
+    return PredictionBatch(
+        players_cache, elo_cache, stats_cache, ctx_last90_cache, ctx_top20_cache, ctx_top50_cache,
+        odds_cache, h2h_cache, history_cache, history_index, elo_index,
+    )
+
+
+async def predict_matches(
+    db: AsyncSession, registry: ModelRegistry, today_matches: list[Match], ref_date: date,
+) -> list[PredictionOutput]:
+    """The slate and match page use one batch path; model inference stays off the event loop."""
+    if not today_matches:
+        return []
+    batch = await load_prediction_batch(db, today_matches, ref_date)
+
     def predict_all() -> list[PredictionOutput]:
         results = []
         for match in today_matches:
             try:
-                out = _build_prediction(
-                    registry=registry,
-                    match=match,
-                    players=players_cache,
-                    elo=elo_cache,
-                    stats=stats_cache,
-                    ctx_last90=ctx_last90_cache,
-                    ctx_top20=ctx_top20_cache,
-                    ctx_top50=ctx_top50_cache,
-                    odds=odds_cache,
-                    h2h=h2h_cache,
-                    history=history_cache,
-                    asof=asof_features(history_index, elo_index, match),
-                    prior_matches=min_prior_matches(history_index, match),
-                )
-                results.append(out)
+                results.append(batch.build(registry, match))
             except Exception:
                 logger.exception("Skipping prediction for match %s", match.id)
         return results
