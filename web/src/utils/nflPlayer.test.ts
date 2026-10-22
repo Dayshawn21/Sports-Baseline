@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
+import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -107,5 +107,22 @@ describe('playerInitials', () => {
     ['', '--'],
   ])('%s is %s', (name, initials) => {
     expect(playerInitials(name)).toBe(initials)
+  })
+})
+
+
+describe('specialist player pages', () => {
+  it('restricts specialist layout to kickers and punters', () => {
+    expect(['K', 'P', 'QB', 'RB', 'WR', 'TE', null].map(isNflSpecialist)).toEqual([true, true, false, false, false, false, false])
+  })
+  it('selects only the correct specialist fields and market identity', () => {
+    expect(SPECIALIST_COLUMNS.K.map(column => [column.field, column.market])).toEqual([
+      ['fgMade', 'field_goals_made'], ['patMade', null], ['kickingPoints', 'kicking_points'],
+    ])
+    expect(SPECIALIST_COLUMNS.P).toEqual([{ field: 'punts', label: 'Punts', market: 'punts' }])
+  })
+  it('carries the encoded market to the player game log', () => {
+    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
+    expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
   })
 })

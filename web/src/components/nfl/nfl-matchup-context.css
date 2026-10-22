@@ -1,0 +1,35 @@
+.nfl-context { display: grid; gap: 14px; min-width: 0; }
+.nfl-context-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.nfl-context-table__label { width: 38%; }
+.nfl-context-table th, .nfl-context-table td { padding: 10px 16px; border-top: 1px solid var(--border-subtle); vertical-align: top; text-align: right; }
+.nfl-context-table thead th { color: var(--text-secondary); font: 600 12px var(--font-body); }
+.nfl-context-table th:first-child { text-align: left; }
+.nfl-context-table tbody th { color: var(--text-secondary); font: 400 13px/1.5 var(--font-body); overflow-wrap: anywhere; }
+.nfl-context-table tbody th small { display: block; color: var(--text-muted); font-size: 11px; }
+.nfl-context-table a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.nfl-context-table a:hover { color: var(--text-primary); text-decoration-thickness: 2px; }
+.nfl-context-table a:focus-visible, .nfl-context-usage summary:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+.nfl-context-metric { display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.nfl-context-metric__value { color: var(--text-primary); font: 500 14px/1.4 var(--font-mono); }
+.nfl-context-metric small, .nfl-context-rank { display: block; color: var(--text-secondary); font: 400 11px/1.5 var(--font-mono); }
+.nfl-context-rank { margin-top: 2px; }
+.nfl-context-na { color: var(--text-secondary); font-size: 11px; }
+.nfl-context-usage summary { padding: 12px 16px; cursor: pointer; color: var(--text-primary); font-size: 13px; }
+.nfl-context-usage summary span { margin-left: 8px; color: var(--text-secondary); font-size: 11px; }
+.nfl-context-usage__table { border-bottom: 0; }
+
+.nfl-evidence-context__heading { margin: 0 0 8px; color: var(--text-secondary); font: 600 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.nfl-evidence-context__note { margin: 8px 0 12px; color: var(--text-secondary); font: 400 11px/1.5 var(--font-body); }
+.nfl-evidence-context .nfl-context-table th, .nfl-evidence-context .nfl-context-table td { padding: 10px 6px; }
+.nfl-evidence-context .nfl-context-table tbody th { font-size: 12px; }
+.nfl-evidence-context .nfl-context-metric small, .nfl-evidence-context .nfl-context-rank { font-family: var(--font-body); }
+.nfl-evidence-context__opponent { margin-top: 16px; }
+.nfl-game-drawer .nfl-prop-detail, .nfl-player-drawer .nfl-prop-detail { position: static; max-height: none; overflow: visible; }
+
+@media (max-width: 640px) {
+  .nfl-context-table__label { width: 36%; }
+  .nfl-context-table th, .nfl-context-table td { padding: 10px 8px; }
+  .nfl-context-table tbody th { font-size: 12px; }
+  .nfl-context-metric small, .nfl-context-rank { font-family: var(--font-body); }
+  .nfl-context-usage summary span { display: block; margin: 4px 0 0 16px; }
+}

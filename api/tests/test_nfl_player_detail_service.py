@@ -158,3 +158,17 @@ def test_a_position_without_a_focus_has_no_splits_and_only_snap_usage() -> None:
 
     assert detail.splits == []
     assert detail.usage_stats == ["snap_pct"]
+
+
+@pytest.mark.parametrize(("fg", "pat", "expected"), [(2, 2, 8.0), (0, 0, 0.0), (None, 2, None), (2, None, None)])
+def test_specialist_game_log_preserves_counts_and_uses_settlement_rule(fg, pat, expected) -> None:
+    detail = player_detail(PROFILE | {"position": "K"}, [game(fg_made=fg, pat_made=pat, punts=None)], [], 2026, 4)
+    log = detail.model_dump(by_alias=True)["gameLog"][0]
+    assert (log["fgMade"], log["patMade"], log["kickingPoints"], log["punts"]) == (fg, pat, expected, None)
+
+
+def test_punter_game_log_preserves_observed_zero_and_missing_kicking_stats() -> None:
+    detail = player_detail(PROFILE | {"position": "P"}, [game(punts=0)], [], 2026, 4)
+    assert detail.game_log[0].punts == 0
+    assert detail.game_log[0].fg_made is None
+    assert detail.game_log[0].kicking_points is None

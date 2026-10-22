@@ -1,6 +1,6 @@
 import client from './client'
 import type {
-  NflCurrentWeek, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
+  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
   NflModelRanking, NflRankingModelVersion,
   NflPlayerDetail, NflSlateResponse, NflLineOnlyBoard,
 } from '~/types/nfl'
@@ -30,6 +30,11 @@ export async function fetchNflCurrentWeek(): Promise<NflCurrentWeek> {
 
 export async function fetchNflGame(gameId: number): Promise<NflGameDetail> {
   const { data } = await client.get<NflGameDetail>(`/nfl/games/${gameId}`)
+  return data
+}
+
+export async function fetchNflGameContext(gameId: number): Promise<NflGameContext> {
+  const { data } = await client.get<NflGameContext>(`/nfl/games/${gameId}/context`)
   return data
 }
 

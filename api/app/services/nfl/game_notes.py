@@ -16,6 +16,7 @@ from app.core.nfl_game_notes import depth_change, injury_sort_key, line_move, re
 from app.core.nfl_qb_change import USUAL_STARTER_GAMES, QbChange, qb_change
 from app.core.nfl_team_stats import EMPTY_TEAM_STATS, TeamStats, team_stats
 from app.repositories import nfl as nfl_repo
+from app.services.nfl.matchup_context import build_week_matchup_context
 from app.schemas.nfl import (
     NflBestLineSchema,
     NflBestMarketSchema,
@@ -24,6 +25,7 @@ from app.schemas.nfl import (
     NflGameNotesResponse,
     NflGameNotesSchema,
     NflLineMoveSchema,
+    NflMatchupContextSchema,
     NflNoteDepthChangeSchema,
     NflNoteInjurySchema,
     NflQbChangeSchema,
@@ -45,12 +47,14 @@ async def build_game_notes(db: AsyncSession, season: int, week: int) -> NflGameN
     stats = team_stats(await nfl_repo.get_week_team_games(db, season, week))
     qb_changes = await _week_qb_changes(db, season, week)
     quotes = await nfl_repo.get_week_game_quotes(db, season, week)
+    matchups = await build_week_matchup_context(db, season, week)
     now = datetime.now(UTC)
     best = {game_id: best_line_schema(start_utc, game_quotes, now) for game_id, (start_utc, game_quotes) in quotes.items()}
     return NflGameNotesResponse(
         season=season, week=week,
         games=[
-            game_notes(game_id, game, injuries, depth_rows, moves, recent, stats, qb_changes, best.get(game_id))
+            game_notes(game_id, game, injuries, depth_rows, moves, recent, stats, qb_changes,
+                       best.get(game_id), matchups.get(game_id))
             for game_id, game in sorted(games.items())
         ],
     )
@@ -66,6 +70,7 @@ def game_notes(
     stats: dict[int, TeamStats],
     qb_changes: dict[int, QbChange] | None = None,
     best_line: NflBestLineSchema | None = None,
+    matchup_context: NflMatchupContextSchema | None = None,
 ) -> NflGameNotesSchema:
     team_ids = {game["away_team_id"], game["home_team_id"]}
     listed = sorted(
@@ -85,6 +90,7 @@ def game_notes(
         away_qb_change=_qb_change_schema(game["away_team"], (qb_changes or {}).get(game["away_team_id"])),
         home_qb_change=_qb_change_schema(game["home_team"], (qb_changes or {}).get(game["home_team_id"])),
         best_line=best_line,
+        matchup_context=matchup_context,
     )
 
 

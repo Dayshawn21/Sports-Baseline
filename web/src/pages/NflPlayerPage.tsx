@@ -13,7 +13,7 @@ import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvide
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nflGame'
-import { FOCUS_LABELS, playerWeekLines } from '~/utils/nflPlayer'
+import { FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -61,7 +61,7 @@ function Chips({ player }: { player: NflPlayerDetail }) {
     <StatChip value={summary.games} label={`Games ${player.season}`} />
     {labels && <StatChip value={perGame(summary.focusPerGame)} label={labels.focus} />}
     {labels && <StatChip value={perGame(summary.volumePerGame)} label={labels.volume} />}
-    <StatChip value={summary.snapShare === null ? MISSING : `${Math.round(summary.snapShare * 100)}%`} label="Snap share" />
+    {!isNflSpecialist(player.position) && <StatChip value={summary.snapShare === null ? MISSING : `${Math.round(summary.snapShare * 100)}%`} label="Snap share" />}
   </section>
 }
 
@@ -85,7 +85,7 @@ export default function NflPlayerPage() {
     <Availability player={player} />
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
     <div className="nfl-player-grid">
-      <NflPlayerUsage player={player} />
+      {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
       <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
     </div>
     <NflPlayerGameLog player={player} />

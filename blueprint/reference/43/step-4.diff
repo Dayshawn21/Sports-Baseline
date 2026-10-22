@@ -1,0 +1,395 @@
+--- a/web/src/components/NflEvidencePanel.tsx
++++ b/web/src/components/NflEvidencePanel.tsx
+@@ -4,6 +4,7 @@
+ } from '~/components/nfl/NflPropDetailSections'
+ import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
+ import { nflPropDetail } from '~/utils/nflPropDetail'
++import { NflEvidenceContext } from '~/components/nfl/NflEvidenceContext'
+ 
+ export default function NflEvidencePanel({ row, game, alternates = [], showGameLink = true, showPlayerLink = true }: { row: NflSlateLine, game: NflSlateGame | null, alternates?: NflSlateLine[], showGameLink?: boolean, showPlayerLink?: boolean }) {
+   const detail = nflPropDetail(row, game, alternates, Date.now())
+@@ -11,6 +12,7 @@
+     <DetailHeader detail={detail} playerLink={showPlayerLink ? `/nfl/player/${row.playerId}` : null} />
+     <DetailProjection detail={detail} />
+     <DetailGameLog row={row} detail={detail} />
++    <NflEvidenceContext row={row} game={game} />
+     <DetailContext detail={detail} />
+     <DetailBreakdown detail={detail} />
+     <DetailLines detail={detail} />
+--- a/web/src/components/nfl/nfl-matchup-context.css
++++ b/web/src/components/nfl/nfl-matchup-context.css
+@@ -18,6 +18,14 @@
+ .nfl-context-usage summary span { margin-left: 8px; color: var(--text-secondary); font-size: 11px; }
+ .nfl-context-usage__table { border-bottom: 0; }
+ 
++.nfl-evidence-context__heading { margin: 0 0 8px; color: var(--text-secondary); font: 600 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
++.nfl-evidence-context__note { margin: 8px 0 12px; color: var(--text-secondary); font: 400 11px/1.5 var(--font-body); }
++.nfl-evidence-context .nfl-context-table th, .nfl-evidence-context .nfl-context-table td { padding: 10px 6px; }
++.nfl-evidence-context .nfl-context-table tbody th { font-size: 12px; }
++.nfl-evidence-context .nfl-context-metric small, .nfl-evidence-context .nfl-context-rank { font-family: var(--font-body); }
++.nfl-evidence-context__opponent { margin-top: 16px; }
++.nfl-game-drawer .nfl-prop-detail, .nfl-player-drawer .nfl-prop-detail { position: static; max-height: none; overflow: visible; }
++
+ @media (max-width: 640px) {
+   .nfl-context-table__label { width: 36%; }
+   .nfl-context-table th, .nfl-context-table td { padding: 10px 8px; }
+--- a/web/src/pages/NflPropBoardPage.tsx
++++ b/web/src/pages/NflPropBoardPage.tsx
+@@ -8,6 +8,7 @@
+ import ErrorState from '~/components/shared/ErrorState'
+ import LoadingState from '~/components/shared/LoadingState'
+ import { useIsMobile } from '~/hooks/useIsMobile'
++import { useNflDrawerFocus } from '~/hooks/useNflDrawerFocus'
+ import { useNflCurrentWeek, useNflSlate, useNflWeekLineOnlyProps } from '~/hooks/useNfl'
+ import { formatKickoffTime, marketLabel } from '~/utils/nflLabels'
+ import type { NflPositionFilter } from '~/utils/nflPositions'
+@@ -27,6 +28,7 @@
+   const [gameFilter, setGameFilter] = useState('all')
+   const [showAll, setShowAll] = useState(false)
+   const [selectedLineId, setSelectedLineId] = useState<number | null>(null)
++  const drawerFocus = useNflDrawerFocus()
+   const isMobile = useIsMobile()
+   const currentWeek = useNflCurrentWeek()
+   const activeSeason = season ?? currentWeek.data?.season ?? null
+@@ -49,6 +51,7 @@
+   const selectedGame = filteredGames.find(game => game.gameId === selectedLine?.gameId) ?? null
+   // A position or week change can empty the chosen market, so fall back rather than show nothing.
+   useEffect(() => { setMarket(null) }, [activeSeason, activeWeek, position])
++  useEffect(() => { setSelectedLineId(null) }, [activeSeason, activeWeek, position, selectedMarket, gameFilter, showAll])
+   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
+   if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL prop board..." />
+   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
+@@ -73,11 +76,11 @@
+     {category && <>
+       <section className="prop-table-panel" aria-label="Prop lines">
+         {category.rateable.length === 0 && <p className="nfl-prop-table-empty">{isTargetsReference(category.market) ? 'No standard full-game Rec Targets references available.' : `No rateable ${marketLabel(category.market).toLowerCase()} lines this week.`}</p>}
+-        <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => setSelectedLineId(row.lineId)}
++        <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => { drawerFocus.rememberTrigger(row.lineId); setSelectedLineId(row.lineId) }}
+           rateable={category.rateable.map((row, index) => ({ row, rank: isTargetsReference(row.market) ? null : index + 1 }))}
+           other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
+       </section>
+-      <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
++      <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} afterOpenChange={drawerFocus.afterOpenChange} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
+         {selectedLine && <NflEvidencePanel row={selectedLine} game={selectedGame} alternates={alternates.get(selectedLine.lineId) ?? []} />}
+       </Drawer>
+     </>}
+--- a/web/src/components/nfl/NflGameProps.tsx
++++ b/web/src/components/nfl/NflGameProps.tsx
+@@ -1,15 +1,15 @@
+ import { Drawer, Switch } from 'antd'
+-import { useMemo, useState } from 'react'
++import { useEffect, useMemo, useState } from 'react'
+ import { Link } from 'react-router-dom'
+ import NflEvidencePanel from '~/components/NflEvidencePanel'
+ import { NflLineOnlyProps } from '~/components/nfl/NflLineOnlyProps'
+ import { NflPropTable } from '~/components/nfl/NflPropTable'
+ import { useIsMobile } from '~/hooks/useIsMobile'
++import { useNflDrawerFocus } from '~/hooks/useNflDrawerFocus'
+ import type { NflSlateGame } from '~/types/nfl'
+ import { hasKickedOff } from '~/utils/nflGame'
+ import { nflGameProps } from '~/utils/nflGameProps'
+ import { marketLabel } from '~/utils/nflLabels'
+-import type { NflBoardLine } from '~/utils/nflPropBoard'
+ import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
+ import { groupNflPropRows } from '~/utils/nflPropRows'
+ import { isTargetsReference } from '~/utils/nflTargets'
+@@ -33,11 +33,15 @@
+   const at = now ?? mountedAt
+   const [position, setPosition] = useState<NflPositionFilter>('all')
+   const [showAll, setShowAll] = useState(false)
+-  const [selected, setSelected] = useState<NflBoardLine | null>(null)
++  const [selectedLineId, setSelectedLineId] = useState<number | null>(null)
++  const drawerFocus = useNflDrawerFocus()
++  useEffect(() => { setSelectedLineId(null) }, [game.gameId, position, showAll])
+   const isMobile = useIsMobile()
+   const categories = useMemo(() => nflGameProps(games, game.gameId, position, 'full_game', at), [games, game.gameId, position, at])
+   const alternates = useMemo(() => new Map(groupNflPropRows(game.lines).map(item => [item.primary.lineId, item.alternates])), [game.lines])
+   const visible = categories.filter(item => item.rateable.length > 0 || (showAll && item.other.length > 0))
++  const selected = visible.flatMap(item => [...item.rateable.map(item => item.row), ...(showAll ? item.other : [])])
++    .find(row => row.lineId === selectedLineId) ?? null
+   const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
+   return <section className="nfl-game-props" aria-label="Props for this game">
+     <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines · ranks from this week's prop board</small></h2>
+@@ -56,11 +60,11 @@
+     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">No comparable full-game lines for this position. {!showAll ? 'Include alternate and thin-sample lines, or choose another position.' : 'Choose another position or check the other markets below.'}</div>}
+     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market prop-table-panel" aria-label={`${marketLabel(item.category.market)} lines`}>
+       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
+-      <NflPropTable category={item.category} now={at.getTime()} inGame selectedLineId={selected?.lineId ?? null} onOpen={setSelected}
++      <NflPropTable category={item.category} now={at.getTime()} inGame selectedLineId={selected?.lineId ?? null} onOpen={row => { drawerFocus.rememberTrigger(row.lineId); setSelectedLineId(row.lineId) }}
+         rateable={item.rateable} other={showAll ? item.other.map(row => ({ row, rank: null })) : []} />
+     </section>)}
+     <NflLineOnlyProps gameId={game.gameId} position={position} />
+-    <Drawer open={selected !== null} onClose={() => setSelected(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
++    <Drawer open={selected !== null} onClose={() => setSelectedLineId(null)} afterOpenChange={drawerFocus.afterOpenChange} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
+       {selected && <NflEvidencePanel row={selected} game={game} alternates={alternates.get(selected.lineId) ?? []} showGameLink={false} />}
+     </Drawer>
+   </section>
+--- a/blueprint/context/current-feature.md
++++ b/blueprint/context/current-feature.md
+@@ -1,7 +1,7 @@
+ # Feature: NFL matchup and usage context
+ 
+ **From build-plan:** 43 (approved 2026-10-22)
+-**Status:** Steps 1-2 approved; Step 3 implemented locally, awaiting review; Steps 4-5 not started
++**Status:** Steps 1-3 approved; Step 4 implemented locally, awaiting review; Step 5 not started
+ **Type:** Feature
+ 
+ ## Goal
+@@ -72,7 +72,7 @@
+   opening week returns structured unavailable values. Query count is bounded
+   independently of player/prop count. Existing slate payload and calculations
+   remain unchanged.
+-- [ ] **Step 3 - Game-page context.** Add typed API/query helpers, matchup rows
++- [x] **Step 3 - Game-page context.** Add typed API/query helpers, matchup rows
+   and the compact player usage table using one game-context query. Reuse notes
+   where already available and avoid fetching on every row.
+   *Done when:* both teams' values, ranks, samples, dates and links display at
+@@ -209,8 +209,19 @@
+   and `step-3.diff`. Added game-page matchup rows and the complete roster usage
+   disclosure, one cached context query, 18 formatter/ordering cases and desktop/
+   390px browser checks. Verify passes: 724 web and 3,669 API tests. Independent
+-  UI review: ship within Step 3 scope, no material fixes. Step 3 remains
+-  unchecked until owner approval; drawer integration is Step 4.
++  UI review: ship within Step 3 scope, no material fixes. Owner approved Step 3
++  and continuation to Step 4 on 2026-10-22. No checkpoint commit requested.
++
++- Step 4 evidence and incremental diff: `blueprint/reference/43/step-4-verification.md`
++  and `step-4.diff`. Shared game/board drawer context, guarded identities,
++  current-row selection and keyboard focus restoration are implemented locally.
++  Added 31 mapping/identity cases. Verify passes: 755 web and 3,669 API tests,
++  typecheck and build. Desktop/390px browser checks pass, including cache reuse,
++  player/game changes, isolated loading/error/retry and missing roster. Rec Targets
++  and week/market reset use controlled fixtures; stored slate has no targets row.
++  Independent UI review: ship, no material fixes; documentation handoff confirms
++  ordinary extension with no system-document changes needed. Step 4 awaits owner
++  approval; Step 5 and employer-guide maintenance remain pending. No commit.
+ 
+ - Gray and unranked alone do not neutralize selective highlighting. No role
+   increasing, elevated production, watch, favorable, arrows or delta-based sorting.
+--- a/web/src/components/nfl/NflPropTable.tsx
++++ b/web/src/components/nfl/NflPropTable.tsx
+@@ -26,7 +26,7 @@
+   const meta = inGame ? card.gameMeta : card.meta
+   return <>
+     <span className="prop-table__player-name">
+-      <button type="button" className="prop-table__open" aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
++      <button type="button" className="prop-table__open" data-line-id={row.lineId} aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
+       {card.injury && <Tag color={card.injury.color}>{card.injury.label}</Tag>}
+       {card.depthText && <span className="prop-table__tag">Depth: {card.depthText}</span>}
+     </span>
+--- /dev/null
++++ b/web/src/components/nfl/NflEvidenceContext.tsx
+@@ -0,0 +1,58 @@
++import ErrorState from '~/components/shared/ErrorState'
++import LoadingState from '~/components/shared/LoadingState'
++import { useNflGameContext } from '~/hooks/useNfl'
++import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
++import { evidenceAllowedMeasures, evidenceContextGameId, evidenceUsageMeasures, selectedEvidenceContext } from '~/utils/nflEvidenceContext'
++import { contextRank } from '~/utils/nflMatchupContext'
++import { NflContextMetric } from '~/components/nfl/NflContextMetric'
++import '~/components/nfl/nfl-matchup-context.css'
++
++export function NflEvidenceContext({ row, game }: { row: NflSlateLine, game: NflSlateGame | null }) {
++  const gameId = evidenceContextGameId(game, row)
++  const context = useNflGameContext(gameId)
++  const selected = selectedEvidenceContext(context.data, game, row)
++  if (gameId === null) return null
++  return <section className="nfl-prop-detail__section nfl-evidence-context" aria-label="Historical matchup and usage">
++    <h3 className="nfl-evidence-context__heading">Historical usage</h3>
++    {context.isLoading && <div role="status"><LoadingState message="Loading historical context..." /></div>}
++    {context.isError && <ErrorState error={context.error} onRetry={() => void context.refetch()} />}
++    {context.isSuccess && !selected && <p className="nfl-evidence-context__note">No unambiguous current-week roster context is stored for {row.playerName} in this game.</p>}
++    {selected && context.data && <>
++      <p className="nfl-evidence-context__note">{context.data.season} season through Week {context.data.cutoffWeek}. Recent means the last up to three played games in this window. Full-game history; dates are UTC.</p>
++      {selected.player.seasonUsage.teams.length > 1 && <p className="nfl-evidence-context__note">Historical teams: {selected.player.seasonUsage.teams.join(', ')}.</p>}
++      <table className="nfl-context-table">
++        <caption className="sr-only">{row.playerName}: recent versus season usage with metric-specific observed and eligible games, coverage and dates</caption>
++        <colgroup><col className="nfl-context-table__label" /><col /><col /></colgroup>
++        <thead><tr><th scope="col">Measure</th><th scope="col">Recent</th><th scope="col">Season</th></tr></thead>
++        <tbody>{evidenceUsageMeasures(selected.player.position).map(measure => <tr key={measure.key}>
++          <th scope="row">{measure.label}</th>
++          <td><NflContextMetric metric={selected.player.recentUsage[measure.key]} share={measure.share} /></td>
++          <td><NflContextMetric metric={selected.player.seasonUsage[measure.key]} share={measure.share} /></td>
++        </tr>)}</tbody>
++      </table>
++      <p className="nfl-evidence-context__note">Shares use recorded team targets and all team carries (including QBs) in paired, covered player-games. Snap share is the arithmetic average game fraction. Descriptive context only.</p>
++      <OpponentContext row={row} selected={selected} />
++    </>}
++  </section>
++}
++
++function OpponentContext({ row, selected }: {
++  row: NflSlateLine, selected: NonNullable<ReturnType<typeof selectedEvidenceContext>>,
++}) {
++  const measures = evidenceAllowedMeasures(selected.player.position, row.market)
++  if (!measures.length) return null
++  return <div className="nfl-evidence-context__opponent">
++    <h3 className="nfl-evidence-context__heading">{selected.opponent.team} allowed vs {selected.player.position}</h3>
++    <p className="nfl-evidence-context__note">Per defense game. Rank 1 = fewest allowed among teams with data.{row.market === 'receiving_targets' ? ' Rec Targets uses receiving context: receptions and receiving yards allowed.' : ''}</p>
++    <table className="nfl-context-table">
++      <caption className="sr-only">Opponent position production allowed, ranks, metric coverage and dates</caption>
++      <thead><tr><th scope="col">Measure</th><th scope="col">{selected.opponent.team} defense</th></tr></thead>
++      <tbody>{measures.map(measure => <tr key={measure.key}>
++        <th scope="row">{measure.label}</th><td>
++          <NflContextMetric metric={selected.opponent.allowed[measure.key]} />
++          <small className="nfl-context-rank">{contextRank(selected.opponent.allowed[measure.key])}</small>
++        </td>
++      </tr>)}</tbody>
++    </table>
++  </div>
++}
+--- /dev/null
++++ b/web/src/utils/nflEvidenceContext.ts
+@@ -0,0 +1,56 @@
++import type { NflContextPlayer, NflGameContext, NflMatchupTeam, NflSlateGame, NflSlateLine, NflUsageWindow } from '~/types/nfl'
++import { POSITION_ALLOWED_ROWS } from '~/utils/nflMatchupContext'
++
++export interface UsageMeasure {
++  key: Exclude<keyof NflUsageWindow, 'teams'>
++  label: string
++  share: boolean
++}
++
++const USAGE_MEASURES: UsageMeasure[] = [
++  { key: 'targets', label: 'Targets / game', share: false },
++  { key: 'targetShare', label: 'Target share', share: true },
++  { key: 'carries', label: 'Carries / game', share: false },
++  { key: 'carryShare', label: 'Carry share', share: true },
++  { key: 'avgGameSnapShare', label: 'Avg game snap share', share: true },
++]
++
++type ContextLine = Pick<NflSlateLine, 'lineId' | 'playerId' | 'market' | 'position'>
++type ContextGame = Pick<NflSlateGame, 'gameId' | 'awayTeam' | 'homeTeam'> & { lines: Pick<NflSlateLine, 'lineId' | 'playerId' | 'market'>[] }
++
++export function evidenceUsageMeasures(position: string | null): UsageMeasure[] {
++  if (position === 'QB') return USAGE_MEASURES.filter(row => row.key !== 'targets' && row.key !== 'targetShare')
++  return position === 'RB' || position === 'WR' || position === 'TE' ? USAGE_MEASURES : []
++}
++
++export function evidenceAllowedMeasures(position: string | null, market: string) {
++  const receiving = ['receptions', 'receiving_yards', 'receiving_targets'].includes(market)
++  if (receiving && (position === 'RB' || position === 'WR' || position === 'TE')) {
++    const prefix = position.toLowerCase()
++    return POSITION_ALLOWED_ROWS.filter(row => row.key === `${prefix}Receptions` || row.key === `${prefix}RecYards`)
++  }
++  if (position === 'RB' && (market === 'rushing_yards' || market === 'rushing_attempts')) {
++    return POSITION_ALLOWED_ROWS.filter(row => row.key === 'rbCarries' || row.key === 'rbRushYards')
++  }
++  return []
++}
++
++export function evidenceContextGameId(game: ContextGame | null, row: ContextLine): number | null {
++  if (!game || !Number.isSafeInteger(game.gameId) || game.gameId <= 0 || !evidenceUsageMeasures(row.position).length) return null
++  return game.lines.some(line => line.lineId === row.lineId && line.playerId === row.playerId && line.market === row.market)
++    ? game.gameId : null
++}
++
++export function selectedEvidenceContext(
++  data: NflGameContext | undefined, game: ContextGame | null, row: ContextLine,
++): { player: NflContextPlayer, opponent: NflMatchupTeam } | null {
++  if (!data || !game || data.gameId !== evidenceContextGameId(game, row)) return null
++  if (data.matchupContext.away.team !== game.awayTeam || data.matchupContext.home.team !== game.homeTeam) return null
++  const players = data.players.filter(player => player.playerId === row.playerId)
++  if (players.length !== 1 || players[0].position !== row.position) return null
++  const player = players[0]
++  const { away, home } = data.matchupContext
++  if (player.team === away.team) return { player, opponent: home }
++  if (player.team === home.team) return { player, opponent: away }
++  return null
++}
+--- /dev/null
++++ b/web/src/utils/nflEvidenceContext.test.ts
+@@ -0,0 +1,76 @@
++import { describe, expect, it } from 'vitest'
++import type { NflAllowedMetric, NflGameContext, NflUsageWindow } from '~/types/nfl'
++import { evidenceAllowedMeasures, evidenceContextGameId, evidenceUsageMeasures, selectedEvidenceContext } from './nflEvidenceContext'
++
++const METRIC: NflAllowedMetric = { value: 0, observedGames: 1, eligibleGames: 2, windowStart: '2026-10-18', windowEnd: '2026-10-18', reason: null, rank: 1, rankedTeams: 28 }
++const WINDOW: NflUsageWindow = { targets: METRIC, carries: METRIC, targetShare: METRIC, carryShare: METRIC, avgGameSnapShare: METRIC, teams: ['OLD', 'A'] }
++const ALLOWED = { rbCarries: METRIC, rbRushYards: METRIC, rbReceptions: METRIC, rbRecYards: METRIC, wrReceptions: METRIC, wrRecYards: METRIC, teReceptions: METRIC, teRecYards: METRIC }
++const ROW = { lineId: 10, playerId: 1, position: 'WR', market: 'receiving_yards', opponentTeam: 'WRONG' }
++const GAME = { gameId: 94, awayTeam: 'A', homeTeam: 'B', lines: [ROW] }
++const CONTEXT: NflGameContext = {
++  gameId: 94, season: 2026, week: 7, cutoffWeek: 6,
++  matchupContext: { away: { teamId: 1, team: 'A', allowed: ALLOWED }, home: { teamId: 2, team: 'B', allowed: ALLOWED } },
++  players: [{ playerId: 1, name: 'Player', position: 'WR', team: 'A', seasonUsage: WINDOW, recentUsage: WINDOW }],
++}
++
++describe('relevant opponent measures', () => {
++  for (const position of ['RB', 'WR', 'TE']) {
++    it.each(['receptions', 'receiving_yards', 'receiving_targets'])(`${position} %s uses receptions and rec yards only`, market => {
++      expect(evidenceAllowedMeasures(position, market).map(row => row.key)).toEqual([`${position.toLowerCase()}Receptions`, `${position.toLowerCase()}RecYards`])
++    })
++  }
++  it.each(['rushing_yards', 'rushing_attempts'])('RB %s uses the rushing measures', market => {
++    expect(evidenceAllowedMeasures('RB', market).map(row => row.key)).toEqual(['rbCarries', 'rbRushYards'])
++  })
++  it.each([
++    ['QB', 'passing_yards'], ['QB', 'rushing_yards'], ['WR', 'rushing_yards'], ['TE', 'rushing_attempts'],
++    ['RB', 'fantasy_points'], ['WR', 'anytime_touchdown'], ['RB', 'rushing_receiving_yards'], ['K', 'receptions'], [null, 'receiving_targets'],
++  ])('omits unsupported %s / %s matchup measures', (position, market) => {
++    expect(evidenceAllowedMeasures(position, market)).toEqual([])
++  })
++})
++
++describe('neutral usage measures', () => {
++  it('omits receiving usage for QB but retains carries, carry share and snap mean', () => {
++    expect(evidenceUsageMeasures('QB').map(row => row.key)).toEqual(['carries', 'carryShare', 'avgGameSnapShare'])
++  })
++  it.each(['RB', 'WR', 'TE'])('keeps all meaningful measures for %s', position => {
++    expect(evidenceUsageMeasures(position).map(row => row.key)).toEqual(['targets', 'targetShare', 'carries', 'carryShare', 'avgGameSnapShare'])
++  })
++  it.each(['K', 'FB', '', null])('has no invented usage for %s', position => {
++    expect(evidenceUsageMeasures(position)).toEqual([])
++  })
++})
++
++describe('selected identity and disabled query guards', () => {
++  it('enables only a matching line in a valid selected game', () => {
++    expect(evidenceContextGameId(GAME, ROW)).toBe(94)
++    expect(evidenceContextGameId(null, ROW)).toBeNull()
++    expect(evidenceContextGameId({ ...GAME, gameId: 0 }, ROW)).toBeNull()
++    expect(evidenceContextGameId({ ...GAME, gameId: NaN }, ROW)).toBeNull()
++    expect(evidenceContextGameId({ ...GAME, gameId: 1.5 }, ROW)).toBeNull()
++    expect(evidenceContextGameId(GAME, { ...ROW, lineId: 20 })).toBeNull()
++    expect(evidenceContextGameId(GAME, { ...ROW, playerId: 2 })).toBeNull()
++    expect(evidenceContextGameId(GAME, { ...ROW, market: 'receptions' })).toBeNull()
++    expect(evidenceContextGameId(GAME, { ...ROW, position: 'K' })).toBeNull()
++  })
++  it('uses current-week roster identity and preserves raw zero and coverage', () => {
++    const result = selectedEvidenceContext(CONTEXT, GAME, ROW)
++    expect(result?.opponent.team).toBe('B')
++    expect(result?.player.seasonUsage.targetShare).toBe(METRIC)
++    expect(result?.player.seasonUsage.teams).toEqual(['OLD', 'A'])
++    const atHome = { ...CONTEXT, players: [{ ...CONTEXT.players[0], team: 'B' }] }
++    expect(selectedEvidenceContext(atHome, GAME, ROW)?.opponent.team).toBe('A')
++  })
++  it('cannot retain another game, player, roster position or ambiguous membership', () => {
++    expect(selectedEvidenceContext(undefined, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext(CONTEXT, null, ROW)).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, gameId: 95 }, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext(CONTEXT, GAME, { ...ROW, playerId: 2 })).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, players: [] }, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, players: [CONTEXT.players[0], CONTEXT.players[0]] }, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, players: [{ ...CONTEXT.players[0], position: 'QB' }] }, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, players: [{ ...CONTEXT.players[0], team: 'C' }] }, GAME, ROW)).toBeNull()
++    expect(selectedEvidenceContext({ ...CONTEXT, matchupContext: { ...CONTEXT.matchupContext, away: { ...CONTEXT.matchupContext.away, team: 'C' } } }, GAME, ROW)).toBeNull()
++  })
++})
+--- /dev/null
++++ b/web/src/hooks/useNflDrawerFocus.ts
+@@ -0,0 +1,14 @@
++import { useRef } from 'react'
++
++export function useNflDrawerFocus() {
++  const trigger = useRef<HTMLButtonElement | null>(null)
++  const rememberTrigger = (lineId: number) => {
++    trigger.current = document.querySelector<HTMLButtonElement>(`.prop-table__open[data-line-id="${lineId}"]`)
++  }
++  const afterOpenChange = (open: boolean) => {
++    if (!open) requestAnimationFrame(() => {
++      if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true })
++    })
++  }
++  return { rememberTrigger, afterOpenChange }
++}

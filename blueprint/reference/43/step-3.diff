@@ -1,0 +1,441 @@
+--- a/web/src/types/nfl.ts
++++ b/web/src/types/nfl.ts
+@@ -450,6 +450,70 @@
+   homeQbChange: NflQbChange | null
+   /** Null once kicked off or with no fresh book. */
+   bestLine: NflBestLine | null
++  matchupContext?: NflMatchupContext | null
++}
++
++export interface NflContextMetric {
++  value: number | null
++  observedGames: number
++  eligibleGames: number
++  windowStart: string | null
++  windowEnd: string | null
++  reason: 'no_history' | 'missing_data' | 'zero_denominator' | 'unknown_kickoff' | null
++}
++
++export interface NflAllowedMetric extends NflContextMetric {
++  rank: number | null
++  rankedTeams: number
++}
++
++export interface NflPositionAllowed {
++  rbCarries: NflAllowedMetric
++  rbRushYards: NflAllowedMetric
++  rbReceptions: NflAllowedMetric
++  rbRecYards: NflAllowedMetric
++  wrReceptions: NflAllowedMetric
++  wrRecYards: NflAllowedMetric
++  teReceptions: NflAllowedMetric
++  teRecYards: NflAllowedMetric
++}
++
++export interface NflMatchupTeam {
++  teamId: number
++  team: string
++  allowed: NflPositionAllowed
++}
++
++export interface NflMatchupContext {
++  away: NflMatchupTeam
++  home: NflMatchupTeam
++}
++
++export interface NflUsageWindow {
++  targets: NflContextMetric
++  carries: NflContextMetric
++  targetShare: NflContextMetric
++  carryShare: NflContextMetric
++  avgGameSnapShare: NflContextMetric
++  teams: string[]
++}
++
++export interface NflContextPlayer {
++  playerId: number
++  name: string
++  position: 'QB' | 'RB' | 'WR' | 'TE'
++  team: string
++  seasonUsage: NflUsageWindow
++  recentUsage: NflUsageWindow
++}
++
++export interface NflGameContext {
++  gameId: number
++  season: number
++  week: number
++  cutoffWeek: number
++  matchupContext: NflMatchupContext
++  players: NflContextPlayer[]
+ }
+ 
+ export interface NflGameNotesResponse {
+--- a/web/src/api/nfl.ts
++++ b/web/src/api/nfl.ts
+@@ -1,6 +1,6 @@
+ import client from './client'
+ import type {
+-  NflCurrentWeek, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
++  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
+   NflModelRanking, NflRankingModelVersion,
+   NflPlayerDetail, NflSlateResponse, NflLineOnlyBoard,
+ } from '~/types/nfl'
+@@ -30,6 +30,11 @@
+ 
+ export async function fetchNflGame(gameId: number): Promise<NflGameDetail> {
+   const { data } = await client.get<NflGameDetail>(`/nfl/games/${gameId}`)
++  return data
++}
++
++export async function fetchNflGameContext(gameId: number): Promise<NflGameContext> {
++  const { data } = await client.get<NflGameContext>(`/nfl/games/${gameId}/context`)
+   return data
+ }
+ 
+--- a/web/src/hooks/useNfl.ts
++++ b/web/src/hooks/useNfl.ts
+@@ -1,5 +1,5 @@
+ import { useQuery } from '@tanstack/react-query'
+-import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameNotes, fetchNflLineOnlyProps, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
++import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameContext, fetchNflGameNotes, fetchNflLineOnlyProps, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
+ import { retryUnlessNotFound } from '~/utils/httpError'
+ 
+ export function useNflSlate(season: number | null, week: number | null) {
+@@ -65,3 +65,13 @@
+     retry: retryUnlessNotFound,
+   })
+ }
++
++export function useNflGameContext(gameId: number | null) {
++  return useQuery({
++    queryKey: ['nfl', 'game', gameId, 'context'],
++    queryFn: () => fetchNflGameContext(gameId as number),
++    enabled: gameId !== null && Number.isSafeInteger(gameId) && gameId > 0,
++    staleTime: 5 * 60 * 1000,
++    retry: false,
++  })
++}
+--- a/web/src/pages/NflGamePage.tsx
++++ b/web/src/pages/NflGamePage.tsx
+@@ -3,6 +3,7 @@
+ import { NflBestLineCard } from '~/components/nfl/NflBestLineCard'
+ import { NflGameHero, NflGameMarketBlock } from '~/components/nfl/NflGameHero'
+ import { NflGameProps } from '~/components/nfl/NflGameProps'
++import { NflGameContext } from '~/components/nfl/NflGameContext'
+ import { NflGameAvailability, NflGameSidebar } from '~/components/nfl/NflGameSidebar'
+ import { NflLineMovementChart } from '~/components/nfl/NflLineMovementChart'
+ import { NflTeamStatsMatchup } from '~/components/nfl/NflTeamStatsMatchup'
+@@ -57,6 +58,7 @@
+         {detail.data.status === 'scheduled' && gameNotes && <NflBestLineCard bestLine={gameNotes.bestLine} homeTeam={detail.data.homeTeam} awayTeam={detail.data.awayTeam} />}
+         <NflLineMovementChart detail={detail.data} />
+         {gameNotes && <NflTeamStatsMatchup notes={gameNotes} />}
++        <NflGameContext key={gameId} game={detail.data} notesContext={gameNotes?.matchupContext} />
+         <NflGameAvailability notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
+         {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
+       </div>
+--- a/web/src/components/nfl/NflTeamStatsMatchup.tsx
++++ b/web/src/components/nfl/NflTeamStatsMatchup.tsx
+@@ -1,6 +1,8 @@
+ import { Fragment } from 'react'
+-import type { NflGameNotes, NflTeamStats } from '~/types/nfl'
++import type { NflGameNotes, NflMatchupContext, NflTeamStats } from '~/types/nfl'
+ import { SMALL_SAMPLE_GAMES, TEAM_STAT_ROWS, gamesLabel, rankLabel, statValue } from '~/utils/nflGameNotes'
++import { POSITION_ALLOWED_ROWS, contextRank } from '~/utils/nflMatchupContext'
++import { NflContextMetric } from './NflContextMetric'
+ 
+ function sampleLabel(offense: NflTeamStats, defense: NflTeamStats): string {
+   const games = [offense, defense].map(stats => `${stats.team} ${gamesLabel(stats) ?? 'no games'}`).join(', ')
+@@ -36,3 +38,26 @@
+     </div>
+   </section>
+ }
++
++export function NflPositionAllowedMatchup({ context, season, cutoffWeek }: {
++  context: NflMatchupContext, season: number, cutoffWeek: number,
++}) {
++  return <section className="nfl-game-card" aria-label="Position production allowed">
++    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Position production allowed</h2>
++      <span className="nfl-game-side__meta">{season} season through Week {cutoffWeek}</span>
++    </div>
++    <p className="nfl-game-note">Per defense game. Rank 1 = fewest allowed, among teams with data. Samples show observed / eligible games and coverage; dates are UTC. Historical context only.</p>
++    <table className="nfl-context-table">
++      <caption className="sr-only">Position production allowed per game, league rank, metric coverage and observed game dates</caption>
++      <colgroup><col className="nfl-context-table__label" /><col /><col /></colgroup>
++      <thead><tr><th scope="col">Measure</th><th scope="col">{context.away.team} defense</th><th scope="col">{context.home.team} defense</th></tr></thead>
++      <tbody>{POSITION_ALLOWED_ROWS.map(row => <tr key={row.key}>
++        <th scope="row">{row.label}</th>
++        {[context.away, context.home].map(team => <td key={team.teamId}>
++          <NflContextMetric metric={team.allowed[row.key]} />
++          <small className="nfl-context-rank">{contextRank(team.allowed[row.key])}</small>
++        </td>)}
++      </tr>)}</tbody>
++    </table>
++  </section>
++}
+--- a/blueprint/context/current-feature.md
++++ b/blueprint/context/current-feature.md
+@@ -1,7 +1,7 @@
+ # Feature: NFL matchup and usage context
+ 
+ **From build-plan:** 43 (approved 2026-10-22)
+-**Status:** Step 1 approved; Step 2 implemented locally, awaiting review; Steps 3-5 not started
++**Status:** Steps 1-2 approved; Step 3 implemented locally, awaiting review; Steps 4-5 not started
+ **Type:** Feature
+ 
+ ## Goal
+@@ -62,7 +62,7 @@
+   *Done when:* tests prove recent/season windows, missing versus zero, ties,
+   partial coverage, trades and pre-week exclusion; aDOT evidence names the
+   missing raw totals or a reviewed follow-up amendment. No model module changes.
+-- [ ] **Step 2 - Bounded read path.** Add sport-filtered repository reads and
++- [x] **Step 2 - Bounded read path.** Add sport-filtered repository reads and
+   an orchestration service. Extend `/nfl/game-notes` with matchup context and
+   add `GET /nfl/games/{game_id}/context` for a single game's player usage and
+   the same matchup context. Both use one shared calculation path. Aggregate
+@@ -203,8 +203,14 @@
+   `blueprint/reference/43/step-2-verification.md` and `step-2.diff`.
+   Added 28 SQL/endpoint fixtures; all 3,669 API tests and 706 web tests plus
+   typecheck/build pass. A read-only stored 2026 Week 7 check proves shared
+-  matchup parity (39 game players, 14 week games). Step 2 remains unchecked
+-  until owner approval. No commit or shared writes.
++  matchup parity (39 game players, 14 week games). Owner approved Step 2 and
++  continuation to Step 3 on 2026-10-22. No commit or shared writes.
++- Step 3 evidence and incremental diff: `blueprint/reference/43/step-3-verification.md`
++  and `step-3.diff`. Added game-page matchup rows and the complete roster usage
++  disclosure, one cached context query, 18 formatter/ordering cases and desktop/
++  390px browser checks. Verify passes: 724 web and 3,669 API tests. Independent
++  UI review: ship within Step 3 scope, no material fixes. Step 3 remains
++  unchecked until owner approval; drawer integration is Step 4.
+ 
+ - Gray and unranked alone do not neutralize selective highlighting. No role
+   increasing, elevated production, watch, favorable, arrows or delta-based sorting.
+--- /dev/null
++++ b/web/src/components/nfl/NflGameContext.tsx
+@@ -0,0 +1,46 @@
++import { Link } from 'react-router-dom'
++import ErrorState from '~/components/shared/ErrorState'
++import LoadingState from '~/components/shared/LoadingState'
++import { useNflGameContext } from '~/hooks/useNfl'
++import type { NflGameDetail, NflMatchupContext } from '~/types/nfl'
++import { orderedContextPlayers } from '~/utils/nflMatchupContext'
++import { NflContextMetric } from './NflContextMetric'
++import { NflPositionAllowedMatchup } from './NflTeamStatsMatchup'
++import './nfl-matchup-context.css'
++
++export function NflGameContext({ game, notesContext }: { game: NflGameDetail, notesContext?: NflMatchupContext | null }) {
++  const context = useNflGameContext(game.gameId)
++  const data = context.data?.gameId === game.gameId ? context.data : undefined
++  const matchup = data?.matchupContext ?? notesContext
++  const season = data?.season ?? game.season
++  const cutoffWeek = data?.cutoffWeek ?? game.week - 1
++  return <div className="nfl-context" aria-label="Matchup and usage context">
++    {matchup && <NflPositionAllowedMatchup context={matchup} season={season} cutoffWeek={cutoffWeek} />}
++    <section className="nfl-game-card" aria-label="Player usage">
++      <div className="nfl-game-card__head"><h2 className="nfl-game-label">Player usage</h2>
++        <span className="nfl-game-side__meta">{season} season through Week {cutoffWeek}</span>
++      </div>
++      {context.isLoading && <div role="status"><LoadingState message="Loading matchup and usage context..." /></div>}
++      {context.isError && <ErrorState error={context.error} onRetry={() => void context.refetch()} />}
++      {data && (data.players.length === 0
++        ? <p className="nfl-game-note">No unambiguous QB, RB, WR or TE roster memberships are stored for Week {data.week}.</p>
++        : <details className="nfl-context-usage">
++          <summary>Season usage shares <span>{data.players.length} {data.players.length === 1 ? 'player' : 'players'} on the Week {data.week} roster</span></summary>
++          <p className="nfl-game-note">Target share uses all teammates' recorded targets; carry share uses all teammates' recorded carries, including QBs. Only covered player-games contribute. Game dates are UTC.</p>
++          <table className="nfl-context-table nfl-context-usage__table">
++            <caption className="sr-only">Season player usage shares through Week {cutoffWeek}; observed / eligible played games and covered dates per metric</caption>
++            <colgroup><col className="nfl-context-table__label" /><col /><col /></colgroup>
++            <thead><tr><th scope="col">Player</th><th scope="col">Target share</th><th scope="col">Carry share</th></tr></thead>
++            <tbody>{orderedContextPlayers(data.players).map(player => <tr key={player.playerId}>
++              <th scope="row"><Link to={`/nfl/player/${player.playerId}`}>{player.name}</Link>
++                <small>{player.team} · {player.position}</small>
++                {player.seasonUsage.teams.length > 1 && <small>History: {player.seasonUsage.teams.join(', ')}</small>}
++              </th>
++              <td>{player.position === 'QB' ? <span className="nfl-context-na">Not applicable</span> : <NflContextMetric metric={player.seasonUsage.targetShare} share />}</td>
++              <td><NflContextMetric metric={player.seasonUsage.carryShare} share /></td>
++            </tr>)}</tbody>
++          </table>
++        </details>)}
++    </section>
++  </div>
++}
+--- /dev/null
++++ b/web/src/components/nfl/NflContextMetric.tsx
+@@ -0,0 +1,13 @@
++import type { NflContextMetric as Metric } from '~/types/nfl'
++import { contextCoverage, contextDates, contextUnavailable, contextValue } from '~/utils/nflMatchupContext'
++
++export function NflContextMetric({ metric, share = false }: { metric: Metric, share?: boolean }) {
++  const dates = contextDates(metric)
++  const unavailable = contextUnavailable(metric)
++  return <div className="nfl-context-metric">
++    <span className="nfl-context-metric__value">{contextValue(metric, share)}</span>
++    <small>{contextCoverage(metric)}</small>
++    {dates && <small>{dates}</small>}
++    {unavailable && <small>{unavailable}</small>}
++  </div>
++}
+--- /dev/null
++++ b/web/src/components/nfl/nfl-matchup-context.css
+@@ -0,0 +1,27 @@
++.nfl-context { display: grid; gap: 14px; min-width: 0; }
++.nfl-context-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
++.nfl-context-table__label { width: 38%; }
++.nfl-context-table th, .nfl-context-table td { padding: 10px 16px; border-top: 1px solid var(--border-subtle); vertical-align: top; text-align: right; }
++.nfl-context-table thead th { color: var(--text-secondary); font: 600 12px var(--font-body); }
++.nfl-context-table th:first-child { text-align: left; }
++.nfl-context-table tbody th { color: var(--text-secondary); font: 400 13px/1.5 var(--font-body); overflow-wrap: anywhere; }
++.nfl-context-table tbody th small { display: block; color: var(--text-muted); font-size: 11px; }
++.nfl-context-table a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
++.nfl-context-table a:hover { color: var(--text-primary); text-decoration-thickness: 2px; }
++.nfl-context-table a:focus-visible, .nfl-context-usage summary:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
++.nfl-context-metric { display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
++.nfl-context-metric__value { color: var(--text-primary); font: 500 14px/1.4 var(--font-mono); }
++.nfl-context-metric small, .nfl-context-rank { display: block; color: var(--text-secondary); font: 400 11px/1.5 var(--font-mono); }
++.nfl-context-rank { margin-top: 2px; }
++.nfl-context-na { color: var(--text-secondary); font-size: 11px; }
++.nfl-context-usage summary { padding: 12px 16px; cursor: pointer; color: var(--text-primary); font-size: 13px; }
++.nfl-context-usage summary span { margin-left: 8px; color: var(--text-secondary); font-size: 11px; }
++.nfl-context-usage__table { border-bottom: 0; }
++
++@media (max-width: 640px) {
++  .nfl-context-table__label { width: 36%; }
++  .nfl-context-table th, .nfl-context-table td { padding: 10px 8px; }
++  .nfl-context-table tbody th { font-size: 12px; }
++  .nfl-context-metric small, .nfl-context-rank { font-family: var(--font-body); }
++  .nfl-context-usage summary span { display: block; margin: 4px 0 0 16px; }
++}
+--- /dev/null
++++ b/web/src/utils/nflMatchupContext.ts
+@@ -0,0 +1,58 @@
++import type { NflAllowedMetric, NflContextMetric, NflContextPlayer, NflPositionAllowed } from '~/types/nfl'
++
++export const POSITION_ALLOWED_ROWS: { key: keyof NflPositionAllowed, label: string }[] = [
++  { key: 'rbCarries', label: 'RB carries' },
++  { key: 'rbRushYards', label: 'RB rush yards' },
++  { key: 'rbReceptions', label: 'RB receptions' },
++  { key: 'rbRecYards', label: 'RB rec yards' },
++  { key: 'wrReceptions', label: 'WR receptions' },
++  { key: 'wrRecYards', label: 'WR rec yards' },
++  { key: 'teReceptions', label: 'TE receptions' },
++  { key: 'teRecYards', label: 'TE rec yards' },
++]
++
++export function contextValue(metric: NflContextMetric, share = false): string {
++  if (metric.value === null) return '-'
++  return share ? `${(metric.value * 100).toFixed(1)}%` : metric.value.toFixed(1)
++}
++
++export function contextCoverage(metric: NflContextMetric): string {
++  if (metric.eligibleGames === 0) return '0 eligible games'
++  return `${metric.observedGames} / ${metric.eligibleGames} games (${Math.round(metric.observedGames / metric.eligibleGames * 100)}%)`
++}
++
++export function contextRank(metric: NflAllowedMetric): string {
++  return metric.rank === null ? 'Unranked' : `Rank ${metric.rank} / ${metric.rankedTeams}`
++}
++
++const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
++
++function gameDate(value: string | null): string | null {
++  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
++  const date = new Date(`${value}T00:00:00Z`)
++  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null
++  return DATE_FORMAT.format(date)
++}
++
++export function contextDates(metric: NflContextMetric): string | null {
++  const start = gameDate(metric.windowStart)
++  const end = gameDate(metric.windowEnd)
++  if (start === null || end === null) return null
++  return metric.windowStart === metric.windowEnd ? start : `${start} - ${end}`
++}
++
++export function contextUnavailable(metric: NflContextMetric): string | null {
++  if (metric.value !== null) return null
++  switch (metric.reason) {
++    case 'no_history': return 'No pre-week games'
++    case 'missing_data': return 'Metric not loaded'
++    case 'zero_denominator': return 'Team total is zero'
++    case 'unknown_kickoff': return 'Kickoff time unavailable'
++    default: return 'Unavailable'
++  }
++}
++
++export function orderedContextPlayers(players: NflContextPlayer[]): NflContextPlayer[] {
++  const compare = (first: string, second: string) => first < second ? -1 : first > second ? 1 : 0
++  return [...players].sort((a, b) => compare(a.team, b.team) || compare(a.name, b.name) || a.playerId - b.playerId)
++}
+--- /dev/null
++++ b/web/src/utils/nflMatchupContext.test.ts
+@@ -0,0 +1,70 @@
++import { describe, expect, it } from 'vitest'
++import type { NflContextMetric, NflContextPlayer } from '~/types/nfl'
++import { POSITION_ALLOWED_ROWS, contextCoverage, contextDates, contextRank, contextUnavailable, contextValue, orderedContextPlayers } from './nflMatchupContext'
++
++const METRIC: NflContextMetric = {
++  value: 0.25, observedGames: 2, eligibleGames: 3,
++  windowStart: '2026-09-13', windowEnd: '2026-10-18', reason: null,
++}
++
++describe('context values and coverage', () => {
++  it('formats fractions as percentages and counts to one decimal', () => {
++    expect(contextValue(METRIC, true)).toBe('25.0%')
++    expect(contextValue({ ...METRIC, value: 12 })).toBe('12.0')
++    expect(contextValue({ ...METRIC, value: -2 })).toBe('-2.0')
++  })
++  it('separates observed zero from missing', () => {
++    expect(contextValue({ ...METRIC, value: 0 }, true)).toBe('0.0%')
++    expect(contextValue({ ...METRIC, value: null })).toBe('-')
++    expect(contextValue({ ...METRIC, value: null }, true)).toBe('-')
++  })
++  it('shows actual coverage and no percentage when no games are eligible', () => {
++    expect(contextCoverage(METRIC)).toBe('2 / 3 games (67%)')
++    expect(contextCoverage({ ...METRIC, observedGames: 0 })).toBe('0 / 3 games (0%)')
++    expect(contextCoverage({ ...METRIC, observedGames: 0, eligibleGames: 0 })).toBe('0 eligible games')
++  })
++  it('uses the returned ranked-team count and preserves competition ties', () => {
++    expect(contextRank({ ...METRIC, rank: 2, rankedTeams: 28 })).toBe('Rank 2 / 28')
++    expect(contextRank({ ...METRIC, value: null, rank: null, rankedTeams: 28 })).toBe('Unranked')
++  })
++})
++
++describe('observed game dates', () => {
++  it('uses UTC calendar dates without shifting to the browser timezone', () => {
++    expect(contextDates(METRIC)).toBe('Sep 13 - Oct 18')
++    expect(contextDates({ ...METRIC, windowEnd: METRIC.windowStart })).toBe('Sep 13')
++  })
++  it.each([null, '', 'bad-date', '2026-02-30', '2026-13-01'])('omits unavailable or invalid boundaries: %s', value => {
++    expect(contextDates({ ...METRIC, windowStart: value })).toBeNull()
++    expect(contextDates({ ...METRIC, windowEnd: value })).toBeNull()
++  })
++})
++
++describe('unavailable explanations', () => {
++  it.each([
++    ['no_history', 'No pre-week games'], ['missing_data', 'Metric not loaded'],
++    ['zero_denominator', 'Team total is zero'], ['unknown_kickoff', 'Kickoff time unavailable'],
++    [null, 'Unavailable'],
++  ] as const)('explains %s', (reason, message) => {
++    expect(contextUnavailable({ ...METRIC, value: null, reason })).toBe(message)
++  })
++  it('does not label an observed zero unavailable', () => {
++    expect(contextUnavailable({ ...METRIC, value: 0 })).toBeNull()
++  })
++})
++
++it('orders the complete roster by team, name and ID without mutating or selecting by share', () => {
++  const window = { targets: METRIC, carries: METRIC, targetShare: METRIC, carryShare: METRIC, avgGameSnapShare: METRIC, teams: ['A'] }
++  const player = (playerId: number, team: string, name: string): NflContextPlayer => ({
++    playerId, team, name, position: 'WR', seasonUsage: window, recentUsage: window,
++  })
++  const players = [player(3, 'B', 'Ada'), player(8, 'A', 'Zed'), player(2, 'A', 'Ada'), player(1, 'A', 'Ada')]
++  expect(orderedContextPlayers(players).map(row => row.playerId)).toEqual([1, 2, 8, 3])
++  expect(players.map(row => row.playerId)).toEqual([3, 8, 2, 1])
++})
++
++it('includes only the eight specified position measures', () => {
++  expect(POSITION_ALLOWED_ROWS.map(row => row.key)).toEqual([
++    'rbCarries', 'rbRushYards', 'rbReceptions', 'rbRecYards', 'wrReceptions', 'wrRecYards', 'teReceptions', 'teRecYards',
++  ])
++})

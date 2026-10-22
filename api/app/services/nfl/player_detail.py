@@ -10,6 +10,8 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nfl_line_only import line_only_value
+from app.nfl.markets import NflLineOnlyMarket
 from app.core.nfl_line_grading import LineResult, settle_line
 from app.core.nfl_player import (
     PlayerGameRow, PositionFocus, StatLine, focus_for, past_line_counts, record_splits, season_summary,
@@ -118,6 +120,10 @@ def _game(row: PlayerGameRow, focus_line: LineResult | None) -> NflPlayerGameSch
         passing_yards=row.passing_yards, rushing_attempts=row.rushing_attempts, rushing_yards=row.rushing_yards,
         targets=row.targets, receptions=row.receptions, receiving_yards=row.receiving_yards,
         touchdowns=row.touchdowns, prizepicks_fantasy_points=row.prizepicks_fantasy_points,
+        fg_made=row.fg_made, pat_made=row.pat_made, punts=row.punts,
+        kicking_points=line_only_value(
+            NflLineOnlyMarket.KICKING_POINTS, {"fg_made": row.fg_made, "pat_made": row.pat_made},
+        ),
         focus_line=focus_line.line.line if focus_line is not None else None,
         focus_outcome=focus_line.outcome if focus_line is not None else None,
     )

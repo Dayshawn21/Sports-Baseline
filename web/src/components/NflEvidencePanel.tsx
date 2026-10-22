@@ -4,6 +4,7 @@ import {
 } from '~/components/nfl/NflPropDetailSections'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { nflPropDetail } from '~/utils/nflPropDetail'
+import { NflEvidenceContext } from '~/components/nfl/NflEvidenceContext'
 
 export default function NflEvidencePanel({ row, game, alternates = [], showGameLink = true, showPlayerLink = true }: { row: NflSlateLine, game: NflSlateGame | null, alternates?: NflSlateLine[], showGameLink?: boolean, showPlayerLink?: boolean }) {
   const detail = nflPropDetail(row, game, alternates, Date.now())
@@ -11,6 +12,7 @@ export default function NflEvidencePanel({ row, game, alternates = [], showGameL
     <DetailHeader detail={detail} playerLink={showPlayerLink ? `/nfl/player/${row.playerId}` : null} />
     <DetailProjection detail={detail} />
     <DetailGameLog row={row} detail={detail} />
+    <NflEvidenceContext row={row} game={game} />
     <DetailContext detail={detail} />
     <DetailBreakdown detail={detail} />
     <DetailLines detail={detail} />

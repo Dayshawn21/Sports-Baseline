@@ -1,0 +1,34 @@
+{
+  "real": [
+    {
+      "width": 1440,
+      "kickerCounts": true,
+      "offensiveSectionsHidden": true,
+      "marketLink": true,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "kickerCounts": true,
+      "offensiveSectionsHidden": true,
+      "marketLink": true,
+      "noOverflow": true
+    }
+  ],
+  "controlled": [
+    {
+      "width": 1440,
+      "punterColumns": true,
+      "missingIsUnavailable": true,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "punterColumns": true,
+      "missingIsUnavailable": true,
+      "noOverflow": true
+    }
+  ],
+  "errors": [],
+  "offenseRetained": true
+}

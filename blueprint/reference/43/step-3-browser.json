@@ -1,0 +1,33 @@
+{
+  "real": {
+    "gameId": 94,
+    "season": 2026,
+    "week": 7,
+    "players": 39,
+    "allowedValuesMatch": 16,
+    "gameContextRequests": 1,
+    "keyboardDisclosure": true,
+    "allPlayerLinksMatch": true,
+    "mobile": {
+      "viewport": 390,
+      "document": 390,
+      "minFont": 11,
+      "numberColors": [
+        "rgb(245, 245, 247)"
+      ]
+    }
+  },
+  "controlled": {
+    "loading": true,
+    "manualRetry": true,
+    "emptyRosterAndNoHistory": true,
+    "zeroAndPartialCoverage": true
+  },
+  "errors": [],
+  "existingResourceErrors": [
+    {
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "location": "http://localhost:3001/favicon.ico"
+    }
+  ]
+}

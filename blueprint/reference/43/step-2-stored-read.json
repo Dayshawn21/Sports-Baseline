@@ -1,0 +1,15 @@
+{
+  "season": 2026,
+  "week": 7,
+  "gameId": 94,
+  "players": 39,
+  "weekGames": 14,
+  "gameSeconds": 0.4056,
+  "weekContextSeconds": 0.1455,
+  "gameResponseBytes": 59925,
+  "matchupParity": true,
+  "availableTargetShares": 28,
+  "availableAllowedMeasures": 16,
+  "transaction": "read only; rolled back",
+  "scope": "one stored game plus week matchup batch; no holdout, model or provider calls"
+}

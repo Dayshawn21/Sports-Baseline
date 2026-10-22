@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.core.nfl_matchup_context import UnavailableReason
 from app.schemas.prop_ranking import PropRankingResponse
 
 
@@ -131,6 +132,10 @@ class NflPlayerGameSchema(_CamelModel):
     receptions: int
     receiving_yards: int
     touchdowns: int
+    fg_made: int | None = None
+    pat_made: int | None = None
+    kicking_points: float | None = None
+    punts: int | None = None
     prizepicks_fantasy_points: float | None
     # The last pre-kickoff standard full-game line in the focus market, as 27a grades it.
     focus_line: float | None
@@ -514,12 +519,80 @@ class NflGameNotesSchema(_CamelModel):
     away_qb_change: NflQbChangeSchema | None
     home_qb_change: NflQbChangeSchema | None
     best_line: NflBestLineSchema | None     # null once kicked off or with no fresh book
+    matchup_context: NflMatchupContextSchema | None = None
 
 
 class NflGameNotesResponse(_CamelModel):
     season: int
     week: int
     games: list[NflGameNotesSchema]
+
+
+class NflContextMetricSchema(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    value: float | None
+    observed_games: int
+    eligible_games: int
+    window_start: date | None
+    window_end: date | None
+    reason: UnavailableReason | None
+
+
+class NflAllowedMetricSchema(NflContextMetricSchema):
+    rank: int | None
+    ranked_teams: int
+
+
+class NflPositionAllowedSchema(_CamelModel):
+    rb_carries: NflAllowedMetricSchema
+    rb_rush_yards: NflAllowedMetricSchema
+    rb_receptions: NflAllowedMetricSchema
+    rb_rec_yards: NflAllowedMetricSchema
+    wr_receptions: NflAllowedMetricSchema
+    wr_rec_yards: NflAllowedMetricSchema
+    te_receptions: NflAllowedMetricSchema
+    te_rec_yards: NflAllowedMetricSchema
+
+
+class NflMatchupTeamSchema(_CamelModel):
+    team_id: int
+    team: str
+    allowed: NflPositionAllowedSchema
+
+
+class NflMatchupContextSchema(_CamelModel):
+    away: NflMatchupTeamSchema
+    home: NflMatchupTeamSchema
+
+
+class NflUsageWindowSchema(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    targets: NflContextMetricSchema
+    carries: NflContextMetricSchema
+    target_share: NflContextMetricSchema
+    carry_share: NflContextMetricSchema
+    avg_game_snap_share: NflContextMetricSchema
+    teams: list[str]
+
+
+class NflContextPlayerSchema(_CamelModel):
+    player_id: int
+    name: str
+    position: Literal["QB", "RB", "WR", "TE"]
+    team: str
+    season_usage: NflUsageWindowSchema
+    recent_usage: NflUsageWindowSchema
+
+
+class NflGameContextResponse(_CamelModel):
+    game_id: int
+    season: int
+    week: int
+    cutoff_week: int
+    matchup_context: NflMatchupContextSchema
+    players: list[NflContextPlayerSchema]
 
 
 class _NflTrackRecordModel(_CamelModel):

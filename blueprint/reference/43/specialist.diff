@@ -1,0 +1,334 @@
+--- a/api/app/core/nfl_player.py
++++ b/api/app/core/nfl_player.py
+@@ -42,6 +42,9 @@
+     receiving_yards: int
+     touchdowns: int
+     prizepicks_fantasy_points: float | None
++    fg_made: int | None = None
++    pat_made: int | None = None
++    punts: int | None = None
+ 
+ 
+ @dataclass(frozen=True)
+--- a/api/app/repositories/nfl.py
++++ b/api/app/repositories/nfl.py
+@@ -2694,7 +2694,8 @@
+                    CASE WHEN s.team_id = g.home_team_id THEN -g.spread_line ELSE g.spread_line END AS team_spread,
+                    g.roof, sc.offense_pct AS snap_pct,
+                    s.passing_completions, s.passing_attempts, s.passing_yards, s.rushing_attempts, s.rushing_yards,
+-                   s.targets, s.receptions, s.receiving_yards, s.touchdowns, s.prizepicks_fantasy_points
++                   s.targets, s.receptions, s.receiving_yards, s.touchdowns, s.prizepicks_fantasy_points,
++                   s.fg_made, s.pat_made, s.punts
+             FROM nfl_player_weekly_stats s
+             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+             LEFT JOIN sport_teams opponent
+@@ -2719,4 +2720,5 @@
+         rushing_yards=row["rushing_yards"], targets=row["targets"], receptions=row["receptions"],
+         receiving_yards=row["receiving_yards"], touchdowns=row["touchdowns"],
+         prizepicks_fantasy_points=_optional_float(row["prizepicks_fantasy_points"]),
+-    )
++        fg_made=row["fg_made"], pat_made=row["pat_made"], punts=row["punts"],
++    )
+--- a/api/app/schemas/nfl.py
++++ b/api/app/schemas/nfl.py
+@@ -132,6 +132,10 @@
+     receptions: int
+     receiving_yards: int
+     touchdowns: int
++    fg_made: int | None = None
++    pat_made: int | None = None
++    kicking_points: float | None = None
++    punts: int | None = None
+     prizepicks_fantasy_points: float | None
+     # The last pre-kickoff standard full-game line in the focus market, as 27a grades it.
+     focus_line: float | None
+--- a/api/app/services/nfl/player_detail.py
++++ b/api/app/services/nfl/player_detail.py
+@@ -10,6 +10,8 @@
+ 
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.core.nfl_line_only import line_only_value
++from app.nfl.markets import NflLineOnlyMarket
+ from app.core.nfl_line_grading import LineResult, settle_line
+ from app.core.nfl_player import (
+     PlayerGameRow, PositionFocus, StatLine, focus_for, past_line_counts, record_splits, season_summary,
+@@ -118,6 +120,10 @@
+         passing_yards=row.passing_yards, rushing_attempts=row.rushing_attempts, rushing_yards=row.rushing_yards,
+         targets=row.targets, receptions=row.receptions, receiving_yards=row.receiving_yards,
+         touchdowns=row.touchdowns, prizepicks_fantasy_points=row.prizepicks_fantasy_points,
++        fg_made=row.fg_made, pat_made=row.pat_made, punts=row.punts,
++        kicking_points=line_only_value(
++            NflLineOnlyMarket.KICKING_POINTS, {"fg_made": row.fg_made, "pat_made": row.pat_made},
++        ),
+         focus_line=focus_line.line.line if focus_line is not None else None,
+         focus_outcome=focus_line.outcome if focus_line is not None else None,
+     )
+--- a/web/src/types/nfl.ts
++++ b/web/src/types/nfl.ts
+@@ -241,6 +241,10 @@
+   receptions: number
+   receivingYards: number
+   touchdowns: number
++  fgMade: number | null
++  patMade: number | null
++  kickingPoints: number | null
++  punts: number | null
+   prizepicksFantasyPoints: number | null
+   /** The last pre-kickoff standard full-game line in the focus market, as 27a grades it. */
+   focusLine: number | null
+--- a/web/src/pages/NflPlayerPage.tsx
++++ b/web/src/pages/NflPlayerPage.tsx
+@@ -13,7 +13,7 @@
+ import type { NflPlayerDetail } from '~/types/nfl'
+ import { isNotFound } from '~/utils/httpError'
+ import { parseGameId } from '~/utils/nflGame'
+-import { FOCUS_LABELS, playerWeekLines } from '~/utils/nflPlayer'
++import { FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
+ import './nfl-slate.css'
+ import './nfl-player.css'
+ 
+@@ -61,7 +61,7 @@
+     <StatChip value={summary.games} label={`Games ${player.season}`} />
+     {labels && <StatChip value={perGame(summary.focusPerGame)} label={labels.focus} />}
+     {labels && <StatChip value={perGame(summary.volumePerGame)} label={labels.volume} />}
+-    <StatChip value={summary.snapShare === null ? MISSING : `${Math.round(summary.snapShare * 100)}%`} label="Snap share" />
++    {!isNflSpecialist(player.position) && <StatChip value={summary.snapShare === null ? MISSING : `${Math.round(summary.snapShare * 100)}%`} label="Snap share" />}
+   </section>
+ }
+ 
+@@ -85,7 +85,7 @@
+     <Availability player={player} />
+     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
+     <div className="nfl-player-grid">
+-      <NflPlayerUsage player={player} />
++      {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
+       <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
+     </div>
+     <NflPlayerGameLog player={player} />
+--- a/web/src/components/nfl/NflPlayerGameLog.tsx
++++ b/web/src/components/nfl/NflPlayerGameLog.tsx
+@@ -1,5 +1,7 @@
++import { useEffect, useRef } from 'react'
++import { useSearchParams } from 'react-router-dom'
+ import type { NflPlayerDetail, NflPlayerGame } from '~/types/nfl'
+-import { FOCUS_LABELS } from '~/utils/nflPlayer'
++import { FOCUS_LABELS, isNflSpecialist, SPECIALIST_COLUMNS } from '~/utils/nflPlayer'
+ 
+ const MISSING = '--'
+ 
+@@ -20,31 +22,43 @@
+ 
+ /** This season's games and the latest of last season, newest first, with the stored focus line per game. */
+ export function NflPlayerGameLog({ player }: { player: NflPlayerDetail }) {
++  const [params] = useSearchParams()
++  const selectedMarket = params.get('market')
++  const specialist = isNflSpecialist(player.position)
++  const columns = player.position === 'K' ? SPECIALIST_COLUMNS.K : player.position === 'P' ? SPECIALIST_COLUMNS.P : []
++  const log = useRef<HTMLElement>(null)
++  const selectedColumn = columns.find(column => column.market !== null && column.market === selectedMarket)?.field
++  useEffect(() => {
++    if (selectedColumn && player.gameLog.length > 0) log.current?.scrollIntoView({ block: 'start' })
++  }, [selectedColumn, player.playerId, player.gameLog.length])
+   const showPassing = player.position === 'QB' || player.gameLog.some(game => game.passingAttempts > 0)
+   const lineLabel = player.focusMarket ? FOCUS_LABELS[player.focusMarket]?.line ?? null : null
+   return <>
+     <h2 className="nfl-player-section-title">Game log <small>{player.season} and the last 5 of {player.season - 1}</small></h2>
+-    <section className="nfl-player-card" aria-label="Game log">
++    <section ref={log} id="game-log" className="nfl-player-card" aria-label="Game log">
+       {player.gameLog.length === 0
+         ? <p className="nfl-player-card__empty">No completed games loaded for this player.</p>
+         : <div className="nfl-player-table-wrap"><table className="nfl-player-table">
+           <thead><tr>
+-            <th>Week</th><th>Opp</th><th>Result</th><th>Snaps</th>
++            <th>Week</th><th>Opp</th><th>Result</th>
++            {columns.map(column => <th key={column.field} className={column.market !== null && column.market === selectedMarket ? 'is-selected-market' : undefined}>{column.label}</th>)}
++            {!specialist && <><th>Snaps</th>
+             {showPassing && <><th>Cmp/Att</th><th>Pass yds</th></>}
+             <th>Car</th><th>Rush yds</th><th>Tgt</th><th>Rec</th><th>Rec yds</th>
+             <th title="Rushing plus receiving touchdowns; passing touchdowns are not counted">{showPassing ? 'Rush/rec TD' : 'TD'}</th>
+-            <th>PP fantasy</th>
++            <th>PP fantasy</th></>}
+             {lineLabel && <th>{lineLabel}</th>}
+           </tr></thead>
+           <tbody>{player.gameLog.map(game => <tr key={game.gameId}>
+             <td className="is-text">{game.season} W{game.week}</td>
+             <td>{game.isHome ? game.opponent : `@${game.opponent}`}</td>
+             <td className="is-text">{result(game)}</td>
+-            <td>{optional(game.snapPct, value => `${Math.round(value * 100)}%`)}</td>
++            {columns.map(column => <td key={column.field}>{optional(game[column.field])}</td>)}
++            {!specialist && <><td>{optional(game.snapPct, value => `${Math.round(value * 100)}%`)}</td>
+             {showPassing && <><td>{game.passingCompletions}/{game.passingAttempts}</td><td>{game.passingYards}</td></>}
+             <td>{game.rushingAttempts}</td><td>{game.rushingYards}</td><td>{optional(game.targets)}</td>
+             <td>{game.receptions}</td><td>{game.receivingYards}</td><td>{game.touchdowns}</td>
+-            <td>{optional(game.prizepicksFantasyPoints, value => value.toFixed(1))}</td>
++            <td>{optional(game.prizepicksFantasyPoints, value => value.toFixed(1))}</td></>}
+             {lineLabel && <td className="is-dim">{focusLine(game)}</td>}
+           </tr>)}</tbody>
+         </table></div>}
+--- a/web/src/components/nfl/NflLineOnlyProps.tsx
++++ b/web/src/components/nfl/NflLineOnlyProps.tsx
+@@ -1,4 +1,5 @@
+ import { Link } from 'react-router-dom'
++import { nflPlayerMarketLink } from '~/utils/nflPlayer'
+ import { MiniBars } from '~/components/shared/MiniBars'
+ import '~/components/shared/prop-table.css'
+ import { useNflLineOnlyProps } from '~/hooks/useNfl'
+@@ -16,7 +17,7 @@
+   const others = row.rungs.filter(rung => rung !== main)
+   return <tr>
+     <td className="prop-table__player">
+-      <Link className="prop-table__open" to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link>
++      <Link className="prop-table__open" to={nflPlayerMarketLink(row.playerId, market)}>{row.playerName}</Link>
+       <small>{row.position ?? '--'} · {marketLabel(market)}</small>
+     </td>
+     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? ''}</small></td>
+--- a/web/src/utils/nflPlayer.ts
++++ b/web/src/utils/nflPlayer.ts
+@@ -2,6 +2,23 @@
+ import { nflGameProps } from '~/utils/nflGameProps'
+ import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
+ import { groupNflPropRows } from '~/utils/nflPropRows'
++
++export function isNflSpecialist(position: string | null): boolean {
++  return position === 'K' || position === 'P'
++}
++
++export function nflPlayerMarketLink(playerId: number, market: string): string {
++  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}#game-log`
++}
++
++export const SPECIALIST_COLUMNS = {
++  K: [
++    { field: 'fgMade', label: 'FG', market: 'field_goals_made' },
++    { field: 'patMade', label: 'PAT', market: null },
++    { field: 'kickingPoints', label: 'Kicking pts', market: 'kicking_points' },
++  ],
++  P: [{ field: 'punts', label: 'Punts', market: 'punts' }],
++} as const
+ 
+ export interface NflPlayerWeekLine {
+   row: NflBoardLine
+--- a/web/src/utils/nflPlayer.test.ts
++++ b/web/src/utils/nflPlayer.test.ts
+@@ -1,7 +1,7 @@
+ import { describe, expect, it } from 'vitest'
+ import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+ import { buildNflPropBoard } from '~/utils/nflPropBoard'
+-import { playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
++import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
+ 
+ const EMPTY_SAMPLE = { average: null, values: [] }
+ const NOW = new Date('2026-10-04T12:00:00Z')
+@@ -109,3 +109,20 @@
+     expect(playerInitials(name)).toBe(initials)
+   })
+ })
++
++
++describe('specialist player pages', () => {
++  it('restricts specialist layout to kickers and punters', () => {
++    expect(['K', 'P', 'QB', 'RB', 'WR', 'TE', null].map(isNflSpecialist)).toEqual([true, true, false, false, false, false, false])
++  })
++  it('selects only the correct specialist fields and market identity', () => {
++    expect(SPECIALIST_COLUMNS.K.map(column => [column.field, column.market])).toEqual([
++      ['fgMade', 'field_goals_made'], ['patMade', null], ['kickingPoints', 'kicking_points'],
++    ])
++    expect(SPECIALIST_COLUMNS.P).toEqual([{ field: 'punts', label: 'Punts', market: 'punts' }])
++  })
++  it('carries the encoded market to the player game log', () => {
++    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
++    expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
++  })
++})
+--- a/api/tests/test_nfl_player_detail_service.py
++++ b/api/tests/test_nfl_player_detail_service.py
+@@ -158,3 +158,17 @@
+ 
+     assert detail.splits == []
+     assert detail.usage_stats == ["snap_pct"]
++
++
++@pytest.mark.parametrize(("fg", "pat", "expected"), [(2, 2, 8.0), (0, 0, 0.0), (None, 2, None), (2, None, None)])
++def test_specialist_game_log_preserves_counts_and_uses_settlement_rule(fg, pat, expected) -> None:
++    detail = player_detail(PROFILE | {"position": "K"}, [game(fg_made=fg, pat_made=pat, punts=None)], [], 2026, 4)
++    log = detail.model_dump(by_alias=True)["gameLog"][0]
++    assert (log["fgMade"], log["patMade"], log["kickingPoints"], log["punts"]) == (fg, pat, expected, None)
++
++
++def test_punter_game_log_preserves_observed_zero_and_missing_kicking_stats() -> None:
++    detail = player_detail(PROFILE | {"position": "P"}, [game(punts=0)], [], 2026, 4)
++    assert detail.game_log[0].punts == 0
++    assert detail.game_log[0].fg_made is None
++    assert detail.game_log[0].kicking_points is None
+--- a/web/src/pages/nfl-player.css
++++ b/web/src/pages/nfl-player.css
+@@ -89,3 +89,5 @@
+   .nfl-player .nfl-player-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+   .nfl-player-tag { white-space: normal; }
+ }
++
++.nfl-player-table th.is-selected-market { color: var(--text-primary); text-decoration: underline; text-underline-offset: 5px; }
+--- a/blueprint/context/current-feature.md
++++ b/blueprint/context/current-feature.md
+@@ -1,7 +1,7 @@
+ # Feature: NFL matchup and usage context
+ 
+ **From build-plan:** 43 (approved 2026-10-22)
+-**Status:** Steps 1-3 approved; Steps 4 and 4a implemented locally, awaiting review; Step 5 not started
++**Status:** Steps 1-3 approved; Steps 4, 4a and 4b implemented locally, awaiting review; Step 5 not started
+ **Type:** Feature
+ 
+ ## Goal
+@@ -93,6 +93,14 @@
+   *Done when:* desktop/390px checks prove default/tab content separation,
+   keyboard switching, shared header, drawer context and no horizontal overflow;
+   the Verify gate passes. Game changes reset to Player Props.
++- [ ] **Step 4b - Specialist player-page repair (owner requested).** Add nullable
++  fgMade, patMade, kickingPoints and punts to game-log rows. Reuse item 34's
++  kicking-points rule. K/P logs show specialist columns; hide offensive columns,
++  PP fantasy, snap tile and usage chart. Other markets links include market and
++  open the matching game-log column. No line-only drawer or new model scope.
++  *Done when:* tests prove missing/zero/calculation and position/URL contracts;
++  real kicker and controlled punter browser checks show correct columns and
++  selected market at desktop/390px; Verify passes. No shared writes required.
+ - [ ] **Step 5 - Verification and documentation.** Run targeted regression
+   checks, the exact Verify gate and running-app checks with real stored reads
+   plus controlled missing/error/zero cases. Measure query time, response size
+@@ -239,6 +247,15 @@
+   Independent UI review: no material fixes; documentation handoff: no system
+   changes needed. Steps 4/4a await owner review; Step 5 has not started.
+ 
++- Owner authorized Step 4b's specialist repair on 2026-10-22. Implemented
++  locally: nullable specialist log fields, reused settlement calculation,
++  K/P-specific presentation and market links. Five API cases and three web cases
++  plus extended repository fixture pass. Verify: 758 web and 3,674 API tests,
++  typecheck/build. Browser evidence: real kicker and controlled punter at 1440/
++  390px, offense retained; no overflow or application errors. Review packet:
++  `blueprint/reference/43/specialist-verification.md` and `specialist.diff`.
++  Step 4b awaits owner review; Step 5 remains pending. No shared writes/commit.
++
+ - Gray and unranked alone do not neutralize selective highlighting. No role
+   increasing, elevated production, watch, favorable, arrows or delta-based sorting.
+ - 39a's recent-form blend and NBA 20f's last_10 were rejected in their tested
+--- a/api/tests/test_nfl_repository.py
++++ b/api/tests/test_nfl_repository.py
+@@ -1366,7 +1366,7 @@
+         "opponent_score": 23, "team_spread": Decimal("2.5"), "roof": "outdoors", "snap_pct": 0.6,
+         "passing_completions": 0, "passing_attempts": 0, "passing_yards": 0, "rushing_attempts": 14,
+         "rushing_yards": 51, "targets": None, "receptions": 2, "receiving_yards": 9, "touchdowns": 0,
+-        "prizepicks_fantasy_points": Decimal("8.0"),
++        "prizepicks_fantasy_points": Decimal("8.0"), "fg_made": 2, "pat_made": None, "punts": 0,
+     }
+     session = _MappingSession([row])
+ 
+@@ -1380,6 +1380,9 @@
+     assert "LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id" in sql
+     assert "ORDER BY g.season DESC, g.week DESC, g.id DESC" in sql
+     assert (game.is_home, game.team_spread, game.snap_pct, game.targets, game.prizepicks_fantasy_points) == (False, 2.5, 0.6, None, 8.0)
++
++    assert (game.fg_made, game.pat_made, game.punts) == (2, None, 0)
++    assert "s.fg_made, s.pat_made, s.punts" in sql
+ 
+ 
+ def test_line_only_filter_lists_exactly_the_line_only_markets() -> None:

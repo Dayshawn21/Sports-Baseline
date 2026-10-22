@@ -170,3 +170,10 @@
   .nfl-game-availability__body { display: grid; gap: 12px; margin: 12px 0 0; }
   .nfl-game-availability__status { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 }
+
+/* Shared game header stays above the two task-specific sections. */
+.nfl-game-tabs > .ant-tabs-nav { margin: 8px 0 18px; }
+.nfl-game-tabs > .ant-tabs-nav .ant-tabs-tab { min-height: 44px; font-size: 14px; }
+.nfl-game-tabs > .ant-tabs-nav .ant-tabs-tab-btn:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
+.nfl-game-tabs > .ant-tabs-content-holder { min-width: 0; }
+.nfl-game-tabs .nfl-game-layout { margin-top: 0; }

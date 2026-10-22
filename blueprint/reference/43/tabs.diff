@@ -1,0 +1,137 @@
+--- a/web/src/pages/NflGamePage.tsx
++++ b/web/src/pages/NflGamePage.tsx
+@@ -1,3 +1,4 @@
++import { Tabs } from 'antd'
+ import type { ReactNode } from 'react'
+ import { Link, useParams } from 'react-router-dom'
+ import { NflBestLineCard } from '~/components/nfl/NflBestLineCard'
+@@ -50,19 +51,29 @@
+     <PageHead title={`${detail.data.awayTeam} @ ${detail.data.homeTeam}`}
+       meta={<>{detail.data.season} season · Week {detail.data.week} · {kickoffLabel(detail.data.startUtc)} · {detail.data.status}</>} />
+     <NflGameHero detail={detail.data} game={game} />
+-    <div className="nfl-game-layout">
+-      <div className="nfl-game-main">
+-        {slate.isLoading && <LoadingState message="Loading market..." />}
+-        {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
+-        {game && <NflGameMarketBlock game={game} notes={gameNotes} />}
+-        {detail.data.status === 'scheduled' && gameNotes && <NflBestLineCard bestLine={gameNotes.bestLine} homeTeam={detail.data.homeTeam} awayTeam={detail.data.awayTeam} />}
+-        <NflLineMovementChart detail={detail.data} />
+-        {gameNotes && <NflTeamStatsMatchup notes={gameNotes} />}
+-        <NflGameContext key={gameId} game={detail.data} notesContext={gameNotes?.matchupContext} />
+-        <NflGameAvailability notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
+-        {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
+-      </div>
+-      <NflGameSidebar notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
+-    </div>
++    <Tabs key={gameId} className="nfl-game-tabs" defaultActiveKey="props" destroyOnHidden
++      aria-label="Game sections" animated={false}
++      items={[
++        { key: 'matchup', label: 'Matchup', children: <div className="nfl-game-layout">
++          <div className="nfl-game-main">
++            {slate.isLoading && <LoadingState message="Loading market..." />}
++            {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
++            {game && <NflGameMarketBlock game={game} notes={gameNotes} />}
++            {detail.data.status === 'scheduled' && gameNotes && <NflBestLineCard bestLine={gameNotes.bestLine} homeTeam={detail.data.homeTeam} awayTeam={detail.data.awayTeam} />}
++            <NflLineMovementChart detail={detail.data} />
++            {gameNotes && <NflTeamStatsMatchup notes={gameNotes} />}
++            <NflGameContext game={detail.data} notesContext={gameNotes?.matchupContext} section="matchup" />
++            <NflGameAvailability notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
++          </div>
++          <NflGameSidebar notes={gameNotes} isLoading={notes.isLoading} isError={notes.isError} />
++        </div> },
++        { key: 'props', label: 'Player Props', children: <div className="nfl-game-main">
++          {slate.isLoading && <LoadingState message="Loading player props..." />}
++          {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
++          {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
++          {slate.isSuccess && !game && <p className="nfl-game-empty">No player props stored for this game.</p>}
++          <NflGameContext game={detail.data} section="usage" />
++        </div> },
++      ]} />
+   </div></div>
+ }
+--- a/web/src/components/nfl/NflGameContext.tsx
++++ b/web/src/components/nfl/NflGameContext.tsx
+@@ -8,15 +8,17 @@
+ import { NflPositionAllowedMatchup } from './NflTeamStatsMatchup'
+ import './nfl-matchup-context.css'
+ 
+-export function NflGameContext({ game, notesContext }: { game: NflGameDetail, notesContext?: NflMatchupContext | null }) {
++export function NflGameContext({ game, notesContext, section }: { game: NflGameDetail, notesContext?: NflMatchupContext | null, section?: 'matchup' | 'usage' }) {
+   const context = useNflGameContext(game.gameId)
+   const data = context.data?.gameId === game.gameId ? context.data : undefined
+   const matchup = data?.matchupContext ?? notesContext
+   const season = data?.season ?? game.season
+   const cutoffWeek = data?.cutoffWeek ?? game.week - 1
+-  return <div className="nfl-context" aria-label="Matchup and usage context">
+-    {matchup && <NflPositionAllowedMatchup context={matchup} season={season} cutoffWeek={cutoffWeek} />}
+-    <section className="nfl-game-card" aria-label="Player usage">
++  return <div className="nfl-context" aria-label={section === 'matchup' ? 'Matchup context' : section === 'usage' ? 'Usage context' : 'Matchup and usage context'}>
++    {section !== 'usage' && matchup && <NflPositionAllowedMatchup context={matchup} season={season} cutoffWeek={cutoffWeek} />}
++    {section === 'matchup' && context.isLoading && !matchup && <LoadingState message="Loading matchup context..." />}
++    {section === 'matchup' && context.isError && <ErrorState error={context.error} onRetry={() => void context.refetch()} />}
++    {section !== 'matchup' && <section className="nfl-game-card" aria-label="Player usage">
+       <div className="nfl-game-card__head"><h2 className="nfl-game-label">Player usage</h2>
+         <span className="nfl-game-side__meta">{season} season through Week {cutoffWeek}</span>
+       </div>
+@@ -41,6 +43,6 @@
+             </tr>)}</tbody>
+           </table>
+         </details>)}
+-    </section>
++    </section>}
+   </div>
+ }
+--- a/web/src/pages/nfl-game.css
++++ b/web/src/pages/nfl-game.css
+@@ -170,3 +170,10 @@
+   .nfl-game-availability__body { display: grid; gap: 12px; margin: 12px 0 0; }
+   .nfl-game-availability__status { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+ }
++
++/* Shared game header stays above the two task-specific sections. */
++.nfl-game-tabs > .ant-tabs-nav { margin: 8px 0 18px; }
++.nfl-game-tabs > .ant-tabs-nav .ant-tabs-tab { min-height: 44px; font-size: 14px; }
++.nfl-game-tabs > .ant-tabs-nav .ant-tabs-tab-btn:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
++.nfl-game-tabs > .ant-tabs-content-holder { min-width: 0; }
++.nfl-game-tabs .nfl-game-layout { margin-top: 0; }
+--- a/blueprint/context/current-feature.md
++++ b/blueprint/context/current-feature.md
+@@ -1,7 +1,7 @@
+ # Feature: NFL matchup and usage context
+ 
+ **From build-plan:** 43 (approved 2026-10-22)
+-**Status:** Steps 1-3 approved; Step 4 implemented locally, awaiting review; Step 5 not started
++**Status:** Steps 1-3 approved; Steps 4 and 4a implemented locally, awaiting review; Step 5 not started
+ **Type:** Feature
+ 
+ ## Goal
+@@ -85,6 +85,14 @@
+   game, week or market cannot retain stale context; loading/error is isolated
+   from existing evidence, keyboard close/focus restoration works, and unsupported
+   position/market combinations omit irrelevant measures without inventing zeros.
++- [ ] **Step 4a - Game-page tabs (owner requested).** Keep the game header
++  above Matchup and Player Props tabs; default to Player Props. Matchup contains
++  team market/stats, line movement, position allowed and game notes/availability.
++  Player Props contains prop markets and the roster usage table. Preserve relevant
++  opponent context in shared prop drawers, query reuse and keyboard access.
++  *Done when:* desktop/390px checks prove default/tab content separation,
++  keyboard switching, shared header, drawer context and no horizontal overflow;
++  the Verify gate passes. Game changes reset to Player Props.
+ - [ ] **Step 5 - Verification and documentation.** Run targeted regression
+   checks, the exact Verify gate and running-app checks with real stored reads
+   plus controlled missing/error/zero cases. Measure query time, response size
+@@ -223,6 +231,14 @@
+   ordinary extension with no system-document changes needed. Step 4 awaits owner
+   approval; Step 5 and employer-guide maintenance remain pending. No commit.
+ 
++- Owner requested and authorized the Step 4a tab split on 2026-10-22.
++  Step 4a is implemented locally; evidence and incremental diff are
++  `blueprint/reference/43/tabs-verification.md` and `tabs.diff`. Browser checks
++  pass at 1440px/390px, including keyboard, drawer context, content separation,
++  no overflow and game-change reset. Verify passes (755 web / 3,669 API tests).
++  Independent UI review: no material fixes; documentation handoff: no system
++  changes needed. Steps 4/4a await owner review; Step 5 has not started.
++
+ - Gray and unranked alone do not neutralize selective highlighting. No role
+   increasing, elevated production, watch, favorable, arrows or delta-based sorting.
+ - 39a's recent-form blend and NBA 20f's last_10 were rejected in their tested

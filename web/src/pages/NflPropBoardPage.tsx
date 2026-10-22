@@ -8,6 +8,7 @@ import { NflPropTable } from '~/components/nfl/NflPropTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useIsMobile } from '~/hooks/useIsMobile'
+import { useNflDrawerFocus } from '~/hooks/useNflDrawerFocus'
 import { useNflCurrentWeek, useNflSlate, useNflWeekLineOnlyProps } from '~/hooks/useNfl'
 import { formatKickoffTime, marketLabel } from '~/utils/nflLabels'
 import type { NflPositionFilter } from '~/utils/nflPositions'
@@ -27,6 +28,7 @@ export default function NflPropBoardPage() {
   const [gameFilter, setGameFilter] = useState('all')
   const [showAll, setShowAll] = useState(false)
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null)
+  const drawerFocus = useNflDrawerFocus()
   const isMobile = useIsMobile()
   const currentWeek = useNflCurrentWeek()
   const activeSeason = season ?? currentWeek.data?.season ?? null
@@ -49,6 +51,7 @@ export default function NflPropBoardPage() {
   const selectedGame = filteredGames.find(game => game.gameId === selectedLine?.gameId) ?? null
   // A position or week change can empty the chosen market, so fall back rather than show nothing.
   useEffect(() => { setMarket(null) }, [activeSeason, activeWeek, position])
+  useEffect(() => { setSelectedLineId(null) }, [activeSeason, activeWeek, position, selectedMarket, gameFilter, showAll])
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
   if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL prop board..." />
   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
@@ -73,11 +76,11 @@ export default function NflPropBoardPage() {
     {category && <>
       <section className="prop-table-panel" aria-label="Prop lines">
         {category.rateable.length === 0 && <p className="nfl-prop-table-empty">{isTargetsReference(category.market) ? 'No standard full-game Rec Targets references available.' : `No rateable ${marketLabel(category.market).toLowerCase()} lines this week.`}</p>}
-        <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => setSelectedLineId(row.lineId)}
+        <NflPropTable category={category} now={Date.now()} selectedLineId={selectedLine?.lineId ?? null} onOpen={row => { drawerFocus.rememberTrigger(row.lineId); setSelectedLineId(row.lineId) }}
           rateable={category.rateable.map((row, index) => ({ row, rank: isTargetsReference(row.market) ? null : index + 1 }))}
           other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
       </section>
-      <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
+      <Drawer open={selectedLine !== null} onClose={() => setSelectedLineId(null)} afterOpenChange={drawerFocus.afterOpenChange} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
         {selectedLine && <NflEvidencePanel row={selectedLine} game={selectedGame} alternates={alternates.get(selectedLine.lineId) ?? []} />}
       </Drawer>
     </>}

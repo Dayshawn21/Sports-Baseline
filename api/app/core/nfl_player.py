@@ -42,6 +42,9 @@ class PlayerGameRow:
     receiving_yards: int
     touchdowns: int
     prizepicks_fantasy_points: float | None
+    fg_made: int | None = None
+    pat_made: int | None = None
+    punts: int | None = None
 
 
 @dataclass(frozen=True)

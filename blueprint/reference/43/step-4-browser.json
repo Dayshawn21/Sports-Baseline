@@ -1,0 +1,38 @@
+{
+  "real": {
+    "playerName": "A.J. Brown",
+    "gameBoardParity": true,
+    "rawUsageCellsMatch": 10,
+    "rawOpponentMeasuresMatch": 2,
+    "oneSharedGameRequestAcrossPlayersAndPages": true,
+    "keyboardCloseAndFocusRestoration": true,
+    "mobile": {
+      "width": 388,
+      "scrollWidth": 388,
+      "minFont": 11,
+      "colors": [
+        "rgb(245, 245, 247)"
+      ]
+    },
+    "storedSlateHasRecTargets": false,
+    "rbRushingMeasures": true,
+    "unsupportedQbReceivingMeasuresOmitted": true,
+    "gameNavigationClosesOldSelection": true
+  },
+  "controlled": {
+    "noContextFetchUntilDrawerSelected": true,
+    "loadingContainsNoStaleMetrics": true,
+    "errorIsolatedFromProjection": true,
+    "manualRetry": true,
+    "missingRosterContainsNoInventedZero": true,
+    "recTargetsUsesReceivingContextOnly": true,
+    "weekAndMarketChangesDoNotResurrectSelection": true
+  },
+  "errors": [],
+  "resourceErrors": [
+    {
+      "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://localhost:3001/favicon.ico"
+    }
+  ]
+}

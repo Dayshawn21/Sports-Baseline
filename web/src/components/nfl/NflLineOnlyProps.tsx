@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { MiniBars } from '~/components/shared/MiniBars'
 import '~/components/shared/prop-table.css'
 import { useNflLineOnlyProps } from '~/hooks/useNfl'
@@ -16,7 +17,7 @@ function Row({ row, market }: { row: NflLineOnlyRow, market: string }) {
   const others = row.rungs.filter(rung => rung !== main)
   return <tr>
     <td className="prop-table__player">
-      <Link className="prop-table__open" to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link>
+      <Link className="prop-table__open" to={nflPlayerMarketLink(row.playerId, market)}>{row.playerName}</Link>
       <small>{row.position ?? '--'} · {marketLabel(market)}</small>
     </td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? ''}</small></td>

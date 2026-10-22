@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "width": 1440,
+      "defaultProps": true,
+      "separation": true,
+      "sharedHeader": true,
+      "drawerContext": true,
+      "keyboardSwitch": true,
+      "noOverflow": true,
+      "noResurrectedDrawer": true,
+      "gameResetsToProps": true
+    },
+    {
+      "width": 390,
+      "defaultProps": true,
+      "separation": true,
+      "sharedHeader": true,
+      "drawerContext": true,
+      "keyboardSwitch": true,
+      "noOverflow": true,
+      "noResurrectedDrawer": true,
+      "gameResetsToProps": true
+    }
+  ],
+  "errors": []
+}

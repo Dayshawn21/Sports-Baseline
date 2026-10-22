@@ -26,7 +26,7 @@ function Player({ card, row, selected, inGame, onOpen }: { card: NflPropCardMode
   const meta = inGame ? card.gameMeta : card.meta
   return <>
     <span className="prop-table__player-name">
-      <button type="button" className="prop-table__open" aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
+      <button type="button" className="prop-table__open" data-line-id={row.lineId} aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
       {card.injury && <Tag color={card.injury.color}>{card.injury.label}</Tag>}
       {card.depthText && <span className="prop-table__tag">Depth: {card.depthText}</span>}
     </span>

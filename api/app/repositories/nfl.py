@@ -11,6 +11,7 @@ from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
 from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
+from app.core.nfl_matchup_context import ContextCutoff, HistoryGame, PlayerUsageGame, TeamAllowedGame
 from app.core.nfl_best_line import Quote
 from app.core.nfl_player import PlayerGameRow
 from app.core.nfl_qb_change import Qb, QbGame, QbInjury
@@ -30,8 +31,208 @@ from app.ingest.nflverse_rosters import NflverseRosterWeek
 from app.ingest.nflverse_snap_counts import NflverseSnapGame
 from app.ingest.nflverse_team_efficiency import NflverseTeamEfficiency
 from app.nfl.markets import NFL_V4_PROP_MARKETS, NflLineOnlyMarket, NflPropMarket
-from sqlalchemy import RowMapping, text
+from sqlalchemy import RowMapping, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@dataclass(frozen=True)
+class NflContextGame:
+    game_id: int
+    season: int
+    week: int
+    start_utc: datetime | None
+    away_team_id: int
+    away_team: str
+    home_team_id: int
+    home_team: str
+
+    @property
+    def cutoff(self) -> ContextCutoff:
+        return ContextCutoff(self.season, self.week, self.start_utc)
+
+
+@dataclass(frozen=True)
+class NflContextRosterPlayer:
+    player_id: int
+    name: str
+    position: str
+    team: str
+
+
+@dataclass(frozen=True)
+class NflContextHistory:
+    player_id: int
+    usage: PlayerUsageGame
+
+
+async def get_context_games(
+    db: AsyncSession, *, game_id: int | None = None, season: int | None = None, week: int | None = None,
+) -> list[NflContextGame]:
+    if game_id is None and (season is None or week is None):
+        raise ValueError("Context needs a game ID or season and week")
+    bound = "g.id = :game_id" if game_id is not None else "g.season = :season AND g.week = :week"
+    params = {"game_id": game_id} if game_id is not None else {"season": season, "week": week}
+    rows = await db.execute(text(f"""
+        SELECT g.id AS game_id, g.season, g.week, g.start_utc,
+               away.id AS away_team_id, away.team_code AS away_team,
+               home.id AS home_team_id, home.team_code AS home_team
+        FROM sport_games g
+        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
+        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
+        WHERE g.sport = 'nfl' AND g.game_type = 'REG' AND {bound}
+        ORDER BY g.id
+    """), params)
+    return [NflContextGame(**row) for row in rows.mappings()]
+
+
+_CONTEXT_ELIGIBLE_GAMES = """
+    eligible_games AS (
+        SELECT g.id, g.season, g.week, g.start_utc, g.home_team_id, g.away_team_id
+        FROM sport_games g
+        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
+        WHERE g.sport = 'nfl' AND g.game_type = 'REG' AND g.status = 'completed'
+          AND g.season = :season AND g.week >= 1 AND g.week < :week
+          AND g.start_utc IS NOT NULL AND g.start_utc < :before
+    )
+"""
+
+# Snap-only participants keep a partially loaded position/team sum unavailable.
+_CONTEXT_RECORDED = """
+    participants AS (
+        SELECT s.player_id, s.game_id, s.team_id
+        FROM nfl_player_weekly_stats s
+        JOIN eligible_games g ON g.id = s.game_id AND g.season = s.season AND g.week = s.week
+        LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id
+             AND sc.team_id = s.team_id AND sc.season = g.season AND sc.week = g.week
+        WHERE s.team_id IN (g.home_team_id, g.away_team_id)
+          AND (sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL
+               AND (sc.offense_pct IS NULL OR sc.offense_pct > 0)))
+        UNION
+        SELECT sc.player_id, sc.game_id, sc.team_id
+        FROM nfl_player_snap_counts sc
+        JOIN eligible_games g ON g.id = sc.game_id AND g.season = sc.season AND g.week = sc.week
+        WHERE sc.team_id IN (g.home_team_id, g.away_team_id)
+          AND (sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL AND sc.offense_pct > 0))
+    ), recorded AS (
+        SELECT a.player_id, a.game_id, a.team_id, p.position,
+               s.targets, s.rushing_attempts AS carries, s.rushing_yards,
+               s.receptions, s.receiving_yards
+        FROM participants a
+        JOIN eligible_games g ON g.id = a.game_id
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = a.player_id
+        LEFT JOIN nfl_player_weekly_stats s ON s.player_id = a.player_id AND s.game_id = a.game_id
+             AND s.team_id = a.team_id AND s.season = g.season AND s.week = g.week
+    )
+"""
+
+_CONTEXT_ALLOWED_COLUMNS = {
+    "rb_carries": ("RB", "carries"), "rb_rush_yards": ("RB", "rushing_yards"),
+    "rb_receptions": ("RB", "receptions"), "rb_rec_yards": ("RB", "receiving_yards"),
+    "wr_receptions": ("WR", "receptions"), "wr_rec_yards": ("WR", "receiving_yards"),
+    "te_receptions": ("TE", "receptions"), "te_rec_yards": ("TE", "receiving_yards"),
+}
+
+
+async def get_context_allowed_games(
+    db: AsyncSession, season: int, week: int, before: datetime,
+) -> list[TeamAllowedGame]:
+    sums = ",\n".join(
+        f"""CASE WHEN COUNT(*) FILTER (WHERE position IS NULL) = 0
+             AND COUNT(*) FILTER (WHERE position = '{position}') > 0
+             AND COUNT({column}) FILTER (WHERE position = '{position}')
+                 = COUNT(*) FILTER (WHERE position = '{position}')
+             THEN SUM({column}) FILTER (WHERE position = '{position}') END AS {measure}"""
+        for measure, (position, column) in _CONTEXT_ALLOWED_COLUMNS.items()
+    )
+    selected = ", ".join(f"totals.{measure}" for measure in _CONTEXT_ALLOWED_COLUMNS)
+    rows = await db.execute(text(f"""
+        WITH {_CONTEXT_ELIGIBLE_GAMES}, {_CONTEXT_RECORDED}, totals AS (
+            SELECT game_id, team_id, {sums} FROM recorded GROUP BY game_id, team_id
+        ), defense_games AS (
+            SELECT g.*, g.home_team_id AS team_id, g.away_team_id AS opponent_id FROM eligible_games g
+            UNION ALL
+            SELECT g.*, g.away_team_id, g.home_team_id FROM eligible_games g
+        )
+        SELECT d.id AS game_id, d.season, d.week, d.start_utc, d.team_id, {selected}
+        FROM defense_games d
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = d.team_id
+        LEFT JOIN totals ON totals.game_id = d.id AND totals.team_id = d.opponent_id
+        ORDER BY d.id, d.team_id
+    """), {"season": season, "week": week, "before": before})
+    return [TeamAllowedGame(
+        game=_context_history_game(row), team_id=row["team_id"],
+        **{measure: _float_or_none(row[measure]) for measure in _CONTEXT_ALLOWED_COLUMNS},
+    ) for row in rows.mappings()]
+
+
+async def get_context_roster(db: AsyncSession, game: NflContextGame) -> list[NflContextRosterPlayer]:
+    rows = await db.execute(text("""
+        WITH memberships AS (
+            SELECT r.player_id, MIN(r.team_id) AS team_id
+            FROM nfl_player_weekly_rosters r
+            WHERE r.season = :season AND r.week = :week
+            GROUP BY r.player_id
+            HAVING COUNT(*) = 1 AND MIN(r.status) NOT IN ('CUT', 'RET')
+        )
+        SELECT p.id AS player_id, p.name, p.position, t.team_code AS team
+        FROM memberships m
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = m.player_id
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = m.team_id
+        WHERE m.team_id IN (:away_team_id, :home_team_id) AND p.position IN ('QB', 'RB', 'WR', 'TE')
+        ORDER BY t.team_code, p.name, p.id
+    """), {"season": game.season, "week": game.week,
+           "away_team_id": game.away_team_id, "home_team_id": game.home_team_id})
+    return [NflContextRosterPlayer(**row) for row in rows.mappings()]
+
+
+async def get_context_player_history(
+    db: AsyncSession, game: NflContextGame, player_ids: list[int],
+) -> list[NflContextHistory]:
+    if not player_ids or game.start_utc is None:
+        return []
+    statement = text(f"""
+        WITH {_CONTEXT_ELIGIBLE_GAMES}, {_CONTEXT_RECORDED}, selected AS (
+            SELECT player_id, game_id, MIN(team_id) AS team_id
+            FROM recorded WHERE player_id IN :player_ids
+            GROUP BY player_id, game_id HAVING COUNT(*) = 1
+        ), team_totals AS (
+            SELECT game_id, team_id,
+                   CASE WHEN COUNT(targets) = COUNT(*) AND MIN(targets) >= 0
+                        THEN SUM(targets) END AS team_targets,
+                   CASE WHEN COUNT(carries) = COUNT(*) AND MIN(carries) >= 0
+                        THEN SUM(carries) END AS team_carries
+            FROM recorded WHERE game_id IN (SELECT game_id FROM selected)
+            GROUP BY game_id, team_id
+        )
+        SELECT s.player_id, g.id AS game_id, g.season, g.week, g.start_utc,
+               t.team_code AS team, r.targets, r.carries, totals.team_targets,
+               totals.team_carries, sc.offense_pct
+        FROM selected s
+        JOIN eligible_games g ON g.id = s.game_id
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = s.team_id
+        JOIN recorded r ON r.player_id = s.player_id AND r.game_id = s.game_id AND r.team_id = s.team_id
+        LEFT JOIN team_totals totals ON totals.game_id = s.game_id AND totals.team_id = s.team_id
+        LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id
+             AND sc.team_id = s.team_id AND sc.season = g.season AND sc.week = g.week
+        WHERE sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL AND
+              (sc.offense_pct > 0 OR r.targets IS NOT NULL OR r.carries IS NOT NULL))
+        ORDER BY s.player_id, g.start_utc, g.id
+    """).bindparams(bindparam("player_ids", expanding=True))
+    rows = await db.execute(statement, {"season": game.season, "week": game.week,
+                                       "before": game.start_utc, "player_ids": player_ids})
+    return [NflContextHistory(
+        player_id=row["player_id"], usage=PlayerUsageGame(
+            game=_context_history_game(row), team=row["team"],
+            targets=_float_or_none(row["targets"]), carries=_float_or_none(row["carries"]),
+            team_targets=_float_or_none(row["team_targets"]), team_carries=_float_or_none(row["team_carries"]),
+            offense_pct=_float_or_none(row["offense_pct"]),
+        ),
+    ) for row in rows.mappings()]
+
+
+def _context_history_game(row: RowMapping) -> HistoryGame:
+    return HistoryGame(row["game_id"], row["season"], row["week"], row["start_utc"])
 
 
 @dataclass(frozen=True)
@@ -2493,7 +2694,8 @@ async def get_player_game_rows(db: AsyncSession, player_id: int, season: int) ->
                    CASE WHEN s.team_id = g.home_team_id THEN -g.spread_line ELSE g.spread_line END AS team_spread,
                    g.roof, sc.offense_pct AS snap_pct,
                    s.passing_completions, s.passing_attempts, s.passing_yards, s.rushing_attempts, s.rushing_yards,
-                   s.targets, s.receptions, s.receiving_yards, s.touchdowns, s.prizepicks_fantasy_points
+                   s.targets, s.receptions, s.receiving_yards, s.touchdowns, s.prizepicks_fantasy_points,
+                   s.fg_made, s.pat_made, s.punts
             FROM nfl_player_weekly_stats s
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
             LEFT JOIN sport_teams opponent
@@ -2518,4 +2720,5 @@ def _player_game_row(row: RowMapping) -> PlayerGameRow:
         rushing_yards=row["rushing_yards"], targets=row["targets"], receptions=row["receptions"],
         receiving_yards=row["receiving_yards"], touchdowns=row["touchdowns"],
         prizepicks_fantasy_points=_optional_float(row["prizepicks_fantasy_points"]),
+        fg_made=row["fg_made"], pat_made=row["pat_made"], punts=row["punts"],
     )

@@ -1366,7 +1366,7 @@ def test_player_game_rows_read_completed_regular_season_games_from_the_stat_rows
         "opponent_score": 23, "team_spread": Decimal("2.5"), "roof": "outdoors", "snap_pct": 0.6,
         "passing_completions": 0, "passing_attempts": 0, "passing_yards": 0, "rushing_attempts": 14,
         "rushing_yards": 51, "targets": None, "receptions": 2, "receiving_yards": 9, "touchdowns": 0,
-        "prizepicks_fantasy_points": Decimal("8.0"),
+        "prizepicks_fantasy_points": Decimal("8.0"), "fg_made": 2, "pat_made": None, "punts": 0,
     }
     session = _MappingSession([row])
 
@@ -1380,6 +1380,9 @@ def test_player_game_rows_read_completed_regular_season_games_from_the_stat_rows
     assert "LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id" in sql
     assert "ORDER BY g.season DESC, g.week DESC, g.id DESC" in sql
     assert (game.is_home, game.team_spread, game.snap_pct, game.targets, game.prizepicks_fantasy_points) == (False, 2.5, 0.6, None, 8.0)
+
+    assert (game.fg_made, game.pat_made, game.punts) == (2, None, 0)
+    assert "s.fg_made, s.pat_made, s.punts" in sql
 
 
 def test_line_only_filter_lists_exactly_the_line_only_markets() -> None:

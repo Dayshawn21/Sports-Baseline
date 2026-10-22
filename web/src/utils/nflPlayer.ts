@@ -3,6 +3,23 @@ import { nflGameProps } from '~/utils/nflGameProps'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
+export function isNflSpecialist(position: string | null): boolean {
+  return position === 'K' || position === 'P'
+}
+
+export function nflPlayerMarketLink(playerId: number, market: string): string {
+  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}#game-log`
+}
+
+export const SPECIALIST_COLUMNS = {
+  K: [
+    { field: 'fgMade', label: 'FG', market: 'field_goals_made' },
+    { field: 'patMade', label: 'PAT', market: null },
+    { field: 'kickingPoints', label: 'Kicking pts', market: 'kicking_points' },
+  ],
+  P: [{ field: 'punts', label: 'Punts', market: 'punts' }],
+} as const
+
 export interface NflPlayerWeekLine {
   row: NflBoardLine
   /** The line's rank on the week-wide board; null for lines the board does not rate. */

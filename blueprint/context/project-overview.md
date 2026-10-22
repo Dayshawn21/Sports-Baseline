@@ -21,10 +21,11 @@
 > table-first slates, tennis/NFL prop boards and NBA game-page prop rows,
 > command search, shared detail headings, CT labels and loaded detail tab
 > titles are implemented. The palette, fonts, and signal rules stay unchanged.
-> NBA has Slate and Model tabs; an NBA prop board (item 42, added
-> 2026-10-21) is planned as its Props view, followed by display-only NBA
-> injuries and team stats (42c, 42d). Next for NFL props: a Rec Targets projection (item 39),
-> graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
+> NBA now has Slate / Props / Model tabs: the board API and page (42a, 42b)
+> are complete and verified locally, with deployment unverified. Display-only
+> NBA injuries and team stats (42c, 42d) are complete locally; hosted
+> deployment remains unverified. NFL Rec Targets (item 39)
+> is graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
 > P(over) failed the one 2025 check and stays hidden (39b), and reference
 > serving, freezing and separate-version reporting are complete (39c-39d).
 > Rec Targets remains a gray reference without P(over) or probability picks.
@@ -35,25 +36,23 @@
 > TennisAbstract gaps; grading and model inputs are unchanged. The in-house
 > ELO shadow comparison (41b) is engineered and activated locally, its
 > forward verdict accruing from 2026-10-22 with zero observations; serving
-> it (41c) stays conditional. Workflow runner verification and deployment
-> remain pending for both. Next: the NBA prop board (item 42).
+> it (41c) stays conditional. First runner acceptance and deployment
+> remain unverified for both. The owner selected NFL matchup and usage
+> context (43) next; its spec is in review, with implementation not started.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-21 from both planning docs, for 41b's completion
-and the approved addition of item 42 (NBA prop board).
-The build plan is the progress authority where older
-project-plan prose disagrees; completed-work archives qualify implementation
-outcomes and preserve existing constraints. There are 116 checked leaf items
-out of 127, including the explicitly dropped 40b; eleven remain unchecked.
-42a (NBA prop board API) is specced in `current-feature.md`, not started. Local `master` is at `2e12f73` with 41a and 41b
-merged (remote sync not checked by this refresh); both post-push runner
-checks are recorded in their archives. The NBA prop board (42a-42d) is the
-next available work, ahead of WNBA (21); earlier unchecked leaves are parked or
-conditional. This refresh makes no new validation claim and does not verify
-the latest hosted deployment.
+**Regenerated:** 2026-10-22 from both planning docs after the approved
+feature 43 addition, retaining existing overview content and completed-work
+validation/deployment boundaries. The build plan is the progress authority
+where older project-plan prose disagrees. There are 120 checked leaf items
+out of 128, including the explicitly dropped 40b; 8 remain unchecked.
+NBA injuries and team stats (42c/42d) are locally complete per their archives.
+The owner selected feature 43 ahead of WNBA; `current-feature.md` contains its
+review draft. Implementation has not started. This refresh queried no remote,
+runner, hosted deployment, holdout or current experiment verdict state.
 
 ## Problem
 
@@ -127,6 +126,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 28 | NFL game-line CLV check | Complete |
 | 29 | NFL game notes | Complete |
 | 30 | NFL team stats in game notes | Complete |
+| 43 | NFL matchup and usage context | Approved plan addition; spec in review |
 | 31 | Web redesign | Complete |
 | 32 | Tennis detail pages | Complete |
 | 33 | NFL redesign and detail pages | Complete |
@@ -138,13 +138,13 @@ Checked items record completed work, including explicitly retired surfaces.
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
-| 42 | NBA prop board | 42a next; 42b-42d planned |
+| 42 | NBA prop board | 42a-42d complete locally; deployment unverified |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-Eleven leaf items remain, with these gates:
+8 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -152,20 +152,28 @@ Eleven leaf items remain, with these gates:
 | 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for the specific 27j slice; no verdict read here |
-| 42a | NBA prop board API | Specced; display only, no validation gate |
-| 42b | NBA prop board page | After 42a; reads its response |
-| 42c | NBA injuries | ESPN keyless snapshot feed, new table and schedule; display only, never a model input (no history to backtest) |
-| 42d | NBA team stats | From stored box scores, no new source; display only, never a model input |
+| 43 | NFL matchup and usage context | Owner-selected; review draft before implementation; display only |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Use `/feature 42` for the next available feature. Rec Targets reporting now
+Review feature 43 in `current-feature.md`, then use `/implement` after approval. Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
+
+**43. NFL matchup and usage context (planned, owner-selected 2026-10-22).**
+Extend game notes with current-season position production allowed and league
+ranks; add player target/carry shares on the existing game page and neutral
+last-three-versus-season usage in shared prop drawers. Samples, date windows
+and missing-data handling are explicit. Existing NFLverse weekly stats, snaps
+and as-of rosters supply the initial display; aDOT is conditional on verified
+raw air-yard totals and reviewed storage work. No scheme panel, recommendation,
+projection, probability, signal color or ranking change. The implementation
+spec is `current-feature.md`; no feature 43 code or database changes exist yet.
+
 
 Numerical results and samples below are dated observations from the completed
 work. Regenerating this overview does not read a holdout again, retune a rule,
@@ -1357,7 +1365,55 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
     - **Shared ranking record.** `build_ranking_record(inputs, season, graded_at, model_version, over_probability_version)` in `app/services/prop_ranking.py`, the report text in `app/core/prop_ranking_report.py` and `PropRankingResponse` in `app/schemas/prop_ranking.py` serve both sports; they never import `sport_registry` or NFL code (17c's rule). NFL's CLI output and `/nfl/model/ranking` were proved identical after the move.
     - **`GET /nba/model/ranking?season=`** returns NFL's ranking shape (camelCase; slices, funnel, coverage, `finishedWeeks`, `lastSettledWeek`), cached 15 minutes per season; the default season is the one `get_current_week` finds, 404 when no `REG` game is loaded, 503 when grading fails. **A later NBA adoption item reads each slice's verdict here**, as 27h reads NFL's.
     - **The report's first line** is `<SPORT> forward ranking check, <season> (model <v>, P(over) <v>)`; NBA's coverage label reads "modelled full-game lines with a frozen row".
-    - **`/nba/model`** reuses the NFL model page's ranking components and `nfl-model-*` classes; NBA's view switch reads Slate / Model.
+    - **`/nba/model`** reuses the NFL model page's ranking components and `nfl-model-*` classes. NBA's switch originally read Slate / Model; 42b adds Props.
+
+42. **NBA prop board** - 42a-42d complete and locally verified;
+injuries and team stats are display only. Hosted deployment is unverified. This is display work,
+with no projection, probability, version, ranking or pick change.
+
+  - **42a, board API:** `GET /nba/props?date=` returns one Eastern game
+    date using the slate's default and adjacent-date rules. Each game's
+    modelled `lines` are assembled by the game page's `props_response` and
+    `lineOnlyLines` by `line_only_props`. Date-wide modelled and line-only
+    reads replace per-game fetches for this endpoint; prior/recent player
+    reads are combined. Repository filters for sport, served NBA game types,
+    full-game segments, modelled markets and strict pre-tip snapshots remain
+    load-bearing. Unit and local endpoint comparisons pin board/game parity.
+    Archive: `blueprint/history/features/42a-nba-prop-board-api.md`.
+  - **42b, board page:** `/nba/board` is NBA's Props view in both `SPORTS`
+    and `SPORT_PAGES`. It requests the board once, groups each game's lines
+    with existing NBA helpers, and mounts the selected market only. The URL
+    carries optional `date` and `market`; absent/invalid market falls back
+    to Points, and invalid dates defer to the API. Shared page head, adjacent
+    dates, market pills, game links, CT tips/status, recent bars and both
+    evidence-drawer kinds are implemented. Rows follow tip time then player
+    name, with missing tips last and stable game/player ties; they never sort
+    by gap or probability. Each game/player/market retains its alternate
+    rungs. Line-only markets stay plain; null stays missing, never zero.
+    Drawer selection resets across date/market navigation, reads current
+    response data, and restores keyboard focus when closed. Local browser
+    proof covered four board/game parity cases, all ten markets, navigation,
+    error/empty states, and 1440/1000/390-pixel layouts. Final Verify passed
+    659 web tests plus typecheck/build and 3,470 API tests. Archive:
+    `blueprint/history/features/42b-nba-prop-board-page.md`; evidence:
+    `blueprint/reference/42b/step4-check.md`.
+  - **Operational boundary:** the October 21 response contained 8,097 raw
+    lines (7,986 modelled, 111 line-only), 4,877,159 bytes and 1,383 grouped
+    rows. Local pure assembly took 3.3-4.3 ms and did not repeat during
+    market/drawer interactions. These are development observations, not
+    production benchmarks. Hosted latency and Render's 512 MB memory remain
+    unverified. Neither the page nor the API truncates the response.
+  - **42c, locally complete:** timestamped ESPN injury snapshots in
+    `nba_injury_snapshots` (migration 0048), with player tags/detail on board
+    rows and evidence, both teams' lists on the game page, six-hour freshness
+    and historical pre-tip selection. First snapshot and migration verified;
+    hosted deployment and runner acceptance remain unverified. See
+    `blueprint/history/features/42c-nba-injuries.md` and `docs/nba-injuries.md`.
+  - **42d, locally complete:** pre-game season-to-date team for/allowed stats
+    and league ranks from stored regular-season box scores. Opponent allowed
+    stats appear in evidence, both teams' stats on the game page. No new
+    source, projection input, gap, sort or pick change.
+
 21. **WNBA support** - extends NBA.
 22. **Three-way market support** - draws in de-vigging, ensemble, and schema.
 23. **Soccer support** - on top of item 22.
@@ -1380,14 +1436,46 @@ stack.** Item 22 is split from 23 because draws are the one genuinely hard chang
 
 ## Data model
 
-> **Planned (42a-42d, no schema yet):** `GET /nba/props?date=`
-> (`NbaPropBoardResponse`: date, adjacent dates, model version, games in tip
-> order each with the game page's own `lines` and `lineOnlyLines`) is fixed by
-> the 42a spec. 42c adds a new NBA injury snapshot table (ESPN athlete and team
-> ids, status, detail, fetch time); its columns are fixed by 42c's spec. 42d
-> reads only `nba_player_game_stats` and `sport_games`.
+### NBA prop board response (42a/42b, implemented)
 
-PostgreSQL via Alembic, sequentially numbered, **currently at revision `0047`**
+No new database table or migration. `GET /nba/props?date=YYYY-MM-DD` returns
+the existing game endpoints' line schemas in this camelCase contract:
+
+```text
+NbaPropBoardResponse
+  date: string                   # resolved Eastern calendar date
+  previousDate: string | null     # adjacent served game dates
+  nextDate: string | null
+  modelVersion: string
+  games: NbaPropBoardGame[]
+
+NbaPropBoardGame
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+  lines: NbaPropLine[]
+  lineOnlyLines: NbaLineOnlyLine[]
+```
+
+**Load-bearing:** raw lines have exact game-endpoint parity, including nulls,
+flags, probabilities and recent games. They are the last stored pre-tip
+snapshot; started/final games remain in the response. The client groups
+within each game before flattening, with identity including kind, game,
+market and player. Dates remain Eastern while displayed tip times are CT.
+42c/42d add display context through the existing game/board experience;
+projection and line fields are unchanged. Their archives document the shared
+context read paths and verification evidence.
+
+**Display storage:** 42c stores NBA injury snapshots with ESPN athlete
+and team identities, status, detail and fetch time (migration 0048).
+42d derives team context from `nba_player_game_stats` and
+`sport_games`, without a new source. Neither changes model inputs.
+
+### Stored models
+
+PostgreSQL via Alembic, sequentially numbered, **currently at revision `0048`**
 (the plan still says `0019`; see Open questions). All primary keys are
 `BigInteger` autoincrement. Timestamps are `TIMESTAMPTZ`.
 
@@ -1734,7 +1822,7 @@ outcomes are driven more by volume.
 |---|---|---|---|---|
 | Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
-| NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display; ingest planned in 42c) | The Odds API (free plan, game lines only) | PrizePicks |
+| NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display snapshots, 42c locally complete) | The Odds API (free plan, game lines only) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
 
 **Backtest-only source:** 26c reads Valuebetennis season CSVs (ATP and WTA
@@ -1828,8 +1916,8 @@ without reading everything. Quality flags and EV ranking cut the list down.
 - `/nba` - NBA slate (38c2): one Eastern date (`?date=YYYY-MM-DD`, default today else the next game date), a summary strip, gray reference digest and one table row per game, each linking to the game page
 - `/nba/game/:gameId` - NBA game page (20e3, 38d3, 38f), with the shared page head, gray modelled and line-only prop rows and evidence drawers; reference projection, gap and P(over) for assists remain unchanged
 - `/nba/model` - NBA model track record page (20g4): the forward ranking check's four slices, gray until decided
-- `/nba/board` - *planned (item 42):* NBA prop board, one Eastern date and one market, gray rows ordered by tip time then player, never sorted by gap or P(over); injury tags (42c) and the opponent's allowed rank for the market (42d) as display context
-- The shared shell's view tabs read Slate / Props / Model for tennis and NFL, and Slate / Model for NBA (`web/src/utils/sportNav.ts`)
+- `/nba/board` - implemented and locally verified (42b): one Eastern date and one market, gray rows ordered by tip time then player, shared NBA evidence drawers, date/market URL history, game links and CT tips/status. Never sorted by gap or P(over). Injury tags (42c) and opponent allowed stats/rank (42d) are implemented display context. Hosted deployment unverified.
+- The shared shell's view tabs read Slate / Props / Model for tennis, NFL and NBA (`web/src/utils/sportNav.ts`); 42b adds NBA Props.
 - `/parlays` - Bankroll builder. Hidden from the nav since 2026-09-25; the route and API remain.
 - `/how-it-works` - public explainer (37b): pipeline, what each sport shows, how a model earns a pick
 - `/admin` - Admin surface: a sign-in card until the owner enters `ADMIN_API_KEY` (37a); its nav entry is hidden from visitors
@@ -1849,7 +1937,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 | `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `players/stats`, `players/compare`, `bankroll/today`, `parlays/suggested` |
 | `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk`, `bet` (Bet365 props) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
-| `/nba` | `slate?date=`, `slate/gaps?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
+| `/nba` | `slate?date=`, `slate/gaps?date=`, `props?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
 | `/admin` | `session`, `players/flagged`, `players/{id}/fetch-stats`, `players/{id}/fetch-elo`, `players/{id}/set-elo` (all need `X-API-Key` when a key is set) |
 | root | `/health` |
 
@@ -1891,11 +1979,26 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
 - **Health check:** `GET /health`
 - **Env vars:** `DATABASE_URL`, `ODDS_API_KEY` (Odds-API.io, tennis and from 36a NFL Bet365/DraftKings), `THE_ODDS_API_KEY` (The Odds API, NFL and NBA), `LIVETENNIS_API_KEY`, `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` default, or `production`), `CORS_ORIGINS` (JSON list), `RATE_LIMIT_DEFAULT` (`120/minute`), `RATE_LIMIT_HEAVY` (`10/minute`)
 - **Cron:** remote, in GitHub Actions with repo secrets, September through February for NFL
-  - `tennis-ingest.yml` - tennis ingest jobs; the 13:30 UTC `predictions` job
-    also stores PrizePicks projection snapshots (26f); the daily `player-stats`
-    job also refetches yesterday's players, so box scores land after the match
-    (26e). 41a adds a locally configured `tennismylife` job at 11:00 UTC daily
-    and by manual dispatch; its first GitHub runner test awaits approved push.
+  - **Tennis uses six workflow files**, preserving the prior UTC schedules
+    and commands (completed `tennis-workflow-split` fix). The split is present
+    on local `master`; runner registration/execution are unverified here.
+    `docs/tennis-actions.md` documents manual operations and dependencies:
+    - `tennis-ingest.yml`: matches and H2H, daily 06:30 UTC.
+    - `tennis-odds.yml`: odds for the next 14 hours, every four hours at :10 UTC.
+    - `tennis-prop-lines.yml`: PrizePicks lines, daily 13:00 UTC.
+    - `tennis-predictions.yml`: predictions then projection snapshots (26f),
+      daily 13:30 UTC; the dependent ELO shadow freeze runs only after both
+      succeed. Manual `tennis-elo-comparison` runs that operation alone.
+    - `tennis-box-scores.yml`: TennisMyLife box scores, daily 11:00 UTC;
+      its dependent candidate ELO refresh validates the complete roster and
+      original files. Manual `tennis-elo` runs that candidate operation alone.
+    - `tennis-player-stats.yml`: player stats, daily 10:00 UTC, including
+      refetching yesterday's players for box scores (26e).
+    Dependencies retain failure/cancellation guards, exact UTC-day cache
+    keys, identity/implementation pins and original-file checks. No automatic
+    experiment activation, scoring or served-ELO change. Each workflow has
+    `DATABASE_URL`; only matches gets `LIVETENNIS_API_KEY`, only odds gets
+    `ODDS_API_KEY`; token permission is `contents: read`.
   - **A local Windows scheduled task, `Lineform ingest_daily`** (daily 12:00
     local, registered 2026-10-18), runs `api/ingest_daily.bat` from its own
     folder against the same database, using whatever branch is checked out.
@@ -1935,13 +2038,14 @@ the request path the same way.
 ## Open questions
 
 1. **Plan §4 data section is behind the completed build plan.** It says
-   revision `0019`; the existing schema notes extend through `0045`
+   revision `0019`; the existing schema notes extend through `0047`
    (`0033` adds `player_match_stats`, `0034` adds
    `prop_projection_snapshots`, `0035` adds the box-score join key, `0036` adds
    the 27f fantasy components, `0037` reshapes `nfl_prop_predictions` for 27i,
    `0038` rekeys box scores, `0039` to `0041` move seven NFL tables to
    `sport_*` and add `sports`; `0042` adds kicking/punting stats, `0043`
-   adds NBA data, `0044` adds odds providers and `0045` adds report snapshots).
+   adds NBA data, `0044` adds odds providers, `0045` adds report snapshots,
+   and `0046`/`0047` add isolated tennis ELO snapshots/comparisons).
    It still describes the `nfl_*` tables as the
    NFL schema, and does not list the 19n `sport_games` line columns or `end_zone_targets`, `sport_game_odds` (19f), the usage and red-zone
    columns (19h, 19j), `nfl_game_weather_snapshots`, `nfl_player_prop_odds`
@@ -2226,7 +2330,7 @@ the request path the same way.
     from verifying the latest Render deployment.
 
 51. **Remaining planning gaps, refreshed 2026-10-21:** the NBA prop board
-    is now approved as item 42; `project-plan.md` §3 does not name it, as
+    API/page (42a/42b) are complete; `project-plan.md` §3 does not name them, as
     question 43 found for the other NBA pages. WNBA/soccer schedule and stats providers are intentionally undecided.
     Project-plan §2 still calls the demo planned while §8 and item 37 say
     it is live; §4 says model files are ignored while §8 says they are tracked.
@@ -2261,7 +2365,28 @@ the request path the same way.
 
 57. **Item 41's deployment boundary remains explicit.** The project plan now
     records the implemented second box-score source. 41a's local code and
-    shared-database backfill are verified; the new GitHub job has not run on a
-    runner and deployment of this code has not been checked. 41b is
+    shared-database backfill are verified; first runner acceptance and
+    deployment of this code have not been verified by this refresh. 41b is
     engineered and in shadow with the same runner/deployment boundary; 41c
     remains conditional, and no ELO serving change follows from either.
+
+58. **42a-42d are complete locally.** The build plan checks off the board
+    API/page, injuries and team stats. Their completed archives supersede the
+    previous overview's planned status; hosted deployment remains unverified. Their archives
+    and local browser evidence establish parity and UI behavior, not hosted
+    deployment or Render memory acceptance. The existing 4.88 MB daily
+    response is a recorded operational follow-up; do not describe it as a
+    few-hundred-line payload or add a new heavy request-time report.
+
+59. **Tennis workflow operations changed after the previous overview.**
+    The old combined-workflow description is superseded by the six files
+    documented above and in `docs/tennis-actions.md`. The split preserves
+    commands, quota usage and ELO safeguards. This overview does not verify
+    workflow registration, successful runner execution or current experiment
+    counts; retain those post-publication checks separately.
+
+60. **Feature 43 is recorded in the build plan, not project-plan section 3.**
+    This approved incremental display feature changes no product direction,
+    user, provider, stack or deployment commitment. aDOT needs source/storage
+    verification and is not promised from the existing air-yard-share field.
+    The selected work is a spec draft; it must not be described as implemented.

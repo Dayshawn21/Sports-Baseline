@@ -1,0 +1,984 @@
+--- a/api/app/repositories/nfl.py
++++ b/api/app/repositories/nfl.py
+@@ -11,6 +11,7 @@
+ from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
+ from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
+ from app.core.nfl_line_only import LINE_ONLY_COLUMNS
++from app.core.nfl_matchup_context import ContextCutoff, HistoryGame, PlayerUsageGame, TeamAllowedGame
+ from app.core.nfl_best_line import Quote
+ from app.core.nfl_player import PlayerGameRow
+ from app.core.nfl_qb_change import Qb, QbGame, QbInjury
+@@ -30,8 +31,208 @@
+ from app.ingest.nflverse_snap_counts import NflverseSnapGame
+ from app.ingest.nflverse_team_efficiency import NflverseTeamEfficiency
+ from app.nfl.markets import NFL_V4_PROP_MARKETS, NflLineOnlyMarket, NflPropMarket
+-from sqlalchemy import RowMapping, text
++from sqlalchemy import RowMapping, bindparam, text
+ from sqlalchemy.ext.asyncio import AsyncSession
++
++
++@dataclass(frozen=True)
++class NflContextGame:
++    game_id: int
++    season: int
++    week: int
++    start_utc: datetime | None
++    away_team_id: int
++    away_team: str
++    home_team_id: int
++    home_team: str
++
++    @property
++    def cutoff(self) -> ContextCutoff:
++        return ContextCutoff(self.season, self.week, self.start_utc)
++
++
++@dataclass(frozen=True)
++class NflContextRosterPlayer:
++    player_id: int
++    name: str
++    position: str
++    team: str
++
++
++@dataclass(frozen=True)
++class NflContextHistory:
++    player_id: int
++    usage: PlayerUsageGame
++
++
++async def get_context_games(
++    db: AsyncSession, *, game_id: int | None = None, season: int | None = None, week: int | None = None,
++) -> list[NflContextGame]:
++    if game_id is None and (season is None or week is None):
++        raise ValueError("Context needs a game ID or season and week")
++    bound = "g.id = :game_id" if game_id is not None else "g.season = :season AND g.week = :week"
++    params = {"game_id": game_id} if game_id is not None else {"season": season, "week": week}
++    rows = await db.execute(text(f"""
++        SELECT g.id AS game_id, g.season, g.week, g.start_utc,
++               away.id AS away_team_id, away.team_code AS away_team,
++               home.id AS home_team_id, home.team_code AS home_team
++        FROM sport_games g
++        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
++        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
++        WHERE g.sport = 'nfl' AND g.game_type = 'REG' AND {bound}
++        ORDER BY g.id
++    """), params)
++    return [NflContextGame(**row) for row in rows.mappings()]
++
++
++_CONTEXT_ELIGIBLE_GAMES = """
++    eligible_games AS (
++        SELECT g.id, g.season, g.week, g.start_utc, g.home_team_id, g.away_team_id
++        FROM sport_games g
++        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
++        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
++        WHERE g.sport = 'nfl' AND g.game_type = 'REG' AND g.status = 'completed'
++          AND g.season = :season AND g.week >= 1 AND g.week < :week
++          AND g.start_utc IS NOT NULL AND g.start_utc < :before
++    )
++"""
++
++# Snap-only participants keep a partially loaded position/team sum unavailable.
++_CONTEXT_RECORDED = """
++    participants AS (
++        SELECT s.player_id, s.game_id, s.team_id
++        FROM nfl_player_weekly_stats s
++        JOIN eligible_games g ON g.id = s.game_id AND g.season = s.season AND g.week = s.week
++        LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id
++             AND sc.team_id = s.team_id AND sc.season = g.season AND sc.week = g.week
++        WHERE s.team_id IN (g.home_team_id, g.away_team_id)
++          AND (sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL
++               AND (sc.offense_pct IS NULL OR sc.offense_pct > 0)))
++        UNION
++        SELECT sc.player_id, sc.game_id, sc.team_id
++        FROM nfl_player_snap_counts sc
++        JOIN eligible_games g ON g.id = sc.game_id AND g.season = sc.season AND g.week = sc.week
++        WHERE sc.team_id IN (g.home_team_id, g.away_team_id)
++          AND (sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL AND sc.offense_pct > 0))
++    ), recorded AS (
++        SELECT a.player_id, a.game_id, a.team_id, p.position,
++               s.targets, s.rushing_attempts AS carries, s.rushing_yards,
++               s.receptions, s.receiving_yards
++        FROM participants a
++        JOIN eligible_games g ON g.id = a.game_id
++        JOIN sport_players p ON p.sport = 'nfl' AND p.id = a.player_id
++        LEFT JOIN nfl_player_weekly_stats s ON s.player_id = a.player_id AND s.game_id = a.game_id
++             AND s.team_id = a.team_id AND s.season = g.season AND s.week = g.week
++    )
++"""
++
++_CONTEXT_ALLOWED_COLUMNS = {
++    "rb_carries": ("RB", "carries"), "rb_rush_yards": ("RB", "rushing_yards"),
++    "rb_receptions": ("RB", "receptions"), "rb_rec_yards": ("RB", "receiving_yards"),
++    "wr_receptions": ("WR", "receptions"), "wr_rec_yards": ("WR", "receiving_yards"),
++    "te_receptions": ("TE", "receptions"), "te_rec_yards": ("TE", "receiving_yards"),
++}
++
++
++async def get_context_allowed_games(
++    db: AsyncSession, season: int, week: int, before: datetime,
++) -> list[TeamAllowedGame]:
++    sums = ",\n".join(
++        f"""CASE WHEN COUNT(*) FILTER (WHERE position IS NULL) = 0
++             AND COUNT(*) FILTER (WHERE position = '{position}') > 0
++             AND COUNT({column}) FILTER (WHERE position = '{position}')
++                 = COUNT(*) FILTER (WHERE position = '{position}')
++             THEN SUM({column}) FILTER (WHERE position = '{position}') END AS {measure}"""
++        for measure, (position, column) in _CONTEXT_ALLOWED_COLUMNS.items()
++    )
++    selected = ", ".join(f"totals.{measure}" for measure in _CONTEXT_ALLOWED_COLUMNS)
++    rows = await db.execute(text(f"""
++        WITH {_CONTEXT_ELIGIBLE_GAMES}, {_CONTEXT_RECORDED}, totals AS (
++            SELECT game_id, team_id, {sums} FROM recorded GROUP BY game_id, team_id
++        ), defense_games AS (
++            SELECT g.*, g.home_team_id AS team_id, g.away_team_id AS opponent_id FROM eligible_games g
++            UNION ALL
++            SELECT g.*, g.away_team_id, g.home_team_id FROM eligible_games g
++        )
++        SELECT d.id AS game_id, d.season, d.week, d.start_utc, d.team_id, {selected}
++        FROM defense_games d
++        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = d.team_id
++        LEFT JOIN totals ON totals.game_id = d.id AND totals.team_id = d.opponent_id
++        ORDER BY d.id, d.team_id
++    """), {"season": season, "week": week, "before": before})
++    return [TeamAllowedGame(
++        game=_context_history_game(row), team_id=row["team_id"],
++        **{measure: _float_or_none(row[measure]) for measure in _CONTEXT_ALLOWED_COLUMNS},
++    ) for row in rows.mappings()]
++
++
++async def get_context_roster(db: AsyncSession, game: NflContextGame) -> list[NflContextRosterPlayer]:
++    rows = await db.execute(text("""
++        WITH memberships AS (
++            SELECT r.player_id, MIN(r.team_id) AS team_id
++            FROM nfl_player_weekly_rosters r
++            WHERE r.season = :season AND r.week = :week
++            GROUP BY r.player_id
++            HAVING COUNT(*) = 1 AND MIN(r.status) NOT IN ('CUT', 'RET')
++        )
++        SELECT p.id AS player_id, p.name, p.position, t.team_code AS team
++        FROM memberships m
++        JOIN sport_players p ON p.sport = 'nfl' AND p.id = m.player_id
++        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = m.team_id
++        WHERE m.team_id IN (:away_team_id, :home_team_id) AND p.position IN ('QB', 'RB', 'WR', 'TE')
++        ORDER BY t.team_code, p.name, p.id
++    """), {"season": game.season, "week": game.week,
++           "away_team_id": game.away_team_id, "home_team_id": game.home_team_id})
++    return [NflContextRosterPlayer(**row) for row in rows.mappings()]
++
++
++async def get_context_player_history(
++    db: AsyncSession, game: NflContextGame, player_ids: list[int],
++) -> list[NflContextHistory]:
++    if not player_ids or game.start_utc is None:
++        return []
++    statement = text(f"""
++        WITH {_CONTEXT_ELIGIBLE_GAMES}, {_CONTEXT_RECORDED}, selected AS (
++            SELECT player_id, game_id, MIN(team_id) AS team_id
++            FROM recorded WHERE player_id IN :player_ids
++            GROUP BY player_id, game_id HAVING COUNT(*) = 1
++        ), team_totals AS (
++            SELECT game_id, team_id,
++                   CASE WHEN COUNT(targets) = COUNT(*) AND MIN(targets) >= 0
++                        THEN SUM(targets) END AS team_targets,
++                   CASE WHEN COUNT(carries) = COUNT(*) AND MIN(carries) >= 0
++                        THEN SUM(carries) END AS team_carries
++            FROM recorded WHERE game_id IN (SELECT game_id FROM selected)
++            GROUP BY game_id, team_id
++        )
++        SELECT s.player_id, g.id AS game_id, g.season, g.week, g.start_utc,
++               t.team_code AS team, r.targets, r.carries, totals.team_targets,
++               totals.team_carries, sc.offense_pct
++        FROM selected s
++        JOIN eligible_games g ON g.id = s.game_id
++        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = s.team_id
++        JOIN recorded r ON r.player_id = s.player_id AND r.game_id = s.game_id AND r.team_id = s.team_id
++        LEFT JOIN team_totals totals ON totals.game_id = s.game_id AND totals.team_id = s.team_id
++        LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = s.player_id AND sc.game_id = s.game_id
++             AND sc.team_id = s.team_id AND sc.season = g.season AND sc.week = g.week
++        WHERE sc.offense_snaps > 0 OR (sc.offense_snaps IS NULL AND
++              (sc.offense_pct > 0 OR r.targets IS NOT NULL OR r.carries IS NOT NULL))
++        ORDER BY s.player_id, g.start_utc, g.id
++    """).bindparams(bindparam("player_ids", expanding=True))
++    rows = await db.execute(statement, {"season": game.season, "week": game.week,
++                                       "before": game.start_utc, "player_ids": player_ids})
++    return [NflContextHistory(
++        player_id=row["player_id"], usage=PlayerUsageGame(
++            game=_context_history_game(row), team=row["team"],
++            targets=_float_or_none(row["targets"]), carries=_float_or_none(row["carries"]),
++            team_targets=_float_or_none(row["team_targets"]), team_carries=_float_or_none(row["team_carries"]),
++            offense_pct=_float_or_none(row["offense_pct"]),
++        ),
++    ) for row in rows.mappings()]
++
++
++def _context_history_game(row: RowMapping) -> HistoryGame:
++    return HistoryGame(row["game_id"], row["season"], row["week"], row["start_utc"])
+ 
+ 
+ @dataclass(frozen=True)
+--- a/api/app/services/nfl/game_notes.py
++++ b/api/app/services/nfl/game_notes.py
+@@ -16,6 +16,7 @@
+ from app.core.nfl_qb_change import USUAL_STARTER_GAMES, QbChange, qb_change
+ from app.core.nfl_team_stats import EMPTY_TEAM_STATS, TeamStats, team_stats
+ from app.repositories import nfl as nfl_repo
++from app.services.nfl.matchup_context import build_week_matchup_context
+ from app.schemas.nfl import (
+     NflBestLineSchema,
+     NflBestMarketSchema,
+@@ -24,6 +25,7 @@
+     NflGameNotesResponse,
+     NflGameNotesSchema,
+     NflLineMoveSchema,
++    NflMatchupContextSchema,
+     NflNoteDepthChangeSchema,
+     NflNoteInjurySchema,
+     NflQbChangeSchema,
+@@ -45,12 +47,14 @@
+     stats = team_stats(await nfl_repo.get_week_team_games(db, season, week))
+     qb_changes = await _week_qb_changes(db, season, week)
+     quotes = await nfl_repo.get_week_game_quotes(db, season, week)
++    matchups = await build_week_matchup_context(db, season, week)
+     now = datetime.now(UTC)
+     best = {game_id: best_line_schema(start_utc, game_quotes, now) for game_id, (start_utc, game_quotes) in quotes.items()}
+     return NflGameNotesResponse(
+         season=season, week=week,
+         games=[
+-            game_notes(game_id, game, injuries, depth_rows, moves, recent, stats, qb_changes, best.get(game_id))
++            game_notes(game_id, game, injuries, depth_rows, moves, recent, stats, qb_changes,
++                       best.get(game_id), matchups.get(game_id))
+             for game_id, game in sorted(games.items())
+         ],
+     )
+@@ -66,6 +70,7 @@
+     stats: dict[int, TeamStats],
+     qb_changes: dict[int, QbChange] | None = None,
+     best_line: NflBestLineSchema | None = None,
++    matchup_context: NflMatchupContextSchema | None = None,
+ ) -> NflGameNotesSchema:
+     team_ids = {game["away_team_id"], game["home_team_id"]}
+     listed = sorted(
+@@ -85,6 +90,7 @@
+         away_qb_change=_qb_change_schema(game["away_team"], (qb_changes or {}).get(game["away_team_id"])),
+         home_qb_change=_qb_change_schema(game["home_team"], (qb_changes or {}).get(game["home_team_id"])),
+         best_line=best_line,
++        matchup_context=matchup_context,
+     )
+ 
+ 
+--- a/api/app/schemas/nfl.py
++++ b/api/app/schemas/nfl.py
+@@ -515,6 +515,7 @@
+     away_qb_change: NflQbChangeSchema | None
+     home_qb_change: NflQbChangeSchema | None
+     best_line: NflBestLineSchema | None     # null once kicked off or with no fresh book
++    matchup_context: NflMatchupContextSchema | None = None
+ 
+ 
+ class NflGameNotesResponse(_CamelModel):
+--- a/api/app/routers/nfl.py
++++ b/api/app/routers/nfl.py
+@@ -12,7 +12,7 @@
+ from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
+ from app.repositories import nfl as nfl_repo
+ from app.schemas.nfl import (
+-    NflCurrentWeekResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
++    NflCurrentWeekResponse, NflGameContextResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
+     NflLineOnlyPropsResponse, NflLineOnlyBoardResponse,
+     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
+     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
+@@ -21,6 +21,7 @@
+ from app.services.nfl.game_detail import build_game_detail
+ from app.services.nfl.game_notes import build_game_notes
+ from app.services.nfl.line_only_props import build_line_only_props, build_week_line_only_props
++from app.services.nfl.matchup_context import build_game_context
+ from app.services.nfl.player_detail import build_player_detail
+ from app.services.nfl import prop_lines_snapshot, track_record
+ from app.services.nfl.slate import anytime_td
+@@ -61,6 +62,14 @@
+     if props is None:
+         raise HTTPException(status_code=404, detail=f"NFL game {game_id} not found")
+     return props
++
++
++@router.get("/games/{game_id}/context", response_model=NflGameContextResponse)
++async def get_game_context(game_id: int, db: AsyncSession = Depends(get_db)) -> NflGameContextResponse:
++    context = await build_game_context(db, game_id)
++    if context is None:
++        raise HTTPException(status_code=404, detail=f"NFL game {game_id} not found")
++    return context
+ 
+ 
+ @router.get("/line-only-props", response_model=NflLineOnlyBoardResponse)
+--- a/blueprint/context/current-feature.md
++++ b/blueprint/context/current-feature.md
+@@ -1,7 +1,7 @@
+ # Feature: NFL matchup and usage context
+ 
+ **From build-plan:** 43 (approved 2026-10-22)
+-**Status:** Step 1 approved; Step 2 in progress; Steps 3-5 not started
++**Status:** Step 1 approved; Step 2 implemented locally, awaiting review; Steps 3-5 not started
+ **Type:** Feature
+ 
+ ## Goal
+@@ -199,6 +199,12 @@
+   and build, and all 3,641 API tests. Review diff:
+   `blueprint/reference/43/step-1.diff`. Owner approved Step 1 and continuation
+   to Step 2 on 2026-10-22; no checkpoint commit requested.
++- Step 2 evidence and its incremental diff are in
++  `blueprint/reference/43/step-2-verification.md` and `step-2.diff`.
++  Added 28 SQL/endpoint fixtures; all 3,669 API tests and 706 web tests plus
++  typecheck/build pass. A read-only stored 2026 Week 7 check proves shared
++  matchup parity (39 game players, 14 week games). Step 2 remains unchecked
++  until owner approval. No commit or shared writes.
+ 
+ - Gray and unranked alone do not neutralize selective highlighting. No role
+   increasing, elevated production, watch, favorable, arrows or delta-based sorting.
+--- /dev/null
++++ b/api/app/services/nfl/matchup_context.py
+@@ -0,0 +1,64 @@
++"""Bounded, read-only NFL display context shared by game notes and drawers."""
++from __future__ import annotations
++
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.core.nfl_matchup_context import PlayerUsageGame, player_usage, position_allowed
++from app.repositories import nfl as nfl_repo
++from app.schemas.nfl import (
++    NflContextPlayerSchema, NflGameContextResponse, NflMatchupContextSchema,
++    NflMatchupTeamSchema, NflPositionAllowedSchema, NflUsageWindowSchema,
++)
++
++
++async def build_week_matchup_context(
++    db: AsyncSession, season: int, week: int,
++) -> dict[int, NflMatchupContextSchema]:
++    games = await nfl_repo.get_context_games(db, season=season, week=week)
++    return await _matchups(db, games)
++
++
++async def _matchups(
++    db: AsyncSession, games: list[nfl_repo.NflContextGame],
++) -> dict[int, NflMatchupContextSchema]:
++    if not games:
++        return {}
++    kickoffs = [game.start_utc for game in games if game.start_utc is not None]
++    first = games[0]
++    rows = await nfl_repo.get_context_allowed_games(db, first.season, first.week, max(kickoffs)) if kickoffs else []
++    team_ids = {row.team_id for row in rows} | {team for game in games for team in (game.away_team_id, game.home_team_id)}
++    matchups: dict[int, NflMatchupContextSchema] = {}
++    for game in games:
++        allowed = position_allowed(rows, team_ids, game.cutoff)
++        matchups[game.game_id] = NflMatchupContextSchema(
++            away=NflMatchupTeamSchema(team_id=game.away_team_id, team=game.away_team,
++                                     allowed=NflPositionAllowedSchema(**allowed[game.away_team_id])),
++            home=NflMatchupTeamSchema(team_id=game.home_team_id, team=game.home_team,
++                                     allowed=NflPositionAllowedSchema(**allowed[game.home_team_id])),
++        )
++    return matchups
++
++
++async def build_game_context(db: AsyncSession, game_id: int) -> NflGameContextResponse | None:
++    games = await nfl_repo.get_context_games(db, game_id=game_id)
++    if not games:
++        return None
++    game = games[0]
++    matchups = await _matchups(db, games)
++    roster = await nfl_repo.get_context_roster(db, game)
++    history = await nfl_repo.get_context_player_history(db, game, [player.player_id for player in roster])
++    by_player: dict[int, list[PlayerUsageGame]] = {}
++    for row in history:
++        by_player.setdefault(row.player_id, []).append(row.usage)
++    players: list[NflContextPlayerSchema] = []
++    for player in sorted(roster, key=lambda row: (row.team, row.name, row.player_id)):
++        usage = player_usage(by_player.get(player.player_id, []), game.cutoff)
++        players.append(NflContextPlayerSchema(
++            player_id=player.player_id, name=player.name, position=player.position, team=player.team,
++            season_usage=NflUsageWindowSchema.model_validate(usage.season_usage),
++            recent_usage=NflUsageWindowSchema.model_validate(usage.recent_usage),
++        ))
++    return NflGameContextResponse(
++        game_id=game.game_id, season=game.season, week=game.week, cutoff_week=game.week - 1,
++        matchup_context=matchups[game.game_id], players=players,
++    )
+--- /dev/null
++++ b/api/tests/test_nfl_matchup_context_reads.py
+@@ -0,0 +1,383 @@
++"""Execute the display SQL against isolated fixtures; never connect to Postgres."""
++import asyncio
++from datetime import UTC, datetime
++from typing import cast
++from unittest.mock import AsyncMock
++
++import pytest
++from fastapi import FastAPI
++from fastapi.testclient import TestClient
++from sqlalchemy import create_engine, text
++from sqlalchemy.ext.asyncio import AsyncSession
++from sqlalchemy.sql.elements import TextClause
++
++from app.db.pool import get_db
++from app.repositories import nfl as repo
++from app.routers import nfl as nfl_router
++from app.services.nfl import game_notes
++from app.services.nfl.matchup_context import build_game_context, build_week_matchup_context
++
++
++class FixtureResult:
++    def __init__(self, rows: list[dict[str, object]]) -> None:
++        self.rows = rows
++
++    def mappings(self) -> list[dict[str, object]]:
++        return self.rows
++
++
++class FixtureDatabase:
++    def __init__(self) -> None:
++        self.engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
++        self.connection = self.engine.connect()
++        self.statements: list[str] = []
++        definitions = {
++            "sport_teams": "id INTEGER, sport TEXT, team_code TEXT",
++            "sport_games": "id INTEGER, sport TEXT, season INTEGER, week INTEGER, start_utc TEXT, "
++                           "home_team_id INTEGER, away_team_id INTEGER, game_type TEXT, status TEXT",
++            "sport_players": "id INTEGER, sport TEXT, name TEXT, position TEXT, team_id INTEGER",
++            "nfl_player_weekly_rosters": "player_id INTEGER, season INTEGER, week INTEGER, team_id INTEGER, status TEXT",
++            "nfl_player_weekly_stats": "player_id INTEGER, game_id INTEGER, season INTEGER, week INTEGER, "
++                                       "team_id INTEGER, targets INTEGER, rushing_attempts INTEGER, "
++                                       "rushing_yards INTEGER, receptions INTEGER, receiving_yards INTEGER",
++            "nfl_player_snap_counts": "player_id INTEGER, game_id INTEGER, season INTEGER, week INTEGER, "
++                                     "team_id INTEGER, offense_snaps INTEGER, offense_pct REAL",
++        }
++        for table, columns in definitions.items():
++            self.connection.execute(text(f"CREATE TABLE {table} ({columns})"))
++        for team_id, code in [(1, "A"), (2, "B"), (3, "C"), (4, "D")]:
++            self.insert("sport_teams", id=team_id, sport="nfl", team_code=code)
++        self.insert("sport_teams", id=99, sport="nba", team_code="A")
++        self.game(100, week=4, start=datetime(2026, 10, 4, 17, tzinfo=UTC))
++
++    @property
++    def session(self) -> AsyncSession:
++        return cast(AsyncSession, self)
++
++    def insert(self, table: str, **fields: object) -> None:
++        self.connection.execute(text(
++            f"INSERT INTO {table} ({', '.join(fields)}) VALUES ({', '.join(':' + key for key in fields)})",
++        ), fields)
++
++    def game(
++        self, game_id: int, week: int = 1, *, season: int = 2026, sport: str = "nfl",
++        game_type: str = "REG", status: str = "completed", away: int = 1, home: int = 2,
++        start: datetime | None = datetime(2026, 9, 1, 17, tzinfo=UTC),
++    ) -> None:
++        self.insert("sport_games", id=game_id, season=season, week=week, start_utc=start,
++                    sport=sport, game_type=game_type, status=status, away_team_id=away, home_team_id=home)
++
++    def player(self, player_id: int, position: str = "WR", team: int = 1, *, name: str = "Player", sport: str = "nfl") -> None:
++        self.insert("sport_players", id=player_id, sport=sport, name=name, position=position, team_id=team)
++
++    def roster(self, player_id: int, team: int = 1, week: int = 4, *, status: str = "ACT") -> None:
++        self.insert("nfl_player_weekly_rosters", player_id=player_id, season=2026, week=week, team_id=team, status=status)
++
++    def stats(
++        self, player_id: int, game_id: int, *, team: int = 1, targets: int | None = 0,
++        carries: int = 0, rush_yards: int = 0, receptions: int = 0, rec_yards: int = 0,
++    ) -> None:
++        season, week = self.connection.execute(text("SELECT season, week FROM sport_games WHERE id = :id"), {"id": game_id}).one()
++        self.insert("nfl_player_weekly_stats", player_id=player_id, game_id=game_id, season=season, week=week,
++                    team_id=team, targets=targets, rushing_attempts=carries, rushing_yards=rush_yards,
++                    receptions=receptions, receiving_yards=rec_yards)
++
++    def snaps(self, player_id: int, game_id: int, *, team: int = 1, snaps: int = 30, pct: float = 0.5) -> None:
++        season, week = self.connection.execute(text("SELECT season, week FROM sport_games WHERE id = :id"), {"id": game_id}).one()
++        self.insert("nfl_player_snap_counts", player_id=player_id, game_id=game_id, season=season, week=week,
++                    team_id=team, offense_snaps=snaps, offense_pct=pct)
++
++    async def execute(self, statement: TextClause, params: dict[str, object]) -> FixtureResult:
++        sql = str(statement)
++        assert not any(verb in sql.upper().split() for verb in ["INSERT", "DELETE", "UPDATE", "DROP", "CREATE"])
++        self.statements.append(sql)
++        rows = [dict(row) for row in self.connection.execute(statement, params).mappings()]
++        for row in rows:
++            if isinstance(row.get("start_utc"), str):
++                row["start_utc"] = datetime.fromisoformat(row["start_utc"])
++        return FixtureResult(rows)
++
++
++@pytest.fixture
++def database():
++    fixture = FixtureDatabase()
++    yield fixture
++    fixture.connection.close()
++    fixture.engine.dispose()
++
++
++def context(database: FixtureDatabase, game_id: int = 100):
++    return asyncio.run(build_game_context(database.session, game_id))
++
++
++def test_actual_sql_uses_current_week_roster_without_mutable_or_future_team(database):
++    database.player(10, team=3)
++    database.roster(10, team=1)
++    database.roster(10, team=2, week=5)
++    database.player(11)
++    database.roster(11, week=3)
++    database.player(12)
++    database.roster(12, status="CUT")
++    database.player(13)
++    database.roster(13, team=1)
++    database.roster(13, team=2)
++    database.player(14)
++    database.roster(14, status="RET")
++    database.player(15, sport="nba")
++    database.roster(15)
++    database.player(16, position="K")
++    database.roster(16)
++    result = context(database)
++    assert [(player.player_id, player.team) for player in result.players] == [(10, "A")]
++    assert result.players[0].season_usage.targets.reason == "no_history"
++    assert len(database.statements) == 4
++
++
++def test_actual_sql_retains_trade_history_and_snap_only_recent_game(database):
++    database.player(10, team=3)
++    database.player(11, position="QB")
++    database.player(12, position="RB")
++    database.player(30, team=3)
++    database.roster(10)
++    database.game(1, away=3)
++    database.stats(10, 1, team=3, targets=2)
++    database.stats(30, 1, team=3, targets=8)
++    database.game(2, week=2, start=datetime(2026, 9, 8, 17, tzinfo=UTC))
++    database.stats(10, 2, targets=6)
++    database.stats(11, 2, carries=3)
++    database.stats(12, 2, targets=14, carries=9)
++    database.game(3, week=3, start=datetime(2026, 9, 15, 17, tzinfo=UTC))
++    database.snaps(10, 3, pct=0.25)
++    database.game(4, week=3, start=datetime(2026, 9, 22, 17, tzinfo=UTC))
++    database.stats(10, 4)
++    database.snaps(10, 4, snaps=0, pct=0)
++    usage = context(database).players[0].season_usage
++    assert usage.teams == ["C", "A"]
++    assert (usage.targets.value, usage.targets.observed_games, usage.targets.eligible_games) == (4, 2, 3)
++    assert usage.target_share.value == pytest.approx(8 / 30)
++    assert usage.target_share.observed_games == 2
++    assert usage.avg_game_snap_share.value == 0.25
++    assert usage.avg_game_snap_share.observed_games == 1
++    assert usage.avg_game_snap_share.window_end.isoformat() == "2026-09-15"
++    assert usage.carry_share.value == 0
++    assert usage.carry_share.observed_games == 1
++
++
++def test_actual_sql_aggregates_position_team_games_and_keeps_absent_or_partial_groups_null(database):
++    database.game(1)
++    for player_id, position in [(10, "RB"), (11, "RB"), (12, "TE"), (13, "WR"), (14, "TE")]:
++        database.player(player_id, position=position, team=2)
++    database.stats(10, 1, team=2, carries=7, rush_yards=30, receptions=2, rec_yards=12)
++    database.stats(11, 1, team=2, carries=5, rush_yards=20, receptions=1, rec_yards=8)
++    database.stats(12, 1, team=2)
++    database.snaps(12, 1, team=2)
++    database.game(2, week=2)
++    database.stats(10, 2, team=2, carries=20)
++    database.snaps(11, 2, team=2)
++    database.snaps(14, 2, team=2)
++    database.game(3, week=3)
++    allowed = context(database).matchup_context.away.allowed
++    assert allowed.rb_carries.value == 12
++    assert (allowed.rb_carries.observed_games, allowed.rb_carries.eligible_games) == (1, 3)
++    assert allowed.rb_rec_yards.value == 20
++    assert allowed.te_receptions.value == 0
++    assert allowed.te_receptions.observed_games == 1
++    assert allowed.wr_receptions.value is None
++    assert allowed.wr_receptions.reason == "missing_data"
++
++
++def test_actual_sql_sums_team_carries_including_qb_and_drops_uncovered_denominators(database):
++    database.game(1)
++    database.player(10, position="RB")
++    database.player(11, position="QB")
++    database.roster(10)
++    database.stats(10, 1, targets=2, carries=10)
++    database.stats(11, 1, targets=0, carries=5)
++    usage = context(database).players[0].season_usage
++    assert usage.target_share.value == 1
++    assert usage.carry_share.value == pytest.approx(10 / 15)
++    database.player(12, position="TE")
++    database.snaps(12, 1)
++    usage = context(database).players[0].season_usage
++    assert usage.targets.value == 2
++    assert usage.target_share.reason == usage.carry_share.reason == "missing_data"
++    assert usage.target_share.observed_games == 0
++
++
++def test_known_dnp_stat_rows_do_not_establish_position_coverage(database):
++    database.game(1)
++    database.player(10, position="TE", team=2)
++    database.stats(10, 1, team=2)
++    database.snaps(10, 1, team=2, snaps=0, pct=0)
++    allowed = context(database).matchup_context.away.allowed
++    assert allowed.te_receptions.value is None
++    assert allowed.te_receptions.observed_games == 0
++    assert allowed.te_receptions.eligible_games == 1
++
++
++def test_missing_target_metric_does_not_drop_covered_carries_and_zero_is_not_missing(database):
++    database.game(1)
++    database.player(10, position="RB")
++    database.player(11, position="QB")
++    database.roster(10)
++    database.stats(10, 1, targets=0, carries=0)
++    database.stats(11, 1, targets=None, carries=20)
++    usage = context(database).players[0].season_usage
++    assert usage.targets.value == usage.carries.value == 0
++    assert usage.target_share.reason == "missing_data"
++    assert usage.carry_share.value == 0
++    assert usage.carry_share.observed_games == 1
++
++
++def test_actual_sql_zero_team_total_is_unavailable_for_share_only(database):
++    database.game(1)
++    database.player(10)
++    database.roster(10)
++    database.stats(10, 1)
++    usage = context(database).players[0].season_usage
++    assert usage.targets.value == 0
++    assert usage.target_share.reason == "zero_denominator"
++    assert usage.target_share.value is None
++    assert usage.target_share.observed_games == 0
++
++
++@pytest.mark.parametrize("fields", [
++    {"week": 4}, {"week": 5}, {"season": 2025}, {"sport": "nba"},
++    {"game_type": "PRE"}, {"game_type": "POST"}, {"status": "scheduled"},
++    {"start": None}, {"start": datetime(2026, 10, 4, 17, tzinfo=UTC)},
++    {"start": datetime(2026, 10, 5, 17, tzinfo=UTC)},
++])
++def test_actual_sql_excludes_ineligible_games_from_usage_and_league_ranks(database, fields):
++    database.player(10, position="RB")
++    database.roster(10)
++    database.game(1, **fields)
++    database.stats(10, 1, targets=100, carries=100)
++    result = context(database)
++    assert result.players[0].season_usage.targets.eligible_games == 0
++    assert result.players[0].season_usage.targets.value is None
++    assert result.matchup_context.home.allowed.rb_carries.ranked_teams == 0
++
++
++def test_actual_sql_ignores_foreign_sport_players_and_teams(database):
++    database.game(1)
++    database.player(10, position="RB", sport="nba")
++    database.stats(10, 1, carries=99)
++    database.player(11, position="RB")
++    database.stats(11, 1, team=99, carries=99)
++    database.roster(11)
++    database.game(2, home=99)
++    database.stats(11, 2, carries=99)
++    result = context(database)
++    assert result.matchup_context.home.allowed.rb_carries.value is None
++    assert result.matchup_context.home.allowed.rb_carries.eligible_games == 1
++    assert result.players[0].season_usage.carries.reason == "no_history"
++
++
++def test_actual_sql_missing_target_kickoff_is_unavailable(database):
++    database.game(101, week=4, start=None)
++    database.player(10)
++    database.roster(10)
++    database.game(1)
++    database.stats(10, 1, targets=4)
++    result = context(database, 101)
++    assert result.players[0].season_usage.targets.reason == "unknown_kickoff"
++    assert result.matchup_context.away.allowed.rb_carries.reason == "unknown_kickoff"
++    assert len(database.statements) == 2
++
++
++def test_actual_sql_order_is_team_then_name_then_id_and_query_count_does_not_grow(database):
++    for player_id, name, team in [(20, "Zed", 1), (30, "Ada", 2), (11, "Ada", 1), (10, "Ada", 1)]:
++        database.player(player_id, name=name, team=team)
++        database.roster(player_id, team=team)
++    first = context(database)
++    assert [player.player_id for player in first.players] == [10, 11, 20, 30]
++    assert len(database.statements) == 4
++    for player_id in range(1000, 1100):
++        database.player(player_id)
++        database.roster(player_id)
++    database.statements.clear()
++    assert len(context(database).players) == 104
++    assert len(database.statements) == 4
++    assert all("sport_prop" not in statement and "sport_game_odds" not in statement for statement in database.statements)
++
++
++def test_week_matchups_batch_queries_and_use_each_target_kickoff(database):
++    database.game(101, week=4, away=3, home=4, start=datetime(2026, 10, 5, 17, tzinfo=UTC))
++    database.game(1, week=3, away=2, home=3, start=datetime(2026, 10, 5, 10, tzinfo=UTC))
++    database.player(10, position="RB", team=2)
++    database.stats(10, 1, team=2, carries=5)
++    matchups = asyncio.run(build_week_matchup_context(database.session, 2026, 4))
++    assert len(database.statements) == 2
++    assert matchups[100].home.allowed.rb_carries.ranked_teams == 0
++    assert matchups[101].away.allowed.rb_carries.value == 5
++    assert context(database, 100).matchup_context == matchups[100]
++    assert context(database, 101).matchup_context == matchups[101]
++
++
++def client(database: FixtureDatabase) -> TestClient:
++    app = FastAPI()
++    app.include_router(nfl_router.router, prefix="/nfl")
++    app.dependency_overrides[get_db] = lambda: database.session
++    return TestClient(app)
++
++
++@pytest.mark.parametrize("game_id,fields", [
++    (999, None), (101, {"sport": "nba"}), (102, {"game_type": "PRE"}), (103, {"home": 99}),
++])
++def test_route_returns_404_for_unknown_or_non_nfl_regular_season_target(database, game_id, fields):
++    if fields is not None:
++        database.game(game_id, **fields)
++    response = client(database).get(f"/nfl/games/{game_id}/context")
++    assert response.status_code == 404
++    assert len(database.statements) == 1
++
++
++def test_route_opening_week_is_structured_unavailable_not_previous_season(database):
++    database.game(101, week=1)
++    database.game(1, season=2025)
++    database.player(10, position="RB")
++    database.roster(10, week=1)
++    database.stats(10, 1, targets=10, carries=20)
++    response = client(database).get("/nfl/games/101/context")
++    assert response.status_code == 200
++    body = response.json()
++    assert body["cutoffWeek"] == 0
++    metric = body["players"][0]["seasonUsage"]["targets"]
++    assert metric == {"value": None, "observedGames": 0, "eligibleGames": 0,
++                      "windowStart": None, "windowEnd": None, "reason": "no_history"}
++    assert body["matchupContext"]["away"]["allowed"]["rbCarries"]["rankedTeams"] == 0
++
++
++def test_notes_and_game_endpoints_serialize_identical_matchup_and_keep_existing_notes(database, monkeypatch):
++    database.game(1)
++    database.player(10, position="RB")
++    database.stats(10, 1, carries=10)
++    game = {"away_team_id": 1, "away_team": "A", "away_rest": 7,
++            "home_team_id": 2, "home_team": "B", "home_rest": 8,
++            "away_score": None, "home_score": None}
++    monkeypatch.setattr(repo, "get_week_game_rest", AsyncMock(return_value={100: game}))
++    for name in ["get_week_skill_injuries", "get_week_depth_rows", "get_week_line_movement", "get_week_team_games"]:
++        monkeypatch.setattr(repo, name, AsyncMock(return_value=[]))
++    for name in ["get_week_team_recent_results", "get_week_game_quotes"]:
++        monkeypatch.setattr(repo, name, AsyncMock(return_value={}))
++    monkeypatch.setattr(game_notes, "_week_qb_changes", AsyncMock(return_value={}))
++    api = client(database)
++    detail_response = api.get("/nfl/games/100/context")
++    notes_response = api.get("/nfl/game-notes?season=2026&week=4")
++    assert detail_response.status_code == notes_response.status_code == 200
++    notes = notes_response.json()["games"][0]
++    assert detail_response.json()["matchupContext"] == notes["matchupContext"]
++    assert notes["matchupContext"]["home"]["allowed"]["rbCarries"]["value"] == 10
++    assert notes["awayForm"]["restDays"] == 7
++    assert notes["homeForm"]["restDays"] == 8
++    assert notes["bestLine"] is None
++    assert notes["awayStats"]["games"] == 0
++    expected = game_notes.game_notes(100, game, [], [], [], {}, {}).model_dump(
++        mode="json", by_alias=True, exclude={"matchup_context"},
++    )
++    assert {key: value for key, value in notes.items() if key != "matchupContext"} == expected
++
++
++def test_no_target_week_games_skips_all_aggregation(database):
++    assert asyncio.run(build_week_matchup_context(database.session, 2026, 18)) == {}
++    assert len(database.statements) == 1
+--- /dev/null
++++ b/blueprint/reference/43/check-stored-context.py
+@@ -0,0 +1,58 @@
++"""Run from api/ with its venv and PYTHONPATH=.; prints no credentials."""
++import asyncio
++import json
++import sys
++from pathlib import Path
++from time import perf_counter
++
++from sqlalchemy import text
++
++from app.db.pool import SessionLocal, engine
++from app.repositories import nfl
++from app.services.nfl.matchup_context import build_game_context, build_week_matchup_context
++
++
++async def main() -> None:
++    try:
++        async with SessionLocal() as db:
++            await db.execute(text("SET TRANSACTION READ ONLY"))
++            await db.execute(text("SET LOCAL statement_timeout = '15s'"))
++            games = await nfl.get_context_games(db, season=2026, week=7)
++            if not games:
++                print("No stored 2026 week 7 NFL games; no further reads.")
++                return
++            target = games[0]
++            started = perf_counter()
++            context = await build_game_context(db, target.game_id)
++            elapsed = perf_counter() - started
++            started = perf_counter()
++            week = await build_week_matchup_context(db, 2026, 7)
++            week_elapsed = perf_counter() - started
++            assert context.matchup_context == week[target.game_id]
++            report = {
++                "season": 2026, "week": 7, "gameId": target.game_id,
++                "players": len(context.players), "weekGames": len(week),
++                "gameSeconds": round(elapsed, 4), "weekContextSeconds": round(week_elapsed, 4),
++                "gameResponseBytes": len(context.model_dump_json(by_alias=True).encode()),
++                "matchupParity": True,
++                "availableTargetShares": sum(p.season_usage.target_share.value is not None for p in context.players),
++                "availableAllowedMeasures": sum(
++                    m.value is not None for t in (context.matchup_context.away, context.matchup_context.home)
++                    for m in t.allowed.__dict__.values()
++                ),
++                "transaction": "read only; rolled back",
++                "scope": "one stored game plus week matchup batch; no holdout, model or provider calls",
++            }
++            Path(__file__).with_name("step-2-stored-read.json").write_text(json.dumps(report, indent=2) + "\n")
++            print(json.dumps(report))
++    except Exception as exc:
++        print("Read-only stored-data check failed: " + type(exc).__name__)
++        raise SystemExit(1)
++    finally:
++        await engine.dispose()
++
++
++if __name__ == "__main__":
++    if sys.platform == "win32":
++        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
++    asyncio.run(main())
+--- /dev/null
++++ b/blueprint/reference/43/step-2-stored-read.json
+@@ -0,0 +1,15 @@
++{
++  "season": 2026,
++  "week": 7,
++  "gameId": 94,
++  "players": 39,
++  "weekGames": 14,
++  "gameSeconds": 0.4056,
++  "weekContextSeconds": 0.1455,
++  "gameResponseBytes": 59925,
++  "matchupParity": true,
++  "availableTargetShares": 28,
++  "availableAllowedMeasures": 16,
++  "transaction": "read only; rolled back",
++  "scope": "one stored game plus week matchup batch; no holdout, model or provider calls"
++}
+--- /dev/null
++++ b/blueprint/reference/43/step-2-verification.md
+@@ -0,0 +1,111 @@
++# Feature 43, Step 2 review evidence
++
++Implemented and verified locally on 2026-10-22 on
++`feature/nfl-matchup-usage-context`. Step 1 was approved in chat; Step 2 awaits
++review. Nothing committed, pushed or deployed.
++
++## Changed files
++
++| File | Change |
++|---|---|
++| `api/app/repositories/nfl.py` | Typed context transfers plus four read functions. SQL aggregates position totals per defense game and team usage denominators; batches roster player histories. |
++| `api/app/services/nfl/matchup_context.py` | Shares the same pre-week calculation path between game context and week notes; orders players by team, name, ID. |
++| `api/app/services/nfl/game_notes.py` | Attaches matchup context after existing notes loads, outside the slate/model path. |
++| `api/app/schemas/nfl.py` | Adds nullable matchupContext to game notes, using Step 1's typed response contracts. |
++| `api/app/routers/nfl.py` | Adds GET /nfl/games/{game_id}/context with 404 for an unknown/non-NFL/non-REG target. |
++| `api/tests/test_nfl_matchup_context_reads.py` | 28 isolated SQL and API fixtures, executing the actual queries against in-memory SQLite. No shared fixture writes. |
++| `blueprint/context/current-feature.md` | Records Step 1 approval, Step 2 implementation and verification, leaving Step 2 unchecked for review. |
++| `blueprint/reference/43/check-stored-context.py` | Reproducible, read-only Postgres smoke check; stores only aggregate evidence in step-2-stored-read.json. |
++
++`step-2.diff` shows only this step, relative to the approved Step 1 working
++state. It excludes the pre-existing build-plan/overview changes and Step 1's
++code, schemas, tests and evidence.
++
++## Contracts proved
++
++- Normal game-context request: four SQL reads, including histories for 104
++  roster players in the scaling fixture. No prop or odds reads. Unknown
++  targets stop after one query; an empty roster or unknown kickoff skips
++  unnecessary history work.
++- Week matchup extension: two SQL reads for the whole week, no player-history
++  fetches. Every target re-applies its own kickoff cutoff to the shared league
++  rows, including a controlled postponed pre-week game between target kickoffs.
++- Both endpoints serialize identical matchupContext. Existing notes fields
++  match the original pure notes assembler when the new field is excluded.
++  Slate source, JSON schema, stored snapshots, models, projections, probability
++  versions and frozen/grading readers have no changes.
++- All game, team and player joins are NFL-scoped. Only completed REG games
++  from the same season, strictly before the target week and kickoff, count.
++  Fixtures cover wrong sports/teams/players, unknown kickoff, current/future
++  weeks, prior seasons, PRE/POST and uncompleted games.
++- Membership requires a unique roster row in the exact target season/week.
++  No latest-team or previous-week fallback. CUT, RET, missing and ambiguous
++  memberships do not assign a player; only QB/RB/WR/TE are returned. Historical
++  team identity is from the stat/snap game, preserving trades.
++- Known zero-snap DNPs are excluded even if a zero stat row exists. Positive
++  snap-only games stay in the played-game window with unavailable stat metrics.
++- A position aggregate requires at least one participant and coverage of that
++  metric for every known participant in the position. Absent groups stay null;
++  known observed zero remains zero. A known participant with unknown position
++  makes position sums unavailable. Team denominators include recorded QB carries
++  and all other teammate positions; missing stats on a known participant or a
++  null metric invalidate only the affected denominator. No inferred zeros.
++
++The completeness checks use known stored participation, not a claim that a
++provider loaded every actual player. Position labels are the stored player
++position; the existing weekly stat schema has no historical position snapshot.
++Both are source limits, not new inference rules.
++
++## Automated verification
++
++Documented Verify gate run as PowerShell halves, using the API venv:
++
++1. `npm.cmd --prefix web run verify`: typecheck, 706 tests and production build
++   passed. npm.cmd avoids Windows' npm.ps1 execution-policy restriction. The
++   web gate used approved filesystem access for esbuild.
++2. From `api/`, `.venv\Scripts\python.exe -m pytest -q`: all 3,669 tests passed,
++   including 28 new reads/endpoint cases and 27 Step 1 calculation cases.
++3. `git diff --check`: passed.
++
++Existing warnings: the web bundle exceeds Vite's size advisory, and Starlette
++reports an anyio alias deprecation. No check was skipped or suppressed.
++
++## Stored Postgres smoke check
++
++The script enforces `SET TRANSACTION READ ONLY`, a 15-second per-statement
++timeout and session rollback. It reads 2026 Week 7 only, with no provider,
++model, frozen-record, grading or historical holdout query.
++
++Final recorded sample in `step-2-stored-read.json`:
++
++- Game ID 94: 39 roster players, 28 with season target shares, all 16 matchup
++  allowed measures available across the two teams.
++- Game response: 59,925 bytes; about 0.406 seconds on the final run. The earlier
++  first connection/sample took about 1.847 seconds. These are local samples,
++  not a hosted latency guarantee or a full load/memory test.
++- Shared week matchup batch: 14 games, about 0.146 seconds. Game and week
++  calculations match exactly for the sampled game.
++
++Windows reproduction from `api/`:
++
++```powershell
++$env:PYTHONPATH = (Get-Location).Path
++.venv\Scripts\python.exe ..\blueprint\reference\43\check-stored-context.py
++```
++
++The managed shell needed approved network access to reach Postgres. Windows
++uses the selector event-loop policy required by psycopg. No shared writes were
++performed, and no credentials or player-level data were saved in evidence.
++
++## How to try and remaining work
++
++With the local API running, request
++`http://127.0.0.1:8000/nfl/games/94/context` and compare matchupContext with
++game 94 in `/nfl/game-notes?season=2026&week=7`. Swagger lists the new route.
++The endpoint uses the stored game's metadata; no season/week guess is required
++from the client. Unknown games return 404.
++
++UI work starts in Step 3. Drawer behavior, browser evidence, broader current-data
++sampling and the 512 MB allocation/resource assessment remain in Steps 4-5.
++The local employer guide update remains in Step 5's documented final pass;
++this step makes no shipped/deployed feature claim.

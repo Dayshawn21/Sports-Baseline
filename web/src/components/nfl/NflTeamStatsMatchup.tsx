@@ -1,6 +1,8 @@
 import { Fragment } from 'react'
-import type { NflGameNotes, NflTeamStats } from '~/types/nfl'
+import type { NflGameNotes, NflMatchupContext, NflTeamStats } from '~/types/nfl'
 import { SMALL_SAMPLE_GAMES, TEAM_STAT_ROWS, gamesLabel, rankLabel, statValue } from '~/utils/nflGameNotes'
+import { POSITION_ALLOWED_ROWS, contextRank } from '~/utils/nflMatchupContext'
+import { NflContextMetric } from './NflContextMetric'
 
 function sampleLabel(offense: NflTeamStats, defense: NflTeamStats): string {
   const games = [offense, defense].map(stats => `${stats.team} ${gamesLabel(stats) ?? 'no games'}`).join(', ')
@@ -34,5 +36,28 @@ export function NflTeamStatsMatchup({ notes }: { notes: NflGameNotes }) {
       <MatchupTable offense={notes.awayStats} defense={notes.homeStats} />
       <MatchupTable offense={notes.homeStats} defense={notes.awayStats} />
     </div>
+  </section>
+}
+
+export function NflPositionAllowedMatchup({ context, season, cutoffWeek }: {
+  context: NflMatchupContext, season: number, cutoffWeek: number,
+}) {
+  return <section className="nfl-game-card" aria-label="Position production allowed">
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Position production allowed</h2>
+      <span className="nfl-game-side__meta">{season} season through Week {cutoffWeek}</span>
+    </div>
+    <p className="nfl-game-note">Per defense game. Rank 1 = fewest allowed, among teams with data. Samples show observed / eligible games and coverage; dates are UTC. Historical context only.</p>
+    <table className="nfl-context-table">
+      <caption className="sr-only">Position production allowed per game, league rank, metric coverage and observed game dates</caption>
+      <colgroup><col className="nfl-context-table__label" /><col /><col /></colgroup>
+      <thead><tr><th scope="col">Measure</th><th scope="col">{context.away.team} defense</th><th scope="col">{context.home.team} defense</th></tr></thead>
+      <tbody>{POSITION_ALLOWED_ROWS.map(row => <tr key={row.key}>
+        <th scope="row">{row.label}</th>
+        {[context.away, context.home].map(team => <td key={team.teamId}>
+          <NflContextMetric metric={team.allowed[row.key]} />
+          <small className="nfl-context-rank">{contextRank(team.allowed[row.key])}</small>
+        </td>)}
+      </tr>)}</tbody>
+    </table>
   </section>
 }

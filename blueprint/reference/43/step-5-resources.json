@@ -1,0 +1,145 @@
+{
+  "season": 2026,
+  "week": 7,
+  "samples": [
+    {
+      "sample": "week-7-matchup-batch",
+      "seconds": 0.3324,
+      "queryCount": 2,
+      "responseBytes": 40610,
+      "pythonCurrentMiB": 0.451,
+      "pythonPeakMiB": 0.818,
+      "games": 14
+    },
+    {
+      "sample": "game-94",
+      "seconds": 0.4787,
+      "queryCount": 4,
+      "responseBytes": 59925,
+      "pythonCurrentMiB": 0.789,
+      "pythonPeakMiB": 0.846,
+      "players": 39
+    },
+    {
+      "sample": "game-95",
+      "seconds": 0.4587,
+      "queryCount": 4,
+      "responseBytes": 62371,
+      "pythonCurrentMiB": 0.775,
+      "pythonPeakMiB": 0.835,
+      "players": 42
+    },
+    {
+      "sample": "game-96",
+      "seconds": 0.4751,
+      "queryCount": 4,
+      "responseBytes": 61222,
+      "pythonCurrentMiB": 0.765,
+      "pythonPeakMiB": 0.824,
+      "players": 41
+    },
+    {
+      "sample": "game-97",
+      "seconds": 0.4519,
+      "queryCount": 4,
+      "responseBytes": 57098,
+      "pythonCurrentMiB": 0.715,
+      "pythonPeakMiB": 0.769,
+      "players": 38
+    },
+    {
+      "sample": "game-98",
+      "seconds": 0.498,
+      "queryCount": 4,
+      "responseBytes": 58950,
+      "pythonCurrentMiB": 0.741,
+      "pythonPeakMiB": 0.797,
+      "players": 39
+    },
+    {
+      "sample": "game-99",
+      "seconds": 0.5641,
+      "queryCount": 4,
+      "responseBytes": 68801,
+      "pythonCurrentMiB": 0.844,
+      "pythonPeakMiB": 0.909,
+      "players": 46
+    },
+    {
+      "sample": "game-100",
+      "seconds": 0.4575,
+      "queryCount": 4,
+      "responseBytes": 60104,
+      "pythonCurrentMiB": 0.748,
+      "pythonPeakMiB": 0.805,
+      "players": 40
+    },
+    {
+      "sample": "game-101",
+      "seconds": 0.4538,
+      "queryCount": 4,
+      "responseBytes": 53917,
+      "pythonCurrentMiB": 0.682,
+      "pythonPeakMiB": 0.734,
+      "players": 36
+    },
+    {
+      "sample": "game-102",
+      "seconds": 0.4556,
+      "queryCount": 4,
+      "responseBytes": 61363,
+      "pythonCurrentMiB": 0.761,
+      "pythonPeakMiB": 0.878,
+      "players": 41
+    },
+    {
+      "sample": "game-103",
+      "seconds": 0.5765,
+      "queryCount": 4,
+      "responseBytes": 61176,
+      "pythonCurrentMiB": 0.76,
+      "pythonPeakMiB": 0.818,
+      "players": 41
+    },
+    {
+      "sample": "game-104",
+      "seconds": 0.547,
+      "queryCount": 4,
+      "responseBytes": 58202,
+      "pythonCurrentMiB": 0.731,
+      "pythonPeakMiB": 0.786,
+      "players": 39
+    },
+    {
+      "sample": "game-105",
+      "seconds": 0.5705,
+      "queryCount": 4,
+      "responseBytes": 57617,
+      "pythonCurrentMiB": 0.717,
+      "pythonPeakMiB": 0.772,
+      "players": 38
+    },
+    {
+      "sample": "game-106",
+      "seconds": 0.5639,
+      "queryCount": 4,
+      "responseBytes": 61965,
+      "pythonCurrentMiB": 0.776,
+      "pythonPeakMiB": 0.835,
+      "players": 42
+    },
+    {
+      "sample": "game-107",
+      "seconds": 0.635,
+      "queryCount": 4,
+      "responseBytes": 63016,
+      "pythonCurrentMiB": 0.78,
+      "pythonPeakMiB": 0.84,
+      "players": 42
+    }
+  ],
+  "allMatchupParity": true,
+  "transaction": "read only; rollback",
+  "scope": "current regular-season context only; no providers, models, grading or holdout scoring",
+  "limits": "Local sequential tracemalloc includes serialization; excludes total RSS, driver/native allocations and hosted concurrent load."
+}

@@ -1,15 +1,15 @@
 import { Drawer, Switch } from 'antd'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { NflLineOnlyProps } from '~/components/nfl/NflLineOnlyProps'
 import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { useIsMobile } from '~/hooks/useIsMobile'
+import { useNflDrawerFocus } from '~/hooks/useNflDrawerFocus'
 import type { NflSlateGame } from '~/types/nfl'
 import { hasKickedOff } from '~/utils/nflGame'
 import { nflGameProps } from '~/utils/nflGameProps'
 import { marketLabel } from '~/utils/nflLabels'
-import type { NflBoardLine } from '~/utils/nflPropBoard'
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 import { isTargetsReference } from '~/utils/nflTargets'
@@ -33,11 +33,15 @@ export function NflGameProps({ games, game, now }: Props) {
   const at = now ?? mountedAt
   const [position, setPosition] = useState<NflPositionFilter>('all')
   const [showAll, setShowAll] = useState(false)
-  const [selected, setSelected] = useState<NflBoardLine | null>(null)
+  const [selectedLineId, setSelectedLineId] = useState<number | null>(null)
+  const drawerFocus = useNflDrawerFocus()
+  useEffect(() => { setSelectedLineId(null) }, [game.gameId, position, showAll])
   const isMobile = useIsMobile()
   const categories = useMemo(() => nflGameProps(games, game.gameId, position, 'full_game', at), [games, game.gameId, position, at])
   const alternates = useMemo(() => new Map(groupNflPropRows(game.lines).map(item => [item.primary.lineId, item.alternates])), [game.lines])
   const visible = categories.filter(item => item.rateable.length > 0 || (showAll && item.other.length > 0))
+  const selected = visible.flatMap(item => [...item.rateable.map(item => item.row), ...(showAll ? item.other : [])])
+    .find(row => row.lineId === selectedLineId) ?? null
   const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
   return <section className="nfl-game-props" aria-label="Props for this game">
     <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines · ranks from this week's prop board</small></h2>
@@ -56,11 +60,11 @@ export function NflGameProps({ games, game, now }: Props) {
     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">No comparable full-game lines for this position. {!showAll ? 'Include alternate and thin-sample lines, or choose another position.' : 'Choose another position or check the other markets below.'}</div>}
     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market prop-table-panel" aria-label={`${marketLabel(item.category.market)} lines`}>
       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
-      <NflPropTable category={item.category} now={at.getTime()} inGame selectedLineId={selected?.lineId ?? null} onOpen={setSelected}
+      <NflPropTable category={item.category} now={at.getTime()} inGame selectedLineId={selected?.lineId ?? null} onOpen={row => { drawerFocus.rememberTrigger(row.lineId); setSelectedLineId(row.lineId) }}
         rateable={item.rateable} other={showAll ? item.other.map(row => ({ row, rank: null })) : []} />
     </section>)}
     <NflLineOnlyProps gameId={game.gameId} position={position} />
-    <Drawer open={selected !== null} onClose={() => setSelected(null)} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
+    <Drawer open={selected !== null} onClose={() => setSelectedLineId(null)} afterOpenChange={drawerFocus.afterOpenChange} width={isMobile ? '100%' : 460} title={null} className="nfl-slate nfl-game nfl-game-drawer" destroyOnHidden>
       {selected && <NflEvidencePanel row={selected} game={game} alternates={alternates.get(selected.lineId) ?? []} showGameLink={false} />}
     </Drawer>
   </section>

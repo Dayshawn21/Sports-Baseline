@@ -241,6 +241,10 @@ export interface NflPlayerGame {
   receptions: number
   receivingYards: number
   touchdowns: number
+  fgMade: number | null
+  patMade: number | null
+  kickingPoints: number | null
+  punts: number | null
   prizepicksFantasyPoints: number | null
   /** The last pre-kickoff standard full-game line in the focus market, as 27a grades it. */
   focusLine: number | null
@@ -450,6 +454,70 @@ export interface NflGameNotes {
   homeQbChange: NflQbChange | null
   /** Null once kicked off or with no fresh book. */
   bestLine: NflBestLine | null
+  matchupContext?: NflMatchupContext | null
+}
+
+export interface NflContextMetric {
+  value: number | null
+  observedGames: number
+  eligibleGames: number
+  windowStart: string | null
+  windowEnd: string | null
+  reason: 'no_history' | 'missing_data' | 'zero_denominator' | 'unknown_kickoff' | null
+}
+
+export interface NflAllowedMetric extends NflContextMetric {
+  rank: number | null
+  rankedTeams: number
+}
+
+export interface NflPositionAllowed {
+  rbCarries: NflAllowedMetric
+  rbRushYards: NflAllowedMetric
+  rbReceptions: NflAllowedMetric
+  rbRecYards: NflAllowedMetric
+  wrReceptions: NflAllowedMetric
+  wrRecYards: NflAllowedMetric
+  teReceptions: NflAllowedMetric
+  teRecYards: NflAllowedMetric
+}
+
+export interface NflMatchupTeam {
+  teamId: number
+  team: string
+  allowed: NflPositionAllowed
+}
+
+export interface NflMatchupContext {
+  away: NflMatchupTeam
+  home: NflMatchupTeam
+}
+
+export interface NflUsageWindow {
+  targets: NflContextMetric
+  carries: NflContextMetric
+  targetShare: NflContextMetric
+  carryShare: NflContextMetric
+  avgGameSnapShare: NflContextMetric
+  teams: string[]
+}
+
+export interface NflContextPlayer {
+  playerId: number
+  name: string
+  position: 'QB' | 'RB' | 'WR' | 'TE'
+  team: string
+  seasonUsage: NflUsageWindow
+  recentUsage: NflUsageWindow
+}
+
+export interface NflGameContext {
+  gameId: number
+  season: number
+  week: number
+  cutoffWeek: number
+  matchupContext: NflMatchupContext
+  players: NflContextPlayer[]
 }
 
 export interface NflGameNotesResponse {
