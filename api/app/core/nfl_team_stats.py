@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import date
 
 # Values are rounded to the precision the panel shows before ranking, so two
 # teams that read the same share a rank.
@@ -30,12 +31,19 @@ class TeamGame:
     epa_against: float | None = None
     successes_for: int | None = None
     successes_against: int | None = None
+    pass_attempts_for: int | None = None
+    pass_attempts_against: int | None = None
+    rush_attempts_for: int | None = None
+    rush_attempts_against: int | None = None
+    played_on: date = date.min
+    game_id: int = 0
 
 
 @dataclass(frozen=True)
 class StatLine:
     value: float | None
     rank: int | None
+    observed_games: int = 0
 
 
 @dataclass(frozen=True)
@@ -51,23 +59,31 @@ STAT_KEYS: dict[str, bool] = {
     "plays": True, "epa_per_play": True, "success_rate": True,
     "points_allowed": False, "pass_yards_allowed": False, "rush_yards_allowed": False,
     "plays_allowed": False, "epa_per_play_allowed": False, "success_rate_allowed": False,
+    "pass_attempts": True, "rush_attempts": True,
+    "pass_attempts_allowed": False, "rush_attempts_allowed": False,
 }
 
 EMPTY_TEAM_STATS = TeamStats(games=0, efficiency_games=0, stats={key: StatLine(None, None) for key in STAT_KEYS})
 
 
-def team_stats(games: Iterable[TeamGame]) -> dict[int, TeamStats]:
-    """Per-team season values and league ranks from every team-game this season."""
+def team_stats(games: Iterable[TeamGame], *, last_n: int | None = None) -> dict[int, TeamStats]:
+    """League ranks within the season or each team's latest completed games."""
+    if last_n is not None and last_n < 1:
+        raise ValueError("last_n must be positive")
     by_team: dict[int, list[TeamGame]] = {}
     for game in games:
         by_team.setdefault(game.team_id, []).append(game)
+    if last_n is not None:
+        by_team = {team: sorted(rows, key=lambda row: (row.played_on, row.game_id))[-last_n:]
+                   for team, rows in by_team.items()}
     values = {team_id: _values(rows) for team_id, rows in by_team.items()}
     ranks = {key: _ranks({team_id: row[key] for team_id, row in values.items()}, higher) for key, higher in STAT_KEYS.items()}
     return {
         team_id: TeamStats(
             games=len(rows),
             efficiency_games=sum(1 for row in rows if row.plays_for),
-            stats={key: StatLine(values[team_id][key], ranks[key].get(team_id)) for key in STAT_KEYS},
+            stats={key: StatLine(values[team_id][key], ranks[key].get(team_id), _observed_games(rows, key))
+                   for key in STAT_KEYS},
         )
         for team_id, rows in by_team.items()
     }
@@ -78,16 +94,32 @@ def _values(rows: list[TeamGame]) -> dict[str, float | None]:
         "points": _per_game(rows, lambda row: row.points_for),
         "pass_yards": _per_game(rows, lambda row: row.pass_yards_for),
         "rush_yards": _per_game(rows, lambda row: row.rush_yards_for),
+        "pass_attempts": _per_game(rows, lambda row: row.pass_attempts_for),
+        "rush_attempts": _per_game(rows, lambda row: row.rush_attempts_for),
         "plays": _per_game(rows, lambda row: row.plays_for),
         "epa_per_play": _per_play(rows, lambda row: (row.epa_for, row.plays_for), "epa_per_play"),
         "success_rate": _per_play(rows, lambda row: (row.successes_for, row.plays_for), "success_rate"),
         "points_allowed": _per_game(rows, lambda row: row.points_against),
         "pass_yards_allowed": _per_game(rows, lambda row: row.pass_yards_against),
         "rush_yards_allowed": _per_game(rows, lambda row: row.rush_yards_against),
+        "pass_attempts_allowed": _per_game(rows, lambda row: row.pass_attempts_against),
+        "rush_attempts_allowed": _per_game(rows, lambda row: row.rush_attempts_against),
         "plays_allowed": _per_game(rows, lambda row: row.plays_against),
         "epa_per_play_allowed": _per_play(rows, lambda row: (row.epa_against, row.plays_against), "epa_per_play"),
         "success_rate_allowed": _per_play(rows, lambda row: (row.successes_against, row.plays_against), "success_rate"),
     }
+
+
+def _observed_games(rows: list[TeamGame], key: str) -> int:
+    allowed = key.endswith("_allowed")
+    metric = key.removesuffix("_allowed")
+    field = {"epa_per_play": "epa", "success_rate": "successes"}.get(metric, metric)
+    side = "against" if allowed else "for"
+    return sum(
+        getattr(row, f"{field}_{side}") is not None
+        and (metric not in {"epa_per_play", "success_rate"} or bool(getattr(row, f"plays_{side}")))
+        for row in rows
+    )
 
 
 def _per_game(rows: list[TeamGame], pick: Callable[[TeamGame], float | None]) -> float | None:

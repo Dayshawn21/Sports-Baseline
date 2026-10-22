@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { NflGameNotes, NflNoteInjury, NflTeamForm } from '~/types/nfl'
 import { depthLabel, injuryLabel, injuryTag } from '~/utils/nflAvailability'
-import { formLabel, injuriesByTeam, restLabel } from '~/utils/nflGameNotes'
+import { formLabel, injuriesByTeam, injuryGroups, restLabel } from '~/utils/nflGameNotes'
+import { fmtDateCT, fmtTimeCT } from '~/utils/format'
 
 const CHANGE_LABELS = { promoted: 'Up', demoted: 'Down', new: 'New' } as const
 const STATUS_CLASSES: Record<string, string> = { Out: 'is-out', Doubtful: 'is-caution', Questionable: 'is-caution' }
@@ -20,17 +21,22 @@ function Empty({ text }: { text: string }) {
 
 function InjuryRow({ row }: { row: NflNoteInjury }) {
   const tag = injuryTag(row.injuryStatus)
+  const playerLink = ['QB', 'RB', 'WR', 'TE', 'K', 'P'].includes(row.position)
   return <li className="nfl-game-side__row">
     <span className="nfl-game-side__team">{row.team}</span>
-    <span className="nfl-game-side__who"><b><Link to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link></b><small>{row.position} · {injuryLabel(row)}</small></span>
+    <span className="nfl-game-side__who"><b>{playerLink ? <Link to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link> : row.playerName}</b><small>{row.position} · {injuryLabel(row)}</small><small>{row.updatedAt && fmtDateCT(row.updatedAt) ? `Stored ${fmtDateCT(row.updatedAt)} · ${fmtTimeCT(row.updatedAt)}` : 'Stored update time unavailable'}</small></span>
     <span className={`nfl-game-tag ${row.injuryStatus ? STATUS_CLASSES[row.injuryStatus] ?? '' : ''}`}>{tag?.label ?? 'Practice'}</span>
   </li>
 }
 
 function Injuries({ notes }: { notes: NflGameNotes }) {
   const rows = injuriesByTeam(notes.injuries, notes.awayTeam, notes.homeTeam).flatMap(([, teamRows]) => teamRows)
-  return <Card title="Injury report" meta="QB RB WR TE">
-    {rows.length ? <ul className="nfl-game-side__list">{rows.map(row => <InjuryRow key={`${row.team}-${row.playerName}-${row.position}`} row={row} />)}</ul> : <Empty text="Nobody on either team's report" />}
+  return <Card title="Injury report" meta="All positions · NFLverse">
+    {rows.length ? injuryGroups(rows).map(group => <details className="nfl-game-injury-group" key={group.label} open>
+      <summary>{group.label} <span>{group.rows.length}</span></summary>
+      <ul className="nfl-game-side__list">{group.rows.map(row => <InjuryRow key={`${row.team}-${row.playerId}`} row={row} />)}</ul>
+    </details>) : <Empty text="No report entries stored for either team." />}
+    <p className="nfl-game-injury-note">Stored updates show when rows were loaded, not the official report time. Missing entries do not confirm availability. Full-practice-only entries are omitted.</p>
   </Card>
 }
 

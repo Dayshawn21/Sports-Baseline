@@ -61,6 +61,32 @@ class _RecordingSession:
         return _Result(self.result_id)
 
 
+def test_matchup_team_games_keep_pre_week_nfl_regular_season_filters_and_decode_attempts() -> None:
+    from unittest.mock import AsyncMock, Mock
+
+    result = Mock()
+    result.fetchall.return_value = [
+        (18, 20, 10, 240, 180, 90, 110, 60, 55, 3.0, -2.0, 30, 20,
+         32, 28, 24, 30, date(2026, 10, 18), 123),
+        (26, 10, 20, None, None, None, None, None, None, None, None, None, None,
+         None, None, None, None, date(2026, 10, 18), 123),
+    ]
+    session = Mock()
+    session.execute = AsyncMock(return_value=result)
+    games = asyncio.run(nfl_repository.get_week_team_games(cast(AsyncSession, session), 2026, 7))
+    assert (games[0].pass_attempts_for, games[0].pass_attempts_against) == (32, 28)
+    assert (games[0].rush_attempts_for, games[0].rush_attempts_against) == (24, 30)
+    assert (games[0].played_on, games[0].game_id) == (date(2026, 10, 18), 123)
+    assert games[1].pass_attempts_for is None
+    statement, params = session.execute.call_args.args
+    sql = str(statement)
+    assert params == {"season": 2026, "week": 7}
+    assert sql.count("g.sport = 'nfl'") == 2
+    assert sql.count("g.game_type = 'REG'") == 2
+    assert sql.count("g.week < :week") == 2
+    assert sql.count("g.status = 'completed'") == 2
+
+
 def test_slate_inputs_use_one_pre_week_regular_season_cutoff() -> None:
     session = _RecordingSession()
 
@@ -1266,18 +1292,32 @@ def test_environment_fit_games_read_a_seasons_lined_games_for_rated_positions() 
     assert game.stats["anytime_touchdown"] is None
 
 
-def test_game_notes_injuries_are_this_weeks_skill_positions_on_the_reporting_team() -> None:
+def test_game_notes_injuries_cover_all_positions_on_the_reporting_team() -> None:
     session = _RecordingSession()
 
-    assert asyncio.run(nfl_repository.get_week_skill_injuries(cast(AsyncSession, session), 2026, 3)) == []
+    assert asyncio.run(nfl_repository.get_week_game_injuries(cast(AsyncSession, session), 2026, 3)) == []
 
     statement = _flat(session.statement)
     assert session.params == {"season": 2026, "week": 3}
     assert "WHERE i.season = :season AND i.week = :week" in statement
-    assert "p.position IN ('QB', 'RB', 'WR', 'TE')" in statement
+    assert "p.position IN" not in statement
     assert "JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id" in statement
     assert "(i.report_status IS NOT NULL OR i.practice_status IS NOT NULL)" in statement
-    assert "i.primary_injury, p.id FROM nfl_player_injuries i" in statement
+    assert "i.primary_injury, p.id, i.updated_at FROM nfl_player_injuries i" in statement
+    assert "JOIN sport_players p ON p.sport = 'nfl'" in statement
+
+
+def test_game_notes_injury_query_decodes_lineman_and_report_update_time() -> None:
+    from unittest.mock import AsyncMock, Mock
+
+    updated = datetime(2026, 10, 22, 12, tzinfo=UTC)
+    result = Mock()
+    result.fetchall.return_value = [(1, 'NE', 'Lineman', 'OT', 'Out', None, 'Ankle', 99, updated)]
+    session = Mock()
+    session.execute = AsyncMock(return_value=result)
+    [row] = asyncio.run(nfl_repository.get_week_game_injuries(cast(AsyncSession, session), 2026, 7))
+    assert row == {'team_id': 1, 'team': 'NE', 'player_name': 'Lineman', 'position': 'OT',
+                   'injury_status': 'Out', 'practice_status': None, 'injury': 'Ankle', 'player_id': 99, 'updated_at': updated}
 
 
 def test_game_notes_depth_rows_pair_this_week_with_a_strictly_earlier_chart() -> None:

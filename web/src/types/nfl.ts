@@ -320,6 +320,7 @@ export interface NflNoteInjury {
   injuryStatus: string | null
   practiceStatus: string | null
   injury: string | null
+  updatedAt?: string | null
 }
 
 export interface NflNoteDepthChange {
@@ -365,6 +366,7 @@ export interface NflTeamStat {
   value: number | null
   /** League rank, 1 = best; null when the value is missing. */
   rank: number | null
+  observedGames?: number
 }
 
 /** Season to date before the slate week. Success rates are 0 to 1. */
@@ -375,12 +377,16 @@ export interface NflTeamStats {
   points: NflTeamStat
   passYards: NflTeamStat
   rushYards: NflTeamStat
+  passAttempts: NflTeamStat
+  rushAttempts: NflTeamStat
   plays: NflTeamStat
   epaPerPlay: NflTeamStat
   successRate: NflTeamStat
   pointsAllowed: NflTeamStat
   passYardsAllowed: NflTeamStat
   rushYardsAllowed: NflTeamStat
+  passAttemptsAllowed: NflTeamStat
+  rushAttemptsAllowed: NflTeamStat
   playsAllowed: NflTeamStat
   epaPerPlayAllowed: NflTeamStat
   successRateAllowed: NflTeamStat
@@ -447,6 +453,8 @@ export interface NflGameNotes {
   homeForm: NflTeamForm
   awayStats: NflTeamStats
   homeStats: NflTeamStats
+  awayRecentStats?: NflTeamStats | null
+  homeRecentStats?: NflTeamStats | null
   /** Null until the game is final. */
   awayScore: number | null
   homeScore: number | null

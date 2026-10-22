@@ -356,7 +356,7 @@ def test_notes_and_game_endpoints_serialize_identical_matchup_and_keep_existing_
             "home_team_id": 2, "home_team": "B", "home_rest": 8,
             "away_score": None, "home_score": None}
     monkeypatch.setattr(repo, "get_week_game_rest", AsyncMock(return_value={100: game}))
-    for name in ["get_week_skill_injuries", "get_week_depth_rows", "get_week_line_movement", "get_week_team_games"]:
+    for name in ["get_week_game_injuries", "get_week_depth_rows", "get_week_line_movement", "get_week_team_games"]:
         monkeypatch.setattr(repo, name, AsyncMock(return_value=[]))
     for name in ["get_week_team_recent_results", "get_week_game_quotes"]:
         monkeypatch.setattr(repo, name, AsyncMock(return_value={}))
@@ -372,7 +372,7 @@ def test_notes_and_game_endpoints_serialize_identical_matchup_and_keep_existing_
     assert notes["homeForm"]["restDays"] == 8
     assert notes["bestLine"] is None
     assert notes["awayStats"]["games"] == 0
-    expected = game_notes.game_notes(100, game, [], [], [], {}, {}).model_dump(
+    expected = game_notes.game_notes(100, game, [], [], [], {}, {}, recent_stats={}).model_dump(
         mode="json", by_alias=True, exclude={"matchup_context"},
     )
     assert {key: value for key, value in notes.items() if key != "matchupContext"} == expected

@@ -41,6 +41,13 @@ export interface NflMarketCell {
   detail: string
 }
 
+export function marketImpliedPoints(odds: NflGameOdds | null): { home: number, away: number } | null {
+  if (!odds || odds.homeSpread === null || odds.total === null) return null
+  const { homeSpread, total } = odds
+  if (!Number.isFinite(homeSpread) || !Number.isFinite(total) || total < Math.abs(homeSpread)) return null
+  return { home: (total - homeSpread) / 2, away: (total + homeSpread) / 2 }
+}
+
 export interface NflGameMarket {
   spread: NflMarketCell
   winProbability: NflMarketCell

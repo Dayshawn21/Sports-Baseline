@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
-import type { NflGameNotes, NflMatchupContext, NflTeamStats } from '~/types/nfl'
-import { SMALL_SAMPLE_GAMES, TEAM_STAT_ROWS, gamesLabel, rankLabel, statValue } from '~/utils/nflGameNotes'
+import type { NflGameNotes, NflMatchupContext, NflTeamStat, NflTeamStats } from '~/types/nfl'
+import { SMALL_SAMPLE_GAMES, TEAM_STAT_ROWS, gamesLabel, rankLabel, statValue, type StatKind } from '~/utils/nflGameNotes'
 import { POSITION_ALLOWED_ROWS, contextRank } from '~/utils/nflMatchupContext'
 import { NflContextMetric } from './NflContextMetric'
 
@@ -10,18 +10,30 @@ function sampleLabel(offense: NflTeamStats, defense: NflTeamStats): string {
 }
 
 /** One team's offense beside the other team's defense, so each row reads as the matchup. */
-function MatchupTable({ offense, defense }: { offense: NflTeamStats, defense: NflTeamStats }) {
+function StatCell({ stat, kind, games, ranked = false }: { stat?: NflTeamStat, kind: StatKind, games: number, ranked?: boolean }) {
+  const value = stat ?? { value: null, rank: null }
+  return <td title={ranked && value.rank !== null ? `Season league rank: ${rankLabel(value.rank)}` : undefined}>
+    {statValue(value, kind)}
+    <small><span title="Games with data / games in the window" aria-label={stat?.observedGames === undefined ? 'Coverage unknown' : `Data available for ${stat.observedGames} of ${games} games`}>{stat?.observedGames === undefined ? '--' : `${stat.observedGames}/${games}`}</span>{ranked && value.rank !== null && <> · <span aria-label={`Season league rank ${value.rank}`}>#{value.rank}</span></>}</small>
+  </td>
+}
+
+function MatchupTable({ offense, defense, recentOffense, recentDefense }: {
+  offense: NflTeamStats, defense: NflTeamStats, recentOffense?: NflTeamStats | null, recentDefense?: NflTeamStats | null,
+}) {
   const played = offense.games > 0 && defense.games > 0
   return <div className="nfl-game-stats__half">
     <h3><b>{offense.team} offense</b> vs {defense.team} defense<small>{sampleLabel(offense, defense)}</small></h3>
     {!played ? <p className="nfl-game-side__empty">Not enough completed games this season</p> : <table>
-      <colgroup><col /><col className="is-value" /><col className="is-rank" /><col className="is-value" /><col className="is-rank" /></colgroup>
-      <thead><tr><th scope="col" /><th scope="col">{offense.team} off</th><th scope="col" /><th scope="col">{defense.team} def</th><th scope="col" /></tr></thead>
+      <caption className="sr-only">Season and last three completed games: {offense.team} offense versus {defense.team} defense</caption>
+      <colgroup><col /><col className="is-value" /><col className="is-recent" /><col className="is-value" /><col className="is-recent" /></colgroup>
+      <thead><tr><th scope="col" /><th scope="colgroup" colSpan={2}>{offense.team} off</th><th scope="colgroup" colSpan={2}>{defense.team} def</th></tr>
+        <tr><th scope="col">Per game*</th><th scope="col">Season</th><th scope="col"><abbr title="Up to three completed games before the selected week">Last 3</abbr></th><th scope="col">Season</th><th scope="col"><abbr title="Up to three completed games before the selected week">Last 3</abbr></th></tr></thead>
       <tbody>{TEAM_STAT_ROWS.map(row => <tr key={row.label}>
         <th scope="row">{row.label}</th>
-        {[offense[row.offense], defense[row.defense]].map((stat, index) => <Fragment key={index}>
-          <td>{statValue(stat, row.kind)}</td>
-          <td className="is-rank">{rankLabel(stat.rank)}</td>
+        {[{ season: offense, recent: recentOffense, key: row.offense }, { season: defense, recent: recentDefense, key: row.defense }].map(({ season, recent, key }, index) => <Fragment key={index}>
+          <StatCell stat={season[key]} kind={row.kind} games={season.games} ranked />
+          <StatCell stat={recent?.[key]} kind={row.kind} games={recent?.games ?? 0} />
         </Fragment>)}
       </tr>)}</tbody>
     </table>}
@@ -31,11 +43,13 @@ function MatchupTable({ offense, defense }: { offense: NflTeamStats, defense: Nf
 /** Item 30's team stats as a matchup card. Context only: never changes an edge or its rank. */
 export function NflTeamStatsMatchup({ notes }: { notes: NflGameNotes }) {
   return <section className="nfl-game-card nfl-game-stats" aria-label="Team stats">
-    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Team stats</h2><span className="nfl-game-side__meta">Season per game · rank of 32 · defense = allowed</span></div>
+    <div className="nfl-game-card__head"><h2 className="nfl-game-label">Team stats</h2><span className="nfl-game-side__meta">Season vs last 3 · defense = allowed</span></div>
+    <p className="nfl-game-note nfl-game-stats__key"><span><b>6/6</b> = data for all six games.</span><span><b>#12</b> = season league rank among teams with data.</span><span><b>Last 3</b> = up to three completed games before this week.</span><span><b>Defense / allowed</b> = opponents' production against that defense.</span></p>
     <div className="nfl-game-stats__body">
-      <MatchupTable offense={notes.awayStats} defense={notes.homeStats} />
-      <MatchupTable offense={notes.homeStats} defense={notes.awayStats} />
+      <MatchupTable offense={notes.awayStats} defense={notes.homeStats} recentOffense={notes.awayRecentStats} recentDefense={notes.homeRecentStats} />
+      <MatchupTable offense={notes.homeStats} defense={notes.awayStats} recentOffense={notes.homeRecentStats} recentDefense={notes.awayRecentStats} />
     </div>
+    <p className="nfl-game-note">*EPA/play and success rate use covered play totals. Attempts are recorded box-score attempts, not dropbacks. Rankings describe volume and efficiency, not betting value.</p>
   </section>
 }
 

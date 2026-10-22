@@ -2,6 +2,7 @@ import { Tabs } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NflBestLineCard } from '~/components/nfl/NflBestLineCard'
+import { NflDataGuide } from '~/components/nfl/NflDataGuide'
 import { NflGameHero, NflGameMarketBlock } from '~/components/nfl/NflGameHero'
 import { NflGameProps } from '~/components/nfl/NflGameProps'
 import { NflGameContext } from '~/components/nfl/NflGameContext'
@@ -51,6 +52,7 @@ export default function NflGamePage() {
     <PageHead title={`${detail.data.awayTeam} @ ${detail.data.homeTeam}`}
       meta={<>{detail.data.season} season · Week {detail.data.week} · {kickoffLabel(detail.data.startUtc)} · {detail.data.status}</>} />
     <NflGameHero detail={detail.data} game={game} />
+    <NflDataGuide />
     <Tabs key={gameId} className="nfl-game-tabs" defaultActiveKey="props" destroyOnHidden
       aria-label="Game sections" animated={false}
       items={[

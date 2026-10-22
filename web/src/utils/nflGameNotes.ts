@@ -39,6 +39,22 @@ export function injuriesByTeam(injuries: NflNoteInjury[], awayTeam: string, home
   return [awayTeam, homeTeam].map(team => [team, injuries.filter(injury => injury.team === team)])
 }
 
+const INJURY_GROUP_POSITIONS = [
+  { label: 'Offensive skill positions', positions: new Set(['QB', 'RB', 'FB', 'WR', 'TE']) },
+  { label: 'Offensive line', positions: new Set(['C', 'G', 'OG', 'LG', 'RG', 'T', 'OT', 'LT', 'RT', 'OL']) },
+  { label: 'Defense', positions: new Set(['DE', 'DT', 'DL', 'NT', 'EDGE', 'LB', 'ILB', 'MLB', 'OLB', 'CB', 'DB', 'S', 'FS', 'SS', 'SAF']) },
+]
+
+export function injuryGroups(rows: NflNoteInjury[]): Array<{ label: string, rows: NflNoteInjury[] }> {
+  const groups = [...INJURY_GROUP_POSITIONS.map(({ label }) => ({ label, rows: [] as NflNoteInjury[] })),
+    { label: 'Special teams / other', rows: [] as NflNoteInjury[] }]
+  for (const row of rows) {
+    const index = INJURY_GROUP_POSITIONS.findIndex(group => group.positions.has(row.position.toUpperCase()))
+    groups[index < 0 ? groups.length - 1 : index].rows.push(row)
+  }
+  return groups.filter(group => group.rows.length > 0)
+}
+
 type StatKey = Exclude<keyof NflTeamStats, 'team' | 'games' | 'efficiencyGames'>
 export type StatKind = 'perGame' | 'epa' | 'rate'
 
@@ -52,7 +68,9 @@ export interface TeamStatRow {
 export const TEAM_STAT_ROWS: TeamStatRow[] = [
   { label: 'Points', offense: 'points', defense: 'pointsAllowed', kind: 'perGame' },
   { label: 'Pass yds', offense: 'passYards', defense: 'passYardsAllowed', kind: 'perGame' },
+  { label: 'Pass att', offense: 'passAttempts', defense: 'passAttemptsAllowed', kind: 'perGame' },
   { label: 'Rush yds', offense: 'rushYards', defense: 'rushYardsAllowed', kind: 'perGame' },
+  { label: 'Rush att', offense: 'rushAttempts', defense: 'rushAttemptsAllowed', kind: 'perGame' },
   { label: 'Plays', offense: 'plays', defense: 'playsAllowed', kind: 'perGame' },
   { label: 'EPA/play', offense: 'epaPerPlay', defense: 'epaPerPlayAllowed', kind: 'epa' },
   { label: 'Success', offense: 'successRate', defense: 'successRateAllowed', kind: 'rate' },

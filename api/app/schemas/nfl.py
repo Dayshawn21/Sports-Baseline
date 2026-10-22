@@ -389,6 +389,7 @@ class NflNoteInjurySchema(_CamelModel):
     injury_status: str | None
     practice_status: str | None
     injury: str | None
+    updated_at: datetime | None = None
 
 
 class NflNoteDepthChangeSchema(_CamelModel):
@@ -433,6 +434,7 @@ class NflTeamFormSchema(_CamelModel):
 class NflTeamStatSchema(_CamelModel):
     value: float | None
     rank: int | None
+    observed_games: int = 0
 
 
 class NflTeamStatsSchema(_CamelModel):
@@ -444,12 +446,16 @@ class NflTeamStatsSchema(_CamelModel):
     points: NflTeamStatSchema
     pass_yards: NflTeamStatSchema
     rush_yards: NflTeamStatSchema
+    pass_attempts: NflTeamStatSchema = NflTeamStatSchema(value=None, rank=None)
+    rush_attempts: NflTeamStatSchema = NflTeamStatSchema(value=None, rank=None)
     plays: NflTeamStatSchema
     epa_per_play: NflTeamStatSchema
     success_rate: NflTeamStatSchema
     points_allowed: NflTeamStatSchema
     pass_yards_allowed: NflTeamStatSchema
     rush_yards_allowed: NflTeamStatSchema
+    pass_attempts_allowed: NflTeamStatSchema = NflTeamStatSchema(value=None, rank=None)
+    rush_attempts_allowed: NflTeamStatSchema = NflTeamStatSchema(value=None, rank=None)
     plays_allowed: NflTeamStatSchema
     epa_per_play_allowed: NflTeamStatSchema
     success_rate_allowed: NflTeamStatSchema
@@ -514,6 +520,8 @@ class NflGameNotesSchema(_CamelModel):
     home_form: NflTeamFormSchema
     away_stats: NflTeamStatsSchema
     home_stats: NflTeamStatsSchema
+    away_recent_stats: NflTeamStatsSchema | None = None
+    home_recent_stats: NflTeamStatsSchema | None = None
     away_score: int | None      # null until the game is final in sport_games
     home_score: int | None
     away_qb_change: NflQbChangeSchema | None

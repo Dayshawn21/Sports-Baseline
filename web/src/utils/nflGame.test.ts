@@ -1,9 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameOdds, NflWeather } from '~/types/nfl'
-import { conditionsLabel, gameMarket, hasKickedOff, kickoffLabel, parseGameId, recordLabel } from '~/utils/nflGame'
+import { conditionsLabel, gameMarket, hasKickedOff, kickoffLabel, marketImpliedPoints, parseGameId, recordLabel } from '~/utils/nflGame'
 
 const OUTDOOR: NflWeather = { venueType: 'outdoor', forecastFor: '2026-09-27T17:00:00Z', temperatureF: 86.4, windMph: 11.6, windGustMph: null, precipitationProbability: null, fetchedAt: null }
 const ODDS: NflGameOdds = { book: 'draftkings', homeMoneyline: 120, awayMoneyline: -142, homeSpread: 2.5, total: 48.5 }
+
+describe('marketImpliedPoints', () => {
+  it('assigns more points to the home favorite using book spread sign', () => {
+    expect(marketImpliedPoints({ ...ODDS, homeSpread: -4, total: 46 })).toEqual({ home: 25, away: 21 })
+  })
+
+  it('handles an away favorite, pickem and quarter-point results', () => {
+    expect(marketImpliedPoints(ODDS)).toEqual({ home: 23, away: 25.5 })
+    expect(marketImpliedPoints({ ...ODDS, homeSpread: 0, total: 45.5 })).toEqual({ home: 22.75, away: 22.75 })
+  })
+
+  it('keeps the sum equal to the total and the margin opposite the home spread', () => {
+    for (const homeSpread of [-7.5, 0, 3.5]) {
+      const implied = marketImpliedPoints({ ...ODDS, homeSpread })!
+      expect(implied.home + implied.away).toBe(48.5)
+      expect(implied.home - implied.away).toBeCloseTo(-homeSpread)
+    }
+  })
+
+  it('does not invent totals from missing or invalid inputs', () => {
+    expect(marketImpliedPoints(null)).toBeNull()
+    for (const fields of [{ homeSpread: null }, { total: null }, { homeSpread: NaN }, { total: Infinity }, { total: -1 }, { total: 2, homeSpread: 3 }]) {
+      expect(marketImpliedPoints({ ...ODDS, ...fields })).toBeNull()
+    }
+  })
+})
 
 describe('parseGameId', () => {
   it('accepts a positive integer id and rejects anything else', () => {

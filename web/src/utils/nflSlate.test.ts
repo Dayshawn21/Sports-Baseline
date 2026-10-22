@@ -33,6 +33,7 @@ function game(gameId: number, startUtc: string | null, overrides: Partial<NflSla
 function stats(team: string): NflTeamStats {
   return {
     team, games: 0, efficiencyGames: 0, points: NO_STAT, passYards: NO_STAT, rushYards: NO_STAT, plays: NO_STAT,
+    passAttempts: NO_STAT, rushAttempts: NO_STAT, passAttemptsAllowed: NO_STAT, rushAttemptsAllowed: NO_STAT,
     epaPerPlay: NO_STAT, successRate: NO_STAT, pointsAllowed: NO_STAT, passYardsAllowed: NO_STAT,
     rushYardsAllowed: NO_STAT, playsAllowed: NO_STAT, epaPerPlayAllowed: NO_STAT, successRateAllowed: NO_STAT,
   }

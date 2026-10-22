@@ -1,9 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import type { NflLineMove, NflNoteInjury } from '~/types/nfl'
-import { TEAM_STAT_ROWS, formLabel, gamesLabel, injuriesByTeam, rankLabel, restLabel, spreadMoveLabel, statValue, totalMoveLabel } from './nflGameNotes'
+import { TEAM_STAT_ROWS, formLabel, gamesLabel, injuriesByTeam, injuryGroups, rankLabel, restLabel, spreadMoveLabel, statValue, totalMoveLabel } from './nflGameNotes'
 
 const OPENED = '2026-09-18T17:42:18Z'
 const LATEST = '2026-09-23T15:41:15Z'
+
+describe('injuryGroups', () => {
+  const injury = (position: string, playerId: number): NflNoteInjury => ({
+    playerId, playerName: `Player ${playerId}`, team: 'NE', position, injuryStatus: 'Out', practiceStatus: null, injury: 'Knee',
+  })
+
+  it('separates skill, offensive line, defensive and other positions without dropping anyone', () => {
+    const rows = ['CB', 'OT', 'QB', 'G', 'C', 'DE', 'DT', 'LB', 'SAF', 'K', 'UNK', 'fb', 'EDGE'].map(injury)
+    const groups = injuryGroups(rows)
+    expect(groups.map(group => [group.label, group.rows.map(row => row.position)])).toEqual([
+      ['Offensive skill positions', ['QB', 'fb']], ['Offensive line', ['OT', 'G', 'C']],
+      ['Defense', ['CB', 'DE', 'DT', 'LB', 'SAF', 'EDGE']], ['Special teams / other', ['K', 'UNK']],
+    ])
+    expect(groups.flatMap(group => group.rows)).toHaveLength(rows.length)
+  })
+
+  it('omits empty groups and preserves incoming severity order within each group', () => {
+    const rows = [injury('CB', 1), injury('LB', 2)]
+    expect(injuryGroups(rows)).toEqual([{ label: 'Defense', rows }])
+    expect(injuryGroups([])).toEqual([])
+  })
+})
 
 function move(market: 'spread' | 'total', openLine: number, currentLine: number, change: number | null): NflLineMove {
   return { market, book: 'draftkings', openLine, openFetchedAt: OPENED, currentLine, currentFetchedAt: LATEST, move: change }

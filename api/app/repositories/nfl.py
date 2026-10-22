@@ -1559,24 +1559,24 @@ async def get_slate_weather(db: AsyncSession, season: int, week: int) -> dict[in
     return {row[0]: {"home_team": row[1], "venue_type": row[2], "forecast_for": row[3], "temperature_f": float(row[4]) if row[4] is not None else None, "wind_mph": float(row[5]) if row[5] is not None else None, "wind_gust_mph": float(row[6]) if row[6] is not None else None, "precipitation_probability": float(row[7]) if row[7] is not None else None, "fetched_at": row[8]} for row in rows.fetchall()}
 
 
-async def get_week_skill_injuries(db: AsyncSession, season: int, week: int) -> list[dict]:
-    """The week's QB/RB/WR/TE injury report, including players with no prop line.
+async def get_week_game_injuries(db: AsyncSession, season: int, week: int) -> list[dict]:
+    """The week's stored injury report across all positions.
 
     The team is the one that filed the report, not the player's last-write team.
     """
     rows = await db.execute(text("""
-        SELECT i.team_id, t.team_code, p.name, p.position,
-               i.report_status, i.practice_status, i.primary_injury, p.id
+        SELECT i.team_id, t.team_code, p.name, COALESCE(p.position, 'UNK'),
+               i.report_status, i.practice_status, i.primary_injury, p.id, i.updated_at
         FROM nfl_player_injuries i
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
         JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id
         WHERE i.season = :season AND i.week = :week
-          AND p.position IN ('QB', 'RB', 'WR', 'TE')
           AND (i.report_status IS NOT NULL OR i.practice_status IS NOT NULL)
     """), {"season": season, "week": week})
     return [
         {"team_id": row[0], "team": row[1], "player_name": row[2], "position": row[3],
-         "injury_status": row[4], "practice_status": row[5], "injury": row[6], "player_id": row[7]}
+         "injury_status": row[4], "practice_status": row[5], "injury": row[6], "player_id": row[7],
+         "updated_at": row[8]}
         for row in rows.fetchall()
     ]
 
@@ -1855,22 +1855,24 @@ async def get_week_team_games(db: AsyncSession, season: int, week: int) -> list[
     rows = await db.execute(text("""
         WITH team_games AS (
             SELECT g.id AS game_id, g.home_team_id AS team_id, g.away_team_id AS opponent_id,
-                   g.home_score AS points_for, g.away_score AS points_against
+                   g.home_score AS points_for, g.away_score AS points_against, g.game_date
             FROM sport_games g
             WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG' AND g.status = 'completed'
             UNION ALL
-            SELECT g.id, g.away_team_id, g.home_team_id, g.away_score, g.home_score
+            SELECT g.id, g.away_team_id, g.home_team_id, g.away_score, g.home_score, g.game_date
             FROM sport_games g
             WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG' AND g.status = 'completed'
         ), yards AS (
-            SELECT s.game_id, s.team_id, SUM(s.passing_yards) AS pass_yards, SUM(s.rushing_yards) AS rush_yards
+            SELECT s.game_id, s.team_id, SUM(s.passing_yards) AS pass_yards, SUM(s.rushing_yards) AS rush_yards,
+                   SUM(s.passing_attempts) AS pass_attempts, SUM(s.rushing_attempts) AS rush_attempts
             FROM nfl_player_weekly_stats s
             WHERE s.season = :season AND s.week < :week
             GROUP BY s.game_id, s.team_id
         )
         SELECT tg.team_id, tg.points_for, tg.points_against,
                yo.pass_yards, yd.pass_yards, yo.rush_yards, yd.rush_yards,
-               eo.plays, ed.plays, eo.epa, ed.epa, eo.successes, ed.successes
+               eo.plays, ed.plays, eo.epa, ed.epa, eo.successes, ed.successes,
+               yo.pass_attempts, yd.pass_attempts, yo.rush_attempts, yd.rush_attempts, tg.game_date, tg.game_id
         FROM team_games tg
         LEFT JOIN yards yo ON yo.game_id = tg.game_id AND yo.team_id = tg.team_id
         LEFT JOIN yards yd ON yd.game_id = tg.game_id AND yd.team_id = tg.opponent_id
@@ -1885,6 +1887,8 @@ async def get_week_team_games(db: AsyncSession, season: int, week: int) -> list[
             rush_yards_for=_float_or_none(row[5]), rush_yards_against=_float_or_none(row[6]),
             plays_for=row[7], plays_against=row[8], epa_for=row[9], epa_against=row[10],
             successes_for=row[11], successes_against=row[12],
+            pass_attempts_for=row[13], pass_attempts_against=row[14],
+            rush_attempts_for=row[15], rush_attempts_against=row[16], played_on=row[17], game_id=row[18],
         )
         for row in rows.fetchall()
     ]

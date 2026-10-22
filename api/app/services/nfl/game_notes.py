@@ -40,11 +40,13 @@ _AVAILABILITY_FIELDS = tuple(NflAvailability.__dataclass_fields__)
 
 async def build_game_notes(db: AsyncSession, season: int, week: int) -> NflGameNotesResponse:
     games = await nfl_repo.get_week_game_rest(db, season, week)
-    injuries = await nfl_repo.get_week_skill_injuries(db, season, week)
+    injuries = await nfl_repo.get_week_game_injuries(db, season, week)
     depth_rows = await nfl_repo.get_week_depth_rows(db, season, week)
     moves = await nfl_repo.get_week_line_movement(db, season, week)
     recent = await nfl_repo.get_week_team_recent_results(db, season, week)
-    stats = team_stats(await nfl_repo.get_week_team_games(db, season, week))
+    team_games = await nfl_repo.get_week_team_games(db, season, week)
+    stats = team_stats(team_games)
+    recent_stats = team_stats(team_games, last_n=3)
     qb_changes = await _week_qb_changes(db, season, week)
     quotes = await nfl_repo.get_week_game_quotes(db, season, week)
     matchups = await build_week_matchup_context(db, season, week)
@@ -54,7 +56,7 @@ async def build_game_notes(db: AsyncSession, season: int, week: int) -> NflGameN
         season=season, week=week,
         games=[
             game_notes(game_id, game, injuries, depth_rows, moves, recent, stats, qb_changes,
-                       best.get(game_id), matchups.get(game_id))
+                       best.get(game_id), matchups.get(game_id), recent_stats)
             for game_id, game in sorted(games.items())
         ],
     )
@@ -71,6 +73,7 @@ def game_notes(
     qb_changes: dict[int, QbChange] | None = None,
     best_line: NflBestLineSchema | None = None,
     matchup_context: NflMatchupContextSchema | None = None,
+    recent_stats: dict[int, TeamStats] | None = None,
 ) -> NflGameNotesSchema:
     team_ids = {game["away_team_id"], game["home_team_id"]}
     listed = sorted(
@@ -86,6 +89,8 @@ def game_notes(
         home_form=_team_form(game["home_team"], game["home_rest"], recent.get(game["home_team_id"], [])),
         away_stats=_team_stats(game["away_team"], stats.get(game["away_team_id"], EMPTY_TEAM_STATS)),
         home_stats=_team_stats(game["home_team"], stats.get(game["home_team_id"], EMPTY_TEAM_STATS)),
+        away_recent_stats=_team_stats(game["away_team"], recent_stats.get(game["away_team_id"], EMPTY_TEAM_STATS)) if recent_stats is not None else None,
+        home_recent_stats=_team_stats(game["home_team"], recent_stats.get(game["home_team_id"], EMPTY_TEAM_STATS)) if recent_stats is not None else None,
         away_score=game["away_score"], home_score=game["home_score"],
         away_qb_change=_qb_change_schema(game["away_team"], (qb_changes or {}).get(game["away_team_id"])),
         home_qb_change=_qb_change_schema(game["home_team"], (qb_changes or {}).get(game["home_team_id"])),
@@ -168,5 +173,6 @@ def _team_form(team: str, rest_days: int | None, games: list[dict]) -> NflTeamFo
 def _team_stats(team: str, stats: TeamStats) -> NflTeamStatsSchema:
     return NflTeamStatsSchema(
         team=team, games=stats.games, efficiency_games=stats.efficiency_games,
-        **{key: NflTeamStatSchema(value=line.value, rank=line.rank) for key, line in stats.stats.items()},
+        **{key: NflTeamStatSchema(value=line.value, rank=line.rank, observed_games=line.observed_games)
+           for key, line in stats.stats.items()},
     )

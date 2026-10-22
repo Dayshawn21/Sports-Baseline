@@ -27,14 +27,17 @@
 .nfl-player-label { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.15em; text-transform: uppercase; }
 .nfl-player-muted { color: var(--text-muted); font-size: 11px; text-align: right; }
 
-.nfl-player-usage { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; }
+.nfl-player-usage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 24px; }
 .nfl-player-usage__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }
 .nfl-player-usage__head b { color: var(--text-primary); font: 500 12px var(--font-mono); }
-.nfl-player-weekbars { display: flex; align-items: flex-end; gap: 6px; height: 70px; }
-.nfl-player-weekbars i { flex: 1; height: var(--h); min-height: 1px; border-radius: 2px 2px 0 0; background: var(--chart-mid); }
+.nfl-player-weekbars { display: flex; align-items: flex-end; gap: 6px; height: 104px; margin-top: 26px; border-bottom: 1px solid var(--border-card); }
+.nfl-player-weekbars i { position: relative; flex: 1; min-width: 0; height: var(--h); min-height: 1px; border-radius: 2px 2px 0 0; background: var(--chart-mid); }
+.nfl-player-weekbars__value { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); color: var(--text-secondary); font: 400 11px/1.2 var(--font-mono); white-space: nowrap; }
 .nfl-player-weekbars i.is-prior { background: var(--chart-low); }
-.nfl-player-weekaxis { display: flex; gap: 6px; margin-top: 4px; }
+.nfl-player-weekbars .is-season-start, .nfl-player-weekaxis .is-season-start { margin-left: 12px; }
+.nfl-player-weekaxis { display: flex; gap: 6px; margin-top: 8px; }
 .nfl-player-weekaxis span { flex: 1; text-align: center; color: var(--text-muted); font: 400 11px var(--font-mono); }
+.nfl-player-weekaxis__label { margin: 6px 0 0; color: var(--text-muted); text-align: center; font: 400 11px var(--font-body); }
 
 .nfl-player-line {
   display: grid; grid-template-columns: minmax(0, 1fr) 60px 64px 76px 12px; align-items: center; gap: 10px;

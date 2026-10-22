@@ -1,3 +1,7 @@
+from datetime import date
+
+import pytest
+
 from app.core.nfl_team_stats import EMPTY_TEAM_STATS, STAT_KEYS, StatLine, TeamGame, team_stats
 
 
@@ -53,8 +57,8 @@ def test_missing_efficiency_rows_leave_play_stats_null_and_unranked() -> None:
     assert stats[1].stats["plays"] == StatLine(None, None)
     assert stats[1].stats["epa_per_play"] == StatLine(None, None)
     assert stats[1].stats["success_rate"] == StatLine(None, None)
-    assert stats[1].stats["points"] == StatLine(24.0, 1)
-    assert stats[2].stats["plays"] == StatLine(60.0, 1)
+    assert stats[1].stats["points"] == StatLine(24.0, 1, 1)
+    assert stats[2].stats["plays"] == StatLine(60.0, 1, 1)
 
 
 def test_a_partly_loaded_season_averages_only_the_loaded_games() -> None:
@@ -68,3 +72,51 @@ def test_a_team_without_games_is_absent_and_the_empty_value_is_all_null() -> Non
     assert EMPTY_TEAM_STATS.games == 0
     assert set(EMPTY_TEAM_STATS.stats) == set(STAT_KEYS)
     assert all(line == StatLine(None, None) for line in EMPTY_TEAM_STATS.stats.values())
+
+
+def test_attempts_preserve_zero_and_report_partial_coverage() -> None:
+    stats = team_stats([
+        _game(1, 10, 20, pass_attempts_for=0, rush_attempts_for=20, pass_attempts_against=35),
+        _game(1, 20, 10, pass_attempts_for=30, rush_attempts_against=25),
+        _game(1, 20, 17),
+    ])[1]
+    assert stats.games == 3
+    assert stats.stats["pass_attempts"] == StatLine(15.0, 1, 2)
+    assert stats.stats["rush_attempts"] == StatLine(20.0, 1, 1)
+    assert stats.stats["pass_attempts_allowed"] == StatLine(35.0, 1, 1)
+    assert stats.stats["rush_attempts_allowed"] == StatLine(25.0, 1, 1)
+
+
+def test_recent_window_uses_each_teams_last_three_played_dates_and_ranks_that_window() -> None:
+    from dataclasses import replace
+
+    games = [replace(_game(team, points, 10), played_on=date(2026, 9, day), game_id=day)
+             for team, points, day in [(1, 100, 1), (2, 15, 2), (1, 10, 22), (1, 20, 8), (1, 30, 15)]]
+    season = team_stats(games)
+    recent = team_stats(reversed(games), last_n=3)
+    assert season[1].stats["points"].value == 40.0
+    assert recent[1].games == 3
+    assert recent[1].stats["points"] == StatLine(20.0, 1, 3)
+    assert recent[2].games == 1
+    assert recent[2].stats["points"] == StatLine(15.0, 2, 1)
+
+
+def test_recent_missing_stats_do_not_reach_back_to_older_loaded_games() -> None:
+    from dataclasses import replace
+
+    games = [replace(_game(1, 10, 10, pass_attempts_for=40 if day == 1 else None),
+                     played_on=date(2026, 9, day)) for day in (1, 8, 15, 22)]
+    assert team_stats(games, last_n=3)[1].stats["pass_attempts"] == StatLine(None, None, 0)
+
+
+def test_rate_coverage_requires_both_a_numerator_and_positive_plays() -> None:
+    stats = team_stats([_game(1, 0, 0, plays_for=60), _game(1, 0, 0, plays_for=0, epa_for=0),
+                        _game(1, 0, 0, plays_for=40, epa_for=4, successes_for=20)])[1]
+    assert stats.stats["epa_per_play"] == StatLine(0.1, 1, 1)
+    assert stats.stats["success_rate"] == StatLine(0.5, 1, 1)
+    assert stats.stats["plays"].observed_games == 3
+
+
+def test_recent_window_rejects_nonpositive_sizes() -> None:
+    with pytest.raises(ValueError):
+        team_stats([], last_n=0)

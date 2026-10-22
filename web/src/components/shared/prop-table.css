@@ -8,11 +8,22 @@
 }
 
 .mini-bars > span {
+  position: relative;
   flex: 1;
   height: max(var(--h), 2px);
   border-radius: 3px 3px 0 0;
   background: var(--text-secondary);
 }
+
+.mini-bars-group { display: block; }
+.mini-bars-group.has-values { width: 172px; padding: 4px 0; }
+.mini-bars.has-values { margin-top: 22px; border-bottom: 1px solid var(--border-card); }
+.mini-bars__value { position: absolute; z-index: 2; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); padding: 0 2px; background: var(--bg-card); color: var(--text-secondary); font: 400 11px/1.2 var(--font-mono); white-space: nowrap; }
+.prop-table .mini-bars.has-values { width: 172px; max-width: none; --mini-bars-h: 44px; --mini-bars-gap: 8px; }
+.mini-bars__caption { display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--text-secondary); font: 400 11px/1.2 var(--font-mono); }
+.mini-bars__caption::before { content: ''; width: 16px; border-top: 1px dashed var(--text-secondary); }
+.mini-bars__opponents { display: flex; gap: 8px; margin-top: 6px; }
+.mini-bars__opponents > span { flex: 1; min-width: 0; text-align: center; color: var(--text-muted); font: 400 11px/1.2 var(--font-mono); }
 
 .mini-bars > span.is-above {
   background: var(--text-primary);

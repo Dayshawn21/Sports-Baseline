@@ -11,10 +11,13 @@ function UsageRow({ row }: { row: NflUsageRow }) {
   return <div>
     <div className="nfl-player-usage__head"><span>{row.label}</span><b>{row.average}</b></div>
     <div className="nfl-player-weekbars" role="img" aria-label={`${row.label} by week`}>
-      {row.bars.map((bar, index) => <i key={index} className={bar.previousSeason ? 'is-prior' : ''}
-        style={{ '--h': `${bar.heightPct}%` } as CSSProperties} title={`Week ${bar.week}: ${valueLabel(row, bar.value)}`} />)}
+      {row.bars.map((bar, index) => <i key={index} className={`${bar.previousSeason ? 'is-prior' : ''}${index > 0 && row.bars[index - 1].previousSeason && !bar.previousSeason ? ' is-season-start' : ''}`}
+        style={{ '--h': `${bar.heightPct}%` } as CSSProperties} title={`Week ${bar.week}: ${valueLabel(row, bar.value)}`}>
+        <span className="nfl-player-weekbars__value">{bar.value === null ? '--' : valueLabel(row, bar.value)}</span>
+      </i>)}
     </div>
-    <div className="nfl-player-weekaxis" aria-hidden="true">{row.bars.map((bar, index) => <span key={index}>{bar.week}</span>)}</div>
+    <div className="nfl-player-weekaxis" aria-hidden="true">{row.bars.map((bar, index) => <span key={index} className={index > 0 && row.bars[index - 1].previousSeason && !bar.previousSeason ? 'is-season-start' : undefined}>{bar.week}</span>)}</div>
+    <p className="nfl-player-weekaxis__label">Week</p>
   </div>
 }
 

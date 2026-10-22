@@ -95,7 +95,31 @@ def test_stats_attach_to_each_side_with_league_ranks() -> None:
     assert (notes.home_stats.points_allowed.value, notes.home_stats.points_allowed.rank) == (10.0, 1)
     assert notes.away_stats.epa_per_play.value == -0.1
     assert notes.home_stats.epa_per_play.value is None and notes.home_stats.epa_per_play.rank is None
-    assert notes.model_dump(by_alias=True)["awayStats"]["epaPerPlay"] == {"value": -0.1, "rank": 1}
+    assert notes.model_dump(by_alias=True)["awayStats"]["epaPerPlay"] == {"value": -0.1, "rank": 1, "observedGames": 1}
+
+
+def test_recent_stats_attach_to_the_correct_team_and_serialize_attempt_coverage() -> None:
+    games = [TeamGame(team_id=18, points_for=10, points_against=20, pass_attempts_for=32),
+             TeamGame(team_id=26, points_for=20, points_against=10, rush_attempts_against=24)]
+    notes = game_notes(33, GAME, [], [], [], {}, team_stats(games), recent_stats=team_stats(games, last_n=3))
+    response = notes.model_dump(by_alias=True)
+    assert response["awayRecentStats"]["team"] == "ATL"
+    assert response["awayRecentStats"]["passAttempts"] == {"value": 32.0, "rank": 1, "observedGames": 1}
+    assert response["homeRecentStats"]["team"] == "GB"
+    assert response["homeRecentStats"]["rushAttemptsAllowed"]["value"] == 24.0
+    assert response["homeRecentStats"]["passAttempts"]["value"] is None
+
+
+def test_injury_notes_keep_lineman_and_defender_with_stored_update_time() -> None:
+    updated = datetime(2026, 10, 22, 12, tzinfo=UTC)
+    rows = [_injury(18, 'ATL', 'Lineman', 'OT', 'Out', None) | {'updated_at': updated},
+            _injury(26, 'GB', 'Defender', 'CB', 'Questionable', None) | {'updated_at': updated},
+            _injury(12, 'BUF', 'Other game', 'LB', 'Out', None),
+            _injury(18, 'ATL', 'Full practice', 'DT', None, 'Full Participation in Practice')]
+    notes = game_notes(33, GAME, rows, [], [], {}, {})
+    assert [(row.player_name, row.position) for row in notes.injuries] == [('Lineman', 'OT'), ('Defender', 'CB')]
+    assert all(row.updated_at == updated for row in notes.injuries)
+    assert notes.model_dump(mode='json', by_alias=True)['injuries'][0]['updatedAt'] == '2026-10-22T12:00:00Z'
 
 
 def test_a_final_game_carries_its_score_and_a_scheduled_one_does_not() -> None:
