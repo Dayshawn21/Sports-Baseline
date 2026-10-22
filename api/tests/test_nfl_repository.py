@@ -1418,3 +1418,20 @@ def test_recent_stat_rows_stop_before_the_games_week_and_keep_the_last_five() ->
     for column in LINE_ONLY_COLUMNS:
         assert f"s.{column}" in sql
     assert rows == [{"player_id": 41, "season": 2026, "week": 3, "opponent": "MIA", "fg_made": 2}]
+
+
+def test_week_line_only_props_preserve_sport_week_market_and_snapshot_boundaries() -> None:
+    fetched = datetime(2026, 10, 5, 18, tzinfo=UTC)
+    session = _ScriptedSession([(41, "Nick Folk", "K", "NYJ", "field_goals_made", "standard", Decimal("1.5"), fetched, 49)])
+    [line] = asyncio.run(nfl_repository.get_week_line_only_lines(cast(AsyncSession, session), 2026, 7))
+    [(sql, params)] = session.calls
+    assert params == {"season": 2026, "week": 7}
+    assert "g.season = :season AND g.week = :week AND g.game_type = 'REG'" in sql
+    assert "WHERE l.sport = 'nfl'" in sql
+    assert "JOIN sport_games g ON g.sport = 'nfl'" in sql
+    assert "JOIN sport_players p ON p.sport = 'nfl'" in sql
+    assert "l.segment = 'full_game' AND l.fetched_at < g.start_utc" in sql
+    assert nfl_repository.LINE_ONLY_MARKET_FILTER in sql
+    assert "DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)" in sql
+    assert "ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
+    assert line["game_id"] == 49 and line["line"] == 1.5

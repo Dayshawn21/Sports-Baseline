@@ -13,14 +13,14 @@ from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import (
     NflCurrentWeekResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
-    NflLineOnlyPropsResponse,
+    NflLineOnlyPropsResponse, NflLineOnlyBoardResponse,
     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
     NflRankingModelVersion, NflSlateResponse,
 )
 from app.services.nfl.game_detail import build_game_detail
 from app.services.nfl.game_notes import build_game_notes
-from app.services.nfl.line_only_props import build_line_only_props
+from app.services.nfl.line_only_props import build_line_only_props, build_week_line_only_props
 from app.services.nfl.player_detail import build_player_detail
 from app.services.nfl import prop_lines_snapshot, track_record
 from app.services.nfl.slate import anytime_td
@@ -61,6 +61,13 @@ async def get_game_line_only_props(game_id: int, db: AsyncSession = Depends(get_
     if props is None:
         raise HTTPException(status_code=404, detail=f"NFL game {game_id} not found")
     return props
+
+
+@router.get("/line-only-props", response_model=NflLineOnlyBoardResponse)
+async def get_week_line_only_props(
+    season: int, week: int, db: AsyncSession = Depends(get_db),
+) -> NflLineOnlyBoardResponse:
+    return await build_week_line_only_props(db, season, week)
 
 
 @router.get("/players/{player_id}", response_model=NflPlayerDetailResponse)

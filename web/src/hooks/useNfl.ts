@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameNotes, fetchNflLineOnlyProps, fetchNflPlayer, fetchNflSlate } from '~/api/nfl'
+import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameNotes, fetchNflLineOnlyProps, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
 import { retryUnlessNotFound } from '~/utils/httpError'
 
 export function useNflSlate(season: number | null, week: number | null) {
@@ -44,6 +44,15 @@ export function useNflLineOnlyProps(gameId: number) {
     queryFn: () => fetchNflLineOnlyProps(gameId),
     staleTime: 5 * 60 * 1000,
     retry: retryUnlessNotFound,
+  })
+}
+
+export function useNflWeekLineOnlyProps(season: number | null, week: number | null) {
+  return useQuery({
+    queryKey: ['nfl', 'line-only', season, week],
+    queryFn: () => fetchNflWeekLineOnlyProps(season as number, week as number),
+    enabled: season !== null && week !== null,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

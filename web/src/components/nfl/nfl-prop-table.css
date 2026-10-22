@@ -39,5 +39,5 @@
 .nfl-line-only-table col.is-also { width: 220px; }
 .nfl-line-only-table col.is-bars { width: 120px; }
 .nfl-line-only-table col.is-over { width: 112px; }
-.nfl-line-only-table__also { color: var(--text-secondary); }
+.nfl-line-only-table td.nfl-line-only-table__also { color: var(--text-secondary); white-space: normal; }
 a.prop-table__open:hover { text-decoration: underline; }

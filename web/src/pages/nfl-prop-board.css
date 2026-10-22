@@ -5,6 +5,10 @@
   gap: var(--space-3);
 }
 
+.nfl-prop-board__other > .prop-table-panel + .prop-table-panel {
+  margin-top: var(--space-4);
+}
+
 .nfl-prop-stat {
   display: flex;
   flex-direction: column;

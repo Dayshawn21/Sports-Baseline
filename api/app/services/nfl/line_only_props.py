@@ -13,8 +13,25 @@ from app.core.nfl_line_only import line_only_value
 from app.nfl.markets import NflLineOnlyMarket
 from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import NflLineOnlyLineSchema, NflLineOnlyPropsResponse, NflLineOnlyRecentSchema
+from app.schemas.nfl import NflLineOnlyBoardGame, NflLineOnlyBoardResponse
 
 _MARKET_ORDER = {market.value: index for index, market in enumerate(NflLineOnlyMarket)}
+
+
+async def build_week_line_only_props(db: AsyncSession, season: int, week: int) -> NflLineOnlyBoardResponse:
+    games = await nfl_repo.get_games(db, season, week)
+    lines = await nfl_repo.get_week_line_only_lines(db, season, week)
+    player_ids = sorted({line["player_id"] for line in lines})
+    recent = await nfl_repo.get_recent_stat_rows(db, player_ids, season, week) if player_ids else []
+    by_game: dict[int, list[dict]] = defaultdict(list)
+    for line in lines:
+        by_game[line["game_id"]].append(line)
+    return NflLineOnlyBoardResponse(
+        season=season, week=week,
+        games=[NflLineOnlyBoardGame(
+            **game, lines=line_only_props(game["game_id"], by_game[game["game_id"]], recent).lines,
+        ) for game in games if game["game_id"] in by_game],
+    )
 
 
 async def build_line_only_props(db: AsyncSession, game_id: int) -> NflLineOnlyPropsResponse | None:

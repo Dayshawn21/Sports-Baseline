@@ -2072,6 +2072,26 @@ async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict]:
     ]
 
 
+async def get_week_line_only_lines(db: AsyncSession, season: int, week: int) -> list[dict]:
+    """Read the week's display-only props together, preserving each game's pre-kickoff cutoff."""
+    rows = await db.execute(text(f"""
+        SELECT DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)
+               l.player_id, p.name, p.position, l.raw_json ->> 'player_team', l.market, l.odds_type,
+               l.line, l.fetched_at, l.game_id
+        FROM sport_prop_lines l
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
+        WHERE l.sport = 'nfl' AND g.season = :season AND g.week = :week AND g.game_type = 'REG'
+          AND l.segment = 'full_game' AND l.fetched_at < g.start_utc AND {LINE_ONLY_MARKET_FILTER}
+        ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+    """), {"season": season, "week": week})
+    return [
+        {"player_id": r[0], "player_name": r[1], "position": r[2], "team": r[3], "market": r[4],
+         "odds_type": r[5], "line": float(r[6]), "fetched_at": r[7], "game_id": r[8]}
+        for r in rows.fetchall()
+    ]
+
+
 async def get_recent_stat_rows(
     db: AsyncSession, player_ids: list[int], season: int, week: int, limit: int = 5,
 ) -> list[dict]:

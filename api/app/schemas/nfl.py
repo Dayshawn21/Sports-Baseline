@@ -67,6 +67,16 @@ class NflLineOnlyPropsResponse(_CamelModel):
     lines: list[NflLineOnlyLineSchema]
 
 
+class NflLineOnlyBoardGame(NflGameSchema):
+    lines: list[NflLineOnlyLineSchema]
+
+
+class NflLineOnlyBoardResponse(_CamelModel):
+    season: int
+    week: int
+    games: list[NflLineOnlyBoardGame]
+
+
 class NflSeasonWeekSchema(_CamelModel):
     season: int
     week: int

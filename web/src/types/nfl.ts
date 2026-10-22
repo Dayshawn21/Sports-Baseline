@@ -1,10 +1,6 @@
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import type { TrackSignal } from '~/types/tennis'
 
-// The slate is the web app's only NFL contract. /nfl/games, /nfl/projections, and
-// /nfl/prospects remain on the API for direct use, but nothing here calls them,
-// so their types live with the endpoints rather than as dead code.
-
 export interface NflSlateLine {
   lineId: number
   playerId: number
@@ -194,6 +190,18 @@ export interface NflLineOnlyLine {
 export interface NflLineOnlyProps {
   gameId: number
   lines: NflLineOnlyLine[]
+}
+
+export type NflPropGame = Pick<NflSlateGame, 'gameId' | 'startUtc' | 'awayTeam' | 'homeTeam'>
+
+export interface NflLineOnlyBoardGame extends NflPropGame {
+  lines: NflLineOnlyLine[]
+}
+
+export interface NflLineOnlyBoard {
+  season: number
+  week: number
+  games: NflLineOnlyBoardGame[]
 }
 
 export interface NflSeasonWeek {
