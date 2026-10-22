@@ -18,6 +18,7 @@ from app.repositories.predictions import StoredPrediction
 from app.services.tennis import predictor
 from app.services.tennis.best_picks import MONEYLINE_PICKS_ENABLED, BestPick, generate_ml_pick
 from app.services.tennis.predictor import PredictionOutput
+from app.services.tennis.match_research import MatchResearch, build_match_research
 
 LIVE_STATUSES = frozenset({"scheduled", "live"})
 
@@ -49,6 +50,7 @@ class MatchDetail:
     prediction_generated_at: Optional[datetime]
     model_version: Optional[str]
     ml_pick: Optional[BestPick]
+    research: MatchResearch | None = None
 
 
 def surface_elo(elo: Optional[PlayerElo], surface: Optional[str]) -> Optional[float]:
@@ -142,6 +144,7 @@ async def build_match_detail(
     player_ids = [match.p1_id, match.p2_id]
     profiles = await player_repo.get_player_profiles(db, player_ids)
     elos = await player_repo.get_latest_elo_batch(db, player_ids)
+    research = await build_match_research(db, match, elos)
     h2h = await match_repo.get_h2h(db, match.p1_id, match.p2_id, None)
     h2h_surface = (
         await match_repo.get_h2h(db, match.p1_id, match.p2_id, match.surface)
@@ -190,6 +193,7 @@ async def build_match_detail(
         prediction_generated_at=stored.generated_at if stored else None,
         model_version=stored.model_version if stored else None,
         ml_pick=generate_ml_pick(prediction) if prediction and MONEYLINE_PICKS_ENABLED else None,
+        research=research,
     )
 
 

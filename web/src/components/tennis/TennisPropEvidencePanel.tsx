@@ -1,10 +1,12 @@
 import { Tag } from 'antd'
+import { Link } from 'react-router-dom'
 import type { CSSProperties, Ref } from 'react'
 import { useMatchRecentForm } from '~/hooks/useMatchRecentForm'
 import type { PlayerFormStats, PlayerRecentForm } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
 import { lineNumber, marketLabel, signalSummary, sourceLabel } from '~/utils/tennisPropBoard'
 import { propCard, recentStatBars } from '~/utils/tennisPropCards'
+import { propMatchPath } from '~/utils/tennisMatchView'
 
 function percent(value: number | null | undefined): string {
   return value == null ? '--' : `${(value * 100).toFixed(1)}%`
@@ -96,7 +98,7 @@ function ContextFacts({ row }: { row: TennisBoardLine }) {
   </div>
 }
 
-export default function TennisPropEvidencePanel({ row, ref }: { row: TennisBoardLine, ref?: Ref<HTMLElement> }) {
+export default function TennisPropEvidencePanel({ row, ref, showMatchLink = true }: { row: TennisBoardLine, ref?: Ref<HTMLElement>, showMatchLink?: boolean }) {
   const flags = row.dataQualityFlags ?? []
   const inputs = Object.entries(row.projectionInputs ?? {})
   const recentForm = useMatchRecentForm(row.matchId)
@@ -105,6 +107,7 @@ export default function TennisPropEvidencePanel({ row, ref }: { row: TennisBoard
       <h2>{row.playerName ?? 'Unknown player'}</h2>
       <p>{marketLabel(row.statType)} · {sourceLabel(row.source)}</p>
       <LineSummary row={row} />
+      {showMatchLink && propMatchPath(row) && <Link to={propMatchPath(row)!} className="tennis-prop-text-action">Open match picks &amp; props</Link>}
     </header>
     <section className="tennis-prop-evidence__reason"><span>Why this signal</span><p>{signalSummary(row)}</p></section>
     <ContextFacts row={row} />

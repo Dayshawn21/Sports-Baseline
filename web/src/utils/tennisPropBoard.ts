@@ -300,8 +300,8 @@ function compareLines(left: TennisBoardLine, right: TennisBoardLine): number {
   return (left.playerName ?? '').localeCompare(right.playerName ?? '') || left.id - right.id
 }
 
-export function enrichTennisPropLines(props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource): TennisBoardLine[] {
-  return props.filter(line => sourceMatches(line, source) && !isGoblin(line)).map(line => {
+export function enrichTennisPropLines(props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, includeAlternates = false): TennisBoardLine[] {
+  return props.filter(line => sourceMatches(line, source) && (includeAlternates || !isGoblin(line))).map(line => {
     const match = findPrediction(line, predictions)
     const opponent = match && normalized(match.p1Name) === normalized(line.playerName)
       ? match.p2Name
@@ -320,10 +320,10 @@ export function enrichTennisPropLines(props: PropLine[], predictions: MatchPredi
 }
 
 export function buildTennisPropBoard(
-  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, tour: TennisTourFilter = 'all',
+  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, tour: TennisTourFilter = 'all', includeAlternates = false,
 ): TennisBoardCategory[] {
   const byMarket = new Map<string, TennisBoardLine[]>()
-  for (const line of enrichTennisPropLines(props, predictions, source).filter(line => tourMatches(line, tour))) {
+  for (const line of enrichTennisPropLines(props, predictions, source, includeAlternates).filter(line => tourMatches(line, tour))) {
     const market = normalized(line.statType)
     byMarket.set(market, [...(byMarket.get(market) ?? []), line])
   }
@@ -332,7 +332,7 @@ export function buildTennisPropBoard(
     .map(([market, lines]) => ({
       market,
       label: marketLabel(market),
-      rateable: lines.filter(isTennisRateable).sort(compareLines),
-      other: lines.filter(line => !isTennisRateable(line)).sort(compareLines),
+      rateable: lines.filter(line => !isGoblin(line) && isTennisRateable(line)).sort(compareLines),
+      other: lines.filter(line => isGoblin(line) || !isTennisRateable(line)).sort(compareLines),
     }))
 }

@@ -7,6 +7,10 @@ import { fmtAmerican } from '~/utils/odds'
 
 type Pair = [number, number]
 
+export function matchAnalysisPath(match: UnifiedTennisMatch): string | null {
+  return match.matchId == null ? null : `/tennis/match/${match.matchId}`
+}
+
 export interface SlateRow {
   key: string
   match: UnifiedTennisMatch
@@ -150,6 +154,7 @@ export function tableGroups(rows: SlateRow[], grouped: boolean): TournamentGroup
 /** One box of the tennis digest; display strings only. The EV is a priced best bet's, so the box shows it green. */
 export interface TennisDigestItem {
   matchKey: string
+  analysisPath: string | null
   pick: string
   what: string
   when: string
@@ -167,6 +172,7 @@ export function tennisDigest(featured: FeaturedPick[], now: number = Date.now())
     const start = fmtStartCT(prediction?.startUtc, now) || 'Time TBA'
     return {
       matchKey: match.key,
+      analysisPath: matchAnalysisPath(match),
       pick: pick.pick,
       what: prediction ? `${pick.label} · ${prediction.p1Name} vs ${prediction.p2Name}` : pick.label,
       when: `${fmtTournament(prediction?.tournament ?? null)} · ${start}`,

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Tabs } from 'antd'
 import { Link, useParams } from 'react-router-dom'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
@@ -9,10 +10,16 @@ import MatchHero from '~/components/tennis/match/MatchHero'
 import MatchOddsChart from '~/components/tennis/match/MatchOddsChart'
 import MatchRecentForm from '~/components/tennis/match/MatchRecentForm'
 import MatchSidebar from '~/components/tennis/match/MatchSidebar'
+import MatchPropsPanel from '~/components/tennis/match/MatchPropsPanel'
+import MatchSurfaceContext from '~/components/tennis/match/MatchSurfaceContext'
+import MatchWorkloadContext from '~/components/tennis/match/MatchWorkloadContext'
+import MatchFreshness from '~/components/tennis/match/MatchFreshness'
 import { useMatchDetail } from '~/hooks/useMatchDetail'
+import { useMatchView } from '~/hooks/useMatchView'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import { isNotFound } from '~/utils/httpError'
 import { parseMatchId } from '~/utils/tennisMatch'
+import type { MatchDetail } from '~/types/tennis'
 import './tennis-match.css'
 
 function BackLink() {
@@ -35,6 +42,27 @@ function NotFound() {
   </div></MatchPageState>
 }
 
+function MatchSections({ detail: data }: { detail: MatchDetail }) {
+  const { view, setView } = useMatchView(data)
+  return <Tabs key={data.matchId} className="tennis-match-tabs" activeKey={view.tab}
+    onChange={tab => setView({ tab: tab === 'props' ? 'props' : 'analysis' })} destroyOnHidden
+    aria-label="Match sections" animated={false} items={[
+      { key: 'analysis', label: 'Analysis', children: <div className="tennis-match-layout">
+        <section className="tennis-match-main">
+          <MatchHero detail={data} />
+          <MatchComponents detail={data} />
+          <MatchSurfaceContext detail={data} />
+          <MatchWorkloadContext detail={data} />
+          <MatchFreshness detail={data} />
+          <MatchOddsChart detail={data} />
+          <MatchRecentForm detail={data} />
+        </section>
+        <MatchSidebar detail={data} onOpenProps={() => setView({ tab: 'props' })} />
+      </div> },
+      { key: 'props', label: 'Picks & Props', children: <MatchPropsPanel detail={data} /> },
+    ]} />
+}
+
 export default function TennisMatchPage() {
   const matchId = parseMatchId(useParams().matchId)
   const detail = useMatchDetail(matchId)
@@ -49,15 +77,7 @@ export default function TennisMatchPage() {
     <div className="page-shell tennis-match"><div className="page-container is-wide">
       <BackLink />
       <MatchHeader detail={data} />
-      <div className="tennis-match-layout">
-        <section className="tennis-match-main">
-          <MatchHero detail={data} />
-          <MatchComponents detail={data} />
-          <MatchOddsChart detail={data} />
-          <MatchRecentForm detail={data} />
-        </section>
-        <MatchSidebar detail={data} />
-      </div>
+      <MatchSections key={data.matchId} detail={data} />
     </div></div>
   )
 }

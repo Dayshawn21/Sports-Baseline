@@ -101,6 +101,10 @@ def repos(monkeypatch):
     async def get_meetings(_db, _p1, _p2, _before):
         return [MatchMeeting(date(2026, 2, 18), "Doha", "R16", "Hard", "6-2 6-1", "p1")]
 
+    async def build_match_research(_db, _match, _elos):
+        return None
+
+    monkeypatch.setattr(match_detail, "build_match_research", build_match_research)
     monkeypatch.setattr(match_detail.match_repo, "get_meetings", get_meetings)
     monkeypatch.setattr(match_detail.prediction_repo, "get_prestart_prediction", get_prestart_prediction)
     monkeypatch.setattr(match_detail.match_repo, "get_match", get_match)

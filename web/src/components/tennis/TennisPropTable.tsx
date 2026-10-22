@@ -1,8 +1,10 @@
 import { Tooltip } from 'antd'
+import { Link } from 'react-router-dom'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard, type TennisPropCardModel } from '~/utils/tennisPropCards'
 import { tourTone } from '~/utils/tennisSlate'
+import { propMatchPath } from '~/utils/tennisMatchView'
 import '~/components/shared/prop-table.css'
 import '~/components/tennis/tennis-slate.css'
 import './tennis-prop-table.css'
@@ -14,11 +16,12 @@ export interface TennisPropTableRow {
   rank: number | null
 }
 
-function Player({ card, selected, onOpen }: { card: TennisPropCardModel, selected: boolean, onOpen: () => void }) {
+function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardModel, selected: boolean, onOpen: () => void, matchPath: string | null }) {
   const tone = tourTone(card.tour, card.tour)
   return <>
     <span className="prop-table__player-name">
-      <button type="button" className="prop-table__open" aria-pressed={selected} aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}`} onClick={onOpen}>{card.playerName}</button>
+      {matchPath ? <Link className="prop-table__open" to={matchPath} aria-label={`Open picks and props for ${card.playerName}`}>{card.playerName}</Link>
+        : <button type="button" className="prop-table__open" aria-pressed={selected} aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}`} onClick={onOpen}>{card.playerName}</button>}
       {tone && <span className={`tennis-tour-tag is-${tone}`}>{card.tour}</span>}
     </span>
     <small title={card.meta}>{card.meta || 'Match unavailable'}</small>
@@ -58,13 +61,13 @@ function Trust({ card }: { card: TennisPropCardModel }) {
   </>
 }
 
-function PropRow({ item: { row, rank }, selected, onOpen }: { item: TennisPropTableRow, selected: boolean, onOpen: (row: TennisBoardLine) => void }) {
+function PropRow({ item: { row, rank }, selected, onOpen, showMatchLinks }: { item: TennisPropTableRow, selected: boolean, onOpen: (row: TennisBoardLine) => void, showMatchLinks: boolean }) {
   const card = propCard(row)
   const classes = ['is-row', selected && 'is-selected', rank === null && 'is-dim'].filter(Boolean).join(' ')
-  const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button'))) onOpen(row) }
+  const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button, a'))) onOpen(row) }
   return <tr className={classes} onClick={open}>
     <td className="prop-table__lead prop-table__rank">{rank === null ? '--' : `#${rank}`}</td>
-    <td className="prop-table__player"><Player card={card} selected={selected} onOpen={() => onOpen(row)} /></td>
+    <td className="prop-table__player"><Player card={card} selected={selected} onOpen={() => onOpen(row)} matchPath={showMatchLinks ? propMatchPath(row) : null} /></td>
     <td className="tennis-prop-table__line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionText}</td>
     <td className="tennis-prop-table__hit" data-label="hit"><HitAgainstBreakEven card={card} /></td>
@@ -81,6 +84,8 @@ const COLUMNS: Array<[string, ReactNode]> = [
 const NUMERIC = new Set(['model', 'ev'])
 
 interface Props {
+  showMatchLinks?: boolean
+  tableId?: string
   category: TennisBoardCategory
   rateable: TennisPropTableRow[]
   other: TennisPropTableRow[]
@@ -89,9 +94,9 @@ interface Props {
 }
 
 /** One market's tennis lines in the board's existing rank order. */
-export function TennisPropTable({ category, rateable, other, selectedId, onOpen }: Props) {
-  const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} selected={item.row.id === selectedId} onOpen={onOpen} />
-  return <table id="tennis-prop-lines" className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
+export function TennisPropTable({ category, rateable, other, selectedId, onOpen, tableId = 'tennis-prop-lines', showMatchLinks = true }: Props) {
+  const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} selected={item.row.id === selectedId} onOpen={onOpen} showMatchLinks={showMatchLinks} />
+  return <table id={tableId} className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>

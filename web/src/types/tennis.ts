@@ -167,7 +167,54 @@ export interface MatchMeeting {
 }
 
 /** Load-bearing (32a): the player page links from it; later match-level features extend it. */
+export interface MatchResearchStats {
+  surface: string | null
+  matchesCount: number | null
+  computedAt: string | null
+  winRate: number | null
+  holdPct: number | null
+  returnPointsWon: number | null
+  breakConversionPct: number | null
+  firstInPct: number | null
+  firstServeWon: number | null
+  secondServeWon: number | null
+  firstReturnWon: number | null
+  secondReturnWon: number | null
+  thinSample: boolean
+  statPeriod: string
+  source: string
+  snapshotBasis: string
+}
+
+export interface MatchWorkload {
+  windowStart: string
+  windowEndExclusive: string
+  previousMatchDate: string | null
+  calendarDaysSinceMatch: number | null
+  matchesPlayed: number
+  completedSets: number
+  matchesWithCompleteScores: number
+  minutesPlayed: number | null
+  dateBasis: string
+  historyLookbackDays: number
+  source: string
+}
+
+export interface MatchResearch {
+  players: Array<{
+    playerId: number
+    eloAsOfDate: string | null
+    surfaceStats: MatchResearchStats | null
+    overallStats: MatchResearchStats | null
+    workload: MatchWorkload
+  }>
+  odds: Array<{ book: string; fetchedAt: string }>
+  oddsCutoff: string
+  eloSource: string
+}
+
 export interface MatchDetail {
+  research?: MatchResearch | null
   matchId: number
   status: string
   startUtc: string | null

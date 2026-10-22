@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, revealTab, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, matchAnalysisPath, revealTab, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -81,6 +81,20 @@ function match(over: Partial<UnifiedTennisMatch> = {}): UnifiedTennisMatch {
     ...over,
   }
 }
+
+describe('matchAnalysisPath', () => {
+  it('uses the canonical ID for matches and linked props without predictions', () => {
+    expect(matchAnalysisPath(match({ matchId: 91823 }))).toBe('/tennis/match/91823')
+    expect(matchAnalysisPath(match({ matchId: 91823, prediction: null }))).toBe('/tennis/match/91823')
+    expect(tennisDigest([{ match: match({ matchId: 91823 }), pick: bestBet() }])[0].analysisPath)
+      .toBe('/tennis/match/91823')
+  })
+
+  it('keeps unlinked props inline even when their key resembles a match ID', () => {
+    expect(matchAnalysisPath(match({ matchId: null, key: 'm-91823', prediction: null }))).toBeNull()
+    expect(tennisDigest([{ match: match({ matchId: null }), pick: bestBet() }])[0].analysisPath).toBeNull()
+  })
+})
 
 describe('slateRow', () => {
   it('carries both players, each probability pair, the odds, and a best bet', () => {
@@ -264,6 +278,7 @@ describe('tennisDigest', () => {
     const [item] = tennisDigest(featuredPicks([match({ bestPicks: [bestBet()] })], 4), NOW)
     expect(item).toEqual({
       matchKey: 'm1',
+      analysisPath: '/tennis/match/1',
       pick: 'Mensik ML (+128)',
       what: 'Moneyline · Jakub Mensik vs Ben Shelton',
       when: 'Tokyo · 5:30 AM CT',
