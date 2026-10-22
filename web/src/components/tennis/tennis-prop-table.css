@@ -1,4 +1,5 @@
 /* Tennis prop rows (38d2). Recommendation and EV colors preserve the card rules. */
+.tennis-prop-table a.prop-table__open:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
 .tennis-prop-table col.is-rank { width: 48px; }
 .tennis-prop-table col.is-player { width: auto; }
 .tennis-prop-table col.is-line { width: 180px; }

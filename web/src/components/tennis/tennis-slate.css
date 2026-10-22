@@ -172,7 +172,7 @@
   background: var(--bg-raised);
 }
 
-/* The Match cell's names are the row's toggle: a plain-looking button, so the row stays keyboard reachable. */
+/* Match links and unlinked-prop toggles share the same appearance. */
 .tennis-slate-table__toggle {
   display: block;
   padding: 0;
@@ -181,8 +181,13 @@
   color: inherit;
   font: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
+
+a.tennis-slate-table__toggle:hover { color: inherit; }
+.tennis-slate-table__pick a { color: inherit; text-underline-offset: 3px; }
+.tennis-slate-table__pick a:hover { text-decoration: underline; }
 
 .tennis-slate-table__toggle:focus-visible {
   border-radius: 4px;

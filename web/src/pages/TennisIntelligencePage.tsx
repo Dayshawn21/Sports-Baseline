@@ -149,7 +149,7 @@ export default function TennisIntelligencePage() {
     setExpandedKey((open) => (open === matchKey ? null : matchKey))
   }
 
-  // A digest pick opens its row (never closes it), then brings the row to the reader once it renders.
+  // Only unlinked props need the digest's inline-detail fallback.
   function openFromDigest(matchKey: string) {
     setTourTab(revealTab(rows, matchKey, tourTab))
     setExpandedKey(matchKey)

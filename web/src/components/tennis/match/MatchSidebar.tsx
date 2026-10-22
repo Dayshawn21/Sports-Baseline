@@ -1,14 +1,10 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import type { MatchDetail, PlayerFormStats } from '~/types/tennis'
 import { useMatchOddsHistory } from '~/hooks/useMatchOddsHistory'
 import { useMatchRecentForm } from '~/hooks/useMatchRecentForm'
-import { usePrizePicksProps } from '~/hooks/useProps'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
 import { fmtSurface } from '~/utils/format'
 import { bookLabel, latestPerBook } from '~/utils/matchOdds'
-import { fmtMatchDateYear, isFinished, matchProps, meetingsNote } from '~/utils/tennisMatch'
-import { marketLabel } from '~/utils/tennisPropBoard'
+import { fmtMatchDateYear, isFinished, meetingsNote } from '~/utils/tennisMatch'
 
 function lastName(name: string): string {
   return name.split(/\s+/).filter(Boolean).pop() ?? name
@@ -115,7 +111,7 @@ function ServeCard({ detail }: { detail: MatchDetail }) {
   }
   return (
     <div className="tennis-match-card tennis-match-aside">
-      <h3>Serve and return · 52 weeks</h3>
+      <h3>All-surface rates · 52 weeks</h3>
       {!p1 && !p2 ? <p className="tennis-match-aside__empty">No rolling serve or return stats for either player.</p> : (
         <>
           <div className="tennis-match-kv is-head"><span /><span>{lastName(detail.p1.name)} · {lastName(detail.p2.name)}</span></div>
@@ -128,47 +124,13 @@ function ServeCard({ detail }: { detail: MatchDetail }) {
   )
 }
 
-const PROPS_SHOWN = 8
-
-function PropsCard({ detail }: { detail: MatchDetail }) {
-  const props = usePrizePicksProps()
-  const [expanded, setExpanded] = useState(false)
-  const all = matchProps(props.data?.props ?? [], detail.matchId)
-  const lines = expanded ? all : all.slice(0, PROPS_SHOWN)
-  return (
-    <div className="tennis-match-card tennis-match-aside">
-      <h3>Props on this match</h3>
-      {props.isLoading ? <p className="tennis-match-aside__empty">Loading props...</p>
-        : lines.length === 0 ? <p className="tennis-match-aside__empty">No PrizePicks lines are linked to this match.</p> : (
-          <div className="tennis-match-props">
-            {lines.map((p) => (
-              <Link key={p.id} to="/tennis/board">
-                <span><b>{lastName(p.playerName ?? '')}</b> {marketLabel(p.statType)}</span>
-                <span className="tennis-match-props__right">
-                  <span className="tennis-match-props__line">{p.line ?? '—'}</span>
-                  {p.oddsType && p.oddsType !== 'standard' && <span className={`tennis-match-props__type is-${p.oddsType}`}>{p.oddsType}</span>}
-                  {p.confidence && <span className={`tennis-tier is-${p.confidence.toLowerCase()}`}>{p.recommendation ? `${p.recommendation} · ` : ''}{p.confidence}</span>}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      {all.length > PROPS_SHOWN && (
-        <button type="button" className="tennis-match-aside__more" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Show fewer' : `Show all ${all.length} lines`}
-        </button>
-      )}
-    </div>
-  )
-}
-
-export default function MatchSidebar({ detail }: { detail: MatchDetail }) {
+export default function MatchSidebar({ detail, onOpenProps }: { detail: MatchDetail; onOpenProps: () => void }) {
   return (
     <aside className="tennis-match-sidebar" aria-label="Match context">
       <H2HCard detail={detail} />
       <BooksCard detail={detail} />
       <ServeCard detail={detail} />
-      <PropsCard detail={detail} />
+      <button type="button" className="tennis-match-props-link" onClick={onOpenProps}>View picks &amp; all prop lines</button>
     </aside>
   )
 }

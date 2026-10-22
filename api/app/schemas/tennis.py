@@ -148,6 +148,59 @@ class MatchMeetingSchema(_CamelModel):
     winner_side: Optional[str]
 
 
+class MatchResearchStats(_CamelModel):
+    surface: str | None
+    matches_count: int | None
+    computed_at: datetime | None
+    win_rate: float | None
+    hold_pct: float | None
+    return_points_won: float | None
+    break_conversion_pct: float | None
+    first_in_pct: float | None
+    first_serve_won: float | None
+    second_serve_won: float | None
+    first_return_won: float | None
+    second_return_won: float | None
+    thin_sample: bool
+    stat_period: str
+    source: str
+    snapshot_basis: str
+
+
+class MatchWorkload(_CamelModel):
+    window_start: date
+    window_end_exclusive: date
+    previous_match_date: date | None
+    calendar_days_since_match: int | None
+    matches_played: int
+    completed_sets: int
+    matches_with_complete_scores: int
+    minutes_played: int | None
+    date_basis: str
+    history_lookback_days: int
+    source: str
+
+
+class MatchPlayerResearch(_CamelModel):
+    player_id: int
+    elo_as_of_date: date | None
+    surface_stats: MatchResearchStats | None
+    overall_stats: MatchResearchStats | None
+    workload: MatchWorkload
+
+
+class MatchBookFreshness(_CamelModel):
+    book: str
+    fetched_at: datetime
+
+
+class MatchResearchSchema(_CamelModel):
+    players: list[MatchPlayerResearch]
+    odds: list[MatchBookFreshness]
+    odds_cutoff: str
+    elo_source: str
+
+
 class MatchDetailResponse(_CamelModel):
     """Load-bearing (32a): the player page links from it, and later match-level
     features extend it rather than adding another endpoint."""
@@ -172,6 +225,7 @@ class MatchDetailResponse(_CamelModel):
     prediction_generated_at: Optional[datetime]
     model_version: Optional[str]
     ml_pick: Optional[BestPickSchema]
+    research: MatchResearchSchema | None = None
 
 
 class MatchOddsRow(_CamelModel):

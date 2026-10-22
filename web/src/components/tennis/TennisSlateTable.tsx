@@ -1,10 +1,12 @@
 import { Fragment } from 'react'
 import type { MouseEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import TennisMatchDetail from '~/components/tennis/TennisMatchDetail'
 import type { SlateRow, TourTab } from '~/utils/tennisSlate'
-import { TOUR_TABS, filterByTourTab, fmtEv, tableGroups } from '~/utils/tennisSlate'
+import { TOUR_TABS, filterByTourTab, fmtEv, matchAnalysisPath, tableGroups } from '~/utils/tennisSlate'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
 import { fmtStartCT, fmtTournament } from '~/utils/format'
+import { propMatchPath } from '~/utils/tennisMatchView'
 
 interface Props {
   rows: SlateRow[]
@@ -66,20 +68,31 @@ function detailId(key: string): string {
 }
 
 function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row: SlateRow; open: boolean; showTournament: boolean; showFlags: boolean; onToggle: () => void }) {
+  const navigate = useNavigate()
+  const analysisPath = matchAnalysisPath(row.match)
+  const propPath = row.primaryProp ? propMatchPath(row.primaryProp) : null
   const pct = (value: number | null) => fmtPct(value)
   const matchup = row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0]
-  // The toggle button is the keyboard path; a click elsewhere on the row toggles too, but a
-  // button or link keeps its own click, and a modified click is left to the browser.
+  // Links keep native keyboard and modified-click behavior.
   function onRowClick(event: MouseEvent<HTMLTableRowElement>) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
     if ((event.target as HTMLElement).closest('a, button')) return
-    onToggle()
+    if (analysisPath) navigate(analysisPath)
+    else onToggle()
   }
   return (
     <tr className={`tennis-slate-table__row${open ? ' is-open' : ''}`} onClick={onRowClick}>
       <StartCell startUtc={row.startUtc} />
       <td className="tennis-slate-table__players">
-        <button
+        {analysisPath ? <Link
+          to={analysisPath}
+          className="tennis-slate-table__toggle"
+          data-match-key={row.key}
+          aria-label={`${matchup}, open match analysis`}
+        >
+          <span>{row.players[0]}</span>
+          <span>{row.players[1] ?? ''}</span>
+        </Link> : <button
           type="button"
           className="tennis-slate-table__toggle"
           data-match-key={row.key}
@@ -90,14 +103,15 @@ function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row
         >
           <span>{row.players[0]}</span>
           <span>{row.players[1] ?? ''}</span>
-        </button>
+        </button>}
         {showTournament && <small>{fmtTournament(row.tournament)}</small>}
       </td>
       <PairCell pair={row.elo} format={pct} extra />
       <PairCell pair={row.ml} format={pct} extra />
       <PairCell pair={row.market} format={pct} />
       <PairCell pair={row.model} format={pct} />
-      <td className="tennis-slate-table__pick"><span>{bestPickText(row)}</span></td>
+      <td className="tennis-slate-table__pick"><span>{!row.primaryPick && propPath
+        ? <Link to={propPath}>{bestPickText(row)}</Link> : bestPickText(row)}</span></td>
       <td className={`tennis-slate-table__ev${row.primaryIsBestBet ? ' is-play' : ''}`}>{fmtEv(row.primaryPick ? row.primaryPick.evPct : row.primaryProp?.evPct)}</td>
       <PairCell pair={row.odds} format={(value) => fmtAmerican(value)} extra />
       {showFlags && <FlagsCell flags={row.flags} />}
@@ -127,7 +141,7 @@ function DetailRow({ row, columns, showFlags }: { row: SlateRow; columns: number
   )
 }
 
-/** The day's matches grouped by tournament, in the page's sort order; one row's detail opens inline. */
+/** Canonical matches link to analysis; unlinked props keep their inline detail. */
 export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
   const groups = tableGroups(searchAllTabs ? rows : filterByTourTab(rows, tab), grouped)
   const columns = showFlags ? 10 : 9
@@ -152,7 +166,7 @@ export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle,
               <tbody key={group.tournament ?? 'ranked'}>
                 {group.tournament != null && <tr className="tennis-slate-table__group"><td colSpan={columns}>{fmtTournament(group.tournament)}</td></tr>}
                 {group.rows.map((row) => {
-                  const open = row.key === expandedKey
+                  const open = matchAnalysisPath(row.match) == null && row.key === expandedKey
                   return (
                     <Fragment key={row.key}>
                       <SlateTableRow row={row} open={open} showTournament={!grouped} showFlags={showFlags} onToggle={() => onToggle(row.key)} />

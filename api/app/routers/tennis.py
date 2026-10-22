@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import asdict
 from datetime import date, timedelta
 from typing import Literal, Optional
 
@@ -17,6 +18,7 @@ from app.schemas.tennis import (
     BestPicksResponse,
     MatchBestPicksSchema,
     MatchDetailResponse,
+    MatchResearchSchema,
     MatchH2H,
     MatchMeetingSchema,
     MatchOddsHistoryResponse,
@@ -292,6 +294,7 @@ def _match_detail_schema(d: MatchDetail) -> MatchDetailResponse:
         prediction_generated_at=d.prediction_generated_at,
         model_version=d.model_version,
         ml_pick=_pick_schema(d.ml_pick) if d.ml_pick else None,
+        research=MatchResearchSchema(**asdict(d.research)) if d.research else None,
     )
 
 
