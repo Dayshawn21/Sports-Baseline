@@ -38,27 +38,32 @@
 > forward verdict accruing from 2026-10-22 with zero observations; serving
 > it (41c) stays conditional. First runner acceptance and deployment
 > remain unverified for both. NFL matchup and usage context (43) is complete
-> and merged, display only, with aDOT unavailable. Next is item 44: a second
-> NBA over-probability method for the eight markets 20g1 hid, chosen on
-> 2024-25 and confirmed once on a fresh 2026-27 sample.
+> and merged, display only, with aDOT unavailable. Item 44 adds a second
+> NBA over-probability method for the eight markets 20g1 hid: 44a chose a
+> family for six of them on 2024-25 alone (complete 2026-10-23), and 44b
+> confirms them once on a fresh 2026-27 sample. Two of NFL's four 27j
+> ranking slices (standard under, demon over) are now rejected; 27h stays
+> blocked on the other two.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-23 from both planning docs after the approved
-item 44 addition (44a-44c), retaining existing overview content and
-completed-work validation/deployment boundaries. The build plan is the
-progress authority where older project-plan prose disagrees. There are 121
-checked leaf items out of 131, including the explicitly dropped 40b; 10
-remain unchecked. Feature 43 is complete per its archive. The owner chose
+**Regenerated:** 2026-10-23 (second refresh) from both planning docs after
+44a's completion, retaining existing overview content and completed-work
+validation/deployment boundaries. The build plan is the progress authority
+where older project-plan prose disagrees. There are 122 checked leaf items
+out of 131, including the explicitly dropped 40b; 9 remain unchecked. Feature 43 is complete per its archive. The owner chose
 item 44 ahead of WNBA (and a possible NHL addition), with a fresh 2026-27
 confirmation sample instead of a third 2025-26 holdout read.
-`current-feature.md` is the stub until 44a is specified. A read-only check
+`current-feature.md` is the stub; 44b is next but cannot score before the
+first four 2026-27 weeks are played (about 2026-11-17). A read-only check
 on 2026-10-23 found the hosted NBA board, injuries and team stats live and
 every ingest workflow, including the six tennis files, running green; the
 secret scan was red from 2026-10-17 until fix `f731dec`. This refresh read
-no holdout or experiment verdict.
+no holdout. It records the 27j verdicts the live `/nfl/model/ranking`
+served on 2026-10-23 (graded 15:50 UTC, last settled week 6); it decides
+nothing new.
 
 ## Problem
 
@@ -145,28 +150,27 @@ Checked items record completed work, including explicitly retired surfaces.
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
-| 44 | NBA over probability, second method | Planned; 44a next |
+| 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-10 leaf items remain, with these gates:
+9 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
 | 16f | Tennis set-handicap projection | Parked until regular, correctly identified provider lines exist |
 | 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
-| 27h | NFL probability-based ranking | Requires an `adopt` verdict for the specific 27j slice; no verdict read here |
-| 44a | NBA P(over) method, 2024-25 selection | Next; backtest only; candidates and the confirmation rule pre-registered before fitting |
-| 44b | 2026-27 confirmation | After the first 4 whole 2026-27 regular-season weeks are fully played; one scoring run |
+| 27h | NFL probability-based ranking | Requires an `adopt` verdict for a 27j slice. Standard under and demon over are rejected (final for v4); standard over (128 of 200 picks) and goblin over (10 of 200) are accruing |
+| 44b | 2026-27 confirmation | Next. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Run `/feature 44a` next. Rec Targets reporting now
+Run `/feature 44b` to spec the confirmation (it can be written now). Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
@@ -183,6 +187,17 @@ four combos). Item 44 adds a sport-neutral P(over/under/push) method in
 with a per-market distribution (discrete count model or fitted-variance
 normal) chosen on 2024-25 alone in a pre-registered order.
 
+- **44a result (complete 2026-10-23; archive
+  `blueprint/history/features/44a-nba-pover-method.md`):** rules
+  pre-registered in `ebd4aea` before any fit; cross-fitted on 2024-25 by
+  ISO-week parity (2025-26 and 2026-27 rows read: 0). Selected:
+  `scaled_normal` (variance `a + b * projection`) for points and all four
+  combos, `negbin` for rebounds; threes (worst bin 0.052) and blocks not
+  carried. Frozen in the generated, hook-protected
+  `app/core/nba_over_probability_v2_fit.py`; shared math in
+  `app/core/count_over_probability.py` (sport-neutral). The `scaled_normal`
+  Brier margins over the constant-sigma normal are thin (0.0003 to 0.0011).
+  Merged fast-forward so `ebd4aea` stays on `master`. Backtest only.
 - **Evidence (option A, decided 2026-10-23):** 2025-26 has been read twice
   (20f, 20g1), so confirmation uses a fresh 2026-27 sample, the first 4
   whole regular-season weeks, scored once under 20g1's display rule
@@ -554,9 +569,9 @@ did no better.
 27f. **PrizePicks fantasy scoring** *(shipped; settlement only, projection not adopted)* - scoring components stored per player-game (`0036`) and `prizepicks_fantasy_points` computed at ingest by `app/core/nfl_fantasy.py` (-1 per interception and lost fumble, +6 per fumble-recovery TD, unlike PPR). Fantasy lines settle on it in 27a, 27b and 27g. Projecting from it was rejected (+0.20% MAE, about 2 SE worse): it exposed an existing QB OVER lean.
 27g. **Over probability** *(shipped; display only, 2 of 8 markets shown)* - per market and position, an empirical distribution of actual / projection (41 quantiles) turns a projection into P(over line) (`app/core/nfl_over_probability.py`). Fitted on the 2025 replay, cross-fitted by week parity, and gated by a pre-registered display rule (300 cases, ECE <= 0.02, no bin of 200+ pairs off by more than 0.05, Brier no worse than a normal). **Receiving and rushing yards show; passing, receptions, rushing attempts and fantasy are hidden.** At a line equal to the projection, receiving yards go over only 38%. Frozen tables live in the generated `app/core/nfl_over_probability_fit.py` (`python -m app.backtest.nfl_over_probability_fit --write`).
 27i. **Frozen line predictions** *(shipped)* - after each `nfl-prop-lines.yml` snapshot, `python -m app.ingest.nfl_prop_predictions` writes what the slate served for every line not yet kicked off into `sport_prop_predictions`. It also fixes the ranking rule (`app/core/prop_ranking_rule.py` since 17c, formerly `nfl_ranking_rule.py`) before any frozen week existed. 2026 week 3 was the first frozen week (9,163 rows).
-27j. **Forward ranking check** *(shipped; all four slices accruing)* - `python -m app.backtest.nfl_ranking_check`, also on the Tuesday `nfl-ingest.yml` Summary page. Grades each provider prop's **latest frozen pre-kickoff row at the line it was frozen on** (`app/core/prop_ranking_check.py` since 17c), applies 27i's rule unchanged, and prints per-week frozen coverage and the pick funnel. First settled week: 3, after the 2026-09-29 stats load.
+27j. **Forward ranking check** *(shipped; standard under and demon over rejected, standard over and goblin over accruing, as of week 6 2026)* - `python -m app.backtest.nfl_ranking_check`, also on the Tuesday `nfl-ingest.yml` Summary page. Grades each provider prop's **latest frozen pre-kickoff row at the line it was frozen on** (`app/core/prop_ranking_check.py` since 17c), applies 27i's rule unchanged, and prints per-week frozen coverage and the pick funnel. First settled week: 3, after the 2026-09-29 stats load.
 27k. **Wind for passing props** *(shipped; not adopted)* - a wind slope above 10 mph for the three passing markets, fitted on 2024 (`python -m app.backtest.nfl_wind_fit`, `app/core/nfl_wind.py`) and scored through the 27b `wind` arm. Only passing yards kept a slope (-0.245 per 10 mph, 3.1 SE); on 2025 it improved MAE 0.73% at 1.5 SE and was **rejected**, as were attempts and completions. Windy games alone improved 5.2%, but only 15% of QB-games are windy. The seventh use of the 2025 holdout. Weather is now rejected for totals, spreads, anytime TD and passing props.
-27h. **Adopt in ranking** - rank lines by P(over) against each payout's break-even, only for the slices whose 27j verdict reads `adopt`. **Blocked** until one does (every slice is accruing), and dropped if all four reject. Spec it only then (decided 2026-09-26).
+27h. **Adopt in ranking** - rank lines by P(over) against each payout's break-even, only for the slices whose 27j verdict reads `adopt`. **Blocked** until one does, and dropped if all four reject. As of 2026-10-23, standard under (53.7% +/- 2.4 on 419 picks against 57.7%) and demon over (39.4% +/- 2.9 on 289 against 41.3%) are rejected, final for `opponent-dvp-tg-blend-usage-snap-v4` and `nfl-pover-v1`; standard over (128 of 200) and goblin over (10 of 200) remain. Spec it only then (decided 2026-09-26).
 
 **NFL prop projection model today** (`opponent-dvp-tg-blend-usage-snap-v4`):
 - **Baseline:** the season chooser (4-game switch), except the three passing
