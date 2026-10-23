@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
@@ -14,7 +14,7 @@ from app.schemas.nba import (
 from app.services.nba import track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
-from app.services.nba.prop_board import build_prop_board
+from app.services.nba.prop_board_cache import cached_prop_board_json
 from app.services.nba.props import build_props
 from app.services.nba.slate import build_slate
 from app.services.nba.slate_gaps import build_slate_gaps
@@ -36,8 +36,11 @@ async def get_slate_gaps(date: dt.date, db: AsyncSession = Depends(get_db)) -> N
 
 
 @router.get("/props", response_model=NbaPropBoardResponse)
-async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NbaPropBoardResponse:
-    return await build_prop_board(db, date, dt.datetime.now(EASTERN).date())
+async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> Response:
+    body = await cached_prop_board_json(db, date, dt.datetime.now(EASTERN).date())
+    if body is None:
+        raise HTTPException(status_code=503, detail="The NBA prop board is unavailable; try again shortly")
+    return Response(content=body, media_type="application/json")
 
 
 @router.get("/games/{game_id}", response_model=NbaGameDetailResponse)

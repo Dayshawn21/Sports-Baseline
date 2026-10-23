@@ -8,7 +8,8 @@ from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 
 from app.schemas.nfl import NflSlateResponse
-from app.services.nfl.slate_cache import SerialBuildCache, slate_json
+from app.services.nfl.slate_cache import slate_json
+from app.services.serial_build_cache import SerialBuildCache
 from tests.test_nfl_prop_predictions import NOW, _game, _line, _slate
 
 TTL = 900
