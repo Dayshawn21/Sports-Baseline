@@ -10,6 +10,7 @@ const root = projectRoot(payload);
 const GENERATED_FITS = new Set([
   "api/app/core/nfl_over_probability_fit.py",
   "api/app/core/nba_over_probability_fit.py",
+  "api/app/core/nba_over_probability_v2_fit.py",
   "api/app/core/tennis_market_blend_fit.py",
 ]);
 
