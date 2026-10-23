@@ -1,13 +1,16 @@
 """NHL persistence on shared sport tables and NHL-only box-score tables."""
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Literal, TypeVar
 
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nhl_odds import NhlGameMarket
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
 
 CHUNK_SIZE = 1000
@@ -169,3 +172,56 @@ async def get_player_candidates(db: AsyncSession) -> list[tuple[int, str, str | 
         WHERE p.sport = 'nhl'
     """))
     return [(row[0], row[1], row[2], row[3]) for row in rows.fetchall()]
+
+
+async def get_upcoming_games(
+    db: AsyncSession, days_ahead: int = 2, *, now: datetime | None = None,
+) -> list[dict[str, object]]:
+    """Scheduled NHL REG/PST games in a rolling, aware UTC odds window."""
+    reference = now if now is not None else datetime.now(timezone.utc)
+    if reference.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+    if isinstance(days_ahead, bool) or not isinstance(days_ahead, int) or not 1 <= days_ahead <= 14:
+        raise ValueError("days_ahead must be an integer from 1 to 14")
+    reference = reference.astimezone(timezone.utc)
+    rows = await db.execute(text("""
+        SELECT g.id AS game_id, g.start_utc,
+               home.team_code AS home_team, away.team_code AS away_team
+        FROM sport_games g
+        JOIN sport_teams home ON home.sport = 'nhl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nhl' AND away.id = g.away_team_id
+        WHERE g.sport = 'nhl' AND g.game_type IN ('REG', 'PST')
+          AND g.status = 'scheduled'
+          AND g.start_utc > :now AND g.start_utc <= :until
+        ORDER BY g.start_utc, g.id
+    """), {"now": reference, "until": reference + timedelta(days=days_ahead)})
+    return [dict(row) for row in rows.mappings()]
+
+
+async def insert_game_odds_snapshot(
+    db: AsyncSession, game_id: int, book: str, market: NhlGameMarket, *, event_id: int,
+) -> int | None:
+    """Append an Odds-API.io snapshot, or skip a game no longer eligible."""
+    if book not in ("bet365", "draftkings"):
+        raise ValueError("NHL odds book must be bet365 or draftkings")
+    row = await db.execute(text("""
+        INSERT INTO sport_game_odds (
+            sport, game_id, provider, book, market, line, first_side, second_side,
+            first_odds, second_odds, first_market_prob, second_market_prob, raw_json, fetched_at
+        )
+        SELECT 'nhl', g.id, 'odds_api_io', :book, :market, :line, :first_side, :second_side,
+               :first_odds, :second_odds, :first_market_prob, :second_market_prob,
+               CAST(:raw_json AS jsonb), statement_timestamp()
+        FROM sport_games g
+        WHERE g.id = :game_id AND g.sport = 'nhl'
+          AND g.game_type IN ('REG', 'PST') AND g.status = 'scheduled'
+          AND g.start_utc > statement_timestamp()
+        RETURNING id
+    """), {
+        "game_id": game_id, "book": book, "market": market.market, "line": market.line,
+        "first_side": market.first_side, "second_side": market.second_side,
+        "first_odds": market.first_odds, "second_odds": market.second_odds,
+        "first_market_prob": market.first_market_prob, "second_market_prob": market.second_market_prob,
+        "raw_json": json.dumps({**market.raw_market, "event_id": event_id}, allow_nan=False),
+    })
+    return row.scalar_one_or_none()

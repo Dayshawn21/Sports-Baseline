@@ -1,0 +1,45 @@
+name: NHL Bet365 and DraftKings Odds
+
+# September-June, staggered from tennis (:10) and NFL (:25).
+# The hourly quota and two-book allowance are shared across all three sports.
+on:
+  schedule:
+    - cron: "40 */3 * 1-6,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nhl-odds
+  cancel-in-progress: false
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+
+jobs:
+  odds-io:
+    name: Bet365 and DraftKings NHL Game Odds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Snapshot NHL game odds
+        run: |
+          cd api
+          python -m app.ingest.nhl_odds_io

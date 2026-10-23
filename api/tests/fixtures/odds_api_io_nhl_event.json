@@ -1,0 +1,23 @@
+{
+  "fixture_note": "Representative sanitized shape from 45a; only Bet365 ML prices reproduce its recorded probe. Other prices are synthetic test cases.",
+  "id": 1001,
+  "home": "Montreal Canadiens",
+  "away": "Chicago Blackhawks",
+  "date": "2026-10-24T00:00:00Z",
+  "status": "pending",
+  "league": {"slug": "usa-nhl"},
+  "bookmakers": {
+    "Bet365": [
+      {"name": "ML", "updatedAt": "2026-10-23T18:00:00Z", "odds": [{"home": "1.60", "away": "2.39"}]},
+      {"name": "Spread", "odds": [{"hdp": -2.5, "home": "1.95", "away": "1.95"}, {"hdp": -1.5, "home": "2.50", "away": "1.60"}]},
+      {"name": "Totals", "odds": [{"hdp": 5.5, "over": "1.60", "under": "2.20"}, {"hdp": 6.5, "over": "1.91", "under": "1.91"}]},
+      {"name": "Draw No Bet", "odds": [{"home": "1.60", "away": "2.39"}]},
+      {"name": "Totals 1st Period", "odds": [{"hdp": 1.5, "over": "1.91", "under": "1.91"}]}
+    ],
+    "DraftKings": [
+      {"name": "ML", "odds": [{"home": "1.65", "away": "2.30"}]},
+      {"name": "Spread", "odds": [{"hdp": -1.5, "home": "2.40", "away": "1.65"}]},
+      {"name": "Totals", "odds": [{"hdp": 6, "over": "1.90", "under": "1.95"}]}
+    ]
+  }
+}

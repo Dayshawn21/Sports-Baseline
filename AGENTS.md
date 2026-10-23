@@ -250,6 +250,19 @@ Two apps, two command sets. Paths are relative to the repo root.
   all player/game links resolved; both subsequent relinks changed zero rows.
   No NHL predictions are written. GitHub registration and runner acceptance
   remain unverified until an approved push and actual run.
+- NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2]
+  [--min-requests-remaining 20] [--dry-run]` (DraftKings and Bet365 full-game
+  moneyline with OT/SO, +/-1.5 puck line and total, per-book de-vigged, stored
+  under `sport='nhl'`, `provider='odds_api_io'`). Dry run uses hourly requests
+  but makes no inserts or commits; no eligible games means no provider calls.
+  The default floor is 20 requests in the hour shared with tennis/NFL;
+  no The Odds API credits are spent. `nhl-odds.yml` runs every three hours at
+  minute 40 UTC, September-June, with manual dispatch and serialized runs.
+  Two local write runs appended 84 snapshots each; read-back checked all 168,
+  and a following dry run left counts and row hashes unchanged. Prior
+  snapshots are never updated. GitHub registration, runner acceptance
+  and deployment remain unverified pending an approved push and actual run.
+  See `docs/nhl-odds.md` for contracts, failure handling and freshness limits.
 
 ### Verify (both apps, from the repo root)
 
