@@ -11,7 +11,7 @@
 > scores, line-only PrizePicks lines and game odds stored, a display-only slate
 > and game page with a gray reference projection, P(over) for assists only,
 > pre-tip predictions frozen after each line snapshot, and a forward ranking
-> check on `/nba/model`, with slice results reported there); WNBA and soccer follow. NFL best line (item 36) is complete: each side's
+> check on `/nba/model`, with slice results reported there); NHL (item 45, added 2026-10-23) is next as a new sport, then WNBA and soccer. NFL best line (item 36) is complete: each side's
 > best Bet365 or DraftKings price beside a Pinnacle fair price, on the game
 > page and slate row. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
@@ -49,15 +49,21 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-23 (second refresh) from both planning docs after
+**Regenerated:** 2026-10-23 (fourth refresh) after 45a's approved plan
+edits: the NHL sources (§4, §5), 45d on Odds-API.io, 45b's 2023-24 to
+2026-27 backfill and the new 45f. The third refresh added item 45 (NHL
+support, placed before WNBA) with project-plan §1, §3 and §5 edits. The second refresh followed
 44a's completion, retaining existing overview content and completed-work
 validation/deployment boundaries. The build plan is the progress authority
 where older project-plan prose disagrees. There are 122 checked leaf items
-out of 131, including the explicitly dropped 40b; 9 remain unchecked. Feature 43 is complete per its archive. The owner chose
+out of 137, including the explicitly dropped 40b; 15 remain unchecked. Feature 43 is complete per its archive. The owner chose
 item 44 ahead of WNBA (and a possible NHL addition), with a fresh 2026-27
 confirmation sample instead of a third 2025-26 holdout read.
-`current-feature.md` is the stub; 44b is next but cannot score before the
-first four 2026-27 weeks are played (about 2026-11-17). A read-only check
+44b is specified and built through its gate run on
+`feature/44b-nba-pover-confirmation` (checkpoint `dcabc8f`); its one scoring
+run waits until the first four 2026-27 weeks are played (about 2026-11-17).
+`master`'s `current-feature.md` is the stub, so 45a is specified next in
+parallel. A read-only check
 on 2026-10-23 found the hosted NBA board, injuries and team stats live and
 every ingest workflow, including the six tennis files, running green; the
 secret scan was red from 2026-10-17 until fix `f731dec`. This refresh read
@@ -151,12 +157,13 @@ Checked items record completed work, including explicitly retired surfaces.
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
+| 45 | NHL support | Planned (added 2026-10-23); 45a sourcing decided, completing |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-9 leaf items remain, with these gates:
+15 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -166,16 +173,74 @@ Checked items record completed work, including explicitly retired surfaces.
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for a 27j slice. Standard under and demon over are rejected (final for v4); standard over (128 of 200 picks) and goblin over (10 of 200) are accruing |
 | 44b | 2026-27 confirmation | Next. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
+| 45a | NHL data sourcing | Decisions recorded 2026-10-23 (below); awaiting `/complete` |
+| 45b | NHL schedule and box scores | After 45a's source choice |
+| 45c | NHL prop lines | After 45b (players and games to link to) |
+| 45d | NHL game odds | After 45b; Odds-API.io hourly quota, no The Odds API credits |
+| 45e | NHL slate and game page | After 45b-45d |
+| 45f | NHL injuries and starting goalies | After 45e; display only |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Run `/feature 44b` to spec the confirmation (it can be written now). Rec Targets reporting now
+Run `/feature 45a` to spec NHL sourcing; 44b resumes on its branch once its gate reads `ready`. Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
+
+**45. NHL support (planned, added 2026-10-23).** Ingest and surface NHL on
+the NBA team-sport pattern: shared `sport_*` tables, the 17c prop pipeline
+and the web sport registries, with no third parallel stack (item 17's rule).
+Models follow NBA's backtest-first, pre-registered gates, and edges stay gray
+until a ranking slice reads `adopt`. Projection, P(over), frozen predictions,
+a model page and a prop board are later sub-items, added once 45a-45e ship.
+
+| Step | Outcome |
+|---|---|
+| 45a | Sourcing and structural decisions (see NHL data below); research only |
+| 45b | Seed `nhl` in `sports`; teams, players, games in `sport_*`; skater and goalie box scores in NHL stat tables; 2023-24 through 2026-27 backfill and daily refresh |
+| 45c | PrizePicks NHL lines through the shared pipeline, linked, all line-only |
+| 45d | DraftKings and Bet365 moneyline (overtime included), puck line and total from Odds-API.io into `sport_game_odds` under provider `odds_api_io`, de-vigged per book; no The Odds API credits |
+| 45e | NHL in `SPORTS`, `SPORT_PAGES` and `SPORT_STATUS`; table-first slate and game page with market, movement and gray line-only prop rows |
+| 45f | ESPN injury and probable-goalie (`Expected`/`Confirmed`) snapshots before puck drop, linked by name and team; display only |
+
+- **What NHL breaks** (project-plan §3): low scoring, so count props are
+  small integers; the puck line is fixed at +/-1.5; moneylines may be priced
+  with or without overtime; skaters and goalies have different stat sets.
+- **Odds provider (45a, owner option A):** NFL and NBA already use about
+  397 of The Odds API's 500 monthly credits in season (the older 330 figure
+  predates 36a's Pinnacle runs), so NHL odds come from Odds-API.io instead.
+  Its NHL `ML` is two-way with overtime included; no Pinnacle, so fair
+  prices de-vig each book's own pair.
+- **45a decisions (load-bearing for 45b-45f; evidence in the 45a spec):**
+  - **Ids:** NHL `playerId`, `gameId` and tri-codes (`TBL`, `UTA`) as
+    `source_player_id`, `source_game_id` and `team_code`. PrizePicks (`TB`
+    to `TBL`; players by folded name and team, never position), Odds-API.io
+    (full names, league slug `usa-nhl`) and ESPN (name and team) map onto
+    them through pure, coverage-tested functions.
+  - **Tables:** `nhl_skater_game_stats` (position, goals, assists, points,
+    shots, power-play goals and points, shorthanded points, plus/minus, hits,
+    blocked shots, faceoffs won and lost, PIM, giveaways, takeaways, OT
+    goals, TOI seconds) and `nhl_goalie_game_stats` (started, decision,
+    saves, shots against, goals against, TOI seconds); unique (`player_id`,
+    `game_id`). No row means did not play, a void, never zero.
+  - **Markets** (PrizePicks `NHL` league; `NHL1P` first period stays off the
+    board): Shots On Goal, Points, Assists, Goals, Power Play Points, Blocked
+    Shots, Plus/Minus, Hits, Time On Ice, Faceoffs Won, and goalie-only Goalie
+    Saves and Goals Allowed. `(Combo)` and Fantasy Score are not mapped. Time
+    On Ice's line unit is confirmed in 45c.
+  - **OT/SO:** stored scores are the official final, shootout winner
+    included; nullable `sport_games.end_period` (`REG`, `OT`, `SO`), NHL
+    only. Player and goalie stats exclude shootouts.
+  - **Period and season:** NBA's regular-season week; break weeks have no
+    games and are never periods. `season` is the start year; `REG` and `PST`
+    only, no preseason.
+  - **Goalie lines** can be posted for a goalie who does not start (that line
+    voids); a later goalie projection must condition on the starter (45f's
+    data). Some demon and goblin lines allow unders; 27i's rule still plays
+    them over only.
 
 **44. NBA over probability, second method (planned, owner-selected 2026-10-23).**
 20g1's ratio-quantile fit hid eight of nine NBA markets, and returns no
@@ -1321,7 +1386,7 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
 - `match_odds` is append-only, so the closing price is the last row before
   `start_utc`.
 
-**Next: sports expansion** (item 17 complete 2026-10-05, item 20 complete 2026-10-07; WNBA next)
+**Next: sports expansion** (item 17 complete 2026-10-05, item 20 complete 2026-10-07; NHL next, then WNBA)
 
 17. **Multi-sport foundation** *(complete 2026-10-05)* - converged the tennis and NFL stacks, rather than clearing a path for the first one. Split 2026-10-01:
     - 17a. **Shared team-sport tables** *(shipped 2026-10-02)* - the seven cross-sport NFL tables renamed in place to sport-keyed `sport_*` tables plus a `sports` registry (`0039`), with `nfl_*` compatibility views so NFL code ran unchanged.
@@ -1459,6 +1524,7 @@ with no projection, probability, version, ranking or pick change.
     stats appear in evidence, both teams' stats on the game page. No new
     source, projection input, gap, sort or pick change.
 
+45. **NHL support** - NBA's team-sport shape; 45a-45f cover sourcing, ingest, lines, odds, display, and injuries and starting goalies (see Detailed feature context).
 21. **WNBA support** - extends NBA.
 22. **Three-way market support** - draws in de-vigging, ensemble, and schema.
 23. **Soccer support** - on top of item 22.
@@ -1476,6 +1542,7 @@ stack.** Item 22 is split from 23 because draws are the one genuinely hard chang
 |---|---|
 | NFL | Teams not individuals; weekly cadence means a far smaller training set; spreads and totals over moneyline |
 | NBA | Teams, dense daily schedule, heavy prop volume |
+| NHL | Teams, dense daily schedule like NBA; low-scoring small-integer count props, fixed +/-1.5 puck line, overtime-inclusive or regulation moneylines, separate skater and goalie stat sets |
 | WNBA | NBA shape, shorter season, thinner public data |
 | Soccer | **Draws.** Three-way markets break the two-outcome assumption throughout |
 
@@ -1868,6 +1935,7 @@ outcomes are driven more by volume.
 | Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display snapshots, 42c locally complete) | The Odds API (free plan, game lines only) | PrizePicks |
+| NHL | NHL web API (`api-web.nhle.com`) | NHL stats REST per-game skater and goalie reports; sportsdataverse `nhl_player_boxscores` fallback; ESPN injuries and probable goalies (display, 45f) | Odds-API.io (DraftKings, Bet365) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
 
 **Backtest-only source:** 26c reads Valuebetennis season CSVs (ATP and WTA
@@ -1887,7 +1955,7 @@ database and no app code fetches the site.
   player props are billed per game per market, so NFL prop markets are added
   one at a time (`player_anytime_td` alone is about 16 credits a week). NBA
   game odds cost 3 credits a run, twice daily (about 180 a month; 20d), for a
-  shared total of about 332 of 500 while both seasons run, before 36a.
+  shared total of about 332 of 500 while both seasons run, before 36a; about 397 with 36a's Pinnacle runs (measured by 45a, 2026-10-23), which is why NHL odds use Odds-API.io.
 
 **Prefer free sources.** Between the two providers odds are covered, so the real
 gap per new sport is schedule and stats. NFLverse publishes all its NFL data as
@@ -2435,8 +2503,6 @@ the request path the same way.
     under existing gates) and change no product direction, user, provider,
     stack or deployment commitment. 43 is complete with aDOT unavailable.
 
-61. **The owner raised NHL (2026-10-23) as a possible next sport ahead of
-    WNBA,** since it is in season and fits the NBA team-sport shape. It is
-    in neither plan. Adding it needs a reviewed plan addition, and its
-    sourcing step must settle The Odds API credit budget (NFL and NBA
-    already use about 330 of 500 credits a month).
+61. **Resolved (2026-10-23):** NHL is build-plan item 45 (45a-45f), placed
+    before WNBA, with project-plan §1, §3, §4 and §5 updated. 45a settled
+    the budget question by moving NHL odds to Odds-API.io.

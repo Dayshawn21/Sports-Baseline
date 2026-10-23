@@ -28,7 +28,7 @@ and grades them against results, making the edge measurable rather than assumed.
 Placed bets are tracked outside the app, in Pikkit.
 
 **Tennis is the first sport, not the only one.** The intended scope is NFL, NBA,
-WNBA, and soccer as well. The core machinery is deliberately sport-agnostic in
+NHL, WNBA, and soccer as well. The core machinery is deliberately sport-agnostic in
 principle: ingest a schedule, ingest odds, model an outcome, compare to market,
 size a stake, track the result. Only the feature engineering and the market shapes
 are sport-specific. Tennis came first because it is a two-outcome sport with no
@@ -113,6 +113,7 @@ backtested against closing lines before it is shown as more than display
 |---|---|
 | NFL | Teams rather than individuals. Weekly rather than daily cadence, so far fewer rows and a much smaller training set. Spreads and totals matter more than moneyline. |
 | NBA | Teams, but back to a dense daily schedule. Heavy player-prop volume. |
+| NHL | Teams, dense daily schedule like NBA. Low-scoring, so count props (shots, saves, points) are small integers and the puck line is fixed at +/-1.5. Moneylines may be priced with or without overtime. Skaters and goalies have different stat sets. |
 | WNBA | Same shape as NBA, but a shorter season and thinner public data. |
 | Soccer | **Three-way markets.** Draws break the two-outcome assumption baked into the ensemble, de-vigging, and every `p1`/`p2` column in the schema. |
 
@@ -198,6 +199,19 @@ No NBA team-rating tables are planned. Injuries come from ESPN's feed for
 display; the official NBA injury report is the source if a later item
 tests availability in a model, because its archive is backtestable.
 
+**NHL data (45a, decided 2026-10-23).** NHL uses the league's own ids
+throughout: the NHL web API for schedules, status and scores, and the NHL
+stats REST per-game reports for box scores, with sportsdataverse release
+files as the fallback on the same ids. Games, players and teams go in the
+shared `sport_*` tables with `sport = 'nhl'`; box scores in new
+`nhl_skater_game_stats` and `nhl_goalie_game_stats`, where a missing row
+means the player did not play. Stored scores are the official final,
+shootout winner included, with a nullable `sport_games.end_period` (`REG`,
+`OT`, `SO`); player stats exclude shootouts. `season` is the start year and
+the prop period is NBA's regular-season week. Game odds come from
+Odds-API.io, because The Odds API's free 500 credits are already about 397
+a month with NFL and NBA running.
+
 ## 5. Tech - What stack are we using?
 
 **Backend**
@@ -226,6 +240,7 @@ because it is a pure client for an API that already exists.
 | Tennis | livetennisapi | TennisAbstract (ELO, per-match stats, WTA 125); TennisMyLife (per-match stats for ATP, Challenger and WTA tour; MIT, daily CSVs) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly player stats | The Odds API (free plan: us books, Pinnacle via eu); Odds-API.io (Bet365, DraftKings; free plan's 2-book cap, shared with tennis) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display) | The Odds API (free plan, game lines only) | PrizePicks |
+| NHL | NHL web API (`api-web.nhle.com`) | NHL stats REST per-game skater and goalie reports (`api.nhle.com/stats/rest`); sportsdataverse `nhl_player_boxscores` fallback; ESPN injuries and probable goalies (display, 45f) | Odds-API.io (DraftKings, Bet365; no The Odds API credits) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API | > TODO |
 
 **Cost constraint: prefer free sources.** The stated preference is to source as
