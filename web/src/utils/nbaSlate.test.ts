@@ -146,14 +146,14 @@ describe('parseSlateDate', () => {
 
 describe('nbaSlateDigest', () => {
   const gap = (overrides: Partial<NbaSlateGap> = {}): NbaSlateGap => ({
-    gameId: 21319, awayTeam: 'PHI', homeTeam: 'NY', playerId: 7, playerName: 'Jaylen Brown', market: 'points',
+    gameId: 21319, awayTeam: 'PHI', homeTeam: 'NY', startUtc: '2026-10-21T00:00:00Z', playerId: 7, playerName: 'Jaylen Brown', market: 'points',
     line: 20.5, projection: 28.75, gap: 8.25, gapShare: 8.25 / 20.5, ...overrides,
   })
 
   it('formats line and model to one decimal with a signed gap and share', () => {
     expect(nbaSlateDigest([gap()])).toEqual([{
       key: '21319-7-points', gameId: 21319, playerId: 7, playerName: 'Jaylen Brown', marketKey: 'points', market: 'Points', matchup: 'PHI @ NY',
-      line: '20.5', model: '28.8', gap: '+8.3 · +40%',
+      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 · +40%',
     }])
   })
 
@@ -239,7 +239,7 @@ describe('nbaGameGaps', () => {
     ]
     const items = nbaGameGaps(game(), lines, NOW, 2)
     expect(items.map(item => [item.playerName, item.market])).toEqual([['Big Gap', 'assists'], ['Small Gap', 'points']])
-    expect(items[0]).toMatchObject({ gameId: 21320, awayTeam: 'BOS', homeTeam: 'DET', gapShare: 2 / 4.5 })
+    expect(items[0]).toMatchObject({ gameId: 21320, awayTeam: 'BOS', homeTeam: 'DET', startUtc: game().startUtc, gapShare: 2 / 4.5 })
   })
 
   it('is empty once the game has tipped or is not scheduled', () => {

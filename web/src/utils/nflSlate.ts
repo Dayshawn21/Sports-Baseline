@@ -137,11 +137,18 @@ export interface NflSlateDigestItem {
   playerName: string
   market: string
   matchup: string
+  /** Central kickoff time. */
+  when: string
   line: string
   model: string
   modelLabel?: string
   /** Signed edge share against the category's reference line, as on the prop cards. */
   gap: string
+}
+
+function digestKickoff(startUtc: string | null): string {
+  const time = startUtc === null ? NaN : Date.parse(startUtc)
+  return Number.isNaN(time) ? 'Kickoff time not set' : `${DAY_CLOCK.format(time)} CT`
 }
 
 /** The week's largest gaps, from a board built as of now (which already drops started games). */
@@ -152,6 +159,7 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
     playerName: row.playerName,
     market: isTargetsReference(row.market) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
     matchup: `${row.awayTeam} @ ${row.homeTeam}`,
+    when: digestKickoff(row.startUtc),
     line: row.line?.toFixed(1) ?? MISSING,
     model: row.projection?.toFixed(1) ?? MISSING,
     ...(isTargetsReference(row.market) ? { modelLabel: 'reference' } : {}),

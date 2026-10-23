@@ -76,6 +76,7 @@ export interface NbaSlateGap {
   gameId: number
   awayTeam: string
   homeTeam: string
+  startUtc: string
   playerId: number
   playerName: string
   market: string

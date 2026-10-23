@@ -53,6 +53,7 @@ def test_items_rank_by_gap_share_one_per_player_and_skip_goblins() -> None:
         ("Amy", "assists"), ("Cat", "points"), ("Dee", "points")]
     assert response.items[0].gap_share == 2.5 / 3.5
     assert (response.items[0].away_team, response.items[0].home_team) == ("BOS", "NY")
+    assert response.items[0].start_utc == NOW + dt.timedelta(hours=5)
     assert response.model_version == "nba-reference-v1"
 
 

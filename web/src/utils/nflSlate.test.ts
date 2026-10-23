@@ -171,7 +171,7 @@ describe('slateDigest', () => {
   it('carries display strings for a box', () => {
     const [first, second] = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(first).toEqual({ lineId: 21, gameId: 2, playerName: 'Player 21', market: 'Receiving yards', matchup: 'A2 @ H2', line: '60.0', model: '100.0', gap: '+66.7%' })
+    expect(first).toEqual({ lineId: 21, gameId: 2, playerName: 'Player 21', market: 'Receiving yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%' })
     expect([second.matchup, second.market, second.gap]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%'])
   })
 

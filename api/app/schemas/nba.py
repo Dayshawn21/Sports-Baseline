@@ -234,6 +234,7 @@ class NbaSlateGapSchema(_CamelModel):
     game_id: int
     away_team: str
     home_team: str
+    start_utc: dt.datetime
     player_id: int
     player_name: str
     market: str

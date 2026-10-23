@@ -203,6 +203,8 @@ export interface NbaSlateDigestItem {
   marketKey: string
   market: string
   matchup: string
+  /** Central tip time. */
+  when: string
   line: string
   model: string
   /** Signed points and share of the line: "+2.3 · +10%". */
@@ -223,8 +225,8 @@ export interface NbaGapGame {
 
 /** One game's digest under the slate's rule (`rank_slate_gaps`): standard lines with a projection before tip, by |gap| / line, one per player. */
 export function nbaGameGaps(game: NbaGapGame, lines: NbaPropLine[], now: Date, limit = 4): NbaSlateGap[] {
-  const start = game.startUtc === null ? null : Date.parse(game.startUtc)
-  if (game.status !== 'scheduled' || start === null || start <= now.getTime()) return []
+  const startUtc = game.startUtc
+  if (game.status !== 'scheduled' || startUtc === null || Date.parse(startUtc) <= now.getTime()) return []
   const ranked = lines
     .filter(line => line.oddsType === 'standard' && line.projection !== null && line.gap !== null && line.line > 0)
     .map(line => ({ line, share: Math.abs(line.gap ?? 0) / line.line }))
@@ -235,7 +237,7 @@ export function nbaGameGaps(game: NbaGapGame, lines: NbaPropLine[], now: Date, l
     if (seen.has(line.playerId)) continue
     seen.add(line.playerId)
     items.push({
-      gameId: game.gameId, awayTeam: game.awayTeam, homeTeam: game.homeTeam, playerId: line.playerId,
+      gameId: game.gameId, awayTeam: game.awayTeam, homeTeam: game.homeTeam, startUtc, playerId: line.playerId,
       playerName: line.playerName, market: line.market, line: line.line,
       projection: line.projection ?? 0, gap: line.gap ?? 0, gapShare: share,
     })
@@ -254,6 +256,7 @@ export function nbaSlateDigest(items: NbaSlateGap[]): NbaSlateDigestItem[] {
     marketKey: item.market,
     market: nbaMarketLabel(item.market),
     matchup: `${item.awayTeam} @ ${item.homeTeam}`,
+    when: tipLabel(item.startUtc),
     line: item.line.toFixed(1),
     model: item.projection.toFixed(1),
     gap: `${signed(item.gap, Math.abs(item.gap).toFixed(1))} · ${signed(item.gap, `${Math.round(item.gapShare * 100)}%`)}`,

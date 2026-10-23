@@ -52,7 +52,9 @@ def slate_gaps_response(
     items = [
         NbaSlateGapSchema(
             game_id=item.candidate.game_id, away_team=str(by_id[item.candidate.game_id]["away_team"]),
-            home_team=str(by_id[item.candidate.game_id]["home_team"]), player_id=item.candidate.player_id,
+            home_team=str(by_id[item.candidate.game_id]["home_team"]),
+            # The rule keeps only games not yet tipped, so every ranked candidate has a start.
+            start_utc=cast(dt.datetime, item.candidate.start_utc), player_id=item.candidate.player_id,
             player_name=item.candidate.player_name, market=item.candidate.market, line=item.candidate.line,
             projection=cast(float, item.candidate.projection), gap=cast(float, item.candidate.gap),
             gap_share=item.gap_share,
