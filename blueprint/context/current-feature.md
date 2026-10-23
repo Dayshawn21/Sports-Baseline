@@ -123,7 +123,7 @@ was too big, so split it.
   - a report-format test exists
   - Verify passes, and a **checkpoint commit** exists with its hash recorded
     below, before the gate opens
-- [ ] **Step 4 - Gate run now** - run gate mode against the shared database
+- [x] **Step 4 - Gate run now** - run gate mode against the shared database
   and record its output below (expected `accruing`: weeks 1-4 not finished).
   *Done when:* the output is recorded and shows no box-score load. Also run
   `--score` once to record the `accruing` stop.
@@ -191,6 +191,22 @@ was too big, so split it.
 
 ## Results
 
-- **Scoring-rules checkpoint (step 3):** _pending_
-- **Gate run (step 4):** _pending_
+- **Scoring-rules checkpoint (step 3):** `dcabc8f5ab753ef4df11816dd86df46ef362d597`
+  (2026-10-23 11:34 -0500), on `feature/44b-nba-pover-confirmation`, with no
+  confirmation week finished (week 1: 16 of 43 games completed). It fixes the
+  sample filter, the 2024-25 sigma for the normal baseline, the 2023-2026
+  history depth, the drift guard and the run-once result module.
+- **Gate run (step 4, 2026-10-23 16:34 UTC):** against the shared database,
+  both `python -m app.backtest.nba_over_probability_v2_confirm` and `--score`
+  printed the same gate and exited 0:
+
+  | Week | REG games | Completed | State |
+  |---|---:|---:|---|
+  | 1 | 43 | 16 | open |
+  | 2 | 49 | 0 | open |
+  | 3 | 54 | 0 | open |
+  | 4 | 51 | 0 | open |
+
+  `--score` stopped with "Accruing: nothing scored, no box score read." The
+  result module was not written. 2026-27 box-score reads: 0.
 - **Confirmation run (step 5):** _pending_
