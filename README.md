@@ -23,6 +23,8 @@ so an edge is measured rather than assumed.
 
 ![Tennis slate](docs/screenshots/tennis-slate.png)
 
+![NBA prop board: gray reference rows, P(over) for assists only](docs/screenshots/nba-board.png)
+
 The tennis slate ranks its remaining picks by modelled EV. A large EV figure
 there is the model's own estimate, not a validated edge. Those picks are
 graded forward on the tennis track record page, and their confidence tiers
@@ -53,7 +55,9 @@ models themselves.
 - **NFL props.** The first grading of the PrizePicks prop model (2026-09-26)
   hit 48.1% of 750 calls, against a 57.7% per-pick break-even. Prop edges
   have been gray since. Frozen pre-kickoff predictions are graded weekly
-  under a rule fixed before any week was played. A new Rec Targets
+  under a rule fixed before any week was played. Through week 6 of 2026,
+  two of its four slices (standard unders and demon overs) have been
+  rejected under that rule; the other two are still accruing. A new Rec Targets
   projection is served as a reference, but its over probability failed its
   one 2025 calibration check, so it stays hidden.
 - **NBA over probabilities.** The first method passed the calibration rule
