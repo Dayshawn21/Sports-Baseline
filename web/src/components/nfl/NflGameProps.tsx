@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { NflLineOnlyProps } from '~/components/nfl/NflLineOnlyProps'
 import { NflPropTable } from '~/components/nfl/NflPropTable'
+import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { useNflDrawerFocus } from '~/hooks/useNflDrawerFocus'
 import type { NflSlateGame } from '~/types/nfl'
@@ -11,6 +12,8 @@ import { hasKickedOff } from '~/utils/nflGame'
 import { nflGameProps } from '~/utils/nflGameProps'
 import { marketLabel } from '~/utils/nflLabels'
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
+import { buildNflPropBoard } from '~/utils/nflPropBoard'
+import { slateDigest } from '~/utils/nflSlate'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 import { isTargetsReference } from '~/utils/nflTargets'
 
@@ -39,11 +42,18 @@ export function NflGameProps({ games, game, now }: Props) {
   const isMobile = useIsMobile()
   const categories = useMemo(() => nflGameProps(games, game.gameId, position, 'full_game', at), [games, game.gameId, position, at])
   const alternates = useMemo(() => new Map(groupNflPropRows(game.lines).map(item => [item.primary.lineId, item.alternates])), [game.lines])
+  // The week-wide board (its reference lines set the gap share, so boxes match the slate's numbers),
+  // narrowed to this game and left unfiltered so a box opens whatever position is chosen.
+  const board = useMemo(() => buildNflPropBoard(games, 'all', at)
+    .map(item => ({ ...item, rateable: item.rateable.filter(row => row.gameId === game.gameId) })), [games, game.gameId, at])
+  const digest = useMemo(() => slateDigest(board), [board])
   const visible = categories.filter(item => item.rateable.length > 0 || (showAll && item.other.length > 0))
   const selected = visible.flatMap(item => [...item.rateable.map(item => item.row), ...(showAll ? item.other : [])])
-    .find(row => row.lineId === selectedLineId) ?? null
+    .find(row => row.lineId === selectedLineId)
+    ?? board.flatMap(item => item.rateable).find(row => row.lineId === selectedLineId) ?? null
   const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
   return <section className="nfl-game-props" aria-label="Props for this game">
+    <NflSlateDigest items={digest} scope="this game" onOpen={(item, box) => { drawerFocus.rememberTrigger(item.lineId, box); setSelectedLineId(item.lineId) }} />
     <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines · ranks from this week's prop board</small></h2>
     <p className="nfl-game-props__intro">Compare projections with full-game lines. Gray gaps are research comparisons, not recommendations.</p>
     <details className="nfl-game-props__help">

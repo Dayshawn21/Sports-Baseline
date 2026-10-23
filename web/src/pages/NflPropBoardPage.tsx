@@ -5,6 +5,7 @@ import NflEvidencePanel from '~/components/NflEvidencePanel'
 import { NflLineOnlyTable } from '~/components/nfl/NflLineOnlyProps'
 import { NflMarketPills, NflPropBoardFilters, NflPropBoardHead } from '~/components/nfl/NflPropBoardControls'
 import { NflPropTable } from '~/components/nfl/NflPropTable'
+import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useIsMobile } from '~/hooks/useIsMobile'
@@ -14,6 +15,7 @@ import { formatKickoffTime, marketLabel } from '~/utils/nflLabels'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import { buildNflPropBoard, filterNflPropBoardGames, flattenSlateLines } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { slateDigest } from '~/utils/nflSlate'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { availableNflPropGames, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
 import './nfl-slate.css'
@@ -40,6 +42,8 @@ export default function NflPropBoardPage() {
   const filteredGames = useMemo(() => filterNflPropBoardGames(slate.data?.games ?? [], selectedGameId), [slate.data, selectedGameId])
   const categories = useMemo(() => buildNflPropBoard(filteredGames, position), [filteredGames, position])
   const otherCategories = useMemo(() => nflWeekLineOnlyCategories(lineOnly.data?.games ?? [], position, selectedGameId), [lineOnly.data, position, selectedGameId])
+  // The slate's own digest: the whole week as of now, ignoring the board's filters.
+  const digest = useMemo(() => slateDigest(buildNflPropBoard(slate.data?.games ?? [], 'all', new Date())), [slate.data])
   const pills = [...categories.map(item => ({ market: item.market, count: item.rateable.length })), ...otherCategories.map(item => ({ market: item.market, count: item.count }))]
   const selectedMarket = pills.some(item => item.market === market) ? market
     : categories.find(item => item.rateable.length > 0)?.market ?? pills[0]?.market ?? null
@@ -59,6 +63,7 @@ export default function NflPropBoardPage() {
       lineOnlyCount={otherCategories.reduce((total, item) => total + item.count, 0)}
       onSeason={value => { setSeason(value); setWeek(activeWeek); setGameFilter('all') }}
       onWeek={value => { setSeason(activeSeason); setWeek(value); setGameFilter('all') }} />
+    <NflSlateDigest items={digest} />
     <NflMarketPills categories={pills} selected={selectedMarket} onSelect={setMarket} />
     <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll} showLineToggle={!otherCategory}
       onPosition={setPosition} onGame={setGameFilter} onShowAll={setShowAll} />

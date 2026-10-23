@@ -202,3 +202,6 @@
 .nfl-data-guide ol { display: grid; gap: 10px; max-width: 80ch; margin: 0 0 16px; padding-left: 24px; color: var(--text-secondary); font: 400 13px/1.6 var(--font-body); }
 .nfl-data-guide li { padding-left: 4px; }
 .nfl-data-guide strong { color: var(--text-primary); font-weight: 600; }
+
+/* The game tab's digest sits above a section heading, not the slate's legend. */
+.nfl-game .slate-digest { margin: 18px 0 24px; }

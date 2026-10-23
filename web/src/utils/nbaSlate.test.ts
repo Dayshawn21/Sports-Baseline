@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { NbaLineMove, NbaSlateGame, NbaSlateGap } from '~/types/nba'
-import { nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import type { NbaLineMove, NbaPropLine, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import { nbaGameGaps, nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 
 const NOW = new Date('2026-10-06T15:00:00Z')
 const FETCHED = '2026-10-06T14:34:47Z'
@@ -152,7 +152,7 @@ describe('nbaSlateDigest', () => {
 
   it('formats line and model to one decimal with a signed gap and share', () => {
     expect(nbaSlateDigest([gap()])).toEqual([{
-      key: '21319-7-points', gameId: 21319, playerName: 'Jaylen Brown', market: 'Points', matchup: 'PHI @ NY',
+      key: '21319-7-points', gameId: 21319, playerId: 7, playerName: 'Jaylen Brown', marketKey: 'points', market: 'Points', matchup: 'PHI @ NY',
       line: '20.5', model: '28.8', gap: '+8.3 · +40%',
     }])
   })
@@ -217,5 +217,34 @@ describe('nbaSlateRow', () => {
   it('shows dashes and no win without a market', () => {
     const row = nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW)
     expect([row.spread.value, row.total.value, row.moneyline.value, row.win]).toEqual(['--', '--', '--', null])
+  })
+})
+
+describe('nbaGameGaps', () => {
+  function line(overrides: Partial<NbaPropLine> = {}): NbaPropLine {
+    return {
+      playerId: 1, playerName: 'A Player', position: 'G', team: 'BOS', market: 'points', oddsType: 'standard', line: 20.5,
+      fetchedAt: FETCHED, recent: [], injury: null, projection: 22.5, gamesInSample: 20, priorMinutes: 30, gap: 2,
+      pOver: null, pUnder: null, overProbabilityVersion: null, flags: [], ...overrides,
+    }
+  }
+
+  it('ranks standard projected lines by gap share, one per player, up to the limit', () => {
+    const lines = [
+      line({ playerId: 1, playerName: 'Big Gap', market: 'assists', line: 4.5, projection: 6.5, gap: 2 }),
+      line({ playerId: 1, playerName: 'Big Gap', market: 'points', line: 10.5, projection: 14.5, gap: 4 }),
+      line({ playerId: 2, playerName: 'Small Gap', line: 20.5, projection: 21.5, gap: 1 }),
+      line({ playerId: 3, playerName: 'Goblin', oddsType: 'goblin', line: 2.5, projection: 6, gap: 3.5 }),
+      line({ playerId: 4, playerName: 'No Projection', projection: null, gap: null }),
+    ]
+    const items = nbaGameGaps(game(), lines, NOW, 2)
+    expect(items.map(item => [item.playerName, item.market])).toEqual([['Big Gap', 'assists'], ['Small Gap', 'points']])
+    expect(items[0]).toMatchObject({ gameId: 21320, awayTeam: 'BOS', homeTeam: 'DET', gapShare: 2 / 4.5 })
+  })
+
+  it('is empty once the game has tipped or is not scheduled', () => {
+    expect(nbaGameGaps(game({ startUtc: '2026-10-06T14:00:00Z' }), [line()], NOW)).toEqual([])
+    expect(nbaGameGaps(game({ status: 'completed' }), [line()], NOW)).toEqual([])
+    expect(nbaGameGaps(game({ startUtc: null }), [line()], NOW)).toEqual([])
   })
 })

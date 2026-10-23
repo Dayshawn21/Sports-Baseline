@@ -1,4 +1,4 @@
-import type { NbaLineMove, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import type { NbaLineMove, NbaPropLine, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { hasKickedOff } from '~/utils/nflGame'
 import { spreadLabel } from '~/utils/nflGameModel'
@@ -197,7 +197,10 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
 export interface NbaSlateDigestItem {
   key: string
   gameId: number
+  playerId: number
   playerName: string
+  /** The stored market, for opening its drawer; `market` is its label. */
+  marketKey: string
   market: string
   matchup: string
   line: string
@@ -210,12 +213,45 @@ function signed(value: number, text: string): string {
   return `${value > 0 ? '+' : value < 0 ? '-' : ''}${text}`
 }
 
+export interface NbaGapGame {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+}
+
+/** One game's digest under the slate's rule (`rank_slate_gaps`): standard lines with a projection before tip, by |gap| / line, one per player. */
+export function nbaGameGaps(game: NbaGapGame, lines: NbaPropLine[], now: Date, limit = 4): NbaSlateGap[] {
+  const start = game.startUtc === null ? null : Date.parse(game.startUtc)
+  if (game.status !== 'scheduled' || start === null || start <= now.getTime()) return []
+  const ranked = lines
+    .filter(line => line.oddsType === 'standard' && line.projection !== null && line.gap !== null && line.line > 0)
+    .map(line => ({ line, share: Math.abs(line.gap ?? 0) / line.line }))
+    .sort((a, b) => b.share - a.share || a.line.playerName.localeCompare(b.line.playerName) || a.line.market.localeCompare(b.line.market))
+  const seen = new Set<number>()
+  const items: NbaSlateGap[] = []
+  for (const { line, share } of ranked) {
+    if (seen.has(line.playerId)) continue
+    seen.add(line.playerId)
+    items.push({
+      gameId: game.gameId, awayTeam: game.awayTeam, homeTeam: game.homeTeam, playerId: line.playerId,
+      playerName: line.playerName, market: line.market, line: line.line,
+      projection: line.projection ?? 0, gap: line.gap ?? 0, gapShare: share,
+    })
+    if (items.length === limit) break
+  }
+  return items
+}
+
 /** The API's ranked digest, in its order; the ranking rule lives server-side (`nba_slate_gaps`). */
 export function nbaSlateDigest(items: NbaSlateGap[]): NbaSlateDigestItem[] {
   return items.map(item => ({
     key: `${item.gameId}-${item.playerId}-${item.market}`,
     gameId: item.gameId,
+    playerId: item.playerId,
     playerName: item.playerName,
+    marketKey: item.market,
     market: nbaMarketLabel(item.market),
     matchup: `${item.awayTeam} @ ${item.homeTeam}`,
     line: item.line.toFixed(1),

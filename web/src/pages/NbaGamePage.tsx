@@ -1,3 +1,4 @@
+import { Tabs } from 'antd'
 import { useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NbaGameHero, NbaGameMarket } from '~/components/nba/NbaGameHero'
@@ -51,15 +52,21 @@ export default function NbaGamePage() {
     <PageHead title={`${detail.data.awayTeam} @ ${detail.data.homeTeam}`}
       meta={<>{detail.data.season} season · {GAME_TYPE_LABELS[detail.data.gameType]} · {kickoffLabel(detail.data.startUtc)} · {card.stateLabel ?? 'Scheduled'}</>} />
     <NbaGameHero card={card} />
-    <div className="nfl-game-layout">
-      <div className="nfl-game-main">
-        <NbaGameMarket detail={detail.data} card={card} />
-        <NflLineMovementChart detail={detail.data} caveat="Before tip-off" />
-        <NbaGameInjuries detail={detail.data} />
-        <NbaGameTeamStats detail={detail.data} />
-        <NbaProps key={`props:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
-        <NbaLineOnlyProps key={`other:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
-      </div>
-    </div>
+    <Tabs key={gameId} className="nfl-game-tabs" defaultActiveKey="props" destroyOnHidden
+      aria-label="Game sections" animated={false}
+      items={[
+        { key: 'matchup', label: 'Matchup', children: <div className="nfl-game-layout">
+          <div className="nfl-game-main">
+            <NbaGameMarket detail={detail.data} card={card} />
+            <NflLineMovementChart detail={detail.data} caveat="Before tip-off" />
+            <NbaGameInjuries detail={detail.data} />
+            <NbaGameTeamStats detail={detail.data} />
+          </div>
+        </div> },
+        { key: 'props', label: 'Player Props', children: <div className="nfl-game-main">
+          <NbaProps key={`props:${detail.data.gameId}`} game={detail.data} />
+          <NbaLineOnlyProps key={`other:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
+        </div> },
+      ]} />
   </div></div>
 }
