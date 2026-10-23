@@ -17,9 +17,9 @@ so an edge is measured rather than assumed.
 
 | Sport | Pages | What is a pick today |
 |---|---|---|
-| Tennis | Daily slate, prop board, match, player, model track record | Derived game-spread, serve-edge and PrizePicks picks. Moneyline picks are off (see below). |
-| NFL | Game-first slate, prop board, game, player, model track record | None. Prop edges, the game-line model and the best-line view are reference only, shown in gray. |
-| NBA | Slate, game page, model track record | None. A reference projection with P(over) for assists only, shown in gray. |
+| Tennis | Daily slate, prop board, match (research and picks tabs), player, model track record | Derived game-spread, serve-edge and PrizePicks picks. Moneyline picks are off (see below). |
+| NFL | Game-first slate, prop board, game (matchups, usage, injuries, best line), player, model track record | None. Prop edges, the Rec Targets projection, the game-line model and the best-line view are reference only, shown in gray. |
+| NBA | Slate, prop board, game (injuries, team stats), model track record | None. A reference projection with P(over) for assists only, shown in gray. |
 
 ![Tennis slate](docs/screenshots/tennis-slate.png)
 
@@ -42,6 +42,10 @@ models themselves.
   log loss. A blend fitted on 2022 matched the close (+0.0002 +/- 0.0004), but
   betting its larger disagreements still lost money. So the served tennis
   model is now anchored to the market, and moneyline picks are switched off.
+  A separate WTA 125 blend failed to beat the pooled one on 970 fresh 2026
+  matches, so it was dropped. An in-house ELO rebuilt from TennisMyLife
+  results is being compared forward against the current source, under a
+  rule fixed before the first match, before it can replace it.
 - **NFL game lines.** Team ELO, a scoring rating, weather, rest and
   play-by-play efficiency were each tested against closing lines on
   2022 to 2025. None beat the close, so the model is shown as context, never
@@ -49,7 +53,14 @@ models themselves.
 - **NFL props.** The first grading of the PrizePicks prop model (2026-09-26)
   hit 48.1% of 750 calls, against a 57.7% per-pick break-even. Prop edges
   have been gray since. Frozen pre-kickoff predictions are graded weekly
-  under a rule fixed before any week was played.
+  under a rule fixed before any week was played. A new Rec Targets
+  projection is served as a reference, but its over probability failed its
+  one 2025 calibration check, so it stays hidden.
+- **NBA over probabilities.** The first method passed the calibration rule
+  for assists only and hid the other eight markets. A second method, with
+  its rules committed to git before any fit, passes six of those eight on
+  2024-25. That is development evidence only: the probabilities stay hidden
+  until a single check on the first four weeks of the 2026-27 season.
 - **Color is a claim.** Green means a result beat its baseline by more than
   two standard errors. Anything still accruing or unvalidated stays gray.
 
@@ -66,7 +77,7 @@ The live track records:
   The code is layered: thin routers, services for orchestration, pure
   functions in `app/core/` with no I/O, and all SQL in `app/repositories/`.
 - **Web** (`web/`): a React single-page app that only talks to the API.
-- **Database:** PostgreSQL on Neon, with 45 Alembic migrations.
+- **Database:** PostgreSQL on Neon, with 48 Alembic migrations.
 - **Ingest:** standalone `python -m app.ingest.<name>` jobs, scheduled in
   GitHub Actions. The hosted API runs no cron jobs.
 - **Hosting:** Render, a Python web service and a static site, defined in
@@ -84,11 +95,13 @@ The live track records:
   Pydantic 2, LightGBM, scikit-learn.
 - **Frontend:** React 19, Vite, TypeScript (strict), Ant Design 5,
   Tailwind CSS v4, TanStack Query.
-- **Tests:** pytest (about 2,600 tests) and Vitest (about 530).
+- **Tests:** pytest (about 3,750 tests) and Vitest (about 800).
 - **Data:**
-  - **Tennis:** livetennisapi, TennisAbstract, Odds-API.io, PrizePicks.
+  - **Tennis:** livetennisapi, TennisAbstract, TennisMyLife, Odds-API.io,
+    PrizePicks.
   - **NFL:** NFLverse, The Odds API, Odds-API.io, PrizePicks.
-  - **NBA:** hoopR's ESPN releases, The Odds API, PrizePicks.
+  - **NBA:** hoopR's ESPN releases, ESPN's injury feed, The Odds API,
+    PrizePicks.
 
 ## Running locally
 
