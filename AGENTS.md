@@ -233,6 +233,13 @@ Two apps, two command sets. Paths are relative to the repo root.
   [--min-credits 100] [--dry-run]` (3 The Odds API credits a run, dry run
   included; skips the paid call below the credit floor or with no game in the
   window)
+- NHL schedule + box scores: `python -m app.ingest.nhl_api [--season 2025]
+  [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
+  REG/PST schedule plus box scores from 3 days ago through today;
+  `--season` backfills it all, 2023-24 onward). Migration `0049` is applied
+  to the shared database. `nhl-ingest.yml` runs at 09:45 UTC, September-June.
+  NHL API reachability from GitHub Actions remains unverified until its
+  first post-push run.
 
 ### Verify (both apps, from the repo root)
 
