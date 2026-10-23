@@ -37,22 +37,28 @@
 > ELO shadow comparison (41b) is engineered and activated locally, its
 > forward verdict accruing from 2026-10-22 with zero observations; serving
 > it (41c) stays conditional. First runner acceptance and deployment
-> remain unverified for both. The owner selected NFL matchup and usage
-> context (43) next; its spec is in review, with implementation not started.
+> remain unverified for both. NFL matchup and usage context (43) is complete
+> and merged, display only, with aDOT unavailable. Next is item 44: a second
+> NBA over-probability method for the eight markets 20g1 hid, chosen on
+> 2024-25 and confirmed once on a fresh 2026-27 sample.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-22 from both planning docs after the approved
-feature 43 addition, retaining existing overview content and completed-work
-validation/deployment boundaries. The build plan is the progress authority
-where older project-plan prose disagrees. There are 120 checked leaf items
-out of 128, including the explicitly dropped 40b; 8 remain unchecked.
-NBA injuries and team stats (42c/42d) are locally complete per their archives.
-The owner selected feature 43 ahead of WNBA; `current-feature.md` contains its
-review draft. Implementation has not started. This refresh queried no remote,
-runner, hosted deployment, holdout or current experiment verdict state.
+**Regenerated:** 2026-10-23 from both planning docs after the approved
+item 44 addition (44a-44c), retaining existing overview content and
+completed-work validation/deployment boundaries. The build plan is the
+progress authority where older project-plan prose disagrees. There are 121
+checked leaf items out of 131, including the explicitly dropped 40b; 10
+remain unchecked. Feature 43 is complete per its archive. The owner chose
+item 44 ahead of WNBA (and a possible NHL addition), with a fresh 2026-27
+confirmation sample instead of a third 2025-26 holdout read.
+`current-feature.md` is the stub until 44a is specified. A read-only check
+on 2026-10-23 found the hosted NBA board, injuries and team stats live and
+every ingest workflow, including the six tennis files, running green; the
+secret scan was red from 2026-10-17 until fix `f731dec`. This refresh read
+no holdout or experiment verdict.
 
 ## Problem
 
@@ -126,7 +132,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 28 | NFL game-line CLV check | Complete |
 | 29 | NFL game notes | Complete |
 | 30 | NFL team stats in game notes | Complete |
-| 43 | NFL matchup and usage context | Approved plan addition; spec in review |
+| 43 | NFL matchup and usage context | Complete; display only, aDOT unavailable |
 | 31 | Web redesign | Complete |
 | 32 | Tennis detail pages | Complete |
 | 33 | NFL redesign and detail pages | Complete |
@@ -138,13 +144,14 @@ Checked items record completed work, including explicitly retired surfaces.
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
 | 20 | NBA support | Complete |
-| 42 | NBA prop board | 42a-42d complete locally; deployment unverified |
+| 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
+| 44 | NBA over probability, second method | Planned; 44a next |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-8 leaf items remain, with these gates:
+10 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -152,27 +159,50 @@ Checked items record completed work, including explicitly retired surfaces.
 | 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for the specific 27j slice; no verdict read here |
-| 43 | NFL matchup and usage context | Owner-selected; review draft before implementation; display only |
+| 44a | NBA P(over) method, 2024-25 selection | Next; backtest only; candidates and the confirmation rule pre-registered before fitting |
+| 44b | 2026-27 confirmation | After the first 4 whole 2026-27 regular-season weeks are fully played; one scoring run |
+| 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Review feature 43 in `current-feature.md`, then use `/implement` after approval. Rec Targets reporting now
+Run `/feature 44a` next. Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**43. NFL matchup and usage context (planned, owner-selected 2026-10-22).**
-Extend game notes with current-season position production allowed and league
-ranks; add player target/carry shares on the existing game page and neutral
-last-three-versus-season usage in shared prop drawers. Samples, date windows
-and missing-data handling are explicit. Existing NFLverse weekly stats, snaps
-and as-of rosters supply the initial display; aDOT is conditional on verified
-raw air-yard totals and reviewed storage work. No scheme panel, recommendation,
-projection, probability, signal color or ranking change. The implementation
-spec is `current-feature.md`; no feature 43 code or database changes exist yet.
+**44. NBA over probability, second method (planned, owner-selected 2026-10-23).**
+20g1's ratio-quantile fit hid eight of nine NBA markets, and returns no
+P(over) for whole-number lines. Its record shows two failure kinds: small
+counts (blocks ECE 0.081, worst bin 0.142; threes and rebounds on a worst
+bin) and large sums that lose to a plain normal on Brier (points and all
+four combos). Item 44 adds a sport-neutral P(over/under/push) method in
+`app/core/` (no NBA import, reusable later by NHL or NFL count markets),
+with a per-market distribution (discrete count model or fitted-variance
+normal) chosen on 2024-25 alone in a pre-registered order.
+
+- **Evidence (option A, decided 2026-10-23):** 2025-26 has been read twice
+  (20f, 20g1), so confirmation uses a fresh 2026-27 sample, the first 4
+  whole regular-season weeks, scored once under 20g1's display rule
+  unchanged (300+ cases, ECE <= 0.02, no 200+-pair bin off by more than
+  0.05, Brier no worse than a normal). 44a reads neither 2025-26 nor
+  2026-27.
+- **Unchanged:** projection `nba-reference-v1`, gaps, ordering, picks and
+  gray display. A shown market uses a new P(over) version and its own
+  ranking sample, leaving the `nba-pover-v1` assists sample untouched (44c's
+  spec decides how, likely 39d's separate-report pattern).
+
+**43. NFL matchup and usage context (complete 2026-10-22).** Game notes
+show current-season position production allowed with league ranks; the game
+page shows player target/carry shares, and shared prop drawers show neutral
+last-three-versus-season usage, with explicit samples, date windows and
+missing-data states. Built from existing NFLverse weekly stats, snaps and
+as-of rosters; aDOT stays unavailable (no verified raw air-yard totals).
+No projection, probability, ordering, signal color or ranking change. Hosted
+rendering was not checked by this refresh. Archive:
+`blueprint/history/features/43-nfl-matchup-usage-context.md`.
 
 
 Numerical results and samples below are dated observations from the completed
@@ -2385,8 +2415,13 @@ the request path the same way.
     workflow registration, successful runner execution or current experiment
     counts; retain those post-publication checks separately.
 
-60. **Feature 43 is recorded in the build plan, not project-plan section 3.**
-    This approved incremental display feature changes no product direction,
-    user, provider, stack or deployment commitment. aDOT needs source/storage
-    verification and is not promised from the existing air-yard-share field.
-    The selected work is a spec draft; it must not be described as implemented.
+60. **Features 43 and 44 are recorded in the build plan, not project-plan
+    section 3.** Both are incremental (43 display, 44 a probability method
+    under existing gates) and change no product direction, user, provider,
+    stack or deployment commitment. 43 is complete with aDOT unavailable.
+
+61. **The owner raised NHL (2026-10-23) as a possible next sport ahead of
+    WNBA,** since it is in season and fits the NBA team-sport shape. It is
+    in neither plan. Adding it needs a reviewed plan addition, and its
+    sourcing step must settle The Odds API credit budget (NFL and NBA
+    already use about 330 of 500 credits a month).
