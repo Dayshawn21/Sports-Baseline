@@ -49,21 +49,23 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-23 (fourth refresh) after 45a's approved plan
-edits: the NHL sources (§4, §5), 45d on Odds-API.io, 45b's 2023-24 to
-2026-27 backfill and the new 45f. The third refresh added item 45 (NHL
+**Regenerated:** 2026-10-23 (fifth refresh) after 45a's completion
+(`4757df2`, archive `blueprint/history/features/45a-nhl-data-sourcing.md`).
+The fourth refresh recorded 45a's approved plan edits: the NHL sources
+(§4, §5), 45d on Odds-API.io, 45b's 2023-24 to 2026-27 backfill and the
+new 45f. The third refresh added item 45 (NHL
 support, placed before WNBA) with project-plan §1, §3 and §5 edits. The second refresh followed
 44a's completion, retaining existing overview content and completed-work
 validation/deployment boundaries. The build plan is the progress authority
-where older project-plan prose disagrees. There are 122 checked leaf items
-out of 137, including the explicitly dropped 40b; 15 remain unchecked. Feature 43 is complete per its archive. The owner chose
+where older project-plan prose disagrees. There are 123 checked leaf items
+out of 137, including the explicitly dropped 40b; 14 remain unchecked. Feature 43 is complete per its archive. The owner chose
 item 44 ahead of WNBA (and a possible NHL addition), with a fresh 2026-27
 confirmation sample instead of a third 2025-26 holdout read.
 44b is specified and built through its gate run on
 `feature/44b-nba-pover-confirmation` (checkpoint `dcabc8f`); its one scoring
 run waits until the first four 2026-27 weeks are played (about 2026-11-17).
-`master`'s `current-feature.md` is the stub, so 45a is specified next in
-parallel. A read-only check
+`master`'s `current-feature.md` is the stub; 45a is complete, so 45b is
+specified next in parallel. A read-only check
 on 2026-10-23 found the hosted NBA board, injuries and team stats live and
 every ingest workflow, including the six tennis files, running green; the
 secret scan was red from 2026-10-17 until fix `f731dec`. This refresh read
@@ -157,13 +159,13 @@ Checked items record completed work, including explicitly retired surfaces.
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
-| 45 | NHL support | Planned (added 2026-10-23); 45a sourcing decided, completing |
+| 45 | NHL support | 45a complete (sourcing decided); 45b next |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 
-15 leaf items remain, with these gates:
+14 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -173,8 +175,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for a 27j slice. Standard under and demon over are rejected (final for v4); standard over (128 of 200 picks) and goblin over (10 of 200) are accruing |
 | 44b | 2026-27 confirmation | Next. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
-| 45a | NHL data sourcing | Decisions recorded 2026-10-23 (below); awaiting `/complete` |
-| 45b | NHL schedule and box scores | After 45a's source choice |
+| 45b | NHL schedule and box scores | Next; 45a's sources, ids, tables and 2023-24 to 2026-27 backfill |
 | 45c | NHL prop lines | After 45b (players and games to link to) |
 | 45d | NHL game odds | After 45b; Odds-API.io hourly quota, no The Odds API credits |
 | 45e | NHL slate and game page | After 45b-45d |
@@ -183,14 +184,14 @@ Checked items record completed work, including explicitly retired surfaces.
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
 
-Run `/feature 45a` to spec NHL sourcing; 44b resumes on its branch once its gate reads `ready`. Rec Targets reporting now
+Run `/feature 45b` to spec NHL schedule and box-score ingest; 44b resumes on its branch once its gate reads `ready`. Rec Targets reporting now
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**45. NHL support (planned, added 2026-10-23).** Ingest and surface NHL on
+**45. NHL support (added 2026-10-23; 45a complete 2026-10-23).** Ingest and surface NHL on
 the NBA team-sport pattern: shared `sport_*` tables, the 17c prop pipeline
 and the web sport registries, with no third parallel stack (item 17's rule).
 Models follow NBA's backtest-first, pre-registered gates, and edges stay gray
@@ -199,7 +200,7 @@ a model page and a prop board are later sub-items, added once 45a-45e ship.
 
 | Step | Outcome |
 |---|---|
-| 45a | Sourcing and structural decisions (see NHL data below); research only |
+| 45a | *Complete 2026-10-23.* Sourcing and structural decisions below; research only, no code. Archive `blueprint/history/features/45a-nhl-data-sourcing.md` |
 | 45b | Seed `nhl` in `sports`; teams, players, games in `sport_*`; skater and goalie box scores in NHL stat tables; 2023-24 through 2026-27 backfill and daily refresh |
 | 45c | PrizePicks NHL lines through the shared pipeline, linked, all line-only |
 | 45d | DraftKings and Bet365 moneyline (overtime included), puck line and total from Odds-API.io into `sport_game_odds` under provider `odds_api_io`, de-vigged per book; no The Odds API credits |
