@@ -8,7 +8,8 @@
 
 The `secret-scan` job's tracked-tree step failed on the push of `8ab0c7e`
 (feature 39a): gitleaks' default `generic-api-key` rule flagged
-`key: '21319-7-points'` at `web/src/utils/nbaSlate.test.ts:155`, an NBA digest
+the test row key (game 21319, player 7, points) at
+`web/src/utils/nbaSlate.test.ts:155`, an NBA digest
 row key (`<gameId>-<playerId>-<market>`, entropy 3.52), not a credential. The
 line arrived with 38c2 (`0407c4b`), so every push since then has scanned the
 same tree; 39a did not touch the file. The commit-range step passed.
