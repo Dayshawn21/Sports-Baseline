@@ -14,6 +14,10 @@ const GENERATED_FITS = new Set([
   "api/app/core/tennis_market_blend_fit.py",
 ]);
 
+const ONE_TIME_RESULTS = new Set([
+  "api/app/core/nba_over_probability_v2_confirmation.py",
+]);
+
 function reasonFor({ path, tool }) {
   const abs = resolve(root, path);
   const rel = relative(root, abs).replaceAll("\\", "/");
@@ -24,6 +28,9 @@ function reasonFor({ path, tool }) {
   }
   if (/^api\/app\/db\/migrations\/versions\/\d{4}_.+\.py$/.test(rel) && existsSync(abs)) {
     return [rel, 'applied migrations are never edited. Write a new one with `alembic revision -m "..."`.'];
+  }
+  if (ONE_TIME_RESULTS.has(rel)) {
+    return [rel, "this result is written once by its scoring CLI and never edited or rescored."];
   }
   if (GENERATED_FITS.has(rel)) {
     return [rel, "this fit table is generated. Re-run its `python -m app.backtest.<name> --write` CLI instead."];

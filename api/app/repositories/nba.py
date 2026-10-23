@@ -607,6 +607,26 @@ async def get_finished_weeks(db: AsyncSession, season: int) -> set[int]:
     return {row[0] for row in rows.fetchall()}
 
 
+async def get_week_game_ids(db: AsyncSession, season: int, weeks: Sequence[int]) -> dict[int, int]:
+    """Game id to week for the season's `REG` games in `weeks` (44b's confirmation sample)."""
+    rows = await db.execute(text("""
+        SELECT id, week FROM sport_games
+        WHERE sport = 'nba' AND season = :season AND game_type = 'REG' AND week = ANY(:weeks)
+    """), {"season": season, "weeks": list(weeks)})
+    return {row[0]: row[1] for row in rows.fetchall()}
+
+
+async def get_week_progress(db: AsyncSession, season: int, weeks: Sequence[int]) -> dict[int, tuple[int, int]]:
+    """Per week: (`REG` games, completed games). Reads no box score."""
+    rows = await db.execute(text("""
+        SELECT week, COUNT(*), COUNT(*) FILTER (WHERE status = 'completed')
+        FROM sport_games
+        WHERE sport = 'nba' AND season = :season AND game_type = 'REG' AND week = ANY(:weeks)
+        GROUP BY week
+    """), {"season": season, "weeks": list(weeks)})
+    return {row[0]: (row[1], row[2]) for row in rows.fetchall()}
+
+
 async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[int, int]]:
     """Per week: (gradeable full-game modelled lines on completed `REG` games, how many have any frozen pre-tip row)."""
     rows = await db.execute(text(f"""
