@@ -240,6 +240,16 @@ Two apps, two command sets. Paths are relative to the repo root.
   to the shared database. `nhl-ingest.yml` runs at 09:45 UTC, September-June.
   NHL API reachability from GitHub Actions remains unverified until its
   first post-push run.
+- NHL props: `python -m app.ingest.prizepicks_nhl [--dry-run]` (full-game
+  PrizePicks lines, every market line-only; add `--relink` to repair stored
+  player/game links without a provider request). Time On Ice lines stay in
+  provider minutes; NHL box scores store seconds. `nhl-prop-lines.yml` is
+  configured for 17:15 and 22:45 UTC daily, September-June, with manual
+  dispatch; rate-limit exhaustion exits 75. `nhl-ingest.yml` relinks after
+  the daily schedule/box-score load. A local snapshot stored 941 lines with
+  all player/game links resolved; both subsequent relinks changed zero rows.
+  No NHL predictions are written. GitHub registration and runner acceptance
+  remain unverified until an approved push and actual run.
 
 ### Verify (both apps, from the repo root)
 

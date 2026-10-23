@@ -1,0 +1,1 @@
+"""NHL service adapters."""

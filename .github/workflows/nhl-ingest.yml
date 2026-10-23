@@ -36,3 +36,8 @@ jobs:
         run: |
           cd api
           python -m app.ingest.nhl_api
+
+      - name: Relink stored NHL prop lines
+        run: |
+          cd api
+          python -m app.ingest.prizepicks_nhl --relink

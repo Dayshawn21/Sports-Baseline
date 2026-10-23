@@ -1,0 +1,45 @@
+name: NHL PrizePicks Prop Lines
+
+# September through June. Times are offset from the other sports' PrizePicks
+# pulls; GitHub scheduling delays can still overlap provider windows.
+on:
+  schedule:
+    - cron: "15 17 * 1-6,9-12 *"
+    - cron: "45 22 * 1-6,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  prop-lines:
+    name: PrizePicks NHL Lines
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Snapshot PrizePicks NHL lines
+        run: |
+          cd api
+          status=0
+          python -m app.ingest.prizepicks_nhl || status=$?
+          if [ "$status" -eq 75 ]; then
+            echo "::error::PrizePicks rate limited the NHL line snapshot; no lines were stored this run."
+          fi
+          exit "$status"

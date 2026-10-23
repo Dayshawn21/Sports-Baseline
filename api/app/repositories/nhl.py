@@ -159,3 +159,13 @@ async def _ids_by_source(db: AsyncSession, sql: str, source_ids: Sequence[str]) 
     statement = text(sql).bindparams(bindparam("ids", expanding=True))
     rows = await db.execute(statement, {"ids": list(set(source_ids))})
     return {source_id: row_id for source_id, row_id in rows.all()}
+
+
+async def get_player_candidates(db: AsyncSession) -> list[tuple[int, str, str | None, str | None]]:
+    rows = await db.execute(text("""
+        SELECT p.id, p.name, t.team_code, p.position
+        FROM sport_players p
+        LEFT JOIN sport_teams t ON t.sport = 'nhl' AND t.id = p.team_id
+        WHERE p.sport = 'nhl'
+    """))
+    return [(row[0], row[1], row[2], row[3]) for row in rows.fetchall()]
