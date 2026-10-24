@@ -71,3 +71,8 @@ tmp_*.json
 
 # First-person interview coaching; kept local so it never reaches the public repo (37e).
 docs/SportApp-Employer-Interview-Guide.md
+
+# Analysis workspace (46a): exported charts and locally cached public data.
+analysis/output/
+analysis/data/
+.ipynb_checkpoints/

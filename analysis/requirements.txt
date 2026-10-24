@@ -1,0 +1,13 @@
+pandas==2.2.3
+numpy==2.2.1
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.4
+python-dotenv==1.0.1
+playwright==1.49.0
+matplotlib==3.11.2
+jupyter==1.1.1
+pytest==9.1.1
+# 0.3.3 pins pandas<2; 0.3.2 installs beside pandas 2.2.3. Deprecated upstream,
+# so notebooks reach it through one loader function.
+nfl_data_py==0.3.2
+nba_api==1.12.0

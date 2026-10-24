@@ -11,7 +11,14 @@
 > scores, line-only PrizePicks lines and game odds stored, a display-only slate
 > and game page with a gray reference projection, P(over) for assists only,
 > pre-tip predictions frozen after each line snapshot, and a forward ranking
-> check on `/nba/model`, with slice results reported there); NHL (item 45, added 2026-10-23) is next as a new sport, then WNBA and soccer. NFL best line (item 36) is complete: each side's
+> check on `/nba/model`, with slice results reported there); NHL's sourcing,
+> schedule/box-score ingest, line-only props and game odds are complete
+> (45a-45d), as are its slate/game display and stored injury/goalie context
+> (45e-45f). All six NHL sub-items and parent 45 are checked; NHL remains
+> line-only with no model or picks. Migration 0050 and real context write/read
+> acceptance remain pending, as do runner and hosted verification. WNBA and
+> soccer remain planned. NFL best line
+> (item 36) is complete: each side's
 > best Bet365 or DraftKings price beside a Pinnacle fair price, on the game
 > page and slate row. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
@@ -22,9 +29,9 @@
 > command search, shared detail headings, CT labels and loaded detail tab
 > titles are implemented. The palette, fonts, and signal rules stay unchanged.
 > NBA now has Slate / Props / Model tabs: the board API and page (42a, 42b)
-> are complete and verified locally, with deployment unverified. Display-only
-> NBA injuries and team stats (42c, 42d) are complete locally; hosted
-> deployment remains unverified. NFL Rec Targets (item 39)
+> are complete and verified locally. A previously recorded 2026-10-23 hosted
+> check found the NBA board, injuries and team stats (42a-42d) available;
+> this refresh performs no new hosted acceptance check. NFL Rec Targets (item 39)
 > is graded by 27j as its own sample; its 2024 baseline (39a) is chosen, its
 > P(over) failed the one 2025 check and stays hidden (39b), and reference
 > serving, freezing and separate-version reporting are complete (39c-39d).
@@ -35,7 +42,7 @@
 > rows backfilled into the shared database. Match and player displays fill
 > TennisAbstract gaps; grading and model inputs are unchanged. The in-house
 > ELO shadow comparison (41b) is engineered and activated locally, its
-> forward verdict accruing from 2026-10-22 with zero observations; serving
+> last recorded forward verdict accruing from 2026-10-22 with zero observations; serving
 > it (41c) stays conditional. First runner acceptance and deployment
 > remain unverified for both. NFL matchup and usage context (43) is complete
 > and merged, display only, with aDOT unavailable. Item 44 adds a second
@@ -49,29 +56,40 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-23 (fifth refresh) after 45a's completion
-(`4757df2`, archive `blueprint/history/features/45a-nhl-data-sourcing.md`).
-The fourth refresh recorded 45a's approved plan edits: the NHL sources
-(§4, §5), 45d on Odds-API.io, 45b's 2023-24 to 2026-27 backfill and the
-new 45f. The third refresh added item 45 (NHL
-support, placed before WNBA) with project-plan §1, §3 and §5 edits. The second refresh followed
-44a's completion, retaining existing overview content and completed-work
-validation/deployment boundaries. The build plan is the progress authority
-where older project-plan prose disagrees. There are 123 checked leaf items
-out of 137, including the explicitly dropped 40b; 14 remain unchecked. Feature 43 is complete per its archive. The owner chose
-item 44 ahead of WNBA (and a possible NHL addition), with a fresh 2026-27
-confirmation sample instead of a third 2025-26 holdout read.
-44b is specified and built through its gate run on
-`feature/44b-nba-pover-confirmation` (checkpoint `dcabc8f`); its one scoring
-run waits until the first four 2026-27 weeks are played (about 2026-11-17).
-`master`'s `current-feature.md` is the stub; 45a is complete, so 45b is
-specified next in parallel. A read-only check
-on 2026-10-23 found the hosted NBA board, injuries and team stats live and
-every ingest workflow, including the six tennis files, running green; the
-secret scan was red from 2026-10-17 until fix `f731dec`. This refresh read
-no holdout. It records the 27j verdicts the live `/nfl/model/ranking`
-served on 2026-10-23 (graded 15:50 UTC, last settled week 6); it decides
-nothing new.
+**Regenerated:** 2026-10-24 (seventh refresh), after 45e and 45f completed
+on `master` (`d89fcb5`, `a786b24`). Both commits were pushed to
+`origin/master` in the current conversation. This synthesis retains the
+previous uncommitted overview refresh and updates it from the two unchanged
+owner plans. Completed archives and local contracts explain the checked
+items; the build plan is the progress authority where older project-plan
+prose disagrees. Those gaps remain listed below.
+
+There are **129 checked leaf items out of 140**, including the explicitly
+dropped 40b; **11 remain unchecked** (9 product items plus item-46 analysis workspace
+sub-items 46b and 46c; 46a completed 2026-10-24). NHL 45a-45f and parent 45 are complete
+as implementation. Migration 0049, a four-season NHL backfill, 941 linked
+PrizePicks snapshots and 168 game-odds snapshots are prior recorded local
+observations, not live inventory counts. NHL now has slate/game routes and
+ESPN context display, but no model projection, frozen prediction, prop board,
+model page or recommendation. Migration 0050 is prepared and still unapplied
+by this work; nonempty NHL slate/game reads require its tables and return a
+sanitized 503 when absent. Real context persistence/PostgreSQL read acceptance,
+workflow registration/runner acceptance and hosted rollout remain unverified.
+
+`current-feature.md` is the reset stub. The next planned new sport is **21,
+WNBA support**, after completed NHL. The first unchecked leaf in literal plan
+order remains parked 16f, so use an explicit item such as `/feature 21` rather
+than the no-argument selector when choosing new sport work. Conditional 41c,
+25c and 27h retain their validation gates. 44b remains on
+`feature/44b-nba-pover-confirmation` (checkpoint `dcabc8f`), waiting for its
+fresh 2026-27 first-four-weeks sample to mature (about 2026-11-17); no
+confirmation score or serving change is authorized by this refresh.
+
+This regeneration performs no provider/database requests, remote workflow
+checks, fits, holdout queries or scoring. Prior recorded hosted observations
+and the 2026-10-23 15:50 UTC NFL ranking read remain dated evidence, not newly
+checked live state. That ranking read rejected standard under and demon over
+while the other two slices accrued; this refresh makes no new verdict.
 
 ## Problem
 
@@ -88,8 +106,10 @@ than assumed. Placed bets are tracked outside the app, in Pikkit.
 
 **Tennis is the first sport, not the only one.** Tennis came first because it is
 two-outcome, has no draws, runs daily, and has free ELO and per-match stats, which
-made it the cheapest place to prove the pipeline. NFL and NBA are shipped; WNBA
-and soccer are planned.
+made it the cheapest place to prove the pipeline. NFL and NBA are shipped;
+NHL sourcing, ingest, slate/game display and injury/goalie context are
+implemented; real context storage activation and hosted acceptance are pending.
+WNBA and soccer are planned.
 
 ## Users
 
@@ -159,13 +179,14 @@ Checked items record completed work, including explicitly retired surfaces.
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
-| 45 | NHL support | 45a complete (sourcing decided); 45b next |
+| 45 | NHL support | 45a-45f complete locally and pushed; context migration/write/read and remote acceptance pending |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
+| 46 | Analysis workspace (Numbers Behind the Game) | 46a complete; 46b next, then 46c |
 
-14 leaf items remain, with these gates:
+11 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -173,25 +194,50 @@ Checked items record completed work, including explicitly retired surfaces.
 | 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for a 27j slice. Standard under and demon over are rejected (final for v4); standard over (128 of 200 picks) and goblin over (10 of 200) are accruing |
-| 44b | 2026-27 confirmation | Next. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
+| 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
-| 45b | NHL schedule and box scores | Next; 45a's sources, ids, tables and 2023-24 to 2026-27 backfill |
-| 45c | NHL prop lines | After 45b (players and games to link to) |
-| 45d | NHL game odds | After 45b; Odds-API.io hourly quota, no The Odds API credits |
-| 45e | NHL slate and game page | After 45b-45d |
-| 45f | NHL injuries and starting goalies | After 45e; display only |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
+| 46b | Thumbnail generator | After 46a (brand tokens, fonts) |
+| 46c | Save the Season notebook | After 46a and 46b |
 
-Run `/feature 45b` to spec NHL schedule and box-score ingest; 44b resumes on its branch once its gate reads `ready`. Rec Targets reporting now
+`/feature 46b` specs the thumbnail generator (analysis workspace, outside the app). `/feature 21` specs the next planned new sport, WNBA; NHL operational
+acceptance is a separate follow-up documented in `docs/nhl-context.md`.
+44b resumes on its own branch once its gate reads `ready`. Rec Targets reporting
 describes coverage and settlement, but cannot accrue probability-based picks
 while P(over) is hidden. Adoption work still requires the pre-registered
 verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**45. NHL support (added 2026-10-23; 45a complete 2026-10-23).** Ingest and surface NHL on
+**46. Analysis workspace (added 2026-10-24; 46a complete 2026-10-24, archive `blueprint/history/features/46a-analysis-workspace.md`).** An `analysis/`
+folder at the repo root, outside the app, for the owner's Numbers Behind the
+Game social account (@numbersbehindthegame, sports analytics for beginners).
+
+| Step | Outcome |
+|---|---|
+| 46a | Workspace and chart style: README, requirements, read-only `lib/db.py`, `lib/style.py`, glossary, gitignored `output/` and `data/`, tests |
+| 46b | Thumbnail generator: HTML/CSS template, Playwright render to 1280x720, 1080x1920, 1080x1350 |
+| 46c | `week01-save-the-season.ipynb` over `lib/nfl_team_report.py`, run for DAL and PHI |
+
+- **Isolation (load-bearing):** nothing in `analysis/` is imported by `api/`
+  or `web/`, and it never writes to the database, changes a model, a
+  probability, a pick or a stored row. Its own venv (`analysis/.venv`); its
+  tests run separately and are not part of the Verify command.
+- **Data:** the existing Postgres database read-only through `DATABASE_URL`
+  from `api/app/.env`; free public files (nflverse play-by-play via
+  `nfl_data_py`) cached to a gitignored local folder, never the database.
+- **Content rules:** plain language for a first-time fan, answer first, one
+  chart one point, honest about luck and small samples; no betting advice,
+  no picks, no claims the data does not support.
+- **Brand:** logo blue `#09BDFE` (sampled from the owner's logo) as the one
+  accent on the Lineform dark palette; Barlow Condensed, DM Sans and
+  JetBrains Mono.
+- **Commits:** notebooks committed with outputs cleared; no secrets,
+  connection strings or keys in any notebook or output.
+
+**45. NHL support (45a-45f complete; 45f merged/pushed 2026-10-24).** Ingest and surface NHL on
 the NBA team-sport pattern: shared `sport_*` tables, the 17c prop pipeline
 and the web sport registries, with no third parallel stack (item 17's rule).
 Models follow NBA's backtest-first, pre-registered gates, and edges stay gray
@@ -201,11 +247,11 @@ a model page and a prop board are later sub-items, added once 45a-45e ship.
 | Step | Outcome |
 |---|---|
 | 45a | *Complete 2026-10-23.* Sourcing and structural decisions below; research only, no code. Archive `blueprint/history/features/45a-nhl-data-sourcing.md` |
-| 45b | Seed `nhl` in `sports`; teams, players, games in `sport_*`; skater and goalie box scores in NHL stat tables; 2023-24 through 2026-27 backfill and daily refresh |
-| 45c | PrizePicks NHL lines through the shared pipeline, linked, all line-only |
-| 45d | DraftKings and Bet365 moneyline (overtime included), puck line and total from Odds-API.io into `sport_game_odds` under provider `odds_api_io`, de-vigged per book; no The Odds API credits |
-| 45e | NHL in `SPORTS`, `SPORT_PAGES` and `SPORT_STATUS`; table-first slate and game page with market, movement and gray line-only prop rows |
-| 45f | ESPN injury and probable-goalie (`Expected`/`Confirmed`) snapshots before puck drop, linked by name and team; display only |
+| 45b | Complete: `nhl` seeded; NHL ids in shared tables, separate skater/goalie stats, four-season backfill and daily refresh. Archive `45b-nhl-schedule-box-scores.md` |
+| 45c | Complete: shared PrizePicks pipeline and NHL resolver; 941 full-game lines linked in the local smoke, all line-only. Archive `45c-nhl-prop-lines.md` |
+| 45d | Complete: Bet365/DraftKings OT-inclusive moneyline, +/-1.5 puck line and total in `sport_game_odds`, provider `odds_api_io`, per-book de-vig; 168 local smoke rows. Archive `45d-nhl-game-odds.md` |
+| 45e | Complete: NHL registries, dated slate and game page with book markets, movement and gray line-only props. Archive `45e-nhl-slate-and-game-page.md`; `docs/nhl-display.md` |
+| 45f | Complete locally: immutable ESPN injury/goalie snapshots, conservative frozen links, batched pre-start API context and slate/Matchup display. Migration 0050 and real storage acceptance pending. Archive `45f-nhl-injuries-and-starting-goalies.md`; `docs/nhl-context.md` |
 
 - **What NHL breaks** (project-plan §3): low scoring, so count props are
   small integers; the puck line is fixed at +/-1.5; moneylines may be priced
@@ -231,7 +277,8 @@ a model page and a prop board are later sub-items, added once 45a-45e ship.
     board): Shots On Goal, Points, Assists, Goals, Power Play Points, Blocked
     Shots, Plus/Minus, Hits, Time On Ice, Faceoffs Won, and goalie-only Goalie
     Saves and Goals Allowed. `(Combo)` and Fantasy Score are not mapped. Time
-    On Ice's line unit is confirmed in 45c.
+    On Ice is stored in provider minutes (confirmed in 45c), while box-score
+    TOI is seconds. Convert only at a display/settlement boundary, not on ingest.
   - **OT/SO:** stored scores are the official final, shootout winner
     included; nullable `sport_games.end_period` (`REG`, `OT`, `SO`), NHL
     only. Player and goalie stats exclude shootouts.
@@ -242,6 +289,77 @@ a model page and a prop board are later sub-items, added once 45a-45e ship.
     voids); a later goalie projection must condition on the starter (45f's
     data). Some demon and goblin lines allow unders; 27i's rule still plays
     them over only.
+
+- **45b implementation and evidence:** migration `0049` is applied. The
+  four-season load recorded 5,536 games, 1,356 players, 33 teams (historical
+  ARI and UTA are separate), 156,830 skater rows and 9,222 goalie rows. The
+  season 2025-26 import includes 1,394 REG/PST games, 50,182 skater rows and
+  2,942 goalie rows. It was read for data integrity, not fitted or scored as
+  a holdout. Five reconciled official-score differences are goalie goals,
+  which are not skater columns; do not alter official scores to force a sum.
+  `regular_season_week.py` now supplies the pure week rule for both NBA and
+  NHL. Daily schedule/stat ingest relinks stored NHL props afterward.
+- **45c implementation and evidence:** `NHL_PROPS` and `NhlPropSource` are
+  the line-only configuration/adapter for the shared 17c pipeline. Full-game
+  `NHL` lines are accepted; `NHL1P` and `NHLSZN` are classified off-board.
+  Twelve market keys are defined. Name folding, `TB` -> `TBL`, alias/team
+  resolution and game linking ignore PrizePicks position labels. The live
+  smoke linked all 941 rows to NHL players and games, then two relinks changed
+  zero rows and preserved full-row hashes. No NHL model, probability, freeze
+  or entry in `PROP_SOURCES` was added.
+- **45d implementation and evidence:** `nhl_odds_io` reads scheduled REG/PST
+  games with aware starts in a rolling two-day window (CLI 1-14 days), matches
+  pending `usa-nhl` events by both teams and a six-hour start tolerance, and
+  requests at most ten event ids per odds call. Reversed team prices and puck
+  line signs are normalized to the stored home side. Only `ML`, `Spread`
+  (+/-1.5) and `Totals` enter storage; Draw No Bet, regulation/period and
+  draw-bearing markets are rejected. Fair probabilities are per-book pairs.
+  Append-only writes recheck sport/type/status/start at database statement
+  time; raw provenance retains event id, selected rung and provider update.
+  One discovery call obtains the shared-hour balance; later calls must leave
+  the floor of 20. Unknown quota or HTTP/network/JSON failure stops further
+  requests without retry. Earlier complete batches can commit on a later
+  provider failure, with a failing CLI exit. Dry run makes no inserts/commit.
+  Two real local runs each appended 84 rows and preserved first-run history;
+  a following dry run left all 168 rows unchanged. Each used three requests,
+  covered all three markets at both books for 14 of 15 matches, and reported
+  the missing event. No The Odds API credits or outcome scoring were used.
+- **45e implementation and evidence:** `/nhl` serves a dated, searchable slate
+  and `/nhl/game/:gameId` a game page whose default tab is Player Props.
+  Market and history keep one book per market, DraftKings preferred then
+  Bet365, filtered to `odds_api_io`. Known starts impose strict pre-start
+  odds/prop eligibility; TBD starts allow stored prices/props but no pre-start
+  history claim. Slate counts and prop rows share eligibility, retain distinct
+  Standard/Goblin/Demon offerings, and remain gray without model values.
+  Read-only real-data checks matched 1,721 offers across twelve games and
+  recorded about 12.6 KB/493 ms for that pre-context slate. Desktop/phone
+  navigation, search, refresh and fixture error/empty states passed. These
+  are dated local observations, not deployed acceptance; see `docs/nhl-display.md`.
+- **45f implementation and evidence:** keyless ESPN current injuries and
+  dated goalie scoreboards are parsed separately. Frozen full-name/team links
+  retain unresolved source names; goalies also require stored position G.
+  Event links require unique ordered teams and starts within 60 minutes.
+  Successful-empty, unavailable and Not reported are distinct. Newest eligible
+  headers are selected before their entries, so missing events never revive
+  an older goalie. Strict pre-start selection, independent six-hour freshness,
+  historical/TBD/reschedule cases and sanitized missing-migration 503s are
+  covered by pure tests and isolated SQL/HTTP fixtures. Slate and Matchup show
+  source statuses and independent fetch/update times, never infer health from
+  absence, and keep Player Props as default. A real read-only dry run resolved
+  131 injuries and 34 goalie observations across two dates; no snapshot write
+  occurred. Final Verify passed 903 web and 4,462 API tests plus typecheck/build.
+  A synthetic twelve-game HTTP slate with 144 injuries and 24 goalie sides
+  returned 51,163 bytes in 11.15-58.40 ms using two context queries. These are
+  local fixture measurements, not PostgreSQL plans or hosted memory/load proof.
+- **Operations boundary:** all four NHL workflows are committed and pushed,
+  including `nhl-context.yml` in `a786b24`. Migration 0050 remains unapplied
+  by this work; apply it before deploying nonempty NHL slate/game reads.
+  Real context writes/PostgreSQL acceptance, workflow registration, source
+  reachability from runners and hosted rollout are unverified. This refresh
+  does not check them. See Deployment and `docs/nhl-context.md`.
+- **Modelling boundary:** no NHL projection, probability, frozen prediction,
+  `PROP_SOURCES` entry, model page, prop board or recommendation was introduced.
+  Testing context as a model input requires a later separately specified item.
 
 **44. NBA over probability, second method (planned, owner-selected 2026-10-23).**
 20g1's ratio-quantile fit hid eight of nine NBA markets, and returns no
@@ -1387,7 +1505,8 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
 - `match_odds` is append-only, so the closing price is the last row before
   `start_utc`.
 
-**Next: sports expansion** (item 17 complete 2026-10-05, item 20 complete 2026-10-07; NHL next, then WNBA)
+**Sports expansion** (items 17, 20 and NHL 45a-45f complete as implementation;
+WNBA is the next planned new sport; NHL operational acceptance remains separate)
 
 17. **Multi-sport foundation** *(complete 2026-10-05)* - converged the tennis and NFL stacks, rather than clearing a path for the first one. Split 2026-10-01:
     - 17a. **Shared team-sport tables** *(shipped 2026-10-02)* - the seven cross-sport NFL tables renamed in place to sport-keyed `sport_*` tables plus a `sports` registry (`0039`), with `nfl_*` compatibility views so NFL code ran unchanged.
@@ -1525,7 +1644,9 @@ with no projection, probability, version, ranking or pick change.
     stats appear in evidence, both teams' stats on the game page. No new
     source, projection input, gap, sort or pick change.
 
-45. **NHL support** - NBA's team-sport shape; 45a-45f cover sourcing, ingest, lines, odds, display, and injuries and starting goalies (see Detailed feature context).
+45. **NHL support** - 45a-45f complete: sourcing, ingest, line-only props,
+    book odds, slate/game display and ESPN injury/goalie context. Migration
+    0050, real context storage and remote acceptance remain pending. No model.
 21. **WNBA support** - extends NBA.
 22. **Three-way market support** - draws in de-vigging, ensemble, and schema.
 23. **Soccer support** - on top of item 22.
@@ -1548,6 +1669,32 @@ stack.** Item 22 is split from 23 because draws are the one genuinely hard chang
 | Soccer | **Draws.** Three-way markets break the two-outcome assumption throughout |
 
 ## Data model
+
+### NHL display response (45e/45f, implemented)
+
+`GET /nhl/slate?date=YYYY-MM-DD` returns `date`, nullable `previousDate` and
+`nextDate`, and `games[]`. Each game carries internal `gameId`, season/week,
+REG/PST type, Eastern date, nullable aware start, status, team codes/names,
+nullable final scores/end period, eligible prop count, nullable per-book
+moneyline/spread/total, line movement and `context`.
+`GET /nhl/games/{id}` shares those fields and adds `lineHistory`.
+`GET /nhl/games/{id}/line-only-props` returns `gameId` and eligible `lines[]`:
+provider/offering id, internal player id, stored player name/position,
+provider-reported team, market,
+offering type, provider line and fetch timestamp. No player detail link or
+projection is fabricated. Missing/wrong-sport/PRE ids return 404, malformed
+ids/dates 422; an empty slate returns 200 without a context query.
+
+Both slate/detail use camelCase `context: {injuries, goalies}`. Each component
+has `source='ESPN'`, nullable aware `fetchedAt`/`sourceTimestamp`, independent
+`freshness='fresh'|'stale'|'unavailable'`, and away/home values. Injury arrays
+retain source athlete id/name/team, nullable internal player id, raw status,
+detail, sourceUpdatedAt/returnDate, linkReason and teamMismatch. Goalie sides
+retain team, nullable athlete/player ids/name, rawStatus, linkReason and status
+Expected/Confirmed/unknown/not_reported/unavailable on the wire as lowercase
+codes. Missing tables produce an explicit migration-required 503, not empty
+reports. Reads use two batched context queries, frozen links and no provider
+I/O/writes. Full contracts: `docs/nhl-display.md`, `docs/nhl-context.md`.
 
 ### NBA prop board response (42a/42b, implemented)
 
@@ -1791,19 +1938,21 @@ Precomputed responses the hosted demo serves instead of building them.
 ### Sports registry (`sports`, 17a, `0039`)
 
 - `code` (text, **primary key**), `name` (text, required)
-- Seeded with `nfl`; `0043` (20b) adds `nba`. 17d's registries live in code
-  and do not read it.
+- Seeded with `nfl`; `0043` (20b) adds `nba`, `0049` (45b) adds `nhl`.
+  17d's registries live in code and do not read it. Seeding a database sport
+  does not enable a public page or prediction source.
 
 ### Shared team-sport tables (`sport_*`, 17a and 17b, `0039` to `0041`)
 
-Seven tables that every team sport writes, each with `sport` (text, required,
+Seven shared tables available to team sports, each with `sport` (text, required,
 foreign key to `sports.code`, **no default**, so a missing sport is an error).
-NFL and NBA (20b to 20d) write to them. They were the `nfl_*` tables until 17a
+NFL, NBA (20b to 20d) and NHL (45b to 45d) write to them. They were the `nfl_*` tables until 17a
 renamed them in place (rows, ids and inbound foreign keys carried over); 17b
 moved all NFL code onto them and `0041` dropped the `nfl_*` compatibility
 views. NFLverse ids are the NFL join keys: gsis id (`source_player_id`) and
-game id (`source_game_id`). Ingest matches players, games, and teams and never
-creates them; unknowns are skipped and counted.
+game id (`source_game_id`). NBA uses ESPN ids, NHL the league's own ids.
+Schedule/stat ingest creates canonical teams, players and games; prop/odds
+ingest matches those existing identities and never creates them from a line.
 
 - **`sport_teams`** - `team_code` (NFLverse codes for NFL), `name`, `conference`, `division`; **unique on** (`sport`, `team_code`)
 - **`sport_players`** - `source_player_id`, `name`, `position`, `team_id` (last-write-wins; NFL readers use the weekly roster instead, see below); **unique on** (`sport`, `source_player_id`)
@@ -1847,6 +1996,32 @@ creates them; unknowns are skipped and counted.
 > `tests/test_sport_props_pipeline.py` fails if the shared modules load NFL
 > code.
 
+**NHL additions to the shared contracts (45b-45f):**
+
+- `sport_games.end_period` is nullable `varchar(3)`, `REG`/`OT`/`SO`, added
+  by `0049`. A check requires NULL outside NHL. NHL scores are the official
+  final including a shootout winner's goal; NHL `game_date` is Eastern,
+  `season` the start year, `week` the shared regular-season week (NULL in PST).
+- NHL `sport_prop_lines` use `provider='prizepicks'`, `segment='full_game'`
+  and twelve line-only keys: `shots_on_goal`, `points`, `assists`, `goals`,
+  `power_play_points`, `blocked_shots`, `plus_minus`, `goalie_saves`, `hits`,
+  `time_on_ice`, `goals_allowed`, `faceoffs_won`. TOI lines are minutes;
+  raw numeric values and original fetch/start timestamps remain intact on relink.
+- NHL `sport_game_odds` use `provider='odds_api_io'`, `book='bet365'` or
+  `'draftkings'`. Moneyline is two-way OT/SO-inclusive with NULL `line` and
+  home/away sides. Puck line is stored as `market='spread'`, signed for the
+  stored home team, +/-1.5, home/away sides. Total has a positive goal line
+  and over/under sides. American prices are integer; `line` is numeric(7,2),
+  probabilities are double precision and sum to one per book/rung. Each
+  new snapshot has a database statement-time `fetched_at` and provider event
+  id in `raw_json`. A missing book or market never deletes earlier history.
+- **Load-bearing for NHL display:** NHL reads must name both `sport='nhl'` and
+  `provider='odds_api_io'`. Existing NFL/NBA readers retain their named feeds.
+  A book's fair pair is market context, never a model recommendation.
+- NHL shares the pure `regular_season_week` helper with NBA (45b). Empty
+  break weeks have no games and do not count as finished periods. NHL has
+  no projection/freezing/ranking source, so no grading readiness is implied.
+
 ### NBA box scores (`nba_player_game_stats`, 20b, `0043`)
 
 NBA games, teams and players live in the shared `sport_*` tables under
@@ -1881,6 +2056,85 @@ about 35,000 box-score rows each), 2025-26, and the 2026-27 schedule.
 - **Load-bearing:** a player's team for a past game is the box-score row's
   `team_id`, never `sport_players.team_id` (last team loaded; NBA trades
   mid-season).
+
+### NHL box scores (`nhl_skater_game_stats`, `nhl_goalie_game_stats`, 45b, `0049`)
+
+NHL games/teams/players live in shared tables under `sport='nhl'`. Canonical
+keys are NHL `gameId`, `playerId` and tri-codes (`TBL`, `UTA`; historical
+`ARI` stays separate). Player team is the latest loaded game's team; a past
+game's team is always the stat row's `team_id`. No ESPN-to-NHL id equivalence
+is assumed; 45f resolves ESPN display data conservatively by full name/team.
+
+Both stat tables have:
+
+- `id` bigint PK; required `player_id`/`game_id` FKs to shared players/games
+  (cascade on delete), `team_id`/`opponent_team_id` FKs to shared teams.
+- `season` smallint, `is_home` boolean, nullable `time_on_ice_seconds`
+  integer, `fetched_at` timestamptz; unique (`player_id`, `game_id`), indexes
+  on (`player_id`, `season`) and `game_id`.
+- Skaters: nullable text `position`; nullable smallint `goals`, `assists`,
+  `points`, `shots`, `power_play_goals`, `power_play_points`,
+  `shorthanded_points`, `plus_minus`, `hits`, `blocked_shots`, `faceoffs_won`,
+  `faceoffs_lost`, `penalty_minutes`, `giveaways`, `takeaways`, `ot_goals`.
+- Goalies: required boolean `started`; nullable text `decision` checked to
+  `W`/`L`/`O`; nullable smallint `saves`, `shots_against`, `goals_against`.
+
+Only completed REG/PST games have stat rows. A skater row means he dressed,
+a goalie row means he played; no player row means did not play, never zero.
+Before treating missing stats as a void, establish that the game's stat load
+is complete; NULL stat columns mean not loaded. Player/goalie stats exclude
+shootout attempts. Goalie goals are not stored in these columns; five
+documented goalie-goal exceptions explain skater-total versus official-score
+differences. Do not infer a data repair from that difference alone.
+
+The recorded 45b backfill inventory was 5,536 games, 156,830 skater rows and
+9,222 goalie rows across 2023-24 through 2026-27. The designated 2025-26
+future holdout was imported and integrity-checked, not fitted or evaluated.
+No NHL model, fit, frozen prediction or ranking report is introduced by this
+schema or by 45c/45d. NHL props remain line-only until later model items.
+
+### NHL context snapshots (45f, `0050`, migration pending)
+
+These are prepared schema contracts, not evidence that the shared database
+has the tables. Migration 0050 follows applied 0049. All reads and writes
+retain NHL/REG/PST ownership; ESPN ids are never NHL source ids.
+
+- `nhl_context_snapshots`: `id` bigint PK; `source` text fixed ESPN; `kind`
+  injuries/goalies; `scope_date` nullable date (NULL for global injuries,
+  Eastern scoreboard date for goalies); aware `fetched_at` and nullable
+  `source_timestamp`; nonnegative integer `entry_count`. Injury source time
+  is required. Unique source/kind/scope/fetch uses NULLS NOT DISTINCT.
+  Indexed kind/scope/fetch DESC/id DESC supports newest-header selection.
+- `nhl_player_injuries`: snapshot FK, ESPN team/athlete ids, canonical team,
+  source player name/status/detail, aware nullable source_updated_at,
+  return-date text, nullable nested athlete team id and internal player FK,
+  frozen link_reason. PK snapshot/team/athlete; index snapshot/team.
+- `nhl_goalie_observations`: snapshot FK, ESPN event/date/start/time-valid,
+  ordered home/away teams, reported team and athlete identity/status, nested
+  athlete team/position, nullable internal player/game FKs and frozen link
+  reasons. PK snapshot/event/team; index snapshot/game. Source statuses are
+  expected/confirmed/unknown/not_reported. A no-announcement competitor has
+  null athlete fields. Source names remain when internal ids are unresolved.
+
+Player link reasons: matched/no_candidate/ambiguous/team_mismatch/missing_team/
+position_mismatch/not_reported. Event reasons: matched/no_game/ambiguous/
+missing_start/start_mismatch. IDs are present iff reason is matched. Repository
+validation checks NHL FKs and G position, and savepoints keep each complete
+batch atomic. Ingest commits feeds independently. Exact timestamp/content
+retries reuse the batch; conflicting content fails. No update/relink/cleanup
+rewrites history; current roster joins are absent on reads.
+
+Select the newest successful header with `fetched_at < start_utc` and
+`fetched_at <= response_as_of` before looking for entries, independently per
+feed and with id tie-breaking. Injuries filter to the game's teams; goalies
+use its Eastern date and frozen game/event match. Rescheduled or ambiguous
+events become unavailable. A missing event does not resurrect an older
+Confirmed goalie. Known batch times remain visible for missing events; no
+eligible batch or TBD start has unavailable/null timestamps. Exactly six
+hours at `min(response_as_of, start_utc)` is fresh, over six is stale. Historical
+pages retain pre-game observations; post-start downloads cannot backfill them.
+Successful empty injuries mean No injuries reported by ESPN, never healthy.
+These snapshots authorize no retrospective scoring or model adoption.
 
 ### NFL stat and context tables (`nfl_*`)
 
@@ -1921,6 +2175,12 @@ outcomes are driven more by volume.
 - **LightGBM / XGBoost / scikit-learn / joblib** - models and calibration; the future tennis v7 policy uses validation-fitted sigmoid calibration (scikit-learn also fits the NFL backtests)
 - **Playwright / httpx / requests / tenacity** - ingest and retry
 
+**Analysis workspace (item 46, `analysis/.venv`)**
+
+- **Jupyter, pandas, matplotlib, SQLAlchemy + psycopg** - read-only notebooks and branded chart export
+- **nfl_data_py, nba_api** - free public data, cached locally
+- **Playwright** - renders the HTML/CSS thumbnail template to PNG
+
 **Frontend**
 
 - **React 19 + Vite 7** - SPA, no metaframework, because it is a pure API client
@@ -1936,7 +2196,7 @@ outcomes are driven more by volume.
 | Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display snapshots, 42c locally complete) | The Odds API (free plan, game lines only) | PrizePicks |
-| NHL | NHL web API (`api-web.nhle.com`) | NHL stats REST per-game skater and goalie reports; sportsdataverse `nhl_player_boxscores` fallback; ESPN injuries and probable goalies (display, 45f) | Odds-API.io (DraftKings, Bet365) | PrizePicks |
+| NHL | NHL web API (`api-web.nhle.com`, 45b complete) | NHL stats REST per-game skater and goalie reports (45b); sportsdataverse fallback choice; ESPN injuries/probable goalies (45f implemented; storage activation pending) | Odds-API.io (DraftKings, Bet365; 45d complete) | PrizePicks (45c complete, line-only) |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
 
 **Backtest-only source:** 26c reads Valuebetennis season CSVs (ATP and WTA
@@ -1945,8 +2205,8 @@ downloaded once into a gitignored local folder. Nothing ingests them into the
 database and no app code fetches the site.
 
 **Two odds providers, easily confused.**
-- **Odds-API.io** (`api.odds-api.io`, `ODDS_API_KEY`): tennis, and from 36a NFL
-  Bet365 and DraftKings game lines. Free plan: 100 requests an hour and **two
+- **Odds-API.io** (`api.odds-api.io`, `ODDS_API_KEY`): tennis, NFL (36a) and
+  NHL (45d) Bet365/DraftKings game lines. Account contract: 100 requests an hour and **two
   books, shared across sports** (DraftKings and Bet365); sharp books and
   exchanges are paid only.
 - **The Odds API** (`api.the-odds-api.com`, `THE_ODDS_API_KEY`): NFL and NBA,
@@ -2030,8 +2290,10 @@ without reading everything. Quality flags and EV ranking cut the list down.
 - `/nba` - NBA slate (38c2): one Eastern date (`?date=YYYY-MM-DD`, default today else the next game date), a summary strip, gray reference digest and one table row per game, each linking to the game page
 - `/nba/game/:gameId` - NBA game page (20e3, 38d3, 38f), with the shared page head, gray modelled and line-only prop rows and evidence drawers; reference projection, gap and P(over) for assists remain unchanged
 - `/nba/model` - NBA model track record page (20g4): the forward ranking check's four slices, gray until decided
-- `/nba/board` - implemented and locally verified (42b): one Eastern date and one market, gray rows ordered by tip time then player, shared NBA evidence drawers, date/market URL history, game links and CT tips/status. Never sorted by gap or P(over). Injury tags (42c) and opponent allowed stats/rank (42d) are implemented display context. Hosted deployment unverified.
-- The shared shell's view tabs read Slate / Props / Model for tennis, NFL and NBA (`web/src/utils/sportNav.ts`); 42b adds NBA Props.
+- `/nba/board` - implemented and locally verified (42b): one Eastern date and one market, gray rows ordered by tip time then player, shared NBA evidence drawers, date/market URL history, game links and CT tips/status. Never sorted by gap or P(over). Injury tags (42c) and opponent allowed stats/rank (42d) are implemented display context. A recorded 2026-10-23 hosted check found them available; no new hosted check is performed here.
+- `/nhl` - one Eastern slate date, team/game search, seven market/count columns and gray away/home goalie/injury context beneath each game (45e/45f); no digest of recommendations
+- `/nhl/game/:gameId` - Player Props by default; Matchup holds stored market/history, Starting goalies and both team injury lists, independent source/fetch/freshness labels, CT times and explicit empty/unavailable states
+- The shared shell's view tabs read Slate / Props / Model for tennis, NFL and NBA (`web/src/utils/sportNav.ts`); NHL offers Slate only, with no NHL board/model/player route.
 - `/parlays` - Bankroll builder. Hidden from the nav since 2026-09-25; the route and API remain.
 - `/how-it-works` - public explainer (37b): pipeline, what each sport shows, how a model earns a pick
 - `/admin` - Admin surface: a sign-in card until the owner enters `ADMIN_API_KEY` (37a); its nav entry is hidden from visitors
@@ -2052,6 +2314,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 | `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk`, `bet` (Bet365 props) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
 | `/nba` | `slate?date=`, `slate/gaps?date=`, `props?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
+| `/nhl` | `slate?date=`, `games/{id}`, `games/{id}/line-only-props` (45e/45f; context tables required for nonempty slate/detail) |
 | `/admin` | `session`, `players/flagged`, `players/{id}/fetch-stats`, `players/{id}/fetch-elo`, `players/{id}/set-elo` (all need `X-API-Key` when a key is set) |
 | root | `/health` |
 
@@ -2091,7 +2354,7 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
 - **Build output:** `web/build`
 - **Database:** hosted Neon PostgreSQL (15+) via `DATABASE_URL`
 - **Health check:** `GET /health`
-- **Env vars:** `DATABASE_URL`, `ODDS_API_KEY` (Odds-API.io, tennis and from 36a NFL Bet365/DraftKings), `THE_ODDS_API_KEY` (The Odds API, NFL and NBA), `LIVETENNIS_API_KEY`, `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` default, or `production`), `CORS_ORIGINS` (JSON list), `RATE_LIMIT_DEFAULT` (`120/minute`), `RATE_LIMIT_HEAVY` (`10/minute`)
+- **Env vars:** `DATABASE_URL`, `ODDS_API_KEY` (Odds-API.io, tennis and NFL/NHL Bet365/DraftKings), `THE_ODDS_API_KEY` (The Odds API, NFL and NBA), `LIVETENNIS_API_KEY`, `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` default, or `production`), `CORS_ORIGINS` (JSON list), `RATE_LIMIT_DEFAULT` (`120/minute`), `RATE_LIMIT_HEAVY` (`10/minute`)
 - **Cron:** remote, in GitHub Actions with repo secrets, September through February for NFL
   - **Tennis uses six workflow files**, preserving the prior UTC schedules
     and commands (completed `tennis-workflow-split` fix). The split is present
@@ -2127,6 +2390,34 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
   - `nba-ingest.yml` (daily 09:30 UTC, October to June) - hoopR NBA schedule and box scores, then `prizepicks_nba --relink` (20b, 20c), then the NBA forward ranking check report (20g4, read-only, on the Summary page).
   - `nba-prop-lines.yml` (daily 16:30 and 22:15 UTC, October to June) - free PrizePicks NBA line snapshots before tip-off (20c); then (20g3) `app.ingest.nba_prop_predictions` freezes the reference projection and P(over) for every modelled line not yet tipped off.
   - `nba-odds.yml` (daily 15:00 and 22:30 UTC, October to June) - NBA moneyline, spread and total, 3 credits a run, skipped below 100 remaining credits or with no game in the next 2 days (20d).
+  - **NHL (45b-45f), September-June, manual dispatch available:**
+    `nhl-ingest.yml` at 09:45 UTC loads schedule and recent box scores via
+    `python -m app.ingest.nhl_api`, then relinks stored props provider-free.
+    `nhl-prop-lines.yml` at 17:15 and 22:45 UTC runs
+    `python -m app.ingest.prizepicks_nhl`; an exhausted PrizePicks rate limit
+    exits 75. Both use only `DATABASE_URL` and `contents: read`.
+    `nhl-odds.yml` at `40 */3 * 1-6,9-12 *` runs
+    `python -m app.ingest.nhl_odds_io`, needs `DATABASE_URL`/`ODDS_API_KEY`,
+    uses `contents: read`, a ten-minute timeout and non-canceling concurrency
+    for its own runs. Default two-day window and floor 20; one event request
+    plus one odds request per ten matches, no The Odds API credits. Dry run
+    spends hourly requests but makes no inserts/commit; HTTP/network/payload
+    failure exits 1 without retry, quota stop exits 75, and missing coverage
+    is reported. `nhl-context.yml` at `17 * * 1-6,9-12 *` runs
+    `python -m app.ingest.nhl_context` for current injuries and Eastern
+    today/tomorrow goalie scoreboards, using only `DATABASE_URL`, read-only
+    repository permissions, serialized non-canceling runs and ten-minute
+    timeout. It makes no odds or PrizePicks request. `--dry-run` enforces
+    read-only candidate reads and requires no new tables; `--date YYYY-MM-DD`
+    scopes goalies only, never historical injuries. Migration 0050 must be
+    manually applied before real writes and nonempty slate/game reads. Each
+    feed/date commits separately; failure leaves earlier successes intact,
+    exits nonzero, and prior snapshots age stale. Bounded retry and Retry-After
+    behavior is documented in `docs/nhl-context.md`.
+    None of these workflows freezes predictions. All four files are pushed;
+    registration, NHL-source reachability from Actions, first successful runs
+    and deployed code acceptance remain unverified. Migration 0050 and real
+    context persistence/PostgreSQL reads are also pending. Render runs no cron.
 
 **CI (37c):** `.github/workflows/verify.yml` on every pull request, push to
 `master` and manual run: `verify` (Node 24, Python 3.11, the Verify command)
@@ -2152,14 +2443,18 @@ the request path the same way.
 ## Open questions
 
 1. **Plan §4 data section is behind the completed build plan.** It says
-   revision `0019`; the existing schema notes extend through `0047`
+   revision `0019`; the existing schema notes extend through `0049`
    (`0033` adds `player_match_stats`, `0034` adds
    `prop_projection_snapshots`, `0035` adds the box-score join key, `0036` adds
    the 27f fantasy components, `0037` reshapes `nfl_prop_predictions` for 27i,
    `0038` rekeys box scores, `0039` to `0041` move seven NFL tables to
    `sport_*` and add `sports`; `0042` adds kicking/punting stats, `0043`
    adds NBA data, `0044` adds odds providers, `0045` adds report snapshots,
-   and `0046`/`0047` add isolated tennis ELO snapshots/comparisons).
+   `0046`/`0047` add isolated tennis ELO snapshots/comparisons, `0048` adds
+   NBA injury snapshots, and `0049` seeds NHL, adds `end_period` and creates
+   the two NHL stat tables). Migration `0050` is now prepared for 45f's
+   three context tables but has not been applied by this work. Treat a
+   completed build checkbox as implementation, not migration acceptance.
    It still describes the `nfl_*` tables as the
    NFL schema, and does not list the 19n `sport_games` line columns or `end_zone_targets`, `sport_game_odds` (19f), the usage and red-zone
    columns (19h, 19j), `nfl_game_weather_snapshots`, `nfl_player_prop_odds`
@@ -2484,11 +2779,11 @@ the request path the same way.
     engineered and in shadow with the same runner/deployment boundary; 41c
     remains conditional, and no ELO serving change follows from either.
 
-58. **42a-42d are complete locally.** The build plan checks off the board
-    API/page, injuries and team stats. Their completed archives supersede the
-    previous overview's planned status; hosted deployment remains unverified. Their archives
-    and local browser evidence establish parity and UI behavior, not hosted
-    deployment or Render memory acceptance. The existing 4.88 MB daily
+58. **42a-42d are complete.** The build plan checks off the board API/page,
+    injuries and team stats. A previously recorded 2026-10-23 hosted check
+    found those responses available; this refresh does not repeat it or
+    establish current rollout/Render memory acceptance. Their archives and
+    local browser evidence establish parity and UI behavior. The 4.88 MB daily
     response is a recorded operational follow-up; do not describe it as a
     few-hundred-line payload or add a new heavy request-time report.
 
@@ -2507,3 +2802,27 @@ the request path the same way.
 61. **Resolved (2026-10-23):** NHL is build-plan item 45 (45a-45f), placed
     before WNBA, with project-plan §1, §3, §4 and §5 updated. 45a settled
     the budget question by moving NHL odds to Odds-API.io.
+
+62. **NHL implementation now exceeds the project plan's progress prose.**
+    The build plan checks all 45a-45f and parent 45, backed by archives and
+    local evidence. Migration 0049 is applied; 0050 remains pending.
+    Project-plan section 3's planned-sports paragraph still
+    describes an older NFL/NBA sequence; section 4 names the NHL schema but
+    still calls its tables new. Sections 5 and 8's Odds-API.io prose names
+    tennis/NFL without NHL, although the section 5 source table and 45d
+    explicitly choose NHL Odds-API.io. Preserve the established provider and
+    shared-hour quota contract; the remaining plan prose can be refreshed by
+    its owner without changing scope or requiring a new provider decision.
+
+63. **NHL implementation is complete; operational acceptance is separate.**
+    45b's backfill, 45c's 941 linked lines/immutable relinks and 45d's 168
+    append-only odds snapshots are recorded local observations. 45e adds
+    locally checked slate/game routes. 45f adds tested ESPN ingestion,
+    prepared immutable storage and fixture-validated slate/Matchup context.
+    The approved push includes all four NHL workflows, but this refresh
+    neither queries Actions nor confirms registration/reachability, job runs
+    or deployed code. Migration 0050, initial real context write and PostgreSQL
+    read-back acceptance remain pending. Nonempty NHL slate/detail reads
+    require 0050, so migration must precede backend deployment. See
+    `docs/nhl-context.md` for activation order. NHL modelling is still outside
+    the completed scope and has no new numbered sub-item in the owner plan.

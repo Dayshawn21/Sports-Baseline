@@ -90,6 +90,13 @@ These already exist and are working. This section describes the shipped app.
 - Admin surface for flagged players, with manual stat and ELO refresh
 - Scheduled ingest via GitHub Actions and a local Windows batch fallback
 
+**Content analysis (outside the app)**
+
+- An `analysis/` workspace of Jupyter notebooks (build-plan item 46) that turns
+  stored data into plain-language explainers, charts and thumbnails for the
+  owner's Numbers Behind the Game social account. Read-only against the
+  database, in its own venv, never part of the app, its models or its picks.
+
 ### Planned sports, in intended order
 
 Tennis is shipped. NFL data sourcing, schedule and stats ingest, prop-line
@@ -221,6 +228,11 @@ a month with NFL and NBA running.
 - Pydantic 2 and pydantic-settings for config and schemas
 - LightGBM, XGBoost, scikit-learn, joblib for models and calibration
 - Playwright, httpx, requests, tenacity for ingest
+
+**Analysis workspace (item 46)**
+
+- Jupyter, pandas, matplotlib, nfl_data_py and nba_api in `analysis/.venv`
+- Playwright renders the HTML/CSS thumbnail template to PNG
 
 **Frontend**
 
