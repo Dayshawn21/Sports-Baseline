@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.nhl.markets import NhlLineOnlyMarket
+from app.schemas.nhl_context import NhlGameContextSchema
 
 
 class _CamelModel(BaseModel):
@@ -78,6 +79,7 @@ class NhlSlateGameSchema(_CamelModel):
     spread: NhlSpreadSchema | None
     total: NhlTotalSchema | None
     line_movement: list[NhlLineMoveSchema] = Field(default_factory=list)
+    context: NhlGameContextSchema
 
 
 class NhlSlateResponse(_CamelModel):

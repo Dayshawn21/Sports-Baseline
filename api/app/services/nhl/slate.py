@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.slate_dates import adjacent_dates, slate_date
 from app.repositories import nhl
 from app.schemas.nhl import NhlSlateGameSchema, NhlSlateResponse
+from app.services.nhl.context import load_contexts, unavailable_context
 
 
 def _oriented(row: Mapping[str, object], first: str) -> tuple[int, int, float]:
@@ -54,26 +55,35 @@ def slate_games(
             **game, **_markets(markets_by_game.get(int(str(game["game_id"])), [])),
             "prop_line_count": counts.get(int(str(game["game_id"])), 0),
             "line_movement": movements_by_game.get(int(str(game["game_id"])), []),
+            "context": unavailable_context(str(game["away_team"]), str(game["home_team"])),
         })
         for game in games
     ]
 
 
-async def assemble_games(db: AsyncSession, games: Sequence[Mapping[str, object]]) -> list[NhlSlateGameSchema]:
+async def assemble_games(
+    db: AsyncSession, games: Sequence[Mapping[str, object]], *, as_of: dt.datetime | None = None,
+) -> list[NhlSlateGameSchema]:
+    clock = as_of if as_of is not None else dt.datetime.now(dt.timezone.utc)
     if not games:
         return []
     game_ids = [int(str(game["game_id"])) for game in games]
-    return slate_games(
+    assembled = slate_games(
         games, await nhl.get_latest_market_rows(db, game_ids),
         await nhl.get_line_movement(db, game_ids), await nhl.get_prop_line_counts(db, game_ids),
     )
+    contexts = await load_contexts(db, assembled, clock)
+    return [game.model_copy(update={"context": contexts[game.game_id]}) for game in assembled]
 
 
-async def build_slate(db: AsyncSession, requested: dt.date | None, today: dt.date) -> NhlSlateResponse:
+async def build_slate(
+    db: AsyncSession, requested: dt.date | None, today: dt.date, *, as_of: dt.datetime | None = None,
+) -> NhlSlateResponse:
+    clock = as_of if as_of is not None else dt.datetime.now(dt.timezone.utc)
     dates = await nhl.get_game_dates(db)
     selected = slate_date(requested, today, dates)
     previous_date, next_date = adjacent_dates(selected, dates)
     return NhlSlateResponse(
         date=selected, previous_date=previous_date, next_date=next_date,
-        games=await assemble_games(db, await nhl.get_games_on(db, selected)),
+        games=await assemble_games(db, await nhl.get_games_on(db, selected), as_of=clock),
     )

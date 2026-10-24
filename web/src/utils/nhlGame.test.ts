@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NhlSlateGame } from '~/types/nhl'
+import { unavailableNhlContext } from '~/utils/nhlContext'
 import {
   nhlBookLabel, nhlGameState, nhlMarketCells, nhlMarketProbability, nhlPuckDropLabel,
   nhlTimeLabel, parseNhlGameId, signedNhlLine, validNhlGameId,
@@ -17,7 +18,7 @@ function game(overrides: Partial<NhlSlateGame> = {}): NhlSlateGame {
     moneyline: { book: 'draftkings', homeOdds: -120, awayOdds: 110, homeWinProbability: 0.53, fetchedAt: FETCHED },
     spread: { book: 'bet365', homeLine: -1.5, homeOdds: 150, awayOdds: -180, fetchedAt: FETCHED },
     total: { book: 'draftkings', line: 6.5, overOdds: -110, underOdds: -115, fetchedAt: FETCHED },
-    lineMovement: [], ...overrides,
+    lineMovement: [], context: unavailableNhlContext('MTL', 'CHI'), ...overrides,
   }
 }
 

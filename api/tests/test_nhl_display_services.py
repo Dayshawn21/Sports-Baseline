@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.slate_dates import adjacent_dates, slate_date
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
+from app.repositories import nhl_context as context_repo
 from app.services.nhl.game_detail import build_game_detail, game_detail
 from app.services.nhl.line_only_props import build_line_only_props, line_only_props
 from app.services.nhl.slate import assemble_games, build_slate, slate_games
@@ -149,6 +150,8 @@ def test_offer_sort_keeps_duplicate_prices_and_all_provider_offerings() -> None:
 
 
 def _mock_repository(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(context_repo, "get_injury_snapshots", AsyncMock(return_value={}))
+    monkeypatch.setattr(context_repo, "get_goalie_snapshots", AsyncMock(return_value={}))
     for name, result in {
         "get_game_dates": [DAY], "get_games_on": [_game()], "get_game": _game(),
         "get_latest_market_rows": [_market()], "get_line_movement": [], "get_prop_line_counts": {1: 1},

@@ -263,6 +263,19 @@ Two apps, two command sets. Paths are relative to the repo root.
   snapshots are never updated. GitHub registration, runner acceptance
   and deployment remain unverified pending an approved push and actual run.
   See `docs/nhl-odds.md` for contracts, failure handling and freshness limits.
+- NHL injuries and starting goalies:
+  `python -m app.ingest.nhl_context [--dry-run] [--date YYYY-MM-DD]`
+  (ESPN keyless reports; default goalies cover Eastern today/tomorrow;
+  injuries are always current, even with `--date`). Dry run reads existing
+  candidates with read-only transactions and needs no context tables. Omitting
+  `--dry-run` writes immutable batches with independent per-feed commits.
+  Migration `0050` is prepared but unapplied by this work; nonempty NHL
+  slate/game reads require it and return an explicit 503 if tables are absent.
+  `nhl-context.yml` proposes hourly minute 17 UTC, September-June, plus manual
+  dispatch, with serialized runs and only DATABASE_URL. Real snapshot writes,
+  PostgreSQL read acceptance, GitHub registration/runner acceptance and
+  deployment remain pending. Display is gray context only; no model or picks
+  change. See `docs/nhl-context.md` for activation order and verification limits.
 
 ### Verify (both apps, from the repo root)
 

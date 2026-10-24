@@ -18,12 +18,13 @@ EASTERN = ZoneInfo("America/New_York")
 
 @router.get("/slate", response_model=NhlSlateResponse)
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlSlateResponse:
-    return await build_slate(db, date, dt.datetime.now(EASTERN).date())
+    clock = dt.datetime.now(dt.timezone.utc)
+    return await build_slate(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
 
 
 @router.get("/games/{game_id}", response_model=NhlGameDetailResponse)
 async def get_game(game_id: int, db: AsyncSession = Depends(get_db)) -> NhlGameDetailResponse:
-    detail = await build_game_detail(db, game_id)
+    detail = await build_game_detail(db, game_id, as_of=dt.datetime.now(dt.timezone.utc))
     if detail is None:
         raise HTTPException(status_code=404, detail=f"NHL game {game_id} not found")
     return detail

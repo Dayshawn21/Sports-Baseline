@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,9 +18,12 @@ def game_detail(game: NhlSlateGameSchema, history_rows: Sequence[Mapping[str, ob
     })
 
 
-async def build_game_detail(db: AsyncSession, game_id: int) -> NhlGameDetailResponse | None:
+async def build_game_detail(
+    db: AsyncSession, game_id: int, *, as_of: datetime | None = None,
+) -> NhlGameDetailResponse | None:
+    clock = as_of if as_of is not None else datetime.now(timezone.utc)
     game = await nhl.get_game(db, game_id)
     if game is None:
         return None
-    (assembled,) = await assemble_games(db, [game])
+    (assembled,) = await assemble_games(db, [game], as_of=clock)
     return game_detail(assembled, await nhl.get_game_line_history(db, game_id))

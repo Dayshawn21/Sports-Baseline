@@ -2,6 +2,7 @@ import { Tabs } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NhlGameHero, NhlGameMarket } from '~/components/nhl/NhlGameHero'
+import { NhlGameContext } from '~/components/nhl/NhlGameContext'
 import { NhlLineOnlyProps } from '~/components/nhl/NhlLineOnlyProps'
 import { NflLineMovementChart as LineMovementChart } from '~/components/nfl/NflLineMovementChart'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
@@ -35,7 +36,8 @@ export default function NhlGamePage() {
   if (detail.isLoading) return <GamePageState><LoadingState message="Loading NHL game..." /></GamePageState>
   if (detail.isError || !detail.data) return <GamePageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></GamePageState>
   const game = detail.data
-  const state = nhlGameState(game, new Date())
+  const now = new Date()
+  const state = nhlGameState(game, now)
   return <div className="page-shell nfl-slate nfl-game nhl-game"><div className="page-container is-wide">
     <BackLink date={game.gameDate} />
     <PageHead title={`${game.awayTeam} @ ${game.homeTeam}`}
@@ -47,6 +49,7 @@ export default function NhlGamePage() {
           <NhlGameMarket game={game} />
           <LineMovementChart detail={game} caveat="Before puck drop" spreadTitle="Puck line"
             emptyMessage="No pre-puck-drop puck-line or total history is stored for this game." />
+          <NhlGameContext game={game} now={now} />
         </div> },
         { key: 'props', label: 'Player Props', children: <NhlLineOnlyProps key={game.gameId} gameId={game.gameId} /> },
       ]} />

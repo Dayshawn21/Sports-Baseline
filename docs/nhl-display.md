@@ -5,6 +5,14 @@ PrizePicks observations. The pages are implemented and verified locally;
 deployment and GitHub workflow acceptance have not been verified in this work.
 There are no NHL projections, edges, picks, grading or player-detail routes.
 
+Feature 45f extends both pages with stored ESPN injuries and starting goalies;
+see [NHL context](nhl-context.md) for source, temporal and operating rules.
+Its UI/API are verified locally with controlled snapshots. Migration 0050,
+real snapshot write/read acceptance, Actions and deployment remain pending.
+Nonempty slate/game reads now require the migration and return an explicit
+503 when context tables are absent. Empty context tables after migration
+produce Unavailable, never an empty successful report.
+
 ## Routes and local review
 
 The SPA uses hash routes:
@@ -14,9 +22,11 @@ The SPA uses hash routes:
 - `/#/how-it-works`: NHL coverage and limitations alongside the other sports.
 
 Run the API and web dev commands in `AGENTS.md`. The usual web origin is
-`http://localhost:3001`; its API defaults to the configured API origin.
-For an isolated API, set `VITE_API_URL` before starting Vite. No ingest is
-needed to view existing data. An empty database produces empty collections.
+`http://localhost:3001`; the unset web API base uses `/api` through Vite's
+proxy to `http://127.0.0.1:8000`. For an isolated API, `VITE_API_URL` overrides
+that dev proxy target. `VITE_API_BASE_URL` instead sets the web client's direct
+HTTP(S) API origin at build/start time. Existing stored data needs no ingest
+to display; NHL context additionally requires migration 0050 as above.
 
 | Public read endpoint | Response |
 |---|---|

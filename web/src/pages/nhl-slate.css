@@ -17,11 +17,22 @@
 .nhl-slate-table tbody tr { cursor: pointer; }
 .nhl-slate-table tbody tr:hover { background: var(--bg-card-hover); }
 .nhl-slate-table .nhl-slate-props { text-align: right; }
+.nhl-slate-table .nhl-slate-context-row td { padding-top: 0; border-top: 0; font-family: var(--font-body); }
+.nhl-slate-context { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px 24px; padding: 12px 0 4px; }
+.nhl-slate-context section { min-width: 0; }
+.nhl-slate-context h3 { margin: 0 0 6px; color: var(--text-secondary); font: 600 12px/1.5 var(--font-body); }
+.nhl-slate-context p { margin: 3px 0 0; color: var(--text-secondary); font: 400 12px/1.5 var(--font-body); }
+.nhl-context-side { display: flex; gap: 8px; }
+.nhl-context-side strong { min-width: 3ch; font: 600 12px/1.5 var(--font-mono); }
+.nhl-context-side > span { min-width: 0; }
+.nhl-slate-context .nhl-context-source { margin-top: 8px; color: var(--text-muted); font-size: 11px; }
 
 @media (max-width: 1100px) {
   .nhl-slate-table, .nhl-slate-table tbody { display: block; }
   .nhl-slate-table thead { display: none; }
-  .nhl-slate-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-slate-table tbody tr:not(.nhl-slate-context-row) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-slate-table .nhl-slate-context-row, .nhl-slate-table .nhl-slate-context-row td { display: block; }
+  .nhl-slate-table .nhl-slate-context-row td { padding: 0 0 16px; }
   .nhl-slate-table td { min-width: 0; padding: 0; border: 0; }
   .nhl-slate-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--text-muted); font: 600 11px var(--font-body); }
   .nhl-slate-table .nhl-slate-game { grid-column: 1 / -1; grid-row: 1; }
@@ -30,4 +41,8 @@
   .nhl-slate-table .nhl-slate-when small { margin-top: 0; }
   .nhl-slate-table .nhl-slate-props { grid-column: 1 / -1; text-align: left; }
   .nhl-slate-table .nhl-slate-props::before { display: inline; margin-right: 8px; }
+}
+
+@media (max-width: 600px) {
+  .nhl-slate-context { grid-template-columns: minmax(0, 1fr); padding-top: 0; }
 }

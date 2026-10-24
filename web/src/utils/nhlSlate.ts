@@ -1,4 +1,5 @@
 import type { NhlSlateGame } from '~/types/nhl'
+import { nhlSlateContext } from '~/utils/nhlContext'
 import { nhlGameState, nhlMarketCells, nhlMarketProbability, nhlPuckDropLabel, nhlTimeLabel } from '~/utils/nhlGame'
 
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
@@ -11,6 +12,7 @@ export function nhlSlateRow(game: NhlSlateGame, now: Date) {
     away: { code: game.awayTeam, name: game.awayTeamName, score: state === 'final' ? game.awayScore : null },
     home: { code: game.homeTeam, name: game.homeTeamName, score: state === 'final' ? game.homeScore : null },
     puckLine, total, moneyline, probability: nhlMarketProbability(game), props: game.propLineCount,
+    context: nhlSlateContext(game.context, game.awayTeam, game.homeTeam, game.startUtc, now),
   }
 }
 

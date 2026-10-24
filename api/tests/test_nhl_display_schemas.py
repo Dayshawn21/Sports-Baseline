@@ -18,7 +18,8 @@ def _game(**overrides: object) -> dict[str, object]:
         "game_date": date(2026, 10, 23), "start_utc": None, "status": "completed",
         "away_team": "MTL", "home_team": "CHI", "away_team_name": "Montreal",
         "home_team_name": "Chicago", "away_score": 2, "home_score": 3, "end_period": "OT",
-        "prop_line_count": 0, "moneyline": None, "spread": None, "total": None, **overrides,
+        "prop_line_count": 0, "moneyline": None, "spread": None, "total": None,
+        "context": {"injuries": {}, "goalies": {"away": {"team": "MTL"}, "home": {"team": "CHI"}}}, **overrides,
     }
 
 

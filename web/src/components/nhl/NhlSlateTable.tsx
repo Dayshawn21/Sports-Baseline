@@ -1,5 +1,6 @@
-import type { MouseEvent } from 'react'
+import { Fragment, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { NhlSlateContext } from '~/components/nhl/NhlSlateContext'
 import { nhlBookLabel, nhlTimeLabel, type NhlMarketCell } from '~/utils/nhlGame'
 import type { nhlSlateRow } from '~/utils/nhlSlate'
 
@@ -22,7 +23,7 @@ export function NhlSlateTable({ rows }: { rows: SlateRow[] }) {
   return <table className="nhl-slate-table" aria-label="Games">
     <thead><tr><th scope="col">Puck drop (CT)</th><th scope="col">Game</th><th scope="col">Puck line</th>
       <th scope="col">Total</th><th scope="col">Moneyline</th><th scope="col">Win probability <small>market</small></th><th scope="col">Props</th></tr></thead>
-    <tbody>{rows.map(row => <tr key={row.gameId} onClick={event => open(event, row.gameId)}>
+    <tbody>{rows.map(row => <Fragment key={row.gameId}><tr onClick={event => open(event, row.gameId)}>
       <td className="nhl-slate-when">{row.puckDrop}<small>{row.stateLabel}</small></td>
       <td className="nhl-slate-game"><Link to={`/nhl/game/${row.gameId}`} aria-label={`${row.away.code} at ${row.home.code}, open game page`}>
         {row.away.score !== null && row.home.score !== null
@@ -34,6 +35,8 @@ export function NhlSlateTable({ rows }: { rows: SlateRow[] }) {
       <td data-label="Moneyline"><Market cell={row.moneyline} /></td>
       <td data-label="Market win probability"><Market cell={row.probability} /></td>
       <td className="nhl-slate-props" data-label="Props">{row.props}</td>
-    </tr>)}</tbody>
+    </tr><tr className="nhl-slate-context-row" onClick={event => open(event, row.gameId)}><td colSpan={7}>
+      <NhlSlateContext context={row.context} away={row.away.code} home={row.home.code} />
+    </td></tr></Fragment>)}</tbody>
   </table>
 }

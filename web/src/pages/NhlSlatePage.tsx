@@ -48,7 +48,7 @@ export default function NhlSlatePage() {
     {games.length === 0 ? <div className="nfl-empty">No NHL games on this date.</div> : <>
       <p className="nfl-slate__legend"><span>Stored full-game prices include overtime and shootouts.</span>
         <span>Win probability is de-vigged per book.</span><span>Props are line-only. No NHL picks.</span>
-        <span>Scores update after games.</span></p>
+        <span>Scores update after games.</span><span>Goalies and injuries are ESPN reports; late changes may be missing.</span></p>
       <section className="nfl-slate-window" aria-label="Games">
         {searchActive && filtered.length === 0 ? <div className="nfl-empty">No games found for this slate search.</div> : <NhlSlateTable rows={filtered} />}
       </section>

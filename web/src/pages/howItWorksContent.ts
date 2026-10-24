@@ -33,7 +33,7 @@ export const SPORT_STATUS: Record<SportCode, SportStatus> = {
   nhl: {
     model: 'None.',
     picks: 'None.',
-    reference: 'Stored full-game book prices, per-book market win probability, line movement and PrizePicks line-only props.',
-    status: 'NHL slate and game pages display market information. No projections or pick recommendations are served.',
+    reference: 'Stored full-game book prices, per-book market win probability, line movement and PrizePicks line-only props. ESPN injuries and Expected/Confirmed starting goalies appear when stored pre-game reports are available.',
+    status: 'Goalie and injury reports retain their fetch times and may miss late changes. Empty injury reports do not establish player availability. No projections or pick recommendations are served.',
   },
 }

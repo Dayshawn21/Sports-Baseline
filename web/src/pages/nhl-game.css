@@ -34,12 +34,30 @@
 .nhl-prop-table td.nhl-prop-line { color: var(--text-primary); font: 500 14px/1.4 var(--font-mono); }
 .nhl-prop-table .nhl-prop-updated-mobile { display: none; }
 
+.nhl-game-context-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nhl-game-context-teams > * { min-width: 0; padding: 14px 16px; }
+.nhl-game-context-teams > * + * { border-left: 1px solid var(--border-subtle); }
+.nhl-game-context h3 { margin: 0 0 10px; color: var(--text-secondary); font: 600 13px/1.5 var(--font-body); }
+.nhl-game-context h3 span { margin-left: 8px; color: var(--text-muted); font-size: 11px; font-weight: 400; }
+.nhl-game-context p { margin: 4px 0 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-body); overflow-wrap: anywhere; }
+.nhl-game-context .nfl-game-note { margin: 0; color: var(--text-muted); font-size: 11px; }
+.nhl-game-context .nhl-game-goalie-name { color: var(--text-primary); font-weight: 600; }
+.nhl-game-context .nhl-game-context-meta, .nhl-game-context-source p { color: var(--text-muted); font-size: 11px; }
+.nhl-game-context-source { padding: 0 16px 14px; }
+.nhl-game-injury-team ul { margin: 0; padding: 0; list-style: none; }
+.nhl-game-injury-team li { padding: 12px 0; border-top: 1px solid var(--border-subtle); }
+.nhl-game-injury-team li:first-child { padding-top: 0; border-top: 0; }
+.nhl-game-injury-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.nhl-game-injury-title strong { min-width: 0; color: var(--text-primary); font-weight: 600; }
+
 @media (max-width: 640px) {
   .nhl-game .nfl-game-hero { gap: 8px; }
   .nhl-game .nfl-game-hero__mid:empty { display: none; }
   .nhl-game-score { font-size: 24px; }
   .nhl-market-grid { grid-template-columns: minmax(0, 1fr); }
   .nhl-market-grid > div + div { border-left: 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-game-context-teams { grid-template-columns: minmax(0, 1fr); }
+  .nhl-game-context-teams > * + * { border-left: 0; border-top: 1px solid var(--border-subtle); }
   .nhl-prop-group { padding-right: 8px; padding-left: 8px; }
   .nhl-prop-table th:first-child { width: 52%; }
   .nhl-prop-table th:nth-child(2), .nhl-prop-table th:nth-child(3) { width: 24%; }
