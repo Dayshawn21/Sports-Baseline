@@ -4,6 +4,7 @@ import { detailTitleReducer, resolveDocumentTitle, type DetailTitleRegistration 
 const DETAILS = [
   ['/nfl/game/91', 'BUF @ LV', 'NFL game'],
   ['/nba/game/21319', 'PHI @ NY', 'NBA game'],
+  ['/nhl/game/57029', 'MTL @ CHI', 'NHL game'],
   ['/tennis/match/88732', 'Katarzyna Kawa vs Daria Snigur', 'Tennis match'],
   ['/nfl/player/40399', 'Ashton Jeanty', 'NFL player'],
   ['/tennis/player/2415', 'Katarzyna Kawa', 'Tennis player'],

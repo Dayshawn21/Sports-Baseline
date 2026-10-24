@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import PageHead from '~/components/shared/PageHead'
-import { SPORTS } from '~/utils/sportNav'
+import { SPORTS, sportViews } from '~/utils/sportNav'
 import { SPORT_STATUS } from './howItWorksContent'
 import './nfl-model.css'
 import './how-it-works.css'
@@ -24,6 +24,7 @@ function SportCards() {
   return <div className="hiw-sports">
     {SPORTS.map(sport => {
       const status = SPORT_STATUS[sport.code]
+      const modelPath = sportViews(sport.code).find(view => view.view === 'model')?.path
       return <article key={sport.code} className="nfl-model-card hiw-sport" aria-label={sport.label}>
         <h3 className="hiw-sport__name">{sport.label}</h3>
         <dl className="hiw-sport__rows">
@@ -34,7 +35,7 @@ function SportCards() {
         </dl>
         <nav className="hiw-sport__links" aria-label={`${sport.label} pages`}>
           <Link to={sport.views.slate}>Slate</Link>
-          <Link to={sport.views.model}>Track record</Link>
+          {modelPath && <Link to={modelPath}>Track record</Link>}
         </nav>
       </article>
     })}

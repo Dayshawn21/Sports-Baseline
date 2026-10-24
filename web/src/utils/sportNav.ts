@@ -18,6 +18,7 @@ export const SPORTS = [
   { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/', props: '/tennis/board', model: '/tennis/model' } },
   { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/board', model: '/nfl/model' } },
   { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/board', model: '/nba/model' } },
+  { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl' } },
 ] as const satisfies readonly SportDefinition[]
 
 export type Sport = typeof SPORTS[number]['code']

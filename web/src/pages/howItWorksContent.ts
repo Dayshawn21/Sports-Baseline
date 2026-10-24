@@ -30,4 +30,10 @@ export const SPORT_STATUS: Record<SportCode, SportStatus> = {
     reference: 'Projections, gaps to the line, and the assists over probability.',
     status: 'The forward ranking check is accruing from the 2026-27 season.',
   },
+  nhl: {
+    model: 'None.',
+    picks: 'None.',
+    reference: 'Stored full-game book prices, per-book market win probability, line movement and PrizePicks line-only props.',
+    status: 'NHL slate and game pages display market information. No projections or pick recommendations are served.',
+  },
 }

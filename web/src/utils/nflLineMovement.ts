@@ -1,4 +1,4 @@
-import type { NflLineHistory } from '~/types/nfl'
+import type { LineMovementHistory } from '~/types/lineMovement'
 import { chartScale, project, type ChartScale } from '~/utils/matchOdds'
 
 /** Keeps a line that barely moves from filling the plot and reading as a big swing. */
@@ -18,7 +18,7 @@ export interface NflLineChart {
  * The chart runs to kickoff, or to now when kickoff is still ahead, so the last line
  * extends across the time it has stood rather than stopping at its fetch.
  */
-export function lineMovementChart(history: NflLineHistory, startUtc: string | null, now: Date): NflLineChart | null {
+export function lineMovementChart(history: LineMovementHistory, startUtc: string | null, now: Date): NflLineChart | null {
   const steps = history.steps
   if (steps.length === 0) return null
   const last = Date.parse(steps[steps.length - 1].fetchedAt)

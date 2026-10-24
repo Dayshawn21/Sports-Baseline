@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, TypeVar
 
 from sqlalchemy import bindparam, text
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_odds import NhlGameMarket
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
+from app.nhl.markets import NhlLineOnlyMarket
 
 CHUNK_SIZE = 1000
 _T = TypeVar("_T")
@@ -225,3 +226,152 @@ async def insert_game_odds_snapshot(
         "raw_json": json.dumps({**market.raw_market, "event_id": event_id}, allow_nan=False),
     })
     return row.scalar_one_or_none()
+
+
+async def get_game_dates(db: AsyncSession) -> list[date]:
+    rows = await db.execute(text("""
+        SELECT DISTINCT g.game_date FROM sport_games g
+        WHERE g.sport = 'nhl' AND g.game_type IN ('REG', 'PST')
+        ORDER BY g.game_date
+    """))
+    return list(rows.scalars())
+
+
+async def _served_games(db: AsyncSession, condition: str, params: dict[str, object]) -> list[dict[str, object]]:
+    rows = await db.execute(text(f"""
+        SELECT g.id AS game_id, g.season, g.week, g.game_type, g.game_date, g.start_utc,
+               g.status, g.away_score, g.home_score, g.end_period,
+               away.team_code AS away_team, home.team_code AS home_team,
+               away.name AS away_team_name, home.name AS home_team_name
+        FROM sport_games g
+        JOIN sport_teams home ON home.sport = 'nhl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nhl' AND away.id = g.away_team_id
+        WHERE g.sport = 'nhl' AND g.game_type IN ('REG', 'PST') AND {condition}
+        ORDER BY g.start_utc NULLS LAST, g.id
+    """), params)
+    return [dict(row) for row in rows.mappings()]
+
+
+async def get_games_on(db: AsyncSession, game_date: date) -> list[dict[str, object]]:
+    return await _served_games(db, "g.game_date = :game_date", {"game_date": game_date})
+
+
+async def get_game(db: AsyncSession, game_id: int) -> dict[str, object] | None:
+    games = await _served_games(db, "g.id = :game_id", {"game_id": game_id})
+    return games[0] if games else None
+
+
+# All market readers share the same eligibility and book choice, including history.
+_CHOSEN_ODDS = """
+    WITH eligible AS (
+        SELECT o.id, o.game_id, o.book, o.market, o.line, o.first_side,
+               o.first_odds, o.second_odds, o.first_market_prob, o.fetched_at, g.start_utc,
+               DENSE_RANK() OVER (
+                   PARTITION BY o.game_id, o.market ORDER BY (o.book = 'draftkings') DESC
+               ) AS book_rank
+        FROM sport_game_odds o
+        JOIN sport_games g ON g.sport = 'nhl' AND g.id = o.game_id
+        WHERE o.sport = 'nhl' AND o.provider = 'odds_api_io'
+          AND o.book IN ('draftkings', 'bet365') AND o.game_id IN :game_ids
+          AND g.game_type IN ('REG', 'PST')
+          AND o.market IN ('moneyline', 'spread', 'total')
+          AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc)
+    ), chosen AS (
+        SELECT * FROM eligible WHERE book_rank = 1
+    )
+"""
+
+
+async def _odds_read(db: AsyncSession, game_ids: Sequence[int], suffix: str) -> list[dict[str, object]]:
+    if not game_ids:
+        return []
+    statement = text(_CHOSEN_ODDS + suffix).bindparams(bindparam("game_ids", expanding=True))
+    rows = await db.execute(statement, {"game_ids": list(game_ids)})
+    return [dict(row) for row in rows.mappings()]
+
+
+async def get_latest_market_rows(db: AsyncSession, game_ids: Sequence[int]) -> list[dict[str, object]]:
+    return await _odds_read(db, game_ids, """
+        , ranked AS (
+            SELECT *, ROW_NUMBER() OVER (
+                PARTITION BY game_id, market ORDER BY fetched_at DESC, id DESC
+            ) AS recency FROM chosen
+        )
+        SELECT game_id, market, book, line, first_side, first_odds, second_odds,
+               first_market_prob, fetched_at
+        FROM ranked WHERE recency = 1 ORDER BY game_id, market
+    """)
+
+
+_MOVEMENT_ROWS = """
+    , movement AS (
+        SELECT id, game_id, market, book, fetched_at,
+               CASE WHEN market = 'spread' AND first_side = 'away' THEN -line ELSE line END AS line
+        FROM chosen WHERE market IN ('spread', 'total') AND line IS NOT NULL AND start_utc IS NOT NULL
+    )
+"""
+
+
+async def get_line_movement(db: AsyncSession, game_ids: Sequence[int]) -> list[dict[str, object]]:
+    return await _odds_read(db, game_ids, _MOVEMENT_ROWS + """
+        , ranked AS (
+            SELECT *,
+                   ROW_NUMBER() OVER (PARTITION BY game_id, market ORDER BY fetched_at, id) AS from_open,
+                   ROW_NUMBER() OVER (PARTITION BY game_id, market ORDER BY fetched_at DESC, id DESC) AS from_current
+            FROM movement
+        )
+        SELECT game_id, market, book,
+               MAX(line) FILTER (WHERE from_open = 1) AS open_line,
+               MAX(line) FILTER (WHERE from_current = 1) AS current_line,
+               MAX(fetched_at) FILTER (WHERE from_open = 1) AS open_fetched_at,
+               MAX(fetched_at) FILTER (WHERE from_current = 1) AS current_fetched_at
+        FROM ranked GROUP BY game_id, market, book ORDER BY game_id, market
+    """)
+
+
+async def get_game_line_history(db: AsyncSession, game_id: int) -> list[dict[str, object]]:
+    return await _odds_read(db, [game_id], _MOVEMENT_ROWS + """
+        SELECT market, book, line, fetched_at FROM movement ORDER BY market, fetched_at, id
+    """)
+
+
+_LATEST_PROPS = """
+    WITH ranked AS (
+        SELECT l.game_id, l.provider, l.provider_prop_id, l.player_id, p.name AS player_name,
+               p.position, l.raw_json ->> 'player_team' AS team, l.market, l.odds_type,
+               l.line, l.fetched_at,
+               ROW_NUMBER() OVER (
+                   PARTITION BY l.game_id, l.provider, l.provider_prop_id ORDER BY l.fetched_at DESC, l.id DESC
+               ) AS recency
+        FROM sport_prop_lines l
+        JOIN sport_games g ON g.sport = 'nhl' AND g.id = l.game_id
+        JOIN sport_players p ON p.sport = 'nhl' AND p.id = l.player_id
+        WHERE l.sport = 'nhl' AND l.provider = 'prizepicks' AND l.segment = 'full_game'
+          AND l.provider_prop_id IS NOT NULL AND l.game_id IN :game_ids
+          AND g.game_type IN ('REG', 'PST') AND l.market IN :markets
+          AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc)
+    ), latest AS (SELECT * FROM ranked WHERE recency = 1)
+"""
+
+
+async def _prop_read(db: AsyncSession, game_ids: Sequence[int], suffix: str) -> list[dict[str, object]]:
+    if not game_ids:
+        return []
+    statement = text(_LATEST_PROPS + suffix).bindparams(
+        bindparam("game_ids", expanding=True), bindparam("markets", expanding=True),
+    )
+    rows = await db.execute(statement, {"game_ids": list(game_ids), "markets": [m.value for m in NhlLineOnlyMarket]})
+    return [dict(row) for row in rows.mappings()]
+
+
+async def get_prop_line_counts(db: AsyncSession, game_ids: Sequence[int]) -> dict[int, int]:
+    rows = await _prop_read(db, game_ids, "SELECT game_id, COUNT(*) AS count FROM latest GROUP BY game_id")
+    return {int(str(row["game_id"])): int(str(row["count"])) for row in rows}
+
+
+async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict[str, object]]:
+    return await _prop_read(db, [game_id], """
+        SELECT provider, provider_prop_id, player_id, player_name, position, team,
+               market, odds_type, line, fetched_at
+        FROM latest ORDER BY player_name, player_id, market, odds_type, line, provider_prop_id
+    """)

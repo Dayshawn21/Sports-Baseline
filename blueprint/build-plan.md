@@ -166,7 +166,7 @@ works, not because the loop produced them.
   - [x] 45b. **NHL schedule and box-score ingest** - seed `nhl` in `sports`; teams, players and games into `sport_*`; per-game skater and goalie box scores in NHL stat tables; 2023-24 through 2026-27 backfill (a development, a holdout and a prior season for a later projection harness) plus a daily refresh
   - [x] 45c. **NHL prop lines** - PrizePicks NHL lines through the shared 17c pipeline, stored and linked, every market line-only until a projection exists
   - [x] 45d. **NHL game odds** - moneyline (overtime included), puck line and total for DraftKings and Bet365 from Odds-API.io into `sport_game_odds` under provider `odds_api_io`, de-vigged per book, within the shared hourly request quota; no The Odds API credits
-  - [ ] 45e. **NHL slate and game page** - NHL in `SPORTS`, `SPORT_PAGES` and `SPORT_STATUS`; the table-first slate and a game page with the market, line movement and gray line-only prop rows; no projection, edge or signal color
+  - [x] 45e. **NHL slate and game page** - NHL in `SPORTS`, `SPORT_PAGES` and `SPORT_STATUS`; the table-first slate and a game page with the market, line movement and gray line-only prop rows; no projection, edge or signal color
   - [ ] 45f. **NHL injuries and starting goalies** - ESPN injury and probable-goalie (`Expected`/`Confirmed`) snapshots before puck drop, linked to NHL players by name and team, shown on the slate and game page; display only, never a model input until a later item tests it on stored snapshots
 - [ ] 21. **WNBA support** - extend NBA coverage to the WNBA
 - [ ] 22. **Three-way market support** - handle draws in de-vigging, the ensemble, and the schema, which soccer requires and tennis never needed

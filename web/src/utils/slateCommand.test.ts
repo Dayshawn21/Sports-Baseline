@@ -6,6 +6,7 @@ import {
   matchingSlateCommandRows,
   matchingSlateCommandTargets,
   nbaSlateCommandRows,
+  nhlSlateCommandRows,
   nflSlateCommandRows,
   normalizeSlateCommand,
   slateCommandReducer,
@@ -30,6 +31,39 @@ function row(input: Partial<SlateCommandRowInput> = {}) {
 describe('normalizeSlateCommand', () => {
   it('trims, collapses whitespace, and ignores case', () => {
     expect(normalizeSlateCommand('  Nico   COLLINS\n')).toBe('nico collins')
+  })
+})
+
+describe('nhlSlateCommandRows', () => {
+  const games = [
+    { gameId: 7, awayTeam: 'MTL', homeTeam: 'CHI', awayTeamName: 'Montréal Canadiens', homeTeamName: 'Chicago Blackhawks' },
+    { gameId: 8, awayTeam: 'CHI', homeTeam: 'TBL', awayTeamName: 'Chicago Blackhawks', homeTeamName: 'Tampa Bay Lightning' },
+  ]
+
+  it('matches team codes/full names without changing the loaded order or inventing player links', () => {
+    const rows = nhlSlateCommandRows(games)
+    expect(matchingSlateCommandRows(rows, ' chicago ')).toEqual(rows)
+    expect(matchingSlateCommandRows(rows, 'MTL blackhawks').map(row => row.path)).toEqual(['/nhl/game/7'])
+    expect(firstSlateCommandPath(rows, 'lightning')).toBe('/nhl/game/8')
+    expect(rows.map(row => row.targets.map(target => target.kind))).toEqual([['game', 'team', 'team'], ['game', 'team', 'team']])
+    expect(rows.every(row => row.targets.every(target => target.path === row.path && target.parentPath === row.path))).toBe(true)
+    expect(matchingSlateCommandRows(rows, 'Player A')).toEqual([])
+    expect(nhlSlateCommandRows([])).toEqual([])
+  })
+
+  it('omits invalid ids and gives repeated teams unique targets within their game', () => {
+    const rows = nhlSlateCommandRows([...games, ...[0, -1, 1.5, NaN, Number.MAX_SAFE_INTEGER + 1].map(gameId => ({ ...games[0], gameId }))])
+    expect(rows.map(row => row.key)).toEqual(['nhl-7', 'nhl-8'])
+    const targets = matchingSlateCommandTargets(rows, 'CHI')
+    expect(new Set(targets.map(target => target.path))).toEqual(new Set(['/nhl/game/7', '/nhl/game/8']))
+  })
+
+  it('matches NHL team names with and without accents, including direct team targets', () => {
+    const rows = nhlSlateCommandRows(games)
+    for (const query of ['montreal', 'MONTRÉAL', 'montre\u0301al']) {
+      expect(matchingSlateCommandRows(rows, query).map(row => row.path)).toEqual(['/nhl/game/7'])
+      expect(matchingSlateCommandTargets(rows, query).some(target => target.kind === 'team' && target.label === 'MTL')).toBe(true)
+    }
   })
 })
 

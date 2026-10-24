@@ -4,11 +4,11 @@ import { hasKickedOff } from '~/utils/nflGame'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
 
+export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
+
 const MISSING = '--'
 const CENTRAL = 'America/Chicago'
 const CENTRAL_TIME = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
-// A slate date is a calendar date, so it is formatted in UTC to keep the day it names.
-const SLATE_DAY = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
 /** `started`: tipped off but not yet completed. Scores load with the next morning's ingest, so it is not "live". */
 export type NbaSlateCardState = 'upcoming' | 'started' | 'final' | 'off'
@@ -51,18 +51,6 @@ export interface NbaSlateSummary {
   finals: number
   /** Latest stored market fetch in CT; null when no game has a market. */
   oddsUpdated: string | null
-}
-
-/** A `YYYY-MM-DD` link value naming a real date, else null. */
-export function parseSlateDate(value: string | null): string | null {
-  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
-  const time = Date.parse(`${value}T00:00:00Z`)
-  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value ? value : null
-}
-
-/** `Tue, Oct 20, 2026` */
-export function slateDateLabel(date: string): string {
-  return SLATE_DAY.format(Date.parse(`${date}T00:00:00Z`))
 }
 
 function tipLabel(startUtc: string | null): string {

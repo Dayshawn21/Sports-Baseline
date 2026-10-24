@@ -11,7 +11,7 @@ from app.core.rate_limits import rule_for_path
 from app.db.pool import engine
 from app.ml.registry import ModelRegistry
 from app.rate_limit import retry_after_seconds
-from app.routers import tennis, props, admin, nfl, nba
+from app.routers import tennis, props, admin, nfl, nba, nhl
 from app.security import require_api_key
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
@@ -82,6 +82,7 @@ app.include_router(
 )
 app.include_router(nfl.router, prefix="/nfl", tags=["nfl"])
 app.include_router(nba.router, prefix="/nba", tags=["nba"])
+app.include_router(nhl.router, prefix="/nhl", tags=["nhl"])
 
 
 @app.get("/health")

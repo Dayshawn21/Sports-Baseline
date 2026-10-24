@@ -129,7 +129,7 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-activedescendant={open && selectedIndex >= 0 ? `${listId}-option-${selectedIndex}` : undefined}
-          placeholder={scope ? 'Jump to a match or player...' : 'Slate search loading...'}
+          placeholder={scope ? pathname === '/nhl' ? 'Search teams or games...' : 'Jump to a match or player...' : 'Slate search loading...'}
           disabled={!scope}
           value={query}
           onChange={event => setQuery(event.target.value)}

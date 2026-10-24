@@ -1,0 +1,33 @@
+.nhl-slate-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: left; }
+.nhl-slate-table th { padding: 6px 8px; color: var(--text-muted); font: 600 11px/1.4 var(--font-body); }
+.nhl-slate-table th:first-child { width: 12%; }
+.nhl-slate-table th:nth-child(2) { width: 15%; }
+.nhl-slate-table th:nth-child(3) { width: 17%; }
+.nhl-slate-table th:nth-child(4), .nhl-slate-table th:nth-child(5) { width: 16%; }
+.nhl-slate-table th:nth-child(6) { width: 19%; }
+.nhl-slate-table th:last-child { width: 5%; }
+.nhl-slate-table th small { display: block; font: inherit; }
+.nhl-slate-table td { padding: 12px 8px; vertical-align: top; border-top: 1px solid var(--border-subtle); color: var(--text-primary); font: 400 12px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.nhl-slate-table td small { display: block; margin-top: 3px; color: var(--text-secondary); font: 400 11px/1.5 var(--font-body); }
+.nhl-slate-table td .nhl-slate-source { margin-top: 8px; color: var(--text-muted); }
+.nhl-slate-source time { display: block; }
+.nhl-slate-table .nhl-slate-when { color: var(--text-secondary); }
+.nhl-slate-table .nhl-slate-game a { color: var(--text-primary); font: 700 14px/1.5 var(--font-body); }
+.nhl-slate-table .nhl-slate-game a:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
+.nhl-slate-table tbody tr { cursor: pointer; }
+.nhl-slate-table tbody tr:hover { background: var(--bg-card-hover); }
+.nhl-slate-table .nhl-slate-props { text-align: right; }
+
+@media (max-width: 1100px) {
+  .nhl-slate-table, .nhl-slate-table tbody { display: block; }
+  .nhl-slate-table thead { display: none; }
+  .nhl-slate-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-slate-table td { min-width: 0; padding: 0; border: 0; }
+  .nhl-slate-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--text-muted); font: 600 11px var(--font-body); }
+  .nhl-slate-table .nhl-slate-game { grid-column: 1 / -1; grid-row: 1; }
+  .nhl-slate-table .nhl-slate-game small { display: none; }
+  .nhl-slate-table .nhl-slate-when { display: flex; gap: 10px; flex-wrap: wrap; grid-column: 1 / -1; grid-row: 2; }
+  .nhl-slate-table .nhl-slate-when small { margin-top: 0; }
+  .nhl-slate-table .nhl-slate-props { grid-column: 1 / -1; text-align: left; }
+  .nhl-slate-table .nhl-slate-props::before { display: inline; margin-right: 8px; }
+}

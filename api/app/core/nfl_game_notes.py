@@ -5,9 +5,9 @@ or the slate's ranking. Pure: no DB, no I/O.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Literal
+
+from app.core.line_history import LineHistory, LineStep, line_history_steps
 
 from app.core.nfl_availability import (
     DEPTH_DEMOTED,
@@ -64,34 +64,6 @@ def line_move(open_line: float | None, current_line: float | None) -> float | No
     if open_line is None or current_line is None:
         return None
     return round(current_line - open_line, 1)
-
-
-@dataclass(frozen=True)
-class LineStep:
-    fetched_at: datetime
-    line: float
-
-
-@dataclass(frozen=True)
-class LineHistory:
-    market: str
-    book: str
-    steps: list[LineStep]
-
-
-def line_history_steps(rows: list[dict]) -> list[LineHistory]:
-    """One history per market, keeping only the rows where the line changed.
-
-    `rows` hold market, book, line and fetched_at, one book per market, ordered by
-    market then fetch time. Odds runs repeat an unchanged line many times; only
-    the moves matter for a step chart.
-    """
-    histories: dict[str, LineHistory] = {}
-    for row in rows:
-        history = histories.setdefault(row["market"], LineHistory(row["market"], row["book"], []))
-        if not history.steps or history.steps[-1].line != row["line"]:
-            history.steps.append(LineStep(row["fetched_at"], row["line"]))
-    return list(histories.values())
 
 
 def short_week(rest_days: int | None) -> bool:

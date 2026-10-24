@@ -42,7 +42,7 @@ interface NflCommandGameInput {
   lines: readonly { playerId: number, playerName: string }[]
 }
 
-interface NbaCommandGameInput {
+interface TeamCommandGameInput {
   gameId: number
   awayTeam: string
   homeTeam: string
@@ -199,7 +199,7 @@ export function nflSlateCommandRows(games: readonly NflCommandGameInput[]): Slat
 
 /** Build NBA game/team targets plus only the digest players already loaded for each game. */
 export function nbaSlateCommandRows(
-  games: readonly NbaCommandGameInput[],
+  games: readonly TeamCommandGameInput[],
   gaps: readonly NbaCommandGapInput[],
 ): SlateCommandRow[] {
   const gapsByGame = new Map<number, NbaCommandGapInput[]>()
@@ -241,6 +241,25 @@ export function nbaSlateCommandRows(
           path,
           searchTerms: player.aliases,
         })),
+      ],
+    })]
+  })
+}
+
+/** NHL game/team search targets all open the loaded game's page. */
+export function nhlSlateCommandRows(games: readonly TeamCommandGameInput[]): SlateCommandRow[] {
+  const aliases = (name: string) => [name, name.normalize('NFD'), name.normalize('NFD').replace(/\p{M}/gu, '')]
+  return games.flatMap(game => {
+    if (!validId(game.gameId) || !Number.isSafeInteger(game.gameId)) return []
+    const path = `/nhl/game/${game.gameId}`
+    const matchup = `${game.awayTeam} @ ${game.homeTeam}`
+    const terms = [game.awayTeam, game.homeTeam, ...aliases(game.awayTeamName), ...aliases(game.homeTeamName)]
+    return [slateCommandRow({
+      key: `nhl-${game.gameId}`, path, searchTerms: terms,
+      targets: [
+        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: 'NHL game', path, searchTerms: terms },
+        { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: game.awayTeamName, path, searchTerms: aliases(game.awayTeamName) },
+        { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: game.homeTeamName, path, searchTerms: aliases(game.homeTeamName) },
       ],
     })]
   })
