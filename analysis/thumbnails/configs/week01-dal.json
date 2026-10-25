@@ -1,0 +1,11 @@
+{
+  "headline": "Can the Cowboys recover?",
+  "subline": "2-4 through week 6",
+  "chart": "week01-dal-feed.png",
+  "sport": "nfl",
+  "callout": {
+    "value": "1 in 5",
+    "label": "chance to make the playoffs"
+  },
+  "name": "week01-dal"
+}

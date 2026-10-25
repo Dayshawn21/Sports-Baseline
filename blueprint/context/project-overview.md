@@ -56,17 +56,16 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-24 (seventh refresh), after 45e and 45f completed
-on `master` (`d89fcb5`, `a786b24`). Both commits were pushed to
-`origin/master` in the current conversation. This synthesis retains the
-previous uncommitted overview refresh and updates it from the two unchanged
-owner plans. Completed archives and local contracts explain the checked
-items; the build plan is the progress authority where older project-plan
-prose disagrees. Those gaps remain listed below.
+**Regenerated:** 2026-10-24 (eighth refresh), after 46c completed on
+`feature/46c-save-the-season` (`0ec572d`). The only plan change since the
+seventh refresh is the build plan checking off 46c and parent 46; the
+project plan is unchanged. Completed archives and local contracts explain the
+checked items; the build plan is the progress authority where older
+project-plan prose disagrees. Those gaps remain listed below.
 
-There are **130 checked leaf items out of 140**, including the explicitly
-dropped 40b; **10 remain unchecked** (9 product items plus item-46 analysis workspace
-sub-item 46c; 46a and 46b completed 2026-10-24). NHL 45a-45f and parent 45 are complete
+There are **131 checked leaf items out of 140**, including the explicitly
+dropped 40b; **9 remain unchecked**, all product items. Item 46 (analysis
+workspace, 46a-46c) is complete as of 2026-10-24. NHL 45a-45f and parent 45 are complete
 as implementation. Migration 0049, a four-season NHL backfill, 941 linked
 PrizePicks snapshots and 168 game-odds snapshots are prior recorded local
 observations, not live inventory counts. NHL now has slate/game routes and
@@ -184,9 +183,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
-| 46 | Analysis workspace (Numbers Behind the Game) | 46a, 46b complete; 46c next |
+| 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46c) |
 
-10 leaf items remain, with these gates:
+9 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -199,9 +198,8 @@ Checked items record completed work, including explicitly retired surfaces.
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
-| 46c | Save the Season notebook | 46a and 46b complete; next |
 
-`/feature 46c` specs the Save the Season notebook (analysis workspace, outside the app). `/feature 21` specs the next planned new sport, WNBA; NHL operational
+`/feature 21` specs the next planned new sport, WNBA; NHL operational
 acceptance is a separate follow-up documented in `docs/nhl-context.md`.
 44b resumes on its own branch once its gate reads `ready`. Rec Targets reporting
 describes coverage and settlement, but cannot accrue probability-based picks
@@ -210,7 +208,7 @@ verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**46. Analysis workspace (added 2026-10-24; 46a and 46b complete 2026-10-24, archives `blueprint/history/features/46a-analysis-workspace.md` and `46b-thumbnail-generator.md`).** An `analysis/`
+**46. Analysis workspace (added and complete 2026-10-24; archives `blueprint/history/features/46a-analysis-workspace.md`, `46b-thumbnail-generator.md` and `46c-save-the-season.md`).** An `analysis/`
 folder at the repo root, outside the app, for the owner's Numbers Behind the
 Game social account (@numbersbehindthegame, sports analytics for beginners).
 

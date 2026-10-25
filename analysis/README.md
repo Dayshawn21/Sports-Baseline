@@ -36,6 +36,15 @@ The database URL comes from `DATABASE_URL` in your environment, or else from
    only when it runs top to bottom from a clean kernel.
 5. Charts land in `analysis/output/` (gitignored).
 
+To run one for another team without editing it, run it from a clean kernel with
+parameters (the saved notebook is not changed):
+
+```powershell
+analysis/.venv/Scripts/python analysis/tools/run_notebook.py analysis/week01-save-the-season.ipynb --param TEAM=PHI
+```
+
+Any name assigned in the cell tagged `parameters` can be set this way.
+
 Before committing a notebook, clear its outputs (**Edit > Clear Outputs of All
 Cells**, then save) and run the check:
 
@@ -122,9 +131,15 @@ notebook packages.
 |---|---|
 | `lib/db.py` | `read_engine()`: the one read-only database connection |
 | `lib/style.py` | The one chart style: brand colors, fonts, sizes, title, source line, credit |
+| `lib/nfl_queries.py` | Read-only NFL queries: regular-season games, team efficiency, giveaways |
+| `lib/nfl_team_report.py` | Save the Season numbers: record and luck, ranks, ratings, simulation, playoff bar, verdict |
+| `lib/nflverse.py` | Free nflverse files, cached in `data/`; the only place `nfl_data_py` is used |
+| `lib/team_posts.py` | Draft posts for a Save the Season team, under the language rules |
 | `lib/glossary.md` | Plain-language definitions of every stat used so far |
 | `templates/notebook-template.ipynb` | Copy this to start a new week |
 | `tools/check_notebooks.py` | Pre-commit check for outputs and secrets |
+| `tools/run_notebook.py` | Runs a notebook on a clean kernel with `--param NAME=value` |
+| `week01-save-the-season.ipynb` | Week 1: can a 2-4 team still save its season? (run for DAL and PHI) |
 | `fonts/` | Bundled Barlow Condensed, DM Sans and JetBrains Mono (OFL) |
 | `thumbnails/logo.png` | The logo; its blue `#09BDFE` is the one accent color |
 | `output/` | Exported PNGs (gitignored) |
@@ -179,7 +194,7 @@ These apply to every chart, script and caption.
 
 ## Roadmap
 
-A 12-week concept plan. Week 1 is built first; the rest are planned.
+A 12-week concept plan. Week 1 is built (`week01-save-the-season.ipynb`); the rest are planned.
 
 | Week | Concept | Question |
 |---|---|---|
