@@ -10,10 +10,15 @@ recommendation or guarantee that a goalie will start.
 Implemented and verified locally on October 24, 2026. Parser/linking tests,
 offline migration SQL, persistence doubles, isolated SQL/HTTP fixtures and
 desktop/phone browser checks pass. A real read-only ingest dry run succeeded.
-Migration 0050 has not been applied by this work. Real snapshot writes and
-PostgreSQL stored-context read acceptance remain pending. The hourly workflow
-is configured locally; publication, runner acceptance and deployment remain
-unverified. Do not describe the configured refresh as a live service yet.
+Migration 0050 was applied to the shared database on October 24, 2026, and
+Alembic reports `0050 (head)`. The initial real ingest stored three batches at
+20:41:52-20:41:55 UTC: 131 injury entries (108 player links), 24 goalie entries
+for October 24 and 10 for October 25 (33 player links, all 34 game links).
+Read-only PostgreSQL queries confirmed those counts. The local API returned
+HTTP 200 with 12 slate games and HTTP 200 for game 57033; its context showed
+the stored fetch times, fresh injuries and two confirmed goalies. Unresolved
+players retain source names. This is initial local acceptance against shared
+storage; first workflow execution and hosted API/UI acceptance remain unverified.
 
 See `blueprint/reference/45f/` for evidence by implementation step. Local
 screenshots, HTTP measurements and incremental diffs are under ignored `output/`.
@@ -50,8 +55,9 @@ For deliberate operational activation, in order:
 4. After separately approved publication, verify the workflow registers and
    its first actual run succeeds. Check hosted API/UI acceptance separately.
 
-These operational steps were prepared, not executed, by this feature work.
-There is no automatic migration step and no shared downgrade test.
+Activation steps 1-3 were executed on October 24, 2026, as recorded above.
+Step 4 remains unverified. There is no automatic migration step and no shared
+downgrade test.
 
 ## Refresh and failure handling
 
