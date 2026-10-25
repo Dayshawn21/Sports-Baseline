@@ -1,0 +1,129 @@
+/* The renderer overrides these from analysis/lib/style.py; the values here let the
+   file open in a browser while editing. */
+:root {
+  --accent: #09BDFE;
+  --bg: #000000;
+  --bg-navy: #060D1A;
+  --text: #f5f5f7;
+  --text-2: #9a9aa3;
+  --gray: #6b6b75;
+}
+
+@font-face { font-family: "Barlow Condensed"; font-weight: 800; src: url("../fonts/BarlowCondensed-ExtraBold.ttf"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url("../fonts/BarlowCondensed-SemiBold.ttf"); }
+@font-face { font-family: "DM Sans"; font-weight: 400; src: url("../fonts/DMSans-Regular.ttf"); }
+@font-face { font-family: "DM Sans"; font-weight: 600; src: url("../fonts/DMSans-SemiBold.ttf"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("../fonts/JetBrainsMono-Medium.ttf"); }
+
+* { box-sizing: border-box; margin: 0; }
+
+html, body { background: var(--bg); }
+
+.canvas {
+  position: relative;
+  overflow: hidden;
+  color: var(--text);
+  font-family: "DM Sans", sans-serif;
+}
+
+.background {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 85% 15%, var(--bg-navy) 0%, var(--bg) 70%);
+  background-size: cover;
+  background-position: center;
+}
+
+/* A photo sits under a dark overlay so the headline always reads. */
+.background.has-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+.safe { position: absolute; display: grid; }
+
+.copy { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; min-width: 0; }
+
+.sport-tag {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px 16px;
+}
+
+.headline {
+  width: 100%;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  overflow-wrap: normal;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.subline { font-size: 28px; color: var(--text-2); }
+
+.callout { display: flex; align-items: baseline; gap: 14px; }
+.callout-value { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 56px; color: var(--accent); }
+.callout-label { font-size: 24px; color: var(--text-2); max-width: 380px; line-height: 1.2; }
+
+.chart { margin: 0; display: flex; }
+.chart img {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  object-fit: contain;
+}
+
+.credit { display: flex; align-items: center; gap: 12px; }
+.logo { width: 44px; height: 44px; border-radius: 10px; }
+.handle { font-weight: 600; font-size: 22px; color: var(--text-2); }
+
+[hidden] { display: none !important; }
+
+/* YouTube 1280x720: copy on the left, chart card on the right, credit bottom-left.
+   The bottom-right 240x110 stays clear for the video length badge. */
+[data-format="youtube"] .canvas { width: 1280px; height: 720px; }
+[data-format="youtube"] .safe {
+  inset: 56px 64px 56px 64px;
+  grid-template-columns: 1fr 420px;
+  grid-template-rows: 1fr auto;
+  column-gap: 44px;
+}
+[data-format="youtube"] .copy { grid-column: 1; grid-row: 1; justify-content: center; }
+[data-format="youtube"] .chart { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+[data-format="youtube"] .chart img { width: 420px; height: 525px; }
+[data-format="youtube"] .credit { grid-column: 1; grid-row: 2; }
+
+/* Vertical 1080x1920 (TikTok, Shorts, Reels cover) and feed 1080x1350: one column,
+   copy on top, chart card filling the rest, credit at the bottom of the safe box. */
+[data-format="vertical"] .canvas { width: 1080px; height: 1920px; }
+[data-format="vertical"] .safe { inset: 240px 140px 420px 60px; }
+[data-format="feed"] .canvas { width: 1080px; height: 1350px; }
+[data-format="feed"] .safe { inset: 60px 80px 60px 80px; }
+
+[data-format="vertical"] .safe,
+[data-format="feed"] .safe {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 36px;
+}
+[data-format="vertical"] .chart,
+[data-format="feed"] .chart { min-height: 0; justify-content: flex-start; }
+[data-format="vertical"] .chart img,
+[data-format="feed"] .chart img { height: 100%; width: auto; max-width: 100%; }
+[data-format="vertical"] .sport-tag,
+[data-format="feed"] .sport-tag { font-size: 30px; }
+[data-format="vertical"] .subline,
+[data-format="feed"] .subline { font-size: 34px; }
+[data-format="vertical"] .callout-value,
+[data-format="feed"] .callout-value { font-size: 64px; }
+[data-format="vertical"] .callout-label,
+[data-format="feed"] .callout-label { font-size: 28px; max-width: 520px; }

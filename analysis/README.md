@@ -18,7 +18,11 @@ From the repo root:
 py -3.11 -m venv analysis/.venv
 analysis/.venv/Scripts/python -m pip install -r analysis/requirements.txt
 analysis/.venv/Scripts/python -m ipykernel install --user --name nbtg --display-name "Numbers Behind the Game"
+analysis/.venv/Scripts/python -m playwright install chromium
 ```
+
+The last line downloads the browser the thumbnail generator renders with (once
+per machine).
 
 The database URL comes from `DATABASE_URL` in your environment, or else from
 `api/app/.env`, the file the app already uses. Never paste it into a notebook.
@@ -44,7 +48,64 @@ connection string or key.
 
 ## Make a thumbnail
 
-Added by feature 46b (the thumbnail generator).
+Export the chart first (the thumbnail embeds it), then:
+
+```powershell
+analysis/.venv/Scripts/python analysis/thumbnails/make_thumbnail.py --config analysis/thumbnails/configs/sample.json
+```
+
+Add `--formats youtube` (or `vertical`, `feed`, comma-separated) to render only
+some sizes. PNGs land in `analysis/output/thumbnails/<name>-<format>.png`.
+Notebooks build the config and call `render()` in section 7, so this command is
+for redoing one by hand.
+
+### Config fields
+
+```json
+{
+  "headline": "CAN DALLAS SAVE IT?",
+  "subline": "Week 7 check-in",
+  "chart": "week01-dal-feed.png",
+  "sport": "nfl",
+  "callout": {"value": "+1.8", "label": "wins better than their record"},
+  "background": "backgrounds/stadium-dark.jpg",
+  "name": "week01-dal"
+}
+```
+
+| Field | Required | Rule |
+|---|---|---|
+| `headline` | yes | 3 to 5 words, shown uppercase, 2 lines at most (it shrinks to fit, and fails if it cannot) |
+| `chart` | yes | A PNG file name in `analysis/output/` |
+| `sport` | yes | `nfl`, `nba` or `tennis`; sets the small tag |
+| `subline` | no | Up to 60 characters |
+| `callout` | no | `value` up to 8 characters, `label` up to 40 |
+| `background` | no | An image path relative to the config file, shown under a dark overlay; otherwise a dark gradient |
+| `name` | no | Lowercase slug for the file names; defaults to the config file name |
+
+Unknown fields are an error, so a typo never gets silently ignored. Keep
+configs in `thumbnails/configs/` and commit them, so any thumbnail can be
+rebuilt.
+
+**No team logos or player photos**, in a background or anywhere else. The
+generator cannot check what an image shows; that part is on me.
+
+### Sizes and safe zones
+
+| Format | Size | Kept clear | Why |
+|---|---|---|---|
+| `youtube` | 1280x720 | the bottom-right 240x110 | Video length badge |
+| `vertical` | 1080x1920 | top 240, bottom 420, right 140 | TikTok and Reels UI; profile grids crop covers to 3:4 |
+| `feed` | 1080x1350 | 80 at each side | The Instagram grid crops 4:5 posts to 3:4 |
+
+### Change the look
+
+The design is `thumbnails/template.html` (structure) and
+`thumbnails/template.css` (everything visual: sizes, spacing, gradient, each
+format's layout). Open `template.html` in a browser to see it while editing,
+then rerun the command. Brand colors come from `lib/style.py`, so change them
+there. Rendering is offline: fonts load from `fonts/`, and any web request is
+blocked and reported.
 
 ## Tests
 
