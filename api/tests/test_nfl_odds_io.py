@@ -55,3 +55,14 @@ def test_a_one_sided_rung_never_beats_a_priced_one() -> None:
     markets = [{"name": "Spread", "odds": [{"hdp": -3, "home": "1.91"}, {"hdp": -2.5, "home": "1.80", "away": "2.02"}]}]
 
     assert [row.line for row in parse_io_game_markets(markets, True)] == [-2.5]
+
+
+FANDUEL = json.loads((Path(__file__).parent / "fixtures" / "odds_api_io_nfl_fanduel.json").read_text())
+
+
+def test_fanduels_total_ladder_resolves_to_the_line_draftkings_posts() -> None:
+    rows = {row.market: row for row in parse_io_game_markets(FANDUEL["FanDuel"], True)}
+
+    assert (rows["spread"].line, rows["spread"].first_odds, rows["spread"].second_odds) == (-3.5, -114, -106)
+    assert (rows["total"].line, rows["total"].first_side) == (47.5, "over")
+    assert rows["total"].raw_market["rungs"] == 58

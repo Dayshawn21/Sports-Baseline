@@ -406,15 +406,17 @@ async def upsert_odds(
 
 # Every book in one odds run shares a fetched_at (the run commits once), so the book
 # must break the tie or DISTINCT ON picks one arbitrarily. Bet365 was stored as
-# betonline.ag before it got its own name, so both spellings share a rank.
+# betonline.ag before it got its own name, so both spellings share a rank. FanDuel
+# replaced Bet365 on 2026-10-27, so the two never share a run and no stored tie flips.
 _BOOK_PRIORITY_SQL = """
     CASE LOWER(book)
         WHEN 'draftkings' THEN 0
         WHEN 'bet365' THEN 1
         WHEN 'betonline.ag' THEN 1
         WHEN 'betonline' THEN 1
-        WHEN 'betfair exchange' THEN 2
-        ELSE 3
+        WHEN 'fanduel' THEN 2
+        WHEN 'betfair exchange' THEN 3
+        ELSE 4
     END
 """
 

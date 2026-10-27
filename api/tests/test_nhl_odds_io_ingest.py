@@ -72,13 +72,14 @@ def test_dry_run_parses_both_books_without_inserting_or_committing(monkeypatch) 
     harness = Harness(monkeypatch)
     counts = asyncio.run(ingest.run(dry_run=True))
     assert (counts["requests"], counts["matched"], counts["candidates"], counts["written"]) == (2, 1, 6, 0)
-    for book in ("bet365", "draftkings"):
+    for book in ("draftkings", "fanduel"):
         for market in ("moneyline", "spread", "total"):
             assert counts[f"candidate_{book}_{market}"] == 1
+    assert counts["unsupported_or_malformed_book"] == 1  # Bet365, paid-only since 2026-10-26
     harness.insert.assert_not_awaited()
     harness.session.commit.assert_not_awaited()
     assert harness.requests[0].url.params["sport"] == "ice-hockey"
-    assert harness.requests[1].url.params["bookmakers"] == "Bet365,DraftKings"
+    assert harness.requests[1].url.params["bookmakers"] == "DraftKings,FanDuel"
     assert all(request.url.host == "api.odds-api.io" for request in harness.requests)
 
 
@@ -88,8 +89,8 @@ def test_write_mode_passes_oriented_rows_and_event_provenance(monkeypatch) -> No
     counts = asyncio.run(ingest.run())
     assert counts["written"] == 6
     args, kwargs = harness.insert.await_args_list[0]
-    assert args[:3] == (harness.session, 7, "bet365")
-    assert (args[3].first_odds, args[3].second_odds) == (139, -167)
+    assert args[:3] == (harness.session, 7, "draftkings")
+    assert (args[3].first_odds, args[3].second_odds) == (130, -154)
     assert kwargs == {"event_id": 1001}
     harness.session.commit.assert_awaited_once()
 
@@ -159,7 +160,7 @@ def test_unrequested_ids_bad_records_and_unconfigured_books_do_not_hide_valid_si
     assert counts["candidates"] == 6
     assert counts["malformed_event"] == 2
     assert counts["unrequested_or_changed_event"] == 1
-    assert counts["unsupported_or_malformed_book"] == 1
+    assert counts["unsupported_or_malformed_book"] == 2  # Pinnacle and Bet365
 
 
 @pytest.mark.parametrize("changes", [
@@ -221,12 +222,12 @@ def test_conflicting_odds_responses_skip_the_event(monkeypatch) -> None:
 
 def test_missing_event_book_and_market_coverage_are_explicit(monkeypatch) -> None:
     games, events = _slate(2)
-    event = {**events[0], "bookmakers": {"Bet365": [EVENT["bookmakers"]["Bet365"][0]]}}
+    event = {**events[0], "bookmakers": {"FanDuel": [EVENT["bookmakers"]["FanDuel"][0]]}}
     harness = Harness(monkeypatch, events=events, games=games, responses=[([event], "98")])
     counts = asyncio.run(ingest.run(dry_run=True))
     assert counts["missing_event"] == 1
     assert counts["missing_book_draftkings"] == 1
-    assert counts["missing_bet365_spread"] == 1 and counts["missing_bet365_total"] == 1
+    assert counts["missing_fanduel_spread"] == 1 and counts["missing_fanduel_total"] == 1
     assert counts["candidates"] == 1
 
 

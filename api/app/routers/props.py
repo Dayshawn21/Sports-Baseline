@@ -727,12 +727,13 @@ async def _fetch_market_total_games(
             ORDER BY
                 mo.match_id,
                 -- Recency first: an old DraftKings total must not beat a fresh
-                -- Bet365 one. The book only settles rows from the same run.
+                -- FanDuel one. The book only settles rows from the same run.
                 mo.fetched_at DESC,
                 CASE
                     WHEN LOWER(mo.book) = 'draftkings' THEN 0
                     WHEN LOWER(mo.book) IN ('bet365', 'betonline.ag', 'betonline') THEN 1
-                    ELSE 2
+                    WHEN LOWER(mo.book) = 'fanduel' THEN 2
+                    ELSE 3
                 END
         """),
         {"mids": match_ids},

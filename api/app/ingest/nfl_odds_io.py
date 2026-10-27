@@ -1,6 +1,7 @@
-"""Ingest NFL Bet365 and DraftKings game odds from Odds-API.io (item 36a).
+"""Ingest NFL DraftKings and FanDuel game odds from Odds-API.io (item 36a).
 
-The free plan allows these two books across every sport and 100 requests an
+The free plan allows two books across every sport (Bet365 went paid-only on
+2026-10-26, so FanDuel replaced it) and 100 requests an
 hour, shared with tennis, so a refresh is one `/events` call plus one
 `/odds/multi` call per 10 games, and stops before the hour runs low. Rows are
 stored as provider `odds_api_io`, which no pre-36a reader sees.
@@ -29,7 +30,7 @@ logger = logging.getLogger("nfl_odds_io_ingest")
 configure_ingest_logging()
 
 BASE_URL = "https://api.odds-api.io/v3"
-BOOKMAKERS = "Bet365,DraftKings"
+BOOKMAKERS = "DraftKings,FanDuel"
 NFL_LEAGUE = "usa-nfl"
 MAX_EVENTS_PER_REQUEST = 10
 DEFAULT_DAYS_AHEAD = 7
@@ -137,7 +138,7 @@ async def run(
 
 
 async def _main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest NFL Bet365 and DraftKings game odds from Odds-API.io")
+    parser = argparse.ArgumentParser(description="Ingest NFL DraftKings and FanDuel game odds from Odds-API.io")
     parser.add_argument("--days-ahead", type=int, default=DEFAULT_DAYS_AHEAD)
     parser.add_argument("--min-requests-remaining", type=int, default=DEFAULT_MIN_REQUESTS_REMAINING)
     parser.add_argument("--dry-run", action="store_true")

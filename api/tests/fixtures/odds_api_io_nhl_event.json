@@ -1,5 +1,5 @@
 {
-  "fixture_note": "Representative sanitized shape from 45a; only Bet365 ML prices reproduce its recorded probe. Other prices are synthetic test cases.",
+  "fixture_note": "Representative sanitized shape from 45a; only Bet365 ML prices reproduce its recorded probe. Other Bet365 and DraftKings prices are synthetic test cases. FanDuel markets are copied unchanged from a real 2026-10-27 Odds-API.io response (Kings at Blackhawks), player props and other markets removed.",
   "id": 1001,
   "home": "Montreal Canadiens",
   "away": "Chicago Blackhawks",
@@ -18,6 +18,12 @@
       {"name": "ML", "odds": [{"home": "1.65", "away": "2.30"}]},
       {"name": "Spread", "odds": [{"hdp": -1.5, "home": "2.40", "away": "1.65"}]},
       {"name": "Totals", "odds": [{"hdp": 6, "over": "1.90", "under": "1.95"}]}
+    ],
+    "FanDuel": [
+      {"name": "ML", "updatedAt": "2026-10-27T15:24:14.277Z", "odds": [{"home": "1.980", "away": "1.847"}]},
+      {"name": "3-Way Result", "updatedAt": "2026-10-27T15:24:35.363Z", "odds": [{"home": "2.550", "draw": "4.100", "away": "2.350"}]},
+      {"name": "Spread", "updatedAt": "2026-10-27T15:24:35.363Z", "odds": [{"hdp": -3.5, "home": "12.200", "away": "1.042"}, {"hdp": -2.5, "home": "5.100", "away": "1.154"}, {"hdp": -1.5, "home": "3.300", "away": "1.313"}, {"hdp": 1.5, "home": "1.385", "away": "3.050"}, {"hdp": 2.5, "home": "1.182", "away": "4.500"}, {"hdp": 3.5, "home": "1.056", "away": "10.200"}]},
+      {"name": "Totals", "updatedAt": "2026-10-27T15:24:35.363Z", "odds": [{"hdp": 2.5, "over": "1.020", "under": "20.500"}, {"hdp": 3.5, "over": "1.125", "under": "5.900"}, {"hdp": 4.5, "over": "1.233", "under": "4.000"}, {"hdp": 5.5, "over": "1.769", "under": "2.060"}, {"hdp": 6.5, "over": "2.180", "under": "1.667"}, {"hdp": 7.5, "over": "3.800", "under": "1.250"}, {"hdp": 8.5, "over": "5.400", "under": "1.143"}, {"hdp": 9.5, "over": "11.400", "under": "1.050"}, {"hdp": 10.5, "over": "17.500", "under": "1.022"}]}
     ]
   }
 }

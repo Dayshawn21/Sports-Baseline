@@ -149,3 +149,11 @@ def test_total_selection_uses_complete_valid_rungs_and_stable_ties() -> None:
         {"hdp": 7.5, "over": "1.91", "under": "1.91"},
     ]}
     assert parse_nhl_game_markets([market], True)[0].line == 6.5
+
+
+def test_fanduel_ladders_resolve_to_the_main_puck_line_and_total() -> None:
+    rows = {row.market: row for row in parse_nhl_game_markets(EVENT["bookmakers"]["FanDuel"], True)}
+    assert set(rows) == {"moneyline", "spread", "total"}  # the regulation 3-Way Result is not a moneyline
+    assert (rows["moneyline"].first_odds, rows["moneyline"].second_odds) == (-102, -118)
+    assert (rows["spread"].line, rows["spread"].first_odds, rows["spread"].second_odds) == (1.5, -260, 205)
+    assert (rows["total"].line, rows["total"].first_odds, rows["total"].second_odds) == (5.5, -130, 106)

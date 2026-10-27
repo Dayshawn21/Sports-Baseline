@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Optional
+from collections.abc import Callable
+from typing import Optional, TypeVar
 
 # The odds job refreshes hourly, so a healthy line is under an hour old. Six
 # hours is wide enough that an ordinary skipped or delayed run never trips the
@@ -61,6 +62,19 @@ def devig_two_way(p1_raw: float, p2_raw: float) -> tuple[float, float]:
 def overround(p1_raw: float, p2_raw: float) -> float:
     """Return market overround as a fraction (e.g. 0.05 = 5%)."""
     return (p1_raw + p2_raw) - 1.0
+
+
+# FanDuel's alternate lines carry almost no margin at the extremes (20.5 at -50000
+# on a 47.5 NFL total, 2026-10-27), so least-vig alone picks one of them.
+MAX_MAIN_LINE_PROBABILITY = 0.75
+
+_Rung = TypeVar("_Rung")
+
+
+def near_even_rungs(rungs: list[_Rung], prices: Callable[[_Rung], tuple[float, float]]) -> list[_Rung]:
+    """Ladder rungs (decimal prices) with neither side above the main-line ceiling; all rungs when none qualify."""
+    near = [rung for rung in rungs if max(1 / price for price in prices(rung)) <= MAX_MAIN_LINE_PROBABILITY]
+    return near or rungs
 
 
 def implied_prob_from_american(p1_odds: int, p2_odds: int) -> tuple[float, float]:

@@ -1,4 +1,4 @@
-name: NHL Bet365 and DraftKings Odds
+name: NHL DraftKings and FanDuel Odds
 
 # September-June, staggered from tennis (:10) and NFL (:25).
 # The hourly quota and two-book allowance are shared across all three sports.
@@ -20,7 +20,7 @@ env:
 
 jobs:
   odds-io:
-    name: Bet365 and DraftKings NHL Game Odds
+    name: DraftKings and FanDuel NHL Game Odds
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

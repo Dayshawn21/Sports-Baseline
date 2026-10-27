@@ -1,7 +1,7 @@
 import type { NhlGameContext } from '~/types/nhlContext'
 
 /** CamelCase responses from `app/schemas/nhl.py`; dates are Eastern calendar dates. */
-export type NhlBook = 'draftkings' | 'bet365'
+export type NhlBook = 'draftkings' | 'fanduel' | 'bet365'
 
 export interface NhlMoneyline {
   book: NhlBook

@@ -24,7 +24,7 @@ logger = logging.getLogger("nhl_odds_io_ingest")
 configure_ingest_logging()
 
 BASE_URL = "https://api.odds-api.io/v3"
-BOOKMAKERS = {"Bet365": "bet365", "DraftKings": "draftkings"}
+BOOKMAKERS = {"DraftKings": "draftkings", "FanDuel": "fanduel"}
 DEFAULT_DAYS_AHEAD = 2
 DEFAULT_MIN_REQUESTS_REMAINING = 20
 
@@ -229,7 +229,7 @@ async def run(
 
 
 async def _main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest NHL Bet365/DraftKings full-game odds from Odds-API.io")
+    parser = argparse.ArgumentParser(description="Ingest NHL DraftKings/FanDuel full-game odds from Odds-API.io")
     parser.add_argument("--days-ahead", type=int, default=DEFAULT_DAYS_AHEAD)
     parser.add_argument("--min-requests-remaining", type=int, default=DEFAULT_MIN_REQUESTS_REMAINING)
     parser.add_argument("--dry-run", action="store_true", help="Fetch and parse hourly-quota data without writes")

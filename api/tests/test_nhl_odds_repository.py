@@ -114,7 +114,15 @@ def test_ineligible_game_returns_none_without_an_inserted_id() -> None:
     )) is None
 
 
-@pytest.mark.parametrize("book", ["pinnacle", "Bet365", "", "draft_kings"])
+@pytest.mark.parametrize("book", ["fanduel", "bet365"])
+def test_fanduel_writes_and_stored_bet365_remains_a_known_book(book: str) -> None:
+    market = parse_nhl_game_markets([{"name": "ML", "odds": [{"home": "1.60", "away": "2.39"}]}], True)[0]
+    session = _RecordingSession(result_id=502)
+    assert asyncio.run(insert_game_odds_snapshot(cast(AsyncSession, session), 7, book, market, event_id=1001)) == 502
+    assert session.params["book"] == book
+
+
+@pytest.mark.parametrize("book", ["pinnacle", "Bet365", "FanDuel", "", "draft_kings"])
 def test_unconfigured_books_cannot_write(book: str) -> None:
     market = parse_nhl_game_markets([{"name": "ML", "odds": [{"home": "1.60", "away": "2.39"}]}], True)[0]
     session = _RecordingSession()

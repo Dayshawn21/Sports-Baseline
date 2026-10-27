@@ -1,7 +1,9 @@
 # NHL game odds
 
 Feature 45d stores pre-game DraftKings and Bet365 prices from Odds-API.io in
-the existing `sport_game_odds` table. NHL market display and line movement
+the existing `sport_game_odds` table. Since 2026-10-27 the second book is
+FanDuel: Bet365 became paid-only on Odds-API.io on 2026-10-26, and its stored
+rows remain readable. NHL market display and line movement
 are 45e; projections and betting recommendations are separate future work.
 
 ## Run locally
@@ -27,7 +29,9 @@ unchanged prices, so repeated successful runs create observation history.
 
 Every reader must filter `sport='nhl'` and `provider='odds_api_io'`. The provider
 is distinct from The Odds API, which supplies other sports on a monthly budget.
-`book` is exactly `bet365` or `draftkings`. Fair probabilities remove each
+`book` is exactly `draftkings` or `fanduel` for new rows; earlier rows may be
+`bet365`. FanDuel sends spread and total ladders, so rungs with either side
+priced above 75% implied are set aside before the least-vig choice. Fair probabilities remove each
 book's own two-way margin; they are not a multi-book consensus or model edge.
 
 | Provider market | Stored market | Sides and line |

@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     api_env: str = "dev"
     odds_api_key: str = ""
     the_odds_api_key: str = ""
-    live_odds_bookmakers: str = "DraftKings,Bet365"
+    # Odds-API.io's free plan allows two books; Bet365 went paid-only on 2026-10-26.
+    live_odds_bookmakers: str = "DraftKings,FanDuel"
     api_sports_nfl_key: str = ""
     livetennis_api_key: str = ""
     livetennis_tier: str = "free"  # free | basic | pro | ultra

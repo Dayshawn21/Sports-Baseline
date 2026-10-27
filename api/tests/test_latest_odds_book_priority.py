@@ -24,6 +24,10 @@ class TestBookPriority:
     def test_draftkings_outranks_bet365_which_outranks_the_exchange(self):
         assert _rank("draftkings") < _rank("bet365") < _rank("betfair exchange") < _rank("pinnacle")
 
+    def test_fanduel_ranks_after_stored_bet365_and_before_the_exchange(self):
+        assert _rank("bet365") < _rank("fanduel") < _rank("betfair exchange") < _rank("pinnacle")
+        assert _rank("FanDuel") == _rank("fanduel")
+
     def test_legacy_bet365_rows_rank_with_bet365(self):
         assert _rank("betonline.ag") == _rank("bet365") == _rank("betonline")
 

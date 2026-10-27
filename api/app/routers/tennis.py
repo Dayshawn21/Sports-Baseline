@@ -6,6 +6,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.tennis_odds_events import event_start, match_event
 from app.db.pool import get_db
 from app.repositories import matches as match_repo
@@ -159,9 +160,10 @@ async def _overlay_live_moneyline(predictions: list[PredictionOutput]) -> None:
     # Lazy import to avoid circular dependency at module load time
     from app.routers.props import _fetch_live_tennis_odds
 
+    bookmakers = settings.live_odds_bookmakers
     live_data = await _LIVE_ODDS.get(
-        ("DraftKings,Bet365", 24),
-        lambda: _fetch_live_tennis_odds(bookmakers="DraftKings,Bet365", hours_ahead=24),
+        (bookmakers, 24),
+        lambda: _fetch_live_tennis_odds(bookmakers=bookmakers, hours_ahead=24),
     )
     if not live_data:
         return

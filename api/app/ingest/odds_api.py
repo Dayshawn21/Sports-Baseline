@@ -5,7 +5,9 @@ Fetches tennis match odds from Odds-API.io and writes them to `match_odds`.
 
 Bookmakers:
   - DraftKings: moneyline, totals, set winner markets
-  - Bet365: moneyline, match total, game spread, set handicap (stored as betonline.ag before 2026-09-25)
+  - FanDuel: moneyline, match total (requested since 2026-10-27)
+  - Bet365: paid-only on Odds-API.io since 2026-10-26, no longer requested; its
+    stored rows (betonline.ag before 2026-09-25) are still read
 
 ENV VARS:
   ODDS_API_KEY   — required
@@ -36,7 +38,6 @@ logger = logging.getLogger("odds_api_ingest")
 configure_ingest_logging()
 
 BASE_URL = "https://api.odds-api.io/v3"
-DEFAULT_BOOKMAKERS = "DraftKings,Bet365"
 BATCH_SIZE = 10
 DEFAULT_MIN_REQUESTS_REMAINING = 5
 DEFAULT_INVENTORY_OUTPUT = Path(__file__).resolve().parents[3] / "docs" / "odds-market-inventory.md"
@@ -439,6 +440,13 @@ BOOK_CONFIGS = (
         standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),
         spread_parser=_parse_bet365_spread, spread_markets=("game_spread", "set_handicap"),
     ),
+    # The 2026-10-27 probe saw FanDuel send only `ML`, named as DraftKings names it;
+    # spreads stay off until a response shows FanDuel's shape.
+    BookConfig(
+        canonical_name="fanduel", aliases=("fanduel",),
+        standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),
+        spread_parser=None, spread_markets=(),
+    ),
 )
 
 
@@ -562,6 +570,40 @@ def _log_odds_api_limit_hint(status_code: int, response_text: str, bookmakers: s
     logger.error("Batch odds error: %s %s", status_code, short_msg)
 
 
+class OddsPlanBlockedError(RuntimeError):
+    """Every odds batch was refused by the plan, so a scheduled run must fail visibly."""
+
+
+async def _fetch_matched_odds(
+    client: httpx.AsyncClient, api_key: str, event_ids: list[int], bookmakers: str,
+    min_requests_remaining: int, sleep_sec: float,
+) -> tuple[dict[int, dict], bool]:
+    """Event odds by id, and whether a 402/403 stopped the batches."""
+    odds_by_id: dict[int, dict] = {}
+    for i in range(0, len(event_ids), BATCH_SIZE):
+        batch = event_ids[i:i + BATCH_SIZE]
+        try:
+            results, rate_limit = await _fetch_odds_batch(client, api_key, batch, bookmakers)
+        except httpx.HTTPStatusError as e:
+            code = e.response.status_code
+            _log_odds_api_limit_hint(code, e.response.text, bookmakers)
+            if code in (402, 403):
+                return odds_by_id, True
+        else:
+            for ev in results:
+                odds_by_id[int(ev["id"])] = ev
+            if _quota_too_low(rate_limit, min_requests_remaining):
+                logger.warning(
+                    "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
+                    rate_limit.remaining,
+                    min_requests_remaining,
+                )
+                break
+        if sleep_sec > 0:
+            await asyncio.sleep(sleep_sec)
+    return odds_by_id, False
+
+
 # =============================================================================
 # DB helpers
 # =============================================================================
@@ -656,39 +698,15 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
             if not matched:
                 return
 
-            # Batch fetch odds
-            odds_by_id: dict[int, dict] = {}
-            blocked_by_plan = False
-            event_ids = [m["odds_api_id"] for m in matched]
-            for i in range(0, len(event_ids), BATCH_SIZE):
-                batch = event_ids[i:i + BATCH_SIZE]
-                try:
-                    results, rate_limit = await _fetch_odds_batch(client, api_key, batch, bookmakers)
-                    for ev in results:
-                        odds_by_id[int(ev["id"])] = ev
-                    if _quota_too_low(rate_limit, min_requests_remaining):
-                        logger.warning(
-                            "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
-                            rate_limit.remaining,
-                            min_requests_remaining,
-                        )
-                        break
-                except httpx.HTTPStatusError as e:
-                    code = e.response.status_code
-                    _log_odds_api_limit_hint(code, e.response.text, bookmakers)
-                    if code in (402, 403):
-                        blocked_by_plan = True
-                        break
-                if sleep_sec > 0:
-                    await asyncio.sleep(sleep_sec)
-
+            odds_by_id, blocked_by_plan = await _fetch_matched_odds(
+                client, api_key, [m["odds_api_id"] for m in matched], bookmakers,
+                min_requests_remaining, sleep_sec,
+            )
             logger.info("Odds responses: %d", len(odds_by_id))
             if blocked_by_plan and not odds_by_id:
-                logger.warning(
-                    "Stopping ingest: current Odds API plan appears to block requested tennis odds data. "
-                    "Try fewer/supported bookmakers on your tier."
+                raise OddsPlanBlockedError(
+                    f"Odds-API.io plan refused every tennis odds batch for bookmakers={bookmakers}."
                 )
-                return
 
             # Parse and insert
             updated_matches = 0

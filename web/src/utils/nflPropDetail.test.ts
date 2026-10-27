@@ -213,7 +213,7 @@ describe('nflPropDetail game market', () => {
     const noModel = nflPropDetail(row(), game({ model: null }), [], NOW).gameMarket
     expect(noModel).toMatchObject({ modelText: null, modelVersion: null })
     const partial = nflPropDetail(row(), game({ odds: { book: 'fanduel', homeMoneyline: null, awayMoneyline: null, homeSpread: null, total: null } }), [], NOW).gameMarket
-    expect(partial?.book).toBe('fanduel')
+    expect(partial?.book).toBe('FanDuel')
     expect(partial?.rows.map(item => item.value)).toEqual(['--', '--', '--', '--'])
   })
 })

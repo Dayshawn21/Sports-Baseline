@@ -5,9 +5,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import isfinite
+from typing import Literal, get_args
 
 from app.core.nhl_names import fold_name
-from app.core.odds import decimal_to_american, devig_two_way
+from app.core.odds import decimal_to_american, devig_two_way, near_even_rungs
 
 _TEAM_CODES = {
     "anaheim ducks": "ANA", "boston bruins": "BOS", "buffalo sabres": "BUF",
@@ -24,6 +25,9 @@ _TEAM_CODES = {
 }
 _MARKETS = {"ML": "moneyline", "Spread": "spread", "Totals": "total"}
 MATCH_WINDOW = timedelta(hours=6)
+# Bet365 rows stay readable after it went paid-only on Odds-API.io (2026-10-26).
+NhlBook = Literal["draftkings", "fanduel", "bet365"]
+NHL_ODDS_BOOKS: tuple[str, ...] = get_args(NhlBook)
 
 
 @dataclass(frozen=True)
@@ -131,7 +135,10 @@ def _parse_market(raw: Mapping[str, object], name: str, homes_agree: bool) -> Nh
     priced = _priced_rungs(raw, name)
     if not _full_game(raw) or not priced:
         return None
-    first, second, line = min(priced, key=lambda rung: (1 / rung[0] + 1 / rung[1], abs(rung[0] - rung[1])))
+    first, second, line = min(
+        near_even_rungs(priced, lambda rung: (rung[0], rung[1])),
+        key=lambda rung: (1 / rung[0] + 1 / rung[1], abs(rung[0] - rung[1])),
+    )
     sides = ("over", "under") if name == "Totals" else ("home", "away")
     selected: dict[str, object] = {sides[0]: first, sides[1]: second}
     if line is not None:

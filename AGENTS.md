@@ -251,7 +251,7 @@ Two apps, two command sets. Paths are relative to the repo root.
   No NHL predictions are written. GitHub registration and runner acceptance
   remain unverified until an approved push and actual run.
 - NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2]
-  [--min-requests-remaining 20] [--dry-run]` (DraftKings and Bet365 full-game
+  [--min-requests-remaining 20] [--dry-run]` (DraftKings and FanDuel full-game
   moneyline with OT/SO, +/-1.5 puck line and total, per-book de-vigged, stored
   under `sport='nhl'`, `provider='odds_api_io'`). Dry run uses hourly requests
   but makes no inserts or commits; no eligible games means no provider calls.

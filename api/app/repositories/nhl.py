@@ -10,7 +10,7 @@ from typing import Literal, TypeVar
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.nhl_odds import NhlGameMarket
+from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -203,8 +203,8 @@ async def insert_game_odds_snapshot(
     db: AsyncSession, game_id: int, book: str, market: NhlGameMarket, *, event_id: int,
 ) -> int | None:
     """Append an Odds-API.io snapshot, or skip a game no longer eligible."""
-    if book not in ("bet365", "draftkings"):
-        raise ValueError("NHL odds book must be bet365 or draftkings")
+    if book not in NHL_ODDS_BOOKS:
+        raise ValueError("NHL odds book must be draftkings, fanduel or bet365")
     row = await db.execute(text("""
         INSERT INTO sport_game_odds (
             sport, game_id, provider, book, market, line, first_side, second_side,
@@ -272,7 +272,7 @@ _CHOSEN_ODDS = """
         FROM sport_game_odds o
         JOIN sport_games g ON g.sport = 'nhl' AND g.id = o.game_id
         WHERE o.sport = 'nhl' AND o.provider = 'odds_api_io'
-          AND o.book IN ('draftkings', 'bet365') AND o.game_id IN :game_ids
+          AND o.book IN ('draftkings', 'fanduel', 'bet365') AND o.game_id IN :game_ids
           AND g.game_type IN ('REG', 'PST')
           AND o.market IN ('moneyline', 'spread', 'total')
           AND (g.start_utc IS NULL OR o.fetched_at < g.start_utc)

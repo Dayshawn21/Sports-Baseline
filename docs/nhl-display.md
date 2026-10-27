@@ -50,9 +50,9 @@ an entirely empty schedule defaults to today. Adjacent controls skip dates
 without served games. Missing start times remain TBD.
 
 Every shared-table read is scoped to NHL. Odds additionally require
-`provider='odds_api_io'` and exactly `draftkings` or `bet365`. For each game and
-market, DraftKings is preferred when eligible observations exist, otherwise
-Bet365. Latest price, opening/current movement and chart history use that same
+`provider='odds_api_io'` and exactly `draftkings`, `fanduel` or `bet365`
+(stored before 2026-10-27). For each game and market, DraftKings is preferred
+when eligible observations exist, otherwise the other stored book. Latest price, opening/current movement and chart history use that same
 book. Markets can have different books; neither sides nor history splice books.
 Latest selection breaks timestamp ties by row ID.
 

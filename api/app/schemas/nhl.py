@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.core.nhl_odds import NhlBook
 from app.nhl.markets import NhlLineOnlyMarket
 from app.schemas.nhl_context import NhlGameContextSchema
 
@@ -16,7 +17,7 @@ class _CamelModel(BaseModel):
 
 
 class NhlMoneylineSchema(_CamelModel):
-    book: Literal["draftkings", "bet365"]
+    book: NhlBook
     home_odds: int
     away_odds: int
     home_win_probability: float = Field(ge=0, le=1)
@@ -24,7 +25,7 @@ class NhlMoneylineSchema(_CamelModel):
 
 
 class NhlSpreadSchema(_CamelModel):
-    book: Literal["draftkings", "bet365"]
+    book: NhlBook
     home_line: float
     home_odds: int
     away_odds: int
@@ -32,7 +33,7 @@ class NhlSpreadSchema(_CamelModel):
 
 
 class NhlTotalSchema(_CamelModel):
-    book: Literal["draftkings", "bet365"]
+    book: NhlBook
     line: float
     over_odds: int
     under_odds: int
@@ -41,7 +42,7 @@ class NhlTotalSchema(_CamelModel):
 
 class NhlLineMoveSchema(_CamelModel):
     market: Literal["spread", "total"]
-    book: Literal["draftkings", "bet365"]
+    book: NhlBook
     open_line: float
     current_line: float
     open_fetched_at: AwareDatetime
@@ -55,7 +56,7 @@ class NhlLineStepSchema(_CamelModel):
 
 class NhlLineHistorySchema(_CamelModel):
     market: Literal["spread", "total"]
-    book: Literal["draftkings", "bet365"]
+    book: NhlBook
     steps: list[NhlLineStepSchema]
 
 

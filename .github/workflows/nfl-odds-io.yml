@@ -1,7 +1,8 @@
-name: NFL Bet365 and DraftKings Odds
+name: NFL DraftKings and FanDuel Odds
 
-# Odds-API.io's free plan allows two books (DraftKings and Bet365, shared with
-# tennis) and 100 requests an hour. A refresh is one /events call plus one
+# Odds-API.io's free plan allows two books (DraftKings and FanDuel since
+# 2026-10-27, when Bet365 went paid-only; shared with tennis and NHL) and 100
+# requests an hour. A refresh is one /events call plus one
 # /odds/multi call per 10 games: 3 requests for a 15-game slate, about 24 a day
 # at this cadence. The ingest stops before leaving fewer than 20 requests in
 # the hour, so tennis keeps its share. No credits: The Odds API is not called.
@@ -23,7 +24,7 @@ env:
 
 jobs:
   odds-io:
-    name: Bet365 and DraftKings Game Odds
+    name: DraftKings and FanDuel Game Odds
     runs-on: ubuntu-latest
 
     steps:
@@ -41,7 +42,7 @@ jobs:
           cd api
           pip install -r requirements.txt
 
-      - name: Refresh Bet365 and DraftKings NFL game odds
+      - name: Refresh DraftKings and FanDuel NFL game odds
         run: |
           cd api
           python -m app.ingest.nfl_odds_io

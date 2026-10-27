@@ -159,7 +159,7 @@ async def run(books: str | None = None) -> None:
         ordered = atp_wta + [e for e in pending if not _is_atp_wta(e)]
         print(f"Found {len(pending)} pending events ({len(atp_wta)} ATP/WTA). Probing for one with odds...")
 
-        probe_books = books or "DraftKings,Bet365"
+        probe_books = books or "DraftKings,FanDuel"
         print(f"Fetching odds for: {probe_books}")
         print()
 
@@ -209,7 +209,7 @@ async def _main() -> None:
         "--books",
         type=str,
         default=None,
-        help='Comma-separated bookmaker names to probe (default: DraftKings,Betfair,FanDuel,BetMGM,WilliamHill,888Sport,Bet365)',
+        help="Comma-separated bookmaker names to probe (default: DraftKings,FanDuel)",
     )
     args = parser.parse_args()
     await run(books=args.books)

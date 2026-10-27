@@ -146,6 +146,12 @@ def test_ineligible_draftkings_does_not_hide_bet365(session: _Session) -> None:
     assert asyncio.run(nhl.get_latest_market_rows(cast(AsyncSession, session), [1]))[0]["book"] == "bet365"
 
 
+def test_fanduel_is_read_when_draftkings_has_no_eligible_row(session: _Session) -> None:
+    _odds(session, 1, fetched_at=START)
+    _odds(session, 2, book="fanduel")
+    assert asyncio.run(nhl.get_latest_market_rows(cast(AsyncSession, session), [1]))[0]["book"] == "fanduel"
+
+
 def test_missing_start_has_latest_prices_but_no_movement_claim(session: _Session) -> None:
     _odds(session, 1, game_id=6, fetched_at=START)
     db = cast(AsyncSession, session)

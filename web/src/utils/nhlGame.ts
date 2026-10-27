@@ -42,8 +42,10 @@ export function nhlGameState(game: NhlSlateGame, now: Date): { state: NhlGameSta
     : { state: 'upcoming', label: 'Scheduled' }
 }
 
+const NHL_BOOK_LABELS: Record<NhlBook, string> = { draftkings: 'DraftKings', fanduel: 'FanDuel', bet365: 'Bet365' }
+
 export function nhlBookLabel(book: NhlBook): string {
-  return book === 'draftkings' ? 'DraftKings' : 'Bet365'
+  return NHL_BOOK_LABELS[book]
 }
 
 export function signedNhlLine(line: number): string {

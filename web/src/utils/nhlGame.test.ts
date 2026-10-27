@@ -76,6 +76,7 @@ describe('NHL market display', () => {
     expect(moneyline.value).toBe('CHI -120')
     expect(moneyline.detail).toBe('MTL +110')
     expect(nhlBookLabel('draftkings')).toBe('DraftKings')
+    expect(nhlBookLabel('fanduel')).toBe('FanDuel')
     expect(nhlBookLabel('bet365')).toBe('Bet365')
   })
   it('keeps a positive home puck line positive instead of relabeling it as a home favorite', () => {
