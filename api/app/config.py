@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Per client IP, in the `limits` notation; heavy routes are in app/core/rate_limits.py.
     rate_limit_default: str = "120/minute"
     rate_limit_heavy: str = "10/minute"
+    # Ask Lineform. Passed to the client explicitly: pydantic-settings reads the
+    # .env file without exporting it, so the SDK cannot find the key on its own.
+    anthropic_api_key: str = ""
+    ask_model: str = "claude-haiku-5-5"
+    ask_max_tokens: int = 1024
+    ask_max_tool_iterations: int = 5
 
     @property
     def async_database_url(self) -> str:

@@ -281,6 +281,18 @@ Two apps, two command sets. Paths are relative to the repo root.
   deployment remain pending. Display is gray context only; no model or picks
   change. See `docs/nhl-context.md` for activation order and verification limits.
 
+### Ask Lineform (`api/`, 47)
+
+- Tool preview: `python -m app.services.ask.preview <tool> key=value ...`
+  (e.g. `get_top_props sport=nba limit=3`). Runs one tool against the local
+  database and prints exactly what the model receives, or the one-line error
+  it would get. Arguments are `key=value` because Windows PowerShell strips the
+  quotes from a JSON argument. Makes no Anthropic API call.
+- `ANTHROPIC_API_KEY` is read only through `Settings` (`anthropic_api_key`) and
+  passed to the client explicitly; it is never needed by tests or CI. The model,
+  max tokens and tool-iteration cap are `ask_model`, `ask_max_tokens` and
+  `ask_max_tool_iterations`.
+
 ### Verify (both apps, from the repo root)
 
 - Verify: `npm --prefix web run verify && cd api && python -m pytest`

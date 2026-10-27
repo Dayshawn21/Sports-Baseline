@@ -90,6 +90,14 @@ These already exist and are working. This section describes the shipped app.
 - Admin surface for flagged players, with manual stat and ELO refresh
 - Scheduled ingest via GitHub Actions and a local Windows batch fallback
 
+**Ask Lineform (build-plan item 47)**
+
+- A public chat panel answering questions about slates, props, games, players
+  and model track records, using Claude with tools over the existing services.
+  Answers come only from tool results, cite the Lineform page behind each
+  number, and keep reference-only signals labelled as reference. Limited to 20
+  questions per IP per day under a global daily spend cap.
+
 **Content analysis (outside the app)**
 
 - An `analysis/` workspace of Jupyter notebooks (build-plan item 46) that turns
@@ -228,6 +236,7 @@ a month with NFL and NBA running.
 - Pydantic 2 and pydantic-settings for config and schemas
 - LightGBM, XGBoost, scikit-learn, joblib for models and calibration
 - Playwright, httpx, requests, tenacity for ingest
+- Anthropic Python SDK (Messages API, own tool loop; model in Settings) for Ask Lineform
 
 **Analysis workspace (item 46)**
 
@@ -378,7 +387,10 @@ Hosted read-only demo on Render since 2026-10-16 (item 37d), deployed from
 `ODDS_API_KEY` (Odds-API.io: tennis, and NFL Bet365 and DraftKings),
 `THE_ODDS_API_KEY` (The Odds API: NFL and NBA), `LIVETENNIS_API_KEY`,
 `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` or `production`),
-`CORS_ORIGINS`, `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_HEAVY`.
+`CORS_ORIGINS`, `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_HEAVY`, `ANTHROPIC_API_KEY`
+(Ask Lineform, read only through Settings, never in the web build). A monthly
+spend limit on the Anthropic Console is the backstop behind Ask Lineform's
+in-app daily cap.
 
 **Health check:** `GET /health`.
 

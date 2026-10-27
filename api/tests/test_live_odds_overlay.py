@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from app.routers import props as props_router
-from app.routers import tennis as tennis_router
+from app.services.tennis import best_picks_response
 from app.services.tennis.live_odds_cache import LiveOddsRateLimited, TimedSingleFlight
 
 START = datetime(2026, 9, 26, 8, 30, tzinfo=timezone.utc)
@@ -102,7 +102,7 @@ def live(monkeypatch):
         return payload
 
     monkeypatch.setattr(props_router, "_fetch_live_tennis_odds", fake_fetch)
-    monkeypatch.setattr(tennis_router, "_LIVE_ODDS", TimedSingleFlight(900, Clock()))
+    monkeypatch.setattr(best_picks_response, "_LIVE_ODDS", TimedSingleFlight(900, Clock()))
     return SimpleNamespace(calls=calls, payload=payload)
 
 
@@ -110,27 +110,27 @@ class TestOverlay:
     def test_reversed_home_away_fills_odds_the_right_way_round(self, live):
         live.payload["events"] = [_event("Harris, Lloyd", "Vacherot, Valentin", START, "2.60", "1.50")]
         pred = _pred()
-        asyncio.run(tennis_router._overlay_live_moneyline([pred]))
+        asyncio.run(best_picks_response.overlay_live_moneyline([pred]))
         assert (pred.p1_odds_american, pred.p2_odds_american) == (-200, 160)
 
     def test_an_event_thirteen_hours_away_is_not_this_match(self, live):
         live.payload["events"] = [_event("Vacherot, Valentin", "Harris, Lloyd", START + timedelta(hours=13), "1.80", "2.00")]
         pred = _pred()
-        asyncio.run(tennis_router._overlay_live_moneyline([pred]))
+        asyncio.run(best_picks_response.overlay_live_moneyline([pred]))
         assert pred.p1_odds_american is None
 
     def test_two_requests_in_the_window_cost_one_lookup(self, live):
         live.payload["events"] = [_event("Vacherot, Valentin", "Harris, Lloyd", START, "1.80", "2.00")]
 
         async def two_page_requests():
-            await tennis_router._overlay_live_moneyline([_pred()])
-            await tennis_router._overlay_live_moneyline([_pred()])
+            await best_picks_response.overlay_live_moneyline([_pred()])
+            await best_picks_response.overlay_live_moneyline([_pred()])
 
         asyncio.run(two_page_requests())
         assert len(live.calls) == 1
 
     def test_predictions_with_stored_odds_never_call_the_api(self, live):
-        asyncio.run(tennis_router._overlay_live_moneyline([_pred(p1_odds_american=-150, p2_odds_american=130)]))
+        asyncio.run(best_picks_response.overlay_live_moneyline([_pred(p1_odds_american=-150, p2_odds_american=130)]))
         assert live.calls == []
 
 

@@ -8,11 +8,14 @@ import pytest
 from fastapi import HTTPException
 
 from app.routers import tennis as tennis_router
+from app.schemas.tennis import BestPicksResponse, MatchBestPicksSchema
+from app.services.tennis import best_picks_response
 from app.services.tennis import prediction_cache
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
 TODAY = date(2026, 10, 15)
 TOMORROW = date(2026, 10, 16)
+REQUEST = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(registry=None)))
 
 
 class Clock:
@@ -158,7 +161,7 @@ def test_the_slate_returns_503_when_predictions_fail(monkeypatch):
     async def unavailable(_db, _registry, _dates, _today):
         return None
 
-    monkeypatch.setattr(tennis_router, "cached_predictions", unavailable)
+    monkeypatch.setattr(best_picks_response, "cached_predictions", unavailable)
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(registry=None)))
 
     with pytest.raises(HTTPException) as exc:
@@ -168,7 +171,7 @@ def test_the_slate_returns_503_when_predictions_fail(monkeypatch):
 
 
 def _match(match_id: int, tour: str):
-    return tennis_router.MatchBestPicksSchema.model_construct(match_id=match_id, tour=tour, picks=[])
+    return MatchBestPicksSchema.model_construct(match_id=match_id, tour=tour, picks=[])
 
 
 def test_best_picks_build_once_for_every_tour(clock, monkeypatch):
@@ -179,17 +182,17 @@ def test_best_picks_build_once_for_every_tour(clock, monkeypatch):
         TimedSingleFlight(prediction_cache.CACHE_TTL_SECONDS, clock, prediction_cache.FAILURE_TTL_SECONDS),
     )
 
-    async def build(_db, _request, match_date, today):
+    async def build(_db, _registry, match_date, today):
         builds.append(1)
         matches = [_match(1, "ATP"), _match(2, "WTA"), _match(3, "atp")]
-        return tennis_router.BestPicksResponse(date=match_date or today, count=3, matches=matches)
+        return BestPicksResponse(date=match_date or today, count=3, matches=matches)
 
-    monkeypatch.setattr(tennis_router, "_build_best_picks", build)
+    monkeypatch.setattr(best_picks_response, "build_best_picks_response", build)
 
     async def run():
-        atp = await tennis_router.get_best_picks(None, "ATP", None, None)
-        wta = await tennis_router.get_best_picks(None, "wta", None, None)
-        every = await tennis_router.get_best_picks(None, None, None, None)
+        atp = await tennis_router.get_best_picks(None, "ATP", REQUEST, None)
+        wta = await tennis_router.get_best_picks(None, "wta", REQUEST, None)
+        every = await tennis_router.get_best_picks(None, None, REQUEST, None)
         return atp, wta, every
 
     atp, wta, every = asyncio.run(run())
@@ -209,8 +212,8 @@ def test_best_picks_return_503_when_the_build_fails(clock, monkeypatch):
     async def build(*_args):
         raise HTTPException(status_code=503, detail=tennis_router.PREDICTIONS_UNAVAILABLE)
 
-    monkeypatch.setattr(tennis_router, "_build_best_picks", build)
+    monkeypatch.setattr(best_picks_response, "build_best_picks_response", build)
 
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(tennis_router.get_best_picks(None, None, None, None))
+        asyncio.run(tennis_router.get_best_picks(None, None, REQUEST, None))
     assert exc.value.status_code == 503

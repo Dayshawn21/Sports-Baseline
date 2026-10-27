@@ -19,8 +19,8 @@
 > acceptance remain pending, as do runner and hosted verification. WNBA and
 > soccer remain planned. NFL best line
 > (item 36) is complete: each side's
-> best Bet365 or DraftKings price beside a Pinnacle fair price, on the game
-> page and slate row. Tennis model validation (item 26) found the market unbeaten, so
+> best DraftKings or second-book price (Bet365 until 2026-10-26, FanDuel
+> since) beside a Pinnacle fair price, on the game page and slate row. Tennis model validation (item 26) found the market unbeaten, so
 > tennis now serves a market-anchored ensemble with moneyline picks off. The
 > public read-only demo (item 37) is complete: live on Render, with the code
 > public at `github.com/Dayshawn21/Sports-Baseline`. The Lineform structural
@@ -56,16 +56,26 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-26 (ninth refresh), after the owner approved new
-sub-item 46d (Real or Lucky?, week 1), which reopens parent 46. 46c merged
-to `master` as `dbd8e95` and was pushed. The project plan is unchanged.
+**Regenerated:** 2026-10-27 (tenth refresh), after 46d (Real or Lucky?,
+week 1) completed as `026f750`, closing parent 46, and two fixes landed:
+`odds-io-fanduel` (`4bdb6c1`), which replaced Bet365 with FanDuel on
+Odds-API.io after Bet365 became paid-only on 2026-10-26, and
+`tennis-after-bet365` (`fb148ce`), which made tennis moneyline-only, removed
+the Bet365 props source and moved the tennis quota-floor check before each
+odds batch. The project plan is unchanged and still names Bet365 (open
+question 64).
+**Eleventh refresh (2026-10-27):** the owner approved new item 47, Ask
+Lineform (47a-47e), placed under Portfolio demo, with project-plan §3, §5
+and §8 updated for it. No other plan text changed. 47a (tools and
+scaffolding) completed the same day; 47b is next.
 Completed archives and local contracts explain the checked items; the build
 plan is the progress authority where older project-plan prose disagrees.
 Those gaps remain listed below.
 
-There are **131 checked leaf items out of 141**, including the explicitly
-dropped 40b; **10 remain unchecked** (9 product items plus analysis workspace
-sub-item 46d). 46a-46c completed 2026-10-24. NHL 45a-45f and parent 45 are complete
+There are **133 checked leaf items out of 146**, including the explicitly
+dropped 40b; **13 product items remain unchecked** (the previous 9 plus
+Ask Lineform's 47b-47e). 46a-46c completed
+2026-10-24 and 46d 2026-10-27, so parent 46 is checked. NHL 45a-45f and parent 45 are complete
 as implementation. Migration 0049, a four-season NHL backfill, 941 linked
 PrizePicks snapshots and 168 game-odds snapshots are prior recorded local
 observations, not live inventory counts. NHL now has slate/game routes and
@@ -175,6 +185,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 36 | NFL best line | Complete |
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
+| 47 | Ask Lineform | 47a complete; 47b next |
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
@@ -183,9 +194,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
-| 46 | Analysis workspace (Numbers Behind the Game) | 46a-46c complete; 46d next |
+| 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46d) |
 
-10 leaf items remain, with these gates:
+13 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -198,9 +209,13 @@ Checked items record completed work, including explicitly retired surfaces.
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
-| 46d | Real or Lucky? notebook | Reuses 46c's library; first run (MIN) needs week 7 stats from Tuesday's `nfl-ingest` |
+| 47b | Tool loop | Next by owner choice; owner writes the loop, Claude coaches |
+| 47c | Streaming endpoint and chat panel | After 47b; ships behind `ask_enabled`, off in production |
+| 47d | Guardrails and cost | After 47c; enables production only once the limits exist |
+| 47e | Evals | After 47d; separate script, never in the Verify command |
 
-`/feature 46d` specs the Real or Lucky? notebook (analysis workspace, outside the app). `/feature 21` specs the next planned new sport, WNBA; NHL operational
+`/feature 47b` is the owner's chosen next item (Ask Lineform's tool loop). `/feature 21`
+specs the next planned new sport, WNBA; NHL operational
 acceptance is a separate follow-up documented in `docs/nhl-context.md`.
 44b resumes on its own branch once its gate reads `ready`. Rec Targets reporting
 describes coverage and settlement, but cannot accrue probability-based picks
@@ -209,7 +224,58 @@ verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**46. Analysis workspace (added 2026-10-24; 46a-46c complete, archives `blueprint/history/features/46a-analysis-workspace.md`, `46b-thumbnail-generator.md` and `46c-save-the-season.md`; 46d added 2026-10-26).** An `analysis/`
+**47. Ask Lineform (added 2026-10-27; 47a complete 2026-10-27, archive `blueprint/history/features/47a-ask-lineform-tools.md`).** A public chat panel
+that answers natural-language questions about Lineform data with Claude,
+built partly as the owner's AI application engineering learning project.
+
+| Step | Outcome |
+|---|---|
+| 47a | `anthropic` dependency and Settings (model `claude-haiku-5-5`, max_tokens, 5 tool iterations); six sport-enum tools over existing services; trimmed results with `url` and `signal`; system prompt; tennis best-picks assembly moved from router to service, no behaviour change |
+| 47b | Owner-written Messages API tool loop, coached and reviewed, with mocked-client tests |
+| 47c | `POST /ask` SSE (text and tool-status events) behind `ask_enabled`, off in production; top-bar chat drawer with starter questions and internal-link-only citations |
+| 47d | 20 questions per IP per day, in-memory global daily spend cap, max_tokens cap, per-request token and cost logging; then enable in production |
+| 47e | Separate eval script over about 30 questions (expected tools, required facts), pass rate and total cost; not in CI |
+
+- **Answers only from tools.** Tools call the same service functions as the
+  pages they cite (NBA `build_slate`, `build_slate_gaps`, `build_props`,
+  `get_ranking_record`; NFL `cached_slate_json`, game detail and notes,
+  player detail, track records; tennis `cached_predictions`, best picks,
+  match and player detail, grading), never HTTP, so a chat answer cannot
+  disagree with its page. NFL heavy reports stay on `report_snapshots`.
+- **Tools (v1, built in 47a):** `get_slate`, `get_top_props` (NBA and
+  tennis only; NFL's board ranking lives in TypeScript and is not ported),
+  `get_game_detail` (optional `player_id` for one player's lines),
+  `get_player` (NFL and tennis), `get_model_track_record`, `find`. NHL is
+  excluded (line-only, no model). `run_tool` in `app/services/ask/tools.py`
+  validates input and raises `UnknownToolError` or `ToolInputError` with a
+  one-line message for the model; `python -m app.services.ask.preview` runs
+  any tool locally with no API call.
+- **Load-bearing (47a):** every result is a `ToolResult` (`tool`, `sport`,
+  `url`, `as_of`, `note`, `truncated`, `data`), each row with `url` and
+  `signal`. Missing data is a `note`, never an exception. NBA game props are
+  ordered by player then market, never by gap; `build_slate_gaps` gained
+  optional `market` (filtered before ranking) and `limit`, defaults
+  unchanged for the page. Tennis best picks moved to
+  `services/tennis/best_picks_response.py` (byte-identical output).
+- **Signal honesty (load-bearing):** every tool row carries `signal`
+  `pick`, `reference_only` or `none`, decided only by `signal_for` in
+  `app/core/ask_results.py`. Only a tennis priced best bet (the slate's
+  green rule, ported as `is_priced_best_bet`) is a pick; unpriced tennis
+  angles, tennis moneylines and win probabilities, and every NFL and NBA
+  projection, gap and P(over) are reference-only. The system prompt
+  (`app/services/ask/prompt.py`) states that NBA and NFL have no validated
+  picks; change it in the same diff as any slice adoption. Answers never present a reference or rejected signal as a
+  pick, and say when the data does not cover a question.
+- **Citations:** tool results carry Lineform paths (`/nba/game/:id` and so
+  on); the web renders only known internal paths as links.
+- **Cost controls:** per-IP daily limit (spoofable through
+  `X-Forwarded-For`, 37d's accepted limit), an in-memory global daily cap
+  (default $1, resets on restart), max_tokens and iteration caps, and an
+  Anthropic Console spend limit as the backstop.
+- **Display only:** never changes a probability, edge, rank, sort or pick,
+  and stores no user data or conversation.
+
+**46. Analysis workspace (added 2026-10-24; complete 2026-10-27, archives `blueprint/history/features/46a-analysis-workspace.md`, `46b-thumbnail-generator.md`, `46c-save-the-season.md` and `46d-real-or-lucky.md`).** An `analysis/`
 folder at the repo root, outside the app, for the owner's Numbers Behind the
 Game social account (@numbersbehindthegame, sports analytics for beginners).
 
@@ -218,7 +284,7 @@ Game social account (@numbersbehindthegame, sports analytics for beginners).
 | 46a | Workspace and chart style: README, requirements, read-only `lib/db.py`, `lib/style.py`, glossary, gitignored `output/` and `data/`, tests |
 | 46b | Thumbnail generator: HTML/CSS template, Playwright render to 1280x720, 1080x1920, 1080x1350 |
 | 46c | `week01-save-the-season.ipynb` over `lib/nfl_team_report.py`, run for DAL and PHI |
-| 46d | `week01-real-or-lucky.ipynb` over the same library, run for MIN: record vs Pythagorean wins, per-play ranks, a "for real?" verdict, a league chart |
+| 46d | `week01-real-or-lucky.ipynb` over the same library, run for MIN through week 7: record vs Pythagorean wins, per-play ranks, a "for real?" verdict, a league chart; plus (owner-approved in the build) past perfect starts since 2012, kicker and opponent-median research stats, and a JSON-driven `RealOrLucky` Remotion video; `analysis/video/` is now tracked |
 
 - **Isolation (load-bearing):** nothing in `analysis/` is imported by `api/`
   or `web/`, and it never writes to the database, changes a model, a
@@ -325,8 +391,9 @@ a model page and a prop board are later sub-items, added once 45a-45e ship.
   the missing event. No The Odds API credits or outcome scoring were used.
 - **45e implementation and evidence:** `/nhl` serves a dated, searchable slate
   and `/nhl/game/:gameId` a game page whose default tab is Player Props.
-  Market and history keep one book per market, DraftKings preferred then
-  Bet365, filtered to `odds_api_io`. Known starts impose strict pre-start
+  Market and history keep one book per market, DraftKings preferred, else
+  the other stored book (FanDuel since 2026-10-27, Bet365 before), filtered
+  to `odds_api_io`. Known starts impose strict pre-start
   odds/prop eligibility; TBD starts allow stored prices/props but no pre-start
   history claim. Slate counts and prop rows share eligibility, retain distinct
   Standard/Goblin/Demon offerings, and remain gray without model values.
@@ -889,7 +956,8 @@ price beats the market, not whether the model disagrees with it.
   rule reads "any lowercase The Odds API book", so an unmarked Odds-API.io or
   Pinnacle row would enter its frozen sample.
 - **Provider roles** (`project-plan.md` §4): Odds-API.io's free plan allows two
-  books, shared with tennis (DraftKings and Bet365), and no sharp books; The
+  books, shared with tennis (DraftKings and Bet365 at 36a; FanDuel replaced
+  Bet365 on 2026-10-27), and no sharp books; The
   Odds API supplies the other US books and Pinnacle.
 
 **What 36a fixed as load-bearing:**
@@ -900,8 +968,10 @@ price beats the market, not whether the model disagrees with it.
   workflows on older code still insert valid rows.
 - **Odds-API.io parsing** (`app/core/nfl_odds_io.py`): decimal prices to
   American, de-vigged from the decimals; the main spread and total are the
-  ladder rung with the lowest overround, then closest to even (Bet365 sends
-  up to 77 rungs); `raw_json` keeps the chosen rung, `updatedAt` and the rung
+  ladder rung with the lowest overround, then closest to even (Bet365 sent
+  up to 77 rungs). Since 2026-10-27, rungs priced past 75% on either side are
+  dropped first (`near_even_rungs`), because FanDuel's extreme alternates
+  carry almost no margin; `raw_json` keeps the chosen rung, `updatedAt` and the rung
   count. `fetched_at` is our fetch time.
 - **Ingest:** `python -m app.ingest.nfl_odds_io [--days-ahead 7]
   [--min-requests-remaining 20] [--dry-run]` (`/odds/multi`, at most 10 games
@@ -1480,10 +1550,24 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
   the priced Total Games and Game Spread picks receive the prediction's
   flags. Unpriced derived and serve-edge picks do not (finding F-09).
 - **Moneyline source.** The newest odds run wins; ties break DraftKings, then
-  Bet365 (formerly stored as `betonline.ag`), then Betfair. Spread and total
-  picks use each book's newest line only.
-- **Match totals.** Parsed from the market's main two-sided line; Bet365's is now
-  stored.
+  stored Bet365 (formerly `betonline.ag`), then FanDuel, then Betfair. Spread
+  and total picks use each book's newest line only.
+- **Moneyline-only since 2026-10-27** (fixes `odds-io-fanduel`,
+  `tennis-after-bet365`; owner decision). Odds-API.io's free plan now allows
+  DraftKings and FanDuel, and both send tennis `ML` only, so no new book
+  `total_games` or `game_spread` rows are stored; every such row in the prior
+  week came from Bet365. Priced Total Games and Game Spread picks stop for
+  new matches. Prop projections fall back to the model total
+  (`projection_source = "model_total"`), the existing path for unpriced
+  matches, so `PROJECTION_VERSION` stays `props-v2`. The Bet365 props source
+  (`/tennis/props/bet`) is removed; old `?source=bet` links open PrizePicks.
+  Best picks reads odds props for the configured books
+  (`settings.live_odds_bookmakers`). Stored Bet365 rows remain readable.
+- **Match totals.** Parsed from the market's main two-sided line, for stored
+  Bet365 rows.
+- **Quota floor.** `app.ingest.odds_api` checks the hourly floor before every
+  odds batch, so a run that starts at the floor sends none; it exits nonzero
+  only when the plan refuses every batch (402/403).
 - **Set picks.** Best-of-3 set outcomes (3 sets, 2-0) use a curve fitted to
   settled matches (`app/core/tennis_sets.py`). The total-games set weight stays on
   `2p(1-p)` until clean totals settle; use only `total_games` rows fetched on or
@@ -1958,7 +2042,7 @@ ingest matches those existing identities and never creates them from a line.
 - **`sport_player_aliases`** - provider-name overrides: `player_id`, `alias_name`, `alias_name_norm`, `source`; **unique on** (`sport`, `alias_name_norm`)
 - **`sport_games`** - `source_game_id`, `season`, `week` (nullable at the shared schema level; `CHECK (sport <> 'nfl' OR week IS NOT NULL)`; NBA ingest also assigns the regular-season Eastern week defined by 20a), `game_type`, `game_date`, `start_utc`, `home_team_id`, `away_team_id`, `home_score`, `away_score`, `status`; **unique on** (`sport`, `source_game_id`). NFL-only nullable columns stay here (decided in 17b; other sports leave them NULL): from 19n (`0028`), NFLverse closing lines `spread_line` (expected home margin: positive = home favored), `total_line`, `home_moneyline`, `away_moneyline`, plus `roof`, `home_rest`, `away_rest`; from 24e (`0031`), `temp` (°F) and `wind` (mph) smallint, observed rather than forecast, NULL for indoor games and blanks; and `espn_event_id`
 - **`sport_prop_lines`** - PrizePicks snapshots: `provider`, `provider_prop_id`, `market`, **`segment`**, `odds_type`, `line`, `start_time`, `player_id`, `game_id`, `fetched_at`, `raw_json`
-- **`sport_game_odds`** (19f, `0020`) - append-only: `game_id`, `book`, `market` (`moneyline` | `spread` | `total`), `line`, `first_side`/`second_side`, `first_odds`/`second_odds` (American), de-vigged `first_market_prob`/`second_market_prob`, `fetched_at`, `raw_json`. `provider` (36a, `0044`): `the_odds_api_us` (every row before 36a; the only feed pre-36a readers see), `the_odds_api_eu` (Pinnacle) or `odds_api_io` (Bet365, DraftKings); every reader names its provider, enforced by `tests/test_sport_game_odds_provider.py`
+- **`sport_game_odds`** (19f, `0020`) - append-only: `game_id`, `book`, `market` (`moneyline` | `spread` | `total`), `line`, `first_side`/`second_side`, `first_odds`/`second_odds` (American), de-vigged `first_market_prob`/`second_market_prob`, `fetched_at`, `raw_json`. `provider` (36a, `0044`): `the_odds_api_us` (every row before 36a; the only feed pre-36a readers see), `the_odds_api_eu` (Pinnacle) or `odds_api_io` (DraftKings and FanDuel; Bet365 rows before 2026-10-27); every reader names its provider, enforced by `tests/test_sport_game_odds_provider.py`
 - **`sport_prop_predictions`** (defined in `0015`, first written by 27i, reshaped in `0037`, NBA rows from 20g3, targets freezing from 39c) - one frozen pre-kickoff prediction per line snapshot and version: `prop_line_id`, `model_version`, `over_probability_version` (NULL when no P(over) was served), nullable `projection`, `p_over`, `p_under`, `edge`, `quality_flags`, `feature_snapshot` (baseline games and season, adjustments, line, odds type, market, segment, line fetch time), `generated_at` (always before kickoff); **unique on** (`prop_line_id`, `model_version`, `over_probability_version`) `NULLS NOT DISTINCT`, and never updated. `confidence` is unused. 27j grades each provider prop's latest frozen pre-kickoff row, at its own line. Targets use `nfl-targets-v1` and a null probability version; 39d selects and settles them as a separate report without changing the v4 sample.
 
 > **Load-bearing (17a, 17b):**
@@ -2006,8 +2090,10 @@ ingest matches those existing identities and never creates them from a line.
   `power_play_points`, `blocked_shots`, `plus_minus`, `goalie_saves`, `hits`,
   `time_on_ice`, `goals_allowed`, `faceoffs_won`. TOI lines are minutes;
   raw numeric values and original fetch/start timestamps remain intact on relink.
-- NHL `sport_game_odds` use `provider='odds_api_io'`, `book='bet365'` or
-  `'draftkings'`. Moneyline is two-way OT/SO-inclusive with NULL `line` and
+- NHL `sport_game_odds` use `provider='odds_api_io'`, `book='draftkings'`
+  or `'fanduel'` (`'bet365'` on rows stored before 2026-10-27). FanDuel sends
+  spread and total ladders; rungs priced past 75% on either side are dropped
+  before the least-vig main-line pick (`near_even_rungs`, shared with NFL). Moneyline is two-way OT/SO-inclusive with NULL `line` and
   home/away sides. Puck line is stored as `market='spread'`, signed for the
   stored home team, +/-1.5, home/away sides. Total has a positive goal line
   and over/under sides. American prices are integer; `line` is numeric(7,2),
@@ -2173,6 +2259,7 @@ outcomes are driven more by volume.
 - **Pydantic 2 + pydantic-settings** - request/response schemas and env config
 - **LightGBM / XGBoost / scikit-learn / joblib** - models and calibration; the future tennis v7 policy uses validation-fitted sigmoid calibration (scikit-learn also fits the NFL backtests)
 - **Playwright / httpx / requests / tenacity** - ingest and retry
+- **Anthropic Python SDK** - Ask Lineform (item 47), Messages API with a hand-written tool loop; model in Settings
 
 **Analysis workspace (item 46, `analysis/.venv`)**
 
@@ -2192,10 +2279,10 @@ outcomes are driven more by volume.
 
 | Sport | Schedule | Stats / ratings | Odds | Props |
 |---|---|---|---|---|
-| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io | PrizePicks, DraftKings |
-| NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (Bet365, DraftKings from 36a) | PrizePicks, The Odds API (anytime TD) |
+| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io (DraftKings and FanDuel, moneyline only) | PrizePicks, DraftKings |
+| NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (DraftKings and FanDuel; Bet365 from 36a until 2026-10-26) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display snapshots, 42c locally complete) | The Odds API (free plan, game lines only) | PrizePicks |
-| NHL | NHL web API (`api-web.nhle.com`, 45b complete) | NHL stats REST per-game skater and goalie reports (45b); sportsdataverse fallback choice; ESPN injuries/probable goalies (45f implemented; storage activation pending) | Odds-API.io (DraftKings, Bet365; 45d complete) | PrizePicks (45c complete, line-only) |
+| NHL | NHL web API (`api-web.nhle.com`, 45b complete) | NHL stats REST per-game skater and goalie reports (45b); sportsdataverse fallback choice; ESPN injuries/probable goalies (45f implemented; storage activation pending) | Odds-API.io (DraftKings and FanDuel; Bet365 until 2026-10-26) | PrizePicks (45c complete, line-only) |
 | WNBA / Soccer | > TODO | > TODO | The Odds API (per plan) | > TODO |
 
 **Backtest-only source:** 26c reads Valuebetennis season CSVs (ATP and WTA
@@ -2205,9 +2292,11 @@ database and no app code fetches the site.
 
 **Two odds providers, easily confused.**
 - **Odds-API.io** (`api.odds-api.io`, `ODDS_API_KEY`): tennis, NFL (36a) and
-  NHL (45d) Bet365/DraftKings game lines. Account contract: 100 requests an hour and **two
-  books, shared across sports** (DraftKings and Bet365); sharp books and
-  exchanges are paid only.
+  NHL (45d) DraftKings/FanDuel game lines. Account contract: 100 requests an
+  hour and **two books, shared across sports** (DraftKings and FanDuel since
+  2026-10-27); Bet365, sharp books and exchanges are paid only. Bet365 became
+  paid-only on 2026-10-26; free keys get a 403. Tennis receives moneylines
+  only from both free books.
 - **The Odds API** (`api.the-odds-api.com`, `THE_ODDS_API_KEY`): NFL and NBA,
   on the **free plan: 500 credits a month**. Event listing is free; odds cost
   one credit per market per region per request. NFL game odds cost about 3
@@ -2310,7 +2399,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 | Prefix | Endpoints |
 |---|---|
 | `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `players/stats`, `players/compare`, `bankroll/today`, `parlays/suggested` |
-| `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk`, `bet` (Bet365 props) |
+| `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk` (`bet` removed 2026-10-27) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `prospects`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
 | `/nba` | `slate?date=`, `slate/gaps?date=`, `props?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
 | `/nhl` | `slate?date=`, `games/{id}`, `games/{id}/line-only-props` (45e/45f; context tables required for nonempty slate/detail) |
@@ -2353,7 +2442,7 @@ Hosted read-only demo on Render since 2026-10-16 (37d), from `render.yaml` in th
 - **Build output:** `web/build`
 - **Database:** hosted Neon PostgreSQL (15+) via `DATABASE_URL`
 - **Health check:** `GET /health`
-- **Env vars:** `DATABASE_URL`, `ODDS_API_KEY` (Odds-API.io, tennis and NFL/NHL Bet365/DraftKings), `THE_ODDS_API_KEY` (The Odds API, NFL and NBA), `LIVETENNIS_API_KEY`, `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` default, or `production`), `CORS_ORIGINS` (JSON list), `RATE_LIMIT_DEFAULT` (`120/minute`), `RATE_LIMIT_HEAVY` (`10/minute`)
+- **Env vars:** `DATABASE_URL`, `ODDS_API_KEY` (Odds-API.io, tennis and NFL/NHL DraftKings/FanDuel), `THE_ODDS_API_KEY` (The Odds API, NFL and NBA), `LIVETENNIS_API_KEY`, `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` default, or `production`), `CORS_ORIGINS` (JSON list), `RATE_LIMIT_DEFAULT` (`120/minute`), `RATE_LIMIT_HEAVY` (`10/minute`), `ANTHROPIC_API_KEY` (Ask Lineform, read only through Settings, never in the web build; an Anthropic Console monthly spend limit backs the in-app daily cap)
 - **Cron:** remote, in GitHub Actions with repo secrets, September through February for NFL
   - **Tennis uses six workflow files**, preserving the prior UTC schedules
     and commands (completed `tennis-workflow-split` fix). The split is present
@@ -2825,3 +2914,19 @@ the request path the same way.
     require 0050, so migration must precede backend deployment. See
     `docs/nhl-context.md` for activation order. NHL modelling is still outside
     the completed scope and has no new numbered sub-item in the owner plan.
+
+64. **`project-plan.md` still names Bet365 as an Odds-API.io book.** Its §4
+    source table (NFL and NHL rows), the provider paragraph and §8's
+    `ODDS_API_KEY` line predate fixes `odds-io-fanduel` and
+    `tennis-after-bet365`. The code requests DraftKings and FanDuel, and
+    tennis is moneyline-only by owner decision (2026-10-27). The plan also
+    does not record that tennis lost book total-games and spread lines, so
+    priced Total Games and Game Spread picks no longer appear for new
+    matches. Refresh those passages if the plan should match; no scope or
+    build-order change follows.
+
+65. **Ask Lineform adds a per-question cost to an anonymous public demo.**
+    The per-IP limit inherits 37d's accepted `X-Forwarded-For` spoofing
+    limit, and the global cap is in memory, so a restart resets it. The
+    plan accepts this for v1 with the Console limit as the hard backstop;
+    a persisted cap would need a table and a manual migration.

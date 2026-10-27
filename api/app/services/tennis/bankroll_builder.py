@@ -572,9 +572,9 @@ async def build_bankroll_picks(
         return BankrollBuilderResult(date=_result_date, total_matches_scanned=0, singles=[], parlays=[])
 
     # 2. Overlay live moneyline for any missing odds
-    from app.routers.tennis import _overlay_live_moneyline
+    from app.services.tennis.best_picks_response import overlay_live_moneyline
     try:
-        await _overlay_live_moneyline(predictions)
+        await overlay_live_moneyline(predictions)
     except Exception:
         pass
 

@@ -68,3 +68,17 @@ def test_a_tipped_or_unscheduled_game_contributes_nothing() -> None:
 def test_no_games_gives_an_empty_digest_in_camel_case() -> None:
     payload = slate_gaps_response(DATE, [], {}, {}, NOW).model_dump(by_alias=True, mode="json")
     assert payload == {"date": "2026-10-20", "modelVersion": "nba-reference-v1", "items": []}
+
+
+def test_a_market_filter_runs_before_one_per_player() -> None:
+    """Amy's largest gap is in assists; she must still rank in a points-only digest."""
+    response = slate_gaps_response(DATE, [_game(1), _game(2)], LINES, PRIOR, NOW, market="points")
+    assert [(item.player_name, item.market) for item in response.items] == [
+        ("Cat", "points"), ("Dee", "points"), ("Amy", "points")]
+
+
+def test_defaults_are_the_page_digest_and_a_limit_widens_it() -> None:
+    default = slate_gaps_response(DATE, [_game(1), _game(2)], LINES, PRIOR, NOW)
+    explicit = slate_gaps_response(DATE, [_game(1), _game(2)], LINES, PRIOR, NOW, None, 4)
+    assert default == explicit
+    assert len(slate_gaps_response(DATE, [_game(1), _game(2)], LINES, PRIOR, NOW, limit=2).items) == 2
