@@ -3,7 +3,7 @@ import type { MatchDetail } from '~/types/tennis'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { useMatchView } from '~/hooks/useMatchView'
-import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import TennisPropEvidencePanel from '~/components/tennis/TennisPropEvidencePanel'
 import { TennisPropTable } from '~/components/tennis/TennisPropTable'
 import ErrorState from '~/components/shared/ErrorState'
@@ -19,8 +19,7 @@ export default function MatchPropsPanel({ detail }: { detail: MatchDetail }) {
   const { source, player, market, prop: selectedId } = view
   const pp = usePrizePicksProps()
   const dk = useDKProps(source === 'dk')
-  const bet = useBetProps(source === 'bet')
-  const query = source === 'dk' ? dk : source === 'bet' ? bet : pp
+  const query = source === 'dk' ? dk : pp
   const categories = matchPropCategories(query.data?.props ?? [], detail, source, player === 'all' ? null : player)
   const visible = market === 'all' ? categories : categories.filter(item => item.market === market)
   const selected = visible.flatMap(item => [...item.rateable, ...item.other]).find(line => line.id === selectedId) ?? null
@@ -33,7 +32,7 @@ export default function MatchPropsPanel({ detail }: { detail: MatchDetail }) {
       <div className="tennis-match-prop-head"><h2>Prop lines <span>{count}</span></h2><p>All available linked lines, including alternate and reference lines.</p></div>
       <div className="tennis-match-prop-filters" role="group" aria-label="Match prop filters">
         {adminView && <Select aria-label="Prop source" value={source} onChange={value => setView({ source: value, market: 'all', prop: null })} options={[
-          { value: 'prizepicks', label: 'PrizePicks' }, { value: 'dk', label: 'DraftKings' }, { value: 'bet', label: 'Bet365' },
+          { value: 'prizepicks', label: 'PrizePicks' }, { value: 'dk', label: 'DraftKings' },
         ]} />}
         <Select aria-label="Player" value={player} onChange={value => setView({ player: value, market: 'all', prop: null })} options={[
           { value: 'all', label: 'Both players' }, { value: detail.p1.playerId, label: detail.p1.name }, { value: detail.p2.playerId, label: detail.p2.name },

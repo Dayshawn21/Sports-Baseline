@@ -3,7 +3,7 @@ import { DatePicker, Select } from 'antd'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
-import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
@@ -23,12 +23,11 @@ import { slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
 import '~/components/tennis/tennis-slate.css'
 
-type PropSource = 'prizepicks' | 'dk' | 'bet'
+type PropSource = 'prizepicks' | 'dk'
 
 const SOURCE_OPTIONS = [
   { value: 'prizepicks', label: 'PrizePicks' },
   { value: 'dk', label: 'DraftKings' },
-  { value: 'bet', label: 'Bet365' },
 ]
 
 function SourceNotice({ label, onRetry }: { label: string; onRetry: () => void }) {
@@ -86,12 +85,7 @@ export default function TennisIntelligencePage() {
   const bestPicksQuery = useBestPicks({ tour, date })
   const prizePicksQuery = usePrizePicksProps()
   const draftKingsQuery = useDKProps(source === 'dk')
-  const betOnlineQuery = useBetProps(source === 'bet')
-  const propsQuery = source === 'dk'
-    ? draftKingsQuery
-    : source === 'bet'
-      ? betOnlineQuery
-      : prizePicksQuery
+  const propsQuery = source === 'dk' ? draftKingsQuery : prizePicksQuery
   const sourceLabel = SOURCE_OPTIONS.find((option) => option.value === source)?.label ?? 'Props'
 
   const matches = useMemo(() => composeUnifiedMatches(

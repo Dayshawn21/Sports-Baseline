@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.bookmakers import stored_book_keys
 from app.core.tennis_odds_events import event_start, match_event
 from app.db.pool import get_db
 from app.repositories import matches as match_repo
@@ -537,7 +538,7 @@ async def _build_best_picks(
 
     # 2. Get all props (all sources)
     player_props = await get_today_props(db)
-    odds_props = await get_today_match_odds_as_props(db, books=["draftkings", "bet365", "betonline.ag"])
+    odds_props = await get_today_match_odds_as_props(db, books=stored_book_keys(settings.live_odds_bookmakers))
     all_props = [*player_props, *odds_props]
     matches = await match_repo.get_upcoming(db, target_date)
     match_player_ids_map = {m.id: (m.p1_id, m.p2_id) for m in matches}

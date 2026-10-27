@@ -14,6 +14,12 @@ remote verification. It does not reduce API usage or change provider limits.
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
 | Tennis Player Stats | `tennis-player-stats.yml` | Daily 10:00 | Run directly |
 
+Game Odds requests DraftKings and FanDuel from Odds-API.io. Since Bet365 went
+paid-only (2026-10-26), both free books send tennis moneylines only, so the
+job stores no total-games or game-spread lines. A run stops before any odds
+batch when the hour's remaining requests are at the safety floor, and exits
+nonzero when the provider's plan refuses every odds batch (402/403).
+
 For manual runs after publication, open Actions, choose the named workflow,
 and select **Run workflow**. The two workflows containing a dependent ELO job
 retain a job selector. All other entries run their single task directly.

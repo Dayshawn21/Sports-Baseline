@@ -116,9 +116,9 @@ def test_inventory_output_defaults_to_the_repository_docs_folder() -> None:
 def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, tmp_path: Path) -> None:
     calls: list[tuple[str, object]] = []
 
-    async def fake_events(client: object, api_key: str) -> list[dict]:
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
         calls.append(("events", api_key))
-        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}]
+        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}], odds_api.RateLimitState()
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str
@@ -141,8 +141,8 @@ def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, t
 
 
 def test_capture_inventory_records_no_active_events_without_an_odds_request(monkeypatch, tmp_path: Path) -> None:
-    async def fake_events(client: object, api_key: str) -> list[dict]:
-        return []
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
+        return [], odds_api.RateLimitState()
 
     async def unexpected_odds_request(*args: object) -> tuple[list[dict], odds_api.RateLimitState]:
         raise AssertionError("No odds batch should be requested without active events")
@@ -158,8 +158,8 @@ def test_capture_inventory_records_no_active_events_without_an_odds_request(monk
 
 
 def test_capture_inventory_records_an_empty_bookmaker_batch(monkeypatch, tmp_path: Path) -> None:
-    async def fake_events(client: object, api_key: str) -> list[dict]:
-        return [{"id": 12}]
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
+        return [{"id": 12}], odds_api.RateLimitState()
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str

@@ -1,6 +1,6 @@
 import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 
-export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'bet' | 'market' | 'model'
+export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'market' | 'model'
 export type TennisTourFilter = 'all' | 'atp' | 'wta' | 'challenger' | 'wta_125'
 
 export interface TennisBoardLine extends PropLine {
@@ -21,7 +21,6 @@ export const TENNIS_PROP_SOURCES: Array<{ value: TennisPropSource, label: string
   { value: 'all', label: 'All' },
   { value: 'prizepicks', label: 'PrizePicks' },
   { value: 'dk', label: 'DraftKings' },
-  { value: 'bet', label: 'Bet365' },
   { value: 'market', label: 'Market odds' },
   { value: 'model', label: 'Model only' },
 ]
@@ -87,9 +86,8 @@ function sourceKey(source: string): TennisPropSource {
   const value = source.toLowerCase()
   if (value === 'prizepicks') return 'prizepicks'
   if (value === 'draftkings' || value === 'dk') return 'dk'
-  if (value === 'market') return 'market'
   if (value === 'model') return 'model'
-  return 'bet'
+  return 'market'
 }
 
 function findPrediction(line: PropLine, predictions: MatchPrediction[]): MatchPrediction | null {

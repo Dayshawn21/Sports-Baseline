@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
-import { buildTennisPropBoard, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
 const prediction: MatchPrediction = {
   matchId: 10, startUtc: '2026-09-21T16:00:00Z', p1Name: 'Aryna Sabalenka', p2Name: 'Coco Gauff', tour: 'WTA', surface: 'Hard', tournament: 'Beijing', round: 'R32',
@@ -181,5 +181,14 @@ describe('first-set props (16e)', () => {
 
   it('says the stat is new ahead of the projection', () => {
     expect(signalSummary(firstSet)).toBe('New stat, not yet graded. Model projects 10.1 vs the 9.5 line (Over).')
+  })
+})
+
+describe('sourceLabel', () => {
+  it('names PrizePicks and DraftKings, and groups any other book under Market odds', () => {
+    expect(sourceLabel('prizepicks')).toBe('PrizePicks')
+    expect(sourceLabel('draftkings')).toBe('DraftKings')
+    expect(sourceLabel('bet365')).toBe('Market odds')
+    expect(sourceLabel('fanduel')).toBe('Market odds')
   })
 })

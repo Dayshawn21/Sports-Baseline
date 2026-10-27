@@ -454,12 +454,14 @@ BOOK_CONFIGS = (
 # API helpers
 # =============================================================================
 
-async def _fetch_events(client: httpx.AsyncClient, api_key: str) -> list[dict]:
+async def _fetch_events(client: httpx.AsyncClient, api_key: str) -> tuple[list[dict], RateLimitState]:
     r = await client.get(f"{BASE_URL}/events", params={"sport": "tennis", "apiKey": api_key}, timeout=30)
     r.raise_for_status()
-    _log_rate_limit_state("events", _rate_limit_state(r.headers))
+    rate_limit = _rate_limit_state(r.headers)
+    _log_rate_limit_state("events", rate_limit)
     data = r.json()
-    return (data.get("data") or data.get("events") or []) if isinstance(data, dict) else (data or [])
+    events = (data.get("data") or data.get("events") or []) if isinstance(data, dict) else (data or [])
+    return events, rate_limit
 
 
 async def _fetch_odds_batch(
@@ -517,7 +519,7 @@ async def capture_market_inventory(
     bookmaker_scope = bookmaker_scope_param(bookmakers)
 
     async with httpx.AsyncClient() as client:
-        events = await _fetch_events(client, api_key)
+        events, _ = await _fetch_events(client, api_key)
         event_ids = _inventory_event_ids(events)
         scope = _inventory_request_scope(bookmaker_scope, len(event_ids))
         if not event_ids:
@@ -576,11 +578,22 @@ class OddsPlanBlockedError(RuntimeError):
 
 async def _fetch_matched_odds(
     client: httpx.AsyncClient, api_key: str, event_ids: list[int], bookmakers: str,
-    min_requests_remaining: int, sleep_sec: float,
+    min_requests_remaining: int, sleep_sec: float, rate_limit: RateLimitState,
 ) -> tuple[dict[int, dict], bool]:
-    """Event odds by id, and whether a 402/403 stopped the batches."""
+    """Event odds by id, and whether a 402/403 stopped the batches.
+
+    `rate_limit` is the quota the previous call (the events fetch) left; the floor
+    is checked before each batch, so a run that starts at the floor sends none.
+    """
     odds_by_id: dict[int, dict] = {}
     for i in range(0, len(event_ids), BATCH_SIZE):
+        if _quota_too_low(rate_limit, min_requests_remaining):
+            logger.warning(
+                "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
+                rate_limit.remaining,
+                min_requests_remaining,
+            )
+            break
         batch = event_ids[i:i + BATCH_SIZE]
         try:
             results, rate_limit = await _fetch_odds_batch(client, api_key, batch, bookmakers)
@@ -592,13 +605,6 @@ async def _fetch_matched_odds(
         else:
             for ev in results:
                 odds_by_id[int(ev["id"])] = ev
-            if _quota_too_low(rate_limit, min_requests_remaining):
-                logger.warning(
-                    "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
-                    rate_limit.remaining,
-                    min_requests_remaining,
-                )
-                break
         if sleep_sec > 0:
             await asyncio.sleep(sleep_sec)
     return odds_by_id, False
@@ -664,7 +670,7 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
 
         async with httpx.AsyncClient() as client:
             logger.info("Fetching tennis events from Odds-API.io...")
-            api_events = await _fetch_events(client, api_key)
+            api_events, events_rate_limit = await _fetch_events(client, api_key)
             logger.info("Odds-API events: %d", len(api_events))
 
             singles_events = [
@@ -700,7 +706,7 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
 
             odds_by_id, blocked_by_plan = await _fetch_matched_odds(
                 client, api_key, [m["odds_api_id"] for m in matched], bookmakers,
-                min_requests_remaining, sleep_sec,
+                min_requests_remaining, sleep_sec, events_rate_limit,
             )
             logger.info("Odds responses: %d", len(odds_by_id))
             if blocked_by_plan and not odds_by_id:

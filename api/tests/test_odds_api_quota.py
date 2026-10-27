@@ -115,19 +115,46 @@ class _StatusClient:
 
 def test_a_plan_refusal_on_the_first_batch_reports_blocked_with_no_odds():
     client = _StatusClient([403])
-    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0))
+    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0, RateLimitState()))
     assert (odds, blocked, client.calls) == ({}, True, 1)
 
 
 def test_a_plan_refusal_after_a_good_batch_keeps_the_odds_already_fetched():
     client = _StatusClient([200, 402])
-    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0))
+    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0, RateLimitState()))
     assert blocked is True
     assert sorted(odds) == list(range(10))
 
 
 def test_a_server_error_skips_only_its_batch():
     client = _StatusClient([500, 200])
-    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0))
+    odds, blocked = asyncio.run(_fetch_matched_odds(client, "k", list(range(15)), "DraftKings,FanDuel", 0, 0, RateLimitState()))
     assert blocked is False
     assert sorted(odds) == list(range(10, 15))
+
+
+class _QuotaClient(_StatusClient):
+    def __init__(self, remaining):
+        super().__init__([200] * 5)
+        self.remaining = list(remaining)
+
+    async def get(self, url, params, timeout):
+        response = await super().get(url, params, timeout)
+        response.headers["x-ratelimit-remaining"] = str(self.remaining.pop(0))
+        return response
+
+
+def test_a_run_that_starts_at_the_floor_sends_no_odds_batch():
+    client = _QuotaClient([])
+    odds, blocked = asyncio.run(_fetch_matched_odds(
+        client, "k", list(range(15)), "DraftKings,FanDuel", 5, 0, RateLimitState(remaining=5),
+    ))
+    assert (odds, blocked, client.calls) == ({}, False, 0)
+
+
+def test_the_floor_is_checked_before_each_batch():
+    client = _QuotaClient([5])
+    odds, blocked = asyncio.run(_fetch_matched_odds(
+        client, "k", list(range(25)), "DraftKings,FanDuel", 5, 0, RateLimitState(remaining=6),
+    ))
+    assert (sorted(odds), blocked, client.calls) == (list(range(10)), False, 1)

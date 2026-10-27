@@ -8,7 +8,7 @@ import LoadingState from '~/components/shared/LoadingState'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
-import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { buildTennisPropBoard, moneylineBoardRows, winASetBoardRows, type TennisPropSource, type TennisTourFilter } from '~/utils/tennisPropBoard'
 import './tennis-prop-board.css'
 import './tennis-prop-board-filters.css'
@@ -24,31 +24,29 @@ export default function TennisPropBoardPage() {
   const bestPicks = useBestPicks()
   const prizePicks = usePrizePicksProps()
   const draftKings = useDKProps()
-  const betOnline = useBetProps()
   const props = useMemo(() => [
     ...(prizePicks.data?.props ?? []),
     ...(draftKings.data?.props ?? []),
-    ...(betOnline.data?.props ?? []),
     ...moneylineBoardRows(predictions.data?.matches ?? []),
     ...winASetBoardRows(bestPicks.data?.matches ?? []),
-  ], [prizePicks.data, draftKings.data, betOnline.data, predictions.data, bestPicks.data])
+  ], [prizePicks.data, draftKings.data, predictions.data, bestPicks.data])
   const categories = useMemo(() => buildTennisPropBoard(props, predictions.data?.matches ?? [], source, tour), [props, predictions.data, source, tour])
   const visibleLineCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length + category.other.length, 0), [categories])
   const rateableCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length, 0), [categories])
   const category = categories.find(item => item.market === market) ?? categories.find(item => item.rateable.length > 0) ?? categories[0] ?? null
   const rows = category ? [...category.rateable, ...(showAll ? category.other : [])] : []
   const selected = rows.find(row => row.id === selectedId) ?? null
-  const loading = prizePicks.isLoading || draftKings.isLoading || betOnline.isLoading || predictions.isLoading || bestPicks.isLoading
-  const allFailed = prizePicks.isError && draftKings.isError && betOnline.isError
+  const loading = prizePicks.isLoading || draftKings.isLoading || predictions.isLoading || bestPicks.isLoading
+  const allFailed = prizePicks.isError && draftKings.isError
 
   useEffect(() => { setMarket(null) }, [source, tour])
   useEffect(() => { setSelectedId(null) }, [source, tour, market, showAll])
   if (loading) return <LoadingState message="Loading current tennis prop board..." />
-  if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error ?? betOnline.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch(); void betOnline.refetch() }} />
+  if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch() }} />
 
   return <div className="page-shell tennis-prop-board"><div className="page-container is-wide">
     <PropBoardHead lines={visibleLineCount} rateable={rateableCount} markets={categories.length} />
-    {(prizePicks.isError || draftKings.isError || betOnline.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
+    {(prizePicks.isError || draftKings.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={categories} selected={category.market} onSelect={setMarket} />}
     <PropBoardFilters source={source} tour={tour} showAll={showAll} onSource={setSource} onTour={setTour} onShowAll={setShowAll} />
     {category ? <section className="prop-table-panel" aria-label={`${category.label} prop lines`}>

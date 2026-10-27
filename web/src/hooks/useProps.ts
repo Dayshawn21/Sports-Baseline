@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchPrizePicksProps, fetchPrizePicksPropsAudit, fetchDKProps, fetchBetProps } from '~/api/tennis'
+import { fetchPrizePicksProps, fetchPrizePicksPropsAudit, fetchDKProps } from '~/api/tennis'
 
 export function usePrizePicksProps() {
   return useQuery({
@@ -29,14 +29,3 @@ export function useDKProps(enabled = true) {
     retry: 2,
   })
 }
-
-export function useBetProps(enabled = true) {
-  return useQuery({
-    queryKey: ['props', 'bet'],
-    queryFn: fetchBetProps,
-    enabled,
-    staleTime: 10 * 60 * 1000,
-    retry: 2,
-  })
-}
-

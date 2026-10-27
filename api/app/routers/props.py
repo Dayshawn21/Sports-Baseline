@@ -921,15 +921,3 @@ async def get_dk_props(db: AsyncSession = Depends(get_db)):
         count=len(props),
         props=enriched,
     )
-
-
-@router.get("/bet", response_model=PropsResponse)
-async def get_bet_props(db: AsyncSession = Depends(get_db)):
-    books = ["bet365", "betonline.ag", "betonline"]
-    odds_props = await get_today_match_odds_as_props(db, books=books)
-    enriched = await _enrich_props(db, odds_props)
-    return PropsResponse(
-        source="bet",
-        count=len(odds_props),
-        props=enriched,
-    )

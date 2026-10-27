@@ -34,6 +34,10 @@ describe('match view URL', () => {
     expect(readMatchView(query, players, false)).toMatchObject({ source: 'prizepicks', prop: null })
     expect(readMatchView(query, players, true)).toMatchObject({ source: 'dk', prop: 321 })
   })
+  it('opens a retired Bet365 source link on PrizePicks', () => {
+    expect(readMatchView(new URLSearchParams('tab=props&source=bet&prop=321'), players, true))
+      .toMatchObject({ source: 'prizepicks', prop: null })
+  })
   it('drops the selected ID if its source is invalid', () => {
     expect(readMatchView(new URLSearchParams('source=unknown&prop=321'), players, true).prop).toBeNull()
   })
@@ -47,10 +51,13 @@ describe('match view URL', () => {
 })
 
 describe('prop entry links', () => {
-  it.each(['DraftKings', 'dk', 'Bet365', 'bet'])('preserves a supported source %s', source => {
+  it.each(['DraftKings', 'dk'])('preserves a supported source %s', source => {
     const query = new URLSearchParams(propMatchPath({ ...line, source })!.split('?')[1])
-    expect(query.get('source')).toBe(/^(draftkings|dk)$/i.test(source) ? 'dk' : 'bet')
+    expect(query.get('source')).toBe('dk')
     expect(query.get('prop')).toBe('321')
+  })
+  it.each(['Bet365', 'bet', 'fanduel'])('links a %s line to the props tab without a source', source => {
+    expect(propMatchPath({ ...line, source })).toBe('/tennis/match/91823?tab=props')
   })
   it('keeps unlinked and invalid match IDs on their existing fallback', () => {
     expect(propMatchPath({ ...line, matchId: null })).toBeNull()

@@ -178,7 +178,11 @@ Two apps, two command sets. Paths are relative to the repo root.
 ### Ingest (`api/`, each runnable standalone)
 
 - Matches: `python -m app.ingest.livetennis --days-back 1 --days-ahead 1`
-- Odds: `python -m app.ingest.odds_api --hours-ahead 4`
+- Odds: `python -m app.ingest.odds_api --hours-ahead 4` (Odds-API.io DraftKings
+  and FanDuel; both send tennis moneylines only on the free plan, so no book
+  total-games or game-spread lines are stored after Bet365 went paid on
+  2026-10-26, and prop projections fall back to the model total. Stops before
+  any odds batch once the hourly quota is at `--min-requests-remaining`)
 - Props: `python -m app.ingest.prizepicks`
 - NFL schedule + player stats: `python -m app.ingest.nflverse --season 2024`
 - NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve

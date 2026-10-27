@@ -3,7 +3,7 @@ import { parseMatchId } from '~/utils/tennisMatch'
 
 export interface MatchView {
   tab: 'analysis' | 'props'
-  source: 'prizepicks' | 'dk' | 'bet'
+  source: 'prizepicks' | 'dk'
   player: number | 'all'
   market: string
   prop: number | null
@@ -13,7 +13,7 @@ export function readMatchView(params: URLSearchParams, detail: {
   p1: Pick<MatchDetail['p1'], 'playerId'>; p2: Pick<MatchDetail['p2'], 'playerId'>,
 }, admin: boolean): MatchView {
   const requestedSource = params.get('source') ?? 'prizepicks'
-  const source = admin && (requestedSource === 'dk' || requestedSource === 'bet') ? requestedSource : 'prizepicks'
+  const source = admin && requestedSource === 'dk' ? requestedSource : 'prizepicks'
   const player = parseMatchId(params.get('player') ?? undefined)
   const market = params.get('market') ?? 'all'
   return {
@@ -40,8 +40,7 @@ export function propMatchPath(line: PropLine): string | null {
   if (line.matchId == null || !Number.isSafeInteger(line.matchId) || line.matchId <= 0) return null
   const query = new URLSearchParams({ tab: 'props' })
   const source = line.source.toLowerCase()
-  const knownSource = source === 'prizepicks' ? 'prizepicks' : source === 'dk' || source === 'draftkings'
-    ? 'dk' : source === 'bet' || source === 'bet365' ? 'bet' : null
+  const knownSource = source === 'prizepicks' ? 'prizepicks' : source === 'dk' || source === 'draftkings' ? 'dk' : null
   if (knownSource != null) {
     query.set('source', knownSource)
     query.set('market', line.statType.trim().toLowerCase().replace(/[\s-]+/g, '_'))
