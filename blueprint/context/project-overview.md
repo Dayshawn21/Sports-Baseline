@@ -56,16 +56,16 @@
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
 > When the plans change, re-run `/overview` rather than editing here.
 
-**Regenerated:** 2026-10-24 (eighth refresh), after 46c completed on
-`feature/46c-save-the-season` (`0ec572d`). The only plan change since the
-seventh refresh is the build plan checking off 46c and parent 46; the
-project plan is unchanged. Completed archives and local contracts explain the
-checked items; the build plan is the progress authority where older
-project-plan prose disagrees. Those gaps remain listed below.
+**Regenerated:** 2026-10-26 (ninth refresh), after the owner approved new
+sub-item 46d (Real or Lucky?, week 1), which reopens parent 46. 46c merged
+to `master` as `dbd8e95` and was pushed. The project plan is unchanged.
+Completed archives and local contracts explain the checked items; the build
+plan is the progress authority where older project-plan prose disagrees.
+Those gaps remain listed below.
 
-There are **131 checked leaf items out of 140**, including the explicitly
-dropped 40b; **9 remain unchecked**, all product items. Item 46 (analysis
-workspace, 46a-46c) is complete as of 2026-10-24. NHL 45a-45f and parent 45 are complete
+There are **131 checked leaf items out of 141**, including the explicitly
+dropped 40b; **10 remain unchecked** (9 product items plus analysis workspace
+sub-item 46d). 46a-46c completed 2026-10-24. NHL 45a-45f and parent 45 are complete
 as implementation. Migration 0049, a four-season NHL backfill, 941 linked
 PrizePicks snapshots and 168 game-odds snapshots are prior recorded local
 observations, not live inventory counts. NHL now has slate/game routes and
@@ -183,9 +183,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 22 | Three-way market support | Planned |
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
-| 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46c) |
+| 46 | Analysis workspace (Numbers Behind the Game) | 46a-46c complete; 46d next |
 
-9 leaf items remain, with these gates:
+10 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -198,8 +198,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
 | 22 | Three-way market support | Follows WNBA in plan order; prerequisite for soccer |
 | 23 | Soccer support | Depends on three-way markets and sport-specific sources |
+| 46d | Real or Lucky? notebook | Reuses 46c's library; first run (MIN) needs week 7 stats from Tuesday's `nfl-ingest` |
 
-`/feature 21` specs the next planned new sport, WNBA; NHL operational
+`/feature 46d` specs the Real or Lucky? notebook (analysis workspace, outside the app). `/feature 21` specs the next planned new sport, WNBA; NHL operational
 acceptance is a separate follow-up documented in `docs/nhl-context.md`.
 44b resumes on its own branch once its gate reads `ready`. Rec Targets reporting
 describes coverage and settlement, but cannot accrue probability-based picks
@@ -208,7 +209,7 @@ verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**46. Analysis workspace (added and complete 2026-10-24; archives `blueprint/history/features/46a-analysis-workspace.md`, `46b-thumbnail-generator.md` and `46c-save-the-season.md`).** An `analysis/`
+**46. Analysis workspace (added 2026-10-24; 46a-46c complete, archives `blueprint/history/features/46a-analysis-workspace.md`, `46b-thumbnail-generator.md` and `46c-save-the-season.md`; 46d added 2026-10-26).** An `analysis/`
 folder at the repo root, outside the app, for the owner's Numbers Behind the
 Game social account (@numbersbehindthegame, sports analytics for beginners).
 
@@ -217,6 +218,7 @@ Game social account (@numbersbehindthegame, sports analytics for beginners).
 | 46a | Workspace and chart style: README, requirements, read-only `lib/db.py`, `lib/style.py`, glossary, gitignored `output/` and `data/`, tests |
 | 46b | Thumbnail generator: HTML/CSS template, Playwright render to 1280x720, 1080x1920, 1080x1350 |
 | 46c | `week01-save-the-season.ipynb` over `lib/nfl_team_report.py`, run for DAL and PHI |
+| 46d | `week01-real-or-lucky.ipynb` over the same library, run for MIN: record vs Pythagorean wins, per-play ranks, a "for real?" verdict, a league chart |
 
 - **Isolation (load-bearing):** nothing in `analysis/` is imported by `api/`
   or `web/`, and it never writes to the database, changes a model, a

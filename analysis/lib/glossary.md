@@ -89,3 +89,27 @@ read in a caption.
 **Longer:** Each remaining game gets a win chance from the two teams' ratings and home field, and a computer flips a weighted coin for each one, 10,000 times. The share of runs that end a certain way is the estimate.
 
 **First used:** week01-save-the-season
+
+### Points record
+
+**In a caption:** The record a team's points usually produce.
+
+**Longer:** Pythagorean wins rounded to a whole win (halves round up), with the rest of the games as losses. A 6-0 team with 4.66 Pythagorean wins has a points record of 5-1. Ties are not shown.
+
+**First used:** week01-real-or-lucky
+
+### Median
+
+**In a caption:** The middle game, so one blowout cannot skew it.
+
+**Longer:** Sort the games and take the middle one (or halfway between the two middle ones). Used for what an opponent "usually" scores or allows: a team that scored 59, 24 and 21 usually scores 24, while its average says 34.7.
+
+**First used:** week01-real-or-lucky
+
+### Opponent adjustment
+
+**In a caption:** Points allowed compared with what each opponent usually scores.
+
+**Longer:** For each game, an opponent's median points in its other games minus what it scored against this team, averaged over the team's games. It credits a defense for holding good offenses, and the same idea works for an offense against defenses. A simple version of week 8's opponent-adjusted point differential.
+
+**First used:** week01-real-or-lucky

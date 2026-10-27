@@ -20,6 +20,7 @@ PLAYOFF_GAME_TYPES = frozenset({"WC", "DIV"})  # top seeds skip the Wild Card ro
 
 Luck = Literal["unlucky", "about right", "lucky"]
 Verdict = Literal["savable", "long shot", "very unlikely"]
+RealVerdict = Literal["Real", "Better than their record", "Mostly real, some luck", "Lucky"]
 
 TEAM_NAMES: dict[str, tuple[str, str]] = {
     "ARI": ("Arizona", "Cardinals"), "ATL": ("Atlanta", "Falcons"), "BAL": ("Baltimore", "Ravens"),
@@ -340,6 +341,209 @@ def verdict(chance: float) -> Verdict:
 
 
 @dataclass(frozen=True)
+class SeasonSnapshot:
+    team: str
+    season: int
+    through_week: int
+    games: int
+    wins: int
+    losses: int
+    ties: int
+    points_for: int
+    points_against: int
+    pythagorean_wins: float
+    one_score_wins: int
+    one_score_losses: int
+    turnover_margin: int
+    turnover_margin_rank: int
+    offense_epa_rank: int
+    defense_epa_rank: int
+    offense_success_rank: int
+    defense_success_rank: int
+    luck: Luck
+
+
+def season_snapshot(team: str, season: int, through_week: int, *, games: pd.DataFrame, efficiency: pd.DataFrame,
+                    giveaways: pd.DataFrame) -> SeasonSnapshot:
+    table = standings(games, season, through_week)
+    if team not in table.index:
+        raise ValueError(f"{team} has no completed games in {season} through week {through_week}")
+    row = table.loc[team]
+    turnovers = turnover_margins(giveaways, games, season, 1, through_week).loc[team]
+    eff = efficiency_ranks(efficiency, games, season, through_week).loc[team]
+    return SeasonSnapshot(
+        team=team, season=season, through_week=through_week, games=int(row["games"]),
+        wins=int(row["wins"]), losses=int(row["losses"]), ties=int(row["ties"]),
+        points_for=int(row["points_for"]), points_against=int(row["points_against"]),
+        pythagorean_wins=float(row["pythagorean_wins"]),
+        one_score_wins=int(row["one_score_wins"]), one_score_losses=int(row["one_score_losses"]),
+        turnover_margin=int(turnovers["margin"]), turnover_margin_rank=int(turnovers["margin_rank"]),
+        offense_epa_rank=int(eff["offense_epa_rank"]), defense_epa_rank=int(eff["defense_epa_rank"]),
+        offense_success_rank=int(eff["offense_success_rank"]), defense_success_rank=int(eff["defense_success_rank"]),
+        luck=luck_label(float(row["pythagorean_wins"]), int(row["wins"]), int(row["ties"])),
+    )
+
+
+def points_record(pythagorean: float, games: int) -> str:
+    """The record a team's points usually produce; halves round up, not to even."""
+    wins = math.floor(pythagorean + 0.5)
+    return f"{wins}-{games - wins}"
+
+
+def real_verdict(snapshot: SeasonSnapshot) -> RealVerdict:
+    if snapshot.luck == "about right":
+        return "Real"
+    if snapshot.luck == "unlucky":
+        return "Better than their record"
+    if snapshot.points_for > snapshot.points_against:
+        return "Mostly real, some luck"
+    return "Lucky"
+
+
+
+@dataclass(frozen=True)
+class ScoringRun:
+    games: int
+    first_week: int
+    last_week: int
+    touchdowns: int
+    kick_points: int    # 3 per field goal, 1 per extra point
+    points: int
+
+
+def scoring_run(scoring: pd.DataFrame, games: pd.DataFrame, team: str, season: int, through_week: int,
+                last_n: int) -> ScoringRun:
+    """The team's last `last_n` played games through the cutoff: touchdowns and how many points the kicker scored."""
+    rows = played_between(games, season, 1, through_week)
+    rows = rows[rows["team"] == team].sort_values("week").tail(last_n)
+    rows = rows.merge(scoring, on=["game_id", "team"], how="left")
+    missing = rows.loc[rows["touchdowns"].isna(), "week"].tolist()
+    if missing:
+        raise ValueError(f"{team} scoring for week(s) {missing} of {season} is not loaded")
+    return ScoringRun(
+        games=len(rows), first_week=int(rows["week"].min()), last_week=int(rows["week"].max()),
+        touchdowns=int(rows["touchdowns"].sum()),
+        kick_points=int(3 * rows["field_goals"].sum() + rows["extra_points"].sum()),
+        points=int(rows["points_for"].sum()),
+    )
+
+@dataclass(frozen=True)
+class UnbeatenHistory:
+    first_season: int
+    last_season: int
+    games: int                     # the N in "started N-0"
+    starts: int
+    points_below_perfect: int      # points record worse than N-0: their points said they should have lost once
+    more_points: int               # starts whose Pythagorean wins beat this team's
+    rest_win_rate: float           # rest of those seasons, ties as half
+    pythagorean_wins: list[float]  # one per start, for the video's dot strip
+    fewer_points: int              # starts that scored fewer points than this team in those games
+    fewer_allowed: int             # starts that allowed fewer
+
+
+def is_last_unbeaten(table: pd.DataFrame, team: str) -> bool:
+    perfect = table[(table["losses"] == 0) & (table["ties"] == 0)]
+    return list(perfect.index) == [team]
+
+
+def unbeaten_history(games: pd.DataFrame, seasons: list[int], n_games: int, pythagorean: float, *,
+                     points_for: int, points_against: int) -> UnbeatenHistory:
+    """Every team in `seasons` that won its first `n_games`, and how it did afterwards.
+
+    Seasons must be complete: the rest-of-season rate counts every remaining regular-season game.
+    """
+    rows = team_games(games[games["season"].isin(seasons)]).sort_values(["season", "team", "week"])
+    rows["game_no"] = rows.groupby(["season", "team"]).cumcount()
+    first = rows[rows["game_no"] < n_games].groupby(["season", "team"]).agg(
+        played=("margin", "size"), wins=("margin", lambda m: int((m > 0).sum())),
+        points_for=("points_for", "sum"), points_against=("points_against", "sum"))
+    perfect = first[(first["played"] == n_games) & (first["wins"] == n_games)]
+    rest = rows[rows["game_no"] >= n_games]
+    rest = rest[rest.set_index(["season", "team"]).index.isin(perfect.index)]
+    rest_rate = float(((rest["margin"] > 0) + (rest["margin"] == 0) / 2).mean()) if len(rest) else float("nan")
+    pyth = pythagorean_wins(perfect["points_for"], perfect["points_against"], n_games)
+    below = sum(points_record(float(p), n_games) != f"{n_games}-0" for p in pyth)
+    return UnbeatenHistory(
+        first_season=min(seasons), last_season=max(seasons), games=n_games, starts=len(perfect),
+        points_below_perfect=below, more_points=int((pyth > pythagorean).sum()), rest_win_rate=rest_rate,
+        pythagorean_wins=[round(float(p), 2) for p in sorted(pyth)],
+        fewer_points=int((perfect["points_for"] < points_for).sum()),
+        fewer_allowed=int((perfect["points_against"] < points_against).sum()),
+    )
+
+
+@dataclass(frozen=True)
+class OpponentAdjustment:
+    allowed_below: float     # how many fewer points opponents scored than their median in other games, per game
+    scored_vs_usual: float   # points scored minus those defenses' median allowed, per game
+    best_opponent: str       # the game with the biggest hold
+    best_allowed: int
+    best_usual: float
+
+
+def _other_games(rows: pd.DataFrame, team: str) -> pd.DataFrame:
+    """Every opponent's games that were not against `team`."""
+    return rows[(rows["team"] != team) & (rows["opponent"] != team)]
+
+
+def opponent_adjustment(games: pd.DataFrame, team: str, season: int, through_week: int) -> OpponentAdjustment:
+    """Each game against the opponent's median in its other games through the cutoff.
+
+    The median, so one blowout does not set what an opponent usually scores or allows.
+    """
+    rows = played_between(games, season, 1, through_week)
+    usual = _other_games(rows, team).groupby("team").agg(scored=("points_for", "median"),
+                                                         allowed=("points_against", "median"))
+    mine = rows[rows["team"] == team].join(usual, on="opponent").dropna(subset=["scored"])
+    if mine.empty:
+        raise ValueError(f"{team} has no opponent with other games through week {through_week}")
+    held = mine["scored"] - mine["points_against"]
+    best = mine.loc[held.idxmax()]
+    return OpponentAdjustment(
+        allowed_below=round(float(held.mean()), 1),
+        scored_vs_usual=round(float((mine["points_for"] - mine["allowed"]).mean()), 1),
+        best_opponent=str(best["opponent"]), best_allowed=int(best["points_against"]),
+        best_usual=round(float(best["scored"]), 1),
+    )
+
+
+def opponents_record(games: pd.DataFrame, team: str, season: int, through_week: int) -> tuple[int, int, int]:
+    """Opponents' combined record in their other games; an opponent met twice counts twice."""
+    rows = played_between(games, season, 1, through_week)
+    met = rows.loc[rows["team"] == team, "opponent"].value_counts()
+    others = _other_games(rows, team)
+    wins = losses = ties = 0
+    for opponent, times in met.items():
+        theirs = others.loc[others["team"] == opponent, "margin"]
+        wins += times * int((theirs > 0).sum())
+        losses += times * int((theirs < 0).sum())
+        ties += times * int((theirs == 0).sum())
+    return wins, losses, ties
+
+
+@dataclass(frozen=True)
+class FieldGoalRank:
+    field_goals: int
+    rank: int
+    leader: str
+    leader_field_goals: int
+
+
+def field_goal_rank(scoring: pd.DataFrame, games: pd.DataFrame, team: str, season: int,
+                    through_week: int) -> FieldGoalRank:
+    """League field goals made through the cutoff; rank 1 is the most, ties share a rank."""
+    rows = played_between(games, season, 1, through_week).merge(scoring, on=["game_id", "team"], how="left")
+    if rows["field_goals"].isna().any():
+        missing = sorted(rows.loc[rows["field_goals"].isna(), "week"].unique().tolist())
+        raise ValueError(f"field goals for week(s) {missing} of {season} are not loaded")
+    totals = rows.groupby("team")["field_goals"].sum().astype(int)
+    ranks = rank(totals, best="high")
+    leader = totals.sort_values(ascending=False, kind="stable").index[0]
+    return FieldGoalRank(field_goals=int(totals[team]), rank=int(ranks[team]), leader=str(leader),
+                         leader_field_goals=int(totals[leader]))
+
+
+@dataclass(frozen=True)
 class TeamReport:
     team: str
     season: int
@@ -370,35 +574,30 @@ class TeamReport:
 
 def team_report(team: str, season: int, through_week: int, *, games: pd.DataFrame, efficiency: pd.DataFrame,
                 giveaways: pd.DataFrame, playoff_table: pd.DataFrame, fit: LeagueFit) -> TeamReport:
-    table = standings(games, season, through_week)
-    if team not in table.index:
-        raise ValueError(f"{team} has no completed games in {season} through week {through_week}")
-    row = table.loc[team]
-    turnovers = turnover_margins(giveaways, games, season, 1, through_week).loc[team]
-    eff = efficiency_ranks(efficiency, games, season, through_week).loc[team]
-    team_ratings = ratings(table, fit)
+    snap = season_snapshot(team, season, through_week, games=games, efficiency=efficiency, giveaways=giveaways)
+    team_ratings = ratings(standings(games, season, through_week), fit)
     remaining = remaining_games(games, season, through_week)
     schedule = remaining[remaining["team"] == team]
     chances = [win_chance(team_ratings[team], team_ratings[opp], home, fit)
                for opp, home in zip(schedule["opponent"], schedule["is_home"])]
-    current = int(row["wins"]) + int(row["ties"]) / 2
+    current = snap.wins + snap.ties / 2
     distribution = final_win_distribution(current, simulate_wins(chances))
     chance = playoff_chance(distribution, playoff_table)
     return TeamReport(
         team=team, season=season, through_week=through_week,
-        wins=int(row["wins"]), losses=int(row["losses"]), ties=int(row["ties"]),
-        points_for=int(row["points_for"]), points_against=int(row["points_against"]),
-        pythagorean_wins=float(row["pythagorean_wins"]),
-        one_score_wins=int(row["one_score_wins"]), one_score_losses=int(row["one_score_losses"]),
-        turnover_margin=int(turnovers["margin"]), turnover_margin_rank=int(turnovers["margin_rank"]),
-        offense_epa_rank=int(eff["offense_epa_rank"]), defense_epa_rank=int(eff["defense_epa_rank"]),
-        offense_success_rank=int(eff["offense_success_rank"]), defense_success_rank=int(eff["defense_success_rank"]),
+        wins=snap.wins, losses=snap.losses, ties=snap.ties,
+        points_for=snap.points_for, points_against=snap.points_against,
+        pythagorean_wins=snap.pythagorean_wins,
+        one_score_wins=snap.one_score_wins, one_score_losses=snap.one_score_losses,
+        turnover_margin=snap.turnover_margin, turnover_margin_rank=snap.turnover_margin_rank,
+        offense_epa_rank=snap.offense_epa_rank, defense_epa_rank=snap.defense_epa_rank,
+        offense_success_rank=snap.offense_success_rank, defense_success_rank=snap.defense_success_rank,
         rating=float(team_ratings[team]),
         remaining_games=len(schedule),
         remaining_sos_rank=int(remaining_sos(remaining, team_ratings).loc[team, "rank"]),
         expected_final_wins=current + sum(chances),
         final_win_distribution=distribution,
         playoff_chance=chance,
-        luck=luck_label(float(row["pythagorean_wins"]), int(row["wins"]), int(row["ties"])),
+        luck=snap.luck,
         verdict=verdict(chance),
     )

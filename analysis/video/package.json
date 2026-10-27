@@ -1,0 +1,14 @@
+{
+  "name": "nbtg-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts SaveTheSeason out/video.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4",
+    "remotion": "^4",
+    "react": "^18",
+    "react-dom": "^18"
+  }
+}

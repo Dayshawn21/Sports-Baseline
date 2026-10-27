@@ -116,6 +116,20 @@ then rerun the command. Brand colors come from `lib/style.py`, so change them
 there. Rendering is offline: fonts load from `fonts/`, and any web request is
 blocked and reported.
 
+## Make a video
+
+`week01-real-or-lucky.ipynb` writes `output/week01-real-or-lucky-<team>-video.json`.
+The `RealOrLucky` video reads that file, so a new team or week is a rerun, not a
+code edit. From `analysis/video/` (after `npm install` once):
+
+```powershell
+npx remotion render src/index.ts RealOrLucky out/real-or-lucky-min.mp4 --props=../output/week01-real-or-lucky-min-video.json
+```
+
+It is 1080x1920 at 30 fps with no audio, about a minute; an unbeaten team adds
+a history scene. Without `--props` it renders a labelled made-up example, never
+real numbers. Record the voiceover from the main video script in the posts file.
+
 ## Tests
 
 ```powershell
@@ -131,15 +145,19 @@ notebook packages.
 |---|---|
 | `lib/db.py` | `read_engine()`: the one read-only database connection |
 | `lib/style.py` | The one chart style: brand colors, fonts, sizes, title, source line, credit |
-| `lib/nfl_queries.py` | Read-only NFL queries: regular-season games, team efficiency, giveaways |
-| `lib/nfl_team_report.py` | Save the Season numbers: record and luck, ranks, ratings, simulation, playoff bar, verdict |
+| `lib/nfl_queries.py` | Read-only NFL queries: regular-season games, team efficiency, giveaways, scoring (touchdowns, field goals, extra points) |
+| `lib/nfl_team_report.py` | Save the Season and Real or Lucky? numbers: season snapshot, record and luck, ranks, ratings, simulation, playoff bar, verdicts, unbeaten history, scoring run, opponent adjustment |
 | `lib/nflverse.py` | Free nflverse files, cached in `data/`; the only place `nfl_data_py` is used |
 | `lib/team_posts.py` | Draft posts for a Save the Season team, under the language rules |
+| `lib/real_or_lucky_posts.py` | Chart title and draft posts for a Real or Lucky? team |
+| `lib/real_or_lucky_video.py` | The JSON the `RealOrLucky` video reads; every number on screen comes from it |
 | `lib/glossary.md` | Plain-language definitions of every stat used so far |
 | `templates/notebook-template.ipynb` | Copy this to start a new week |
 | `tools/check_notebooks.py` | Pre-commit check for outputs and secrets |
 | `tools/run_notebook.py` | Runs a notebook on a clean kernel with `--param NAME=value` |
 | `week01-save-the-season.ipynb` | Week 1: can a 2-4 team still save its season? (run for DAL and PHI) |
+| `week01-real-or-lucky.ipynb` | Week 1: are the <team> as good as their record? (run for MIN) |
+| `video/` | Remotion videos; `RealOrLucky` is data-driven, the others are hand-filled samples (see `video/README.md`) |
 | `fonts/` | Bundled Barlow Condensed, DM Sans and JetBrains Mono (OFL) |
 | `thumbnails/logo.png` | The logo; its blue `#09BDFE` is the one accent color |
 | `output/` | Exported PNGs (gitignored) |
@@ -194,7 +212,8 @@ These apply to every chart, script and caption.
 
 ## Roadmap
 
-A 12-week concept plan. Week 1 is built (`week01-save-the-season.ipynb`); the rest are planned.
+A 12-week concept plan. Week 1 is built (`week01-save-the-season.ipynb` and
+`week01-real-or-lucky.ipynb`); the rest are planned.
 
 | Week | Concept | Question |
 |---|---|---|

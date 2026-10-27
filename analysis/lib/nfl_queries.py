@@ -1,4 +1,4 @@
-"""Read-only NFL queries for notebooks: regular-season games, team efficiency, giveaways."""
+"""Read-only NFL queries for notebooks: regular-season games, team efficiency, giveaways, scoring."""
 from __future__ import annotations
 
 import pandas as pd
@@ -33,6 +33,19 @@ GROUP BY s.game_id, t.team_code
 """)
 
 
+# Touchdowns count rushing/receiving, return and fumble-recovery scores; a team-game with no player rows is not loaded.
+SCORING_SQL = text("""
+SELECT s.game_id, t.team_code AS team,
+       SUM(COALESCE(s.touchdowns, 0) + COALESCE(s.return_tds, 0) + COALESCE(s.fumble_recovery_tds, 0)) AS touchdowns,
+       SUM(COALESCE(s.fg_made, 0)) AS field_goals, SUM(COALESCE(s.pat_made, 0)) AS extra_points
+FROM nfl_player_weekly_stats s
+JOIN sport_games g ON g.id = s.game_id AND g.sport = 'nfl' AND g.game_type = 'REG'
+JOIN sport_teams t ON t.id = s.team_id AND t.sport = 'nfl'
+WHERE g.season BETWEEN :first AND :last
+GROUP BY s.game_id, t.team_code
+""")
+
+
 def _read(engine: Engine, sql, first: int, last: int) -> pd.DataFrame:
     with engine.connect() as conn:
         return pd.read_sql(sql, conn, params={"first": first, "last": last})
@@ -48,3 +61,7 @@ def efficiency(engine: Engine, first: int, last: int) -> pd.DataFrame:
 
 def giveaways(engine: Engine, first: int, last: int) -> pd.DataFrame:
     return _read(engine, GIVEAWAYS_SQL, first, last)
+
+
+def scoring(engine: Engine, first: int, last: int) -> pd.DataFrame:
+    return _read(engine, SCORING_SQL, first, last)
