@@ -53,7 +53,12 @@ class ToolFinished:
     note: str | None
 
 
-AskEvent = ToolStarted | ToolFinished
+@dataclass(frozen=True)
+class TextDelta:
+    text: str
+
+
+AskEvent = ToolStarted | ToolFinished | TextDelta
 OnEvent = Callable[[AskEvent], Awaitable[None]]
 
 
@@ -105,7 +110,7 @@ async def run_ask(
     tool_rounds = 0
     while True:
         final = tool_rounds == settings.ask_max_tool_iterations
-        response = await client.messages.create(
+        async with client.messages.stream(
             model=settings.ask_model,
             max_tokens=settings.ask_max_tokens,
             output_config={"effort": settings.ask_effort},
@@ -113,7 +118,11 @@ async def run_ask(
             tools=TOOLS,
             tool_choice={"type": "none"} if final else omit,
             messages=messages,
-        )
+        ) as stream:
+            async for text in stream.text_stream:
+                if on_event:
+                    await on_event(TextDelta(text))
+            response = await stream.get_final_message()
         usage.add(response.usage)
         stop = stop_for(response.stop_reason)
         if final and stop == "answered":

@@ -10,7 +10,7 @@ from app.core.ask_messages import AskUsage, tool_result_block, user_turn
 from app.schemas.ask import ToolResult
 from app.services.ask import tools
 from app.services.ask.client import AskNotConfigured, make_client
-from app.services.ask.loop import REFUSAL_TEXT, ToolFinished, ToolStarted, run_ask
+from app.services.ask.loop import REFUSAL_TEXT, TextDelta, ToolFinished, ToolStarted, run_ask
 from app.services.ask.prompt import SYSTEM_PROMPT
 from app.services.ask.tools import TOOLS, ToolContext
 
@@ -36,22 +36,53 @@ def _text(text):
     return TextBlock(type="text", text=text)
 
 
+class FakeStream:
+    """The slice of the SDK's AsyncMessageStream the loop uses: one text delta
+    per text block, then the scripted Message as the final message."""
+
+    def __init__(self, response):
+        self.response = response
+        self.exited = False
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        self.exited = True
+
+    @property
+    async def text_stream(self):
+        for block in self.response.content:
+            if block.type == "text":
+                yield block.text
+
+    async def get_final_message(self):
+        return self.response
+
+
 class FakeMessages:
     def __init__(self, responses):
         self.responses = list(responses)
         self.calls = []
+        self.streams = []
 
-    async def create(self, **kwargs):
+    def stream(self, **kwargs):
         # Like the SDK, an `omit` argument is not sent. Copy the list: the loop
         # appends to it after this call returns.
         sent = {key: value for key, value in kwargs.items() if not isinstance(value, Omit)}
         self.calls.append({**sent, "messages": list(kwargs["messages"])})
-        return self.responses.pop(0)
+        stream = FakeStream(self.responses.pop(0))
+        self.streams.append(stream)
+        return stream
 
 
 class FakeClient:
     def __init__(self, *responses):
         self.messages = FakeMessages(responses)
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
 
 
 def _ask(client):
@@ -407,6 +438,7 @@ def test_events_bracket_each_tool_in_order(ran):
         ToolFinished(name="find", ok=True, note=None),
         ToolStarted(name="get_slate", input={"sport": "nba"}),
         ToolFinished(name="get_slate", ok=True, note=None),
+        TextDelta("done"),
     ]
 
 
@@ -416,7 +448,7 @@ def test_a_failed_tool_finishes_not_ok():
         _message(_text("done")),
     )
     _, events = _ask_recording(client)
-    assert events[-1] == ToolFinished(name="get_weather", ok=False, note=None)
+    assert events[-2] == ToolFinished(name="get_weather", ok=False, note=None)
 
 
 def test_finished_carries_the_result_note_not_its_rows(monkeypatch):
@@ -429,12 +461,53 @@ def test_finished_carries_the_result_note_not_its_rows(monkeypatch):
         _message(_text("No games tonight.")),
     )
     _, events = _ask_recording(client)
-    assert events[-1] == ToolFinished(name="get_slate", ok=True, note="No NBA games on this date.")
+    assert events[-2] == ToolFinished(name="get_slate", ok=True, note="No NBA games on this date.")
 
 
-def test_no_tool_means_no_events():
-    _, events = _ask_recording(FakeClient(_message(_text("hi"))))
-    assert events == []
+def test_no_tool_means_only_text_events():
+    _, events = _ask_recording(FakeClient(_message(_thinking(), _text("hi"))))
+    assert events == [TextDelta("hi")]
+
+
+def test_text_deltas_arrive_in_order_across_rounds(ran):
+    client = FakeClient(
+        _message(_text("Let me check."), _tool_use("toolu_1", "get_slate", {"sport": "nba"}), stop="tool_use"),
+        _message(_text("Lakers at "), _text("Suns.")),
+    )
+    outcome, events = _ask_recording(client)
+    assert events == [
+        TextDelta("Let me check."),
+        ToolStarted(name="get_slate", input={"sport": "nba"}),
+        ToolFinished(name="get_slate", ok=True, note=None),
+        TextDelta("Lakers at "),
+        TextDelta("Suns."),
+    ]
+    assert outcome.text == "Lakers at Suns."  # deltas are display; the outcome is the final turn
+
+
+def test_a_tool_only_round_emits_no_text(ran):
+    client = FakeClient(
+        _message(_thinking(), _tool_use("toolu_1", "get_slate", {"sport": "nba"}), stop="tool_use"),
+        _message(_text("ok")),
+    )
+    _, events = _ask_recording(client)
+    assert [e for e in events if isinstance(e, TextDelta)] == [TextDelta("ok")]
+    assert isinstance(events[0], ToolStarted)
+
+
+def test_every_stream_is_closed(ran):
+    client = FakeClient(
+        _message(_tool_use("toolu_1", "get_slate", {"sport": "nba"}), stop="tool_use"),
+        _message(_text("ok")),
+    )
+    _ask(client)
+    assert [s.exited for s in client.messages.streams] == [True, True]
+
+
+def test_a_refusal_streams_its_text_but_answers_with_the_fixed_sentence():
+    outcome, events = _ask_recording(FakeClient(_message(_text("I won't"), stop="refusal")))
+    assert events == [TextDelta("I won't")]
+    assert outcome.text == REFUSAL_TEXT
 
 
 def test_the_callback_does_not_change_the_outcome(ran):

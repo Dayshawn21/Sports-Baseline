@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # Ask Lineform. Passed to the client explicitly: pydantic-settings reads the
     # .env file without exporting it, so the SDK cannot find the key on its own.
     anthropic_api_key: str = ""
+    # Off by default; production refuses it until 47d's limits exist.
+    ask_enabled: bool = False
     ask_model: str = "claude-haiku-5-5"
     ask_max_tokens: int = 1024
     ask_max_tool_iterations: int = 5

@@ -11,7 +11,7 @@ from app.core.rate_limits import rule_for_path
 from app.db.pool import engine
 from app.ml.registry import ModelRegistry
 from app.rate_limit import retry_after_seconds
-from app.routers import tennis, props, admin, nfl, nba, nhl
+from app.routers import tennis, props, admin, nfl, nba, nhl, ask
 from app.security import require_api_key
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
@@ -20,7 +20,7 @@ MODELS_DIR = Path(__file__).parent.parent / "models"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     problems = validate_production_settings(
-        settings.api_env, settings.admin_api_key, settings.cors_origins
+        settings.api_env, settings.admin_api_key, settings.cors_origins, settings.ask_enabled
     )
     if problems:
         raise RuntimeError("Refusing to start in production: " + "; ".join(problems))
@@ -83,6 +83,7 @@ app.include_router(
 app.include_router(nfl.router, prefix="/nfl", tags=["nfl"])
 app.include_router(nba.router, prefix="/nba", tags=["nba"])
 app.include_router(nhl.router, prefix="/nhl", tags=["nhl"])
+app.include_router(ask.router, prefix="/ask", tags=["ask"])
 
 
 @app.get("/health")

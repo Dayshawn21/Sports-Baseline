@@ -13,6 +13,7 @@ import { menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
 import { SlateCommandProvider } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
+import AskLauncher from '~/components/ask/AskLauncher'
 
 const { Header, Content } = Layout
 
@@ -78,6 +79,7 @@ function TopBar({ nav }: { nav: ShellNav }) {
           </Link>
         ))}
       </nav>
+      <AskLauncher sport={nav.sports.find(sport => sport.active)?.code ?? null} />
     </Header>
   )
 }
@@ -108,6 +110,7 @@ function Nav() {
               <Wordmark />
               <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
               <SlateCommandField mobile onMobileExpandedChange={setMobileCommandOpen} />
+              <AskLauncher sport={nav.sports.find(sport => sport.active)?.code ?? null} />
               <Button
                 type="text"
                 icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}

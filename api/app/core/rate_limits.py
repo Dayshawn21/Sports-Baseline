@@ -4,9 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # Each of these replays grading or a whole slate per cold request (tens of seconds),
-# except /admin/session, the one route a key guesser needs.
+# except /admin/session, the one route a key guesser needs, and /ask, a paid model call.
 HEAVY_PREFIXES = ("/nfl/model/", "/tennis/model/", "/nba/model/")
-HEAVY_PATHS = frozenset({"/nfl/slate", "/admin/session"})
+HEAVY_PATHS = frozenset({"/nfl/slate", "/admin/session", "/ask"})
 # Platform health probes poll often and cost nothing.
 EXEMPT_PATHS = frozenset({"/health"})
 

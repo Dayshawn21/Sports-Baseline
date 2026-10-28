@@ -21,7 +21,7 @@ from app.core.production_settings import is_production
 from app.db.pool import SessionLocal, engine
 from app.ml.registry import ModelRegistry
 from app.services.ask.client import AskNotConfigured, make_client
-from app.services.ask.loop import AskEvent, AskOutcome, ToolStarted, run_ask
+from app.services.ask.loop import AskEvent, AskOutcome, TextDelta, ToolStarted, run_ask
 from app.services.ask.tools import ToolContext
 
 MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
@@ -55,6 +55,9 @@ def format_outcome(outcome: AskOutcome) -> str:
 
 
 async def print_event(event: AskEvent) -> None:
+    if isinstance(event, TextDelta):
+        print(event.text, end="", flush=True)
+        return
     print(format_event(event), file=sys.stderr)
 
 

@@ -10,9 +10,9 @@ it can correct.
 from __future__ import annotations
 
 import datetime as dt
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_validator
 
 from app.core.ask_links import AskSport, BoardSport, PlayerSport
 from app.nba.markets import NbaPropMarket
@@ -186,3 +186,15 @@ def tool_definitions() -> list[dict[str, JsonValue]]:
         }
         for name, model in TOOL_INPUTS.items()
     ]
+
+
+class AskStatusResponse(BaseModel):
+    """`GET /ask/status`: whether the drawer may offer Ask Lineform (47c)."""
+
+    enabled: bool
+
+
+class AskRequest(BaseModel):
+    """`POST /ask`: one question, sent alone; the drawer never sends earlier turns."""
+
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]

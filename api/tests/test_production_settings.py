@@ -68,3 +68,22 @@ def test_hsts_is_sent_in_production_only(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(settings, "api_env", "production")
     res = TestClient(app).get("/health")
     assert res.headers["Strict-Transport-Security"].startswith("max-age=")
+
+
+def test_production_refuses_ask_before_its_limits_exist() -> None:
+    [problem] = validate_production_settings("production", STRONG_KEY, SITE, ask_enabled=True)
+    assert "ASK_ENABLED" in problem
+
+
+def test_dev_allows_ask() -> None:
+    assert validate_production_settings("dev", "", SITE, ask_enabled=True) == []
+
+
+def test_production_start_with_ask_enabled_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "api_env", "production")
+    monkeypatch.setattr(settings, "admin_api_key", STRONG_KEY)
+    monkeypatch.setattr(settings, "cors_origins", SITE)
+    monkeypatch.setattr(settings, "ask_enabled", True)
+    with pytest.raises(RuntimeError, match="ASK_ENABLED is on"):
+        with TestClient(app):
+            pass

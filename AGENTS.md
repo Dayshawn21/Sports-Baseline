@@ -297,6 +297,22 @@ Two apps, two command sets. Paths are relative to the repo root.
   passed to the client explicitly; it is never needed by tests or CI. The model,
   max tokens, tool-iteration cap and effort are `ask_model`, `ask_max_tokens`,
   `ask_max_tool_iterations` and `ask_effort` (default `low`).
+- **Off unless `ASK_ENABLED=true`** (`ask_enabled`, default false). With it off,
+  `GET /ask/status` reads `{"enabled": false}`, the web shows no Ask button and
+  `POST /ask` is a 404. **Production refuses to start with it on**
+  (`validate_production_settings`) until 47d adds the per-IP question limit and
+  spend cap; 47d deletes that check in the same diff. Never set it in
+  `render.yaml` or the Render dashboard before then.
+- Stream: `POST /ask` with `{"question": "..."}` (1-500 characters) returns
+  server-sent events: `tool_start` (`name`, `sport`), `tool_end` (`name`,
+  `ok`), `text` (`delta`), `: ping` comments through slow tools, then one
+  `done` (`stop`, `text`; the final text replaces the deltas) or one `error`
+  (fixed copy; the exception is logged, never sent). 503 when enabled without a
+  key; `/ask` is on the heavy rate limit (10 a minute per client). Every
+  question is a paid request:
+  `curl -N -X POST http://127.0.0.1:8000/ask -H "Content-Type: application/json" -d "{\"question\":\"who plays in the NBA tonight?\"}"`
+- To try the drawer locally, set `ASK_ENABLED=true` in `api/app/.env` (or in
+  the API process's environment) and restart the API.
 
 ### Verify (both apps, from the repo root)
 
