@@ -1,6 +1,7 @@
 ---
 name: discovery
 description: "Optional deep, multi-turn project discovery that helps the user develop detailed Blueprint project-plan.md and build-plan.md files through an adaptive conversation, then drafts them only after the user says they are ready. Use when the user explicitly runs /discovery or $discovery, asks for a guided planning interview, wants to think through a new product before writing the plans, or wants help deepening existing plans. Do not use merely because planning files are empty, after /onboard, or before /overview; users may always write the plans directly or create them through any conversation they prefer."
+disable-model-invocation: true
 ---
 
 # discovery - develop the plans through a deep conversation
