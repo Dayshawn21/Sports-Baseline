@@ -124,19 +124,43 @@ per command; read this file before running, scheduling or changing one.
 - `ANTHROPIC_API_KEY` is read only through `Settings` (`anthropic_api_key`) and
   passed to the client explicitly; it is never needed by tests or CI. The model,
   max tokens, tool-iteration cap and effort are `ask_model`, `ask_max_tokens`,
-  `ask_max_tool_iterations` and `ask_effort` (default `low`).
+  `ask_max_tool_iterations` and `ask_effort` (default `low`). Max tokens
+  (256-4,096) and tool iterations (1-8) are bounded in `Settings`, so a bad
+  environment value fails at startup.
 - **Off unless `ASK_ENABLED=true`** (`ask_enabled`, default false). With it off,
   `GET /ask/status` reads `{"enabled": false}`, the web shows no Ask button and
-  `POST /ask` is a 404. **Production refuses to start with it on**
-  (`validate_production_settings`) until 47d adds the per-IP question limit and
-  spend cap; 47d deletes that check in the same diff. Never set it in
-  `render.yaml` or the Render dashboard before then.
+  `POST /ask` is a 404. Production refuses to start with it on and no
+  `ANTHROPIC_API_KEY` (`validate_production_settings`). In production both
+  are dashboard values (`sync: false` in `render.yaml`); never commit
+  `ASK_ENABLED=true`. Unsetting it in the dashboard turns Ask off without a
+  deploy.
+- **Guardrails (47d, in memory, one process; a restart resets both):**
+  - Global daily spend cap, `ask_daily_spend_cap_usd` (default $1, UTC day):
+    `POST /ask` is a 503 "Ask Lineform has reached today's limit..." once
+    today's estimated spend reaches it.
+  - Per-client daily questions, `ask_daily_questions_per_ip` (default 20, a
+    rolling 24 hours): past it, a 429 with `Retry-After`. Checked after the
+    cap and after body validation, so a refused or invalid question uses
+    none. The client is `request.client.host`, spoofable through
+    `X-Forwarded-For` (37d's accepted limit).
+  - Both refuse before a client exists, so a refused question costs nothing.
+    The check reads spend before a question runs, so questions in flight can
+    overshoot the cap by at most one question's maximum cost each. **The
+    Anthropic Console monthly spend limit is the hard stop.**
+  - Cost is estimated from token usage and the `ask_price_*_per_mtok`
+    settings (Haiku 5.5's up-to-100K rates; update them with `ask_model`).
+    Every question that reached Claude logs one INFO line from
+    `app.services.ask.answer_stream`: `ask question stop= requests= input=
+    output= cache_read= cache_write= cost_usd= spent_today_usd= tools= ms=`
+    (`stop` also `cancelled` on a disconnect). It never carries the question,
+    the answer or the IP. A round cut off mid-stream by a disconnect is not
+    counted.
 - Stream: `POST /ask` with `{"question": "..."}` (1-500 characters) returns
   server-sent events: `tool_start` (`name`, `sport`), `tool_end` (`name`,
   `ok`), `text` (`delta`), `: ping` comments through slow tools, then one
   `done` (`stop`, `text`; the final text replaces the deltas) or one `error`
   (fixed copy; the exception is logged, never sent). 503 when enabled without a
-  key; `/ask` is on the heavy rate limit (10 a minute per client). Every
+  key; `/ask` is also on the heavy rate limit (10 a minute per client). Every
   question is a paid request:
   `curl -N -X POST http://127.0.0.1:8000/ask -H "Content-Type: application/json" -d "{\"question\":\"who plays in the NBA tonight?\"}"`
 - To try the drawer locally, set `ASK_ENABLED=true` in `api/app/.env` (or in

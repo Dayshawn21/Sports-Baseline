@@ -39,6 +39,12 @@ services:
       # JSON list holding the web origin, e.g. ["https://sportapp-web.onrender.com"]
       - key: CORS_ORIGINS
         sync: false
+      # Ask Lineform (47). Both set in the dashboard, so a deploy never turns
+      # it on; unsetting ASK_ENABLED there turns it off without a deploy.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ASK_ENABLED
+        sync: false
       # No provider keys: only the ingest jobs on GitHub Actions read them. The
       # one API reader of ODDS_API_KEY, the tennis live moneyline lookup, has
       # had nothing to feed since moneyline picks went off (26d), and leaving

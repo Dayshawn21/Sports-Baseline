@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { AskHttpError, streamAsk } from '~/api/ask'
-import { askErrorMessage } from '~/utils/askError'
+import { askErrorMessage, askRetryable } from '~/utils/askError'
 import { askReducer } from '~/utils/askSession'
 
 /** The drawer's questions and answers, kept in memory only; each question is sent alone. */
@@ -25,7 +25,15 @@ export function useAskSession() {
       if (!current.signal.aborted) dispatch({ type: 'fail', message: askErrorMessage(null) })
     } catch (error) {
       if (current.signal.aborted) return
-      dispatch({ type: 'fail', message: askErrorMessage(error instanceof AskHttpError ? error.status : null) })
+      if (error instanceof AskHttpError) {
+        dispatch({
+          type: 'fail',
+          message: askErrorMessage(error.status, error.detail),
+          retryable: askRetryable(error.status, error.detail, error.retryAfter),
+        })
+      } else {
+        dispatch({ type: 'fail', message: askErrorMessage(null) })
+      }
     } finally {
       if (controller.current === current) controller.current = null
     }

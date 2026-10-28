@@ -1,9 +1,13 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import settings
+from pydantic import ValidationError
+
+from app.config import Settings, settings
 from app.core.production_settings import validate_production_settings
-from app.main import app
+from app.main import app, configure_app_logging
 
 STRONG_KEY = "k" * 32
 SITE = ["https://sportapp.example.com"]
@@ -70,20 +74,64 @@ def test_hsts_is_sent_in_production_only(monkeypatch: pytest.MonkeyPatch) -> Non
     assert res.headers["Strict-Transport-Security"].startswith("max-age=")
 
 
-def test_production_refuses_ask_before_its_limits_exist() -> None:
-    [problem] = validate_production_settings("production", STRONG_KEY, SITE, ask_enabled=True)
-    assert "ASK_ENABLED" in problem
+def test_production_allows_ask_with_a_key() -> None:
+    assert validate_production_settings("production", STRONG_KEY, SITE, True, "sk-ant-test") == []
 
 
-def test_dev_allows_ask() -> None:
-    assert validate_production_settings("dev", "", SITE, ask_enabled=True) == []
+@pytest.mark.parametrize("key", ["", "   "])
+def test_production_refuses_ask_without_a_key(key: str) -> None:
+    [problem] = validate_production_settings("production", STRONG_KEY, SITE, True, key)
+    assert problem == "ANTHROPIC_API_KEY is empty while ASK_ENABLED is on"
 
 
-def test_production_start_with_ask_enabled_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_production_allows_ask_off_without_a_key() -> None:
+    assert validate_production_settings("production", STRONG_KEY, SITE, False, "") == []
+
+
+def test_dev_allows_ask_without_a_key() -> None:
+    assert validate_production_settings("dev", "", SITE, True, "") == []
+
+
+def test_production_start_with_ask_and_no_key_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "api_env", "production")
     monkeypatch.setattr(settings, "admin_api_key", STRONG_KEY)
     monkeypatch.setattr(settings, "cors_origins", SITE)
     monkeypatch.setattr(settings, "ask_enabled", True)
-    with pytest.raises(RuntimeError, match="ASK_ENABLED is on"):
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY is empty while ASK_ENABLED is on"):
         with TestClient(app):
             pass
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("ask_max_tokens", 255), ("ask_max_tokens", 4097),
+        ("ask_max_tool_iterations", 0), ("ask_max_tool_iterations", 9),
+        ("ask_daily_questions_per_ip", 0), ("ask_daily_questions_per_ip", 201),
+        ("ask_daily_spend_cap_usd", 0), ("ask_daily_spend_cap_usd", 20.01),
+    ],
+)
+def test_out_of_range_ask_limits_fail_validation(field: str, value: float) -> None:
+    with pytest.raises(ValidationError, match=field):
+        Settings(database_url="postgresql://localhost/ci", _env_file=None, **{field: value})
+
+
+def test_the_ask_defaults_are_in_range() -> None:
+    defaults = Settings(database_url="postgresql://localhost/ci", _env_file=None)
+    assert (defaults.ask_max_tokens, defaults.ask_max_tool_iterations) == (2048, 5)
+    assert (defaults.ask_daily_questions_per_ip, defaults.ask_daily_spend_cap_usd) == (20, 1.0)
+
+
+def test_the_api_prints_its_own_info_lines() -> None:
+    # Importing app.main (as uvicorn does) must make app.* INFO visible.
+    app_log = logging.getLogger("app")
+    assert app_log.getEffectiveLevel() == logging.INFO
+    assert app_log.handlers
+    assert logging.getLogger("app.services.ask.answer_stream").isEnabledFor(logging.INFO)
+
+
+def test_configuring_twice_adds_no_second_handler() -> None:
+    before = len(logging.getLogger("app").handlers)
+    configure_app_logging()
+    assert len(logging.getLogger("app").handlers) == before

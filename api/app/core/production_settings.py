@@ -10,7 +10,8 @@ def is_production(api_env: str) -> bool:
 
 
 def validate_production_settings(
-    api_env: str, admin_api_key: str, cors_origins: list[str], ask_enabled: bool = False
+    api_env: str, admin_api_key: str, cors_origins: list[str],
+    ask_enabled: bool = False, anthropic_api_key: str = "",
 ) -> list[str]:
     """Return every problem that should stop a production start; empty off production."""
     if not is_production(api_env):
@@ -28,7 +29,7 @@ def validate_production_settings(
             problems.append("CORS_ORIGINS allows every origin ('*')")
         elif "localhost" in origin or "127.0.0.1" in origin:
             problems.append(f"CORS_ORIGINS includes a local origin ({origin})")
-    # 47d removes this check in the same diff that adds the question limit and spend cap.
-    if ask_enabled:
-        problems.append("ASK_ENABLED is on before 47d's limits exist")
+    # Without a key Ask would be silently dark (status false, POST /ask a 503), not on.
+    if ask_enabled and not anthropic_api_key.strip():
+        problems.append("ANTHROPIC_API_KEY is empty while ASK_ENABLED is on")
     return problems

@@ -103,9 +103,10 @@ async def run_one_tool(
 async def run_ask(
     client: AsyncAnthropic, question: str, ctx: ToolContext, settings: Settings,
     on_event: OnEvent | None = None,
+    usage: AskUsage | None = None,
 ) -> AskOutcome:
     messages: list[MessageParam] = [{"role": "user", "content": user_turn(question, ctx.now)}]
-    usage = AskUsage()
+    usage = usage if usage is not None else AskUsage()
     tool_calls: list[ToolCallRecord] = []
     tool_rounds = 0
     while True:

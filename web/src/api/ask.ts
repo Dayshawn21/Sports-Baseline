@@ -6,8 +6,14 @@ import { parseSseChunks } from '~/utils/askStream'
 const API_BASE = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
 export class AskHttpError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message)
+  /** `detail` is the API's own, or null when the body was not its JSON (a proxy page, say). */
+  constructor(
+    readonly status: number,
+    readonly detail: string | null,
+    fallback: string,
+    readonly retryAfter: number | null = null,
+  ) {
+    super(detail ?? fallback)
     this.name = 'AskHttpError'
   }
 }
@@ -17,16 +23,16 @@ export async function fetchAskStatus(): Promise<AskStatus> {
   return data
 }
 
-async function errorDetail(res: Response): Promise<string> {
+async function errorDetail(res: Response): Promise<string | null> {
   try {
     const body: unknown = await res.json()
     if (typeof body === 'object' && body !== null && 'detail' in body && typeof body.detail === 'string') {
       return body.detail
     }
   } catch {
-    // Not JSON: fall through to the status text.
+    // Not JSON: no detail to show.
   }
-  return res.statusText || `HTTP ${res.status}`
+  return null
 }
 
 /** POST one question and call `onEvent` per frame. EventSource cannot POST, so this reads the body itself. */
@@ -40,8 +46,14 @@ export async function streamAsk(
     body: JSON.stringify({ question }),
     signal,
   })
-  if (!res.ok) throw new AskHttpError(res.status, await errorDetail(res))
-  if (!res.body) throw new AskHttpError(res.status, 'The answer stream was empty.')
+  if (!res.ok) {
+    const retryAfter = Number.parseInt(res.headers.get('Retry-After') ?? '', 10)
+    throw new AskHttpError(
+      res.status, await errorDetail(res), res.statusText || `HTTP ${res.status}`,
+      Number.isNaN(retryAfter) ? null : retryAfter,
+    )
+  }
+  if (!res.body) throw new AskHttpError(res.status, null, 'The answer stream was empty.')
 
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''

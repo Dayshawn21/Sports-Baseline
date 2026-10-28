@@ -14,13 +14,15 @@ export interface AskTurn {
   text: string
   stop: AskStop | null
   error: string | null
+  /** False when sending the same question again cannot work soon (a daily limit, say). */
+  retryable: boolean
   status: 'running' | 'done' | 'error' | 'stopped'
 }
 
 export type AskAction =
   | { type: 'start'; question: string }
   | { type: 'event'; event: AskEvent }
-  | { type: 'fail'; message: string }
+  | { type: 'fail'; message: string; retryable?: boolean }
   | { type: 'stop' }
 
 function applyEvent(turn: AskTurn, event: AskEvent): AskTurn {
@@ -85,12 +87,12 @@ export function askReducer(turns: AskTurn[], action: AskAction): AskTurn[] {
     case 'start': {
       const stopped = updateLast(turns, turn => ({ ...turn, status: 'stopped' }))
       const id = (turns.at(-1)?.id ?? 0) + 1
-      return [...stopped, { id, question: action.question, tools: [], text: '', stop: null, error: null, status: 'running' }]
+      return [...stopped, { id, question: action.question, tools: [], text: '', stop: null, error: null, retryable: true, status: 'running' }]
     }
     case 'event':
       return updateLast(turns, turn => applyEvent(turn, action.event))
     case 'fail':
-      return updateLast(turns, turn => ({ ...turn, error: action.message, status: 'error' }))
+      return updateLast(turns, turn => ({ ...turn, error: action.message, retryable: action.retryable ?? true, status: 'error' }))
     case 'stop':
       return updateLast(turns, turn => ({ ...turn, status: 'stopped' }))
   }

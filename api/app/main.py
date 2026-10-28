@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,10 +18,26 @@ from app.security import require_api_key
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
 
+def configure_app_logging() -> None:
+    """Uvicorn configures only its own loggers, so without this every INFO line
+    from `app.*` (Ask Lineform's cost line among them) is dropped. Ingest CLIs
+    never import this module and keep their own basicConfig."""
+    app_log = logging.getLogger("app")
+    app_log.setLevel(logging.INFO)
+    if not app_log.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s - %(message)s"))
+        app_log.addHandler(handler)
+
+
+configure_app_logging()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     problems = validate_production_settings(
-        settings.api_env, settings.admin_api_key, settings.cors_origins, settings.ask_enabled
+        settings.api_env, settings.admin_api_key, settings.cors_origins,
+        settings.ask_enabled, settings.anthropic_api_key,
     )
     if problems:
         raise RuntimeError("Refusing to start in production: " + "; ".join(problems))

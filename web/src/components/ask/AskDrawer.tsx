@@ -139,7 +139,7 @@ export default function AskDrawer({ open, sport, onClose, onClosed }: AskDrawerP
                 key={turn.id}
                 turn={turn}
                 onNavigate={close}
-                onRetry={turn === last && !running ? () => ask(turn.question) : null}
+                onRetry={turn === last && !running && turn.retryable ? () => ask(turn.question) : null}
               />
             ))
           )}

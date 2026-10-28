@@ -138,16 +138,19 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
 
 ### Ask Lineform (`api/`, 47)
 
-Full notes, the SSE contract and a `curl` example: `docs/commands.md`.
+Full notes, the guardrails, the SSE contract and a `curl` example: `docs/commands.md`.
 
 - Tool preview (no API call): `python -m app.services.ask.preview <tool> key=value ...`
 - Chat: `python -m app.services.ask.chat <question>`. **Every run is a paid
   request**; needs `ANTHROPIC_API_KEY`, read only through `Settings`. Never
   part of Verify or CI.
-- **Off unless `ASK_ENABLED=true`.** Production refuses to start with it on
-  until 47d adds the per-IP limit and spend cap; never set it in `render.yaml`
-  or the Render dashboard before then. Locally, set it in `api/app/.env` and
-  restart the API to try the drawer.
+- **Off unless `ASK_ENABLED=true`.** In production `ASK_ENABLED` and
+  `ANTHROPIC_API_KEY` are Render dashboard values (`sync: false`); never
+  commit `ASK_ENABLED=true`. Production refuses to start with it on and no
+  key. Locally, set it in `api/app/.env` and restart the API to try the drawer.
+- Guardrails (47d, in memory, reset on restart): 20 questions per client a
+  day and a $1 global daily spend cap, both refused before Claude is called.
+  The Anthropic Console monthly spend limit is the hard stop.
 
 ### Verify (both apps, from the repo root)
 

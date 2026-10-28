@@ -11,7 +11,7 @@ const event = (e: AskEvent) => ({ type: 'event' as const, event: e })
 describe('askReducer', () => {
   it('starts a running turn with nothing in it', () => {
     expect(play({ type: 'start', question: 'Who plays?' })).toEqual([
-      { id: 1, question: 'Who plays?', tools: [], text: '', stop: null, error: null, status: 'running' },
+      { id: 1, question: 'Who plays?', tools: [], text: '', stop: null, error: null, retryable: true, status: 'running' },
     ])
   })
 
@@ -48,7 +48,9 @@ describe('askReducer', () => {
     const [frame] = play({ type: 'start', question: 'q' }, event({ type: 'error', message: 'Busy.' }))
     expect(frame).toMatchObject({ status: 'error', error: 'Busy.' })
     const [failed] = play({ type: 'start', question: 'q' }, { type: 'fail', message: 'Offline.' })
-    expect(failed).toMatchObject({ status: 'error', error: 'Offline.' })
+    expect(failed).toMatchObject({ status: 'error', error: 'Offline.', retryable: true })
+    const [limited] = play({ type: 'start', question: 'q' }, { type: 'fail', message: 'Used today.', retryable: false })
+    expect(limited).toMatchObject({ status: 'error', retryable: false })
   })
 
   it('ignores anything that arrives after the turn has ended', () => {

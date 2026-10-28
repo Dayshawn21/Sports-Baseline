@@ -534,3 +534,41 @@ def test_a_callback_error_propagates(ran):
     with pytest.raises(ConnectionResetError):
         asyncio.run(run_ask(client, QUESTION, CTX, SETTINGS, on_event=disconnected))
     assert ran == []  # it fails on ToolStarted, before the tool runs
+
+
+class FailingMessages(FakeMessages):
+    """Scripted rounds; an exception in the script is raised when its round opens."""
+
+    def stream(self, **kwargs):
+        if isinstance(self.responses[0], Exception):
+            raise self.responses.pop(0)
+        return super().stream(**kwargs)
+
+
+def _failing_client(*rounds):
+    client = FakeClient()
+    client.messages = FailingMessages(rounds)
+    return client
+
+
+def _slate_round(input_tokens=900, output_tokens=60):
+    return _message(
+        _tool_use("toolu_1", "get_slate", {"sport": "nba"}), stop="tool_use",
+        input_tokens=input_tokens, output_tokens=output_tokens,
+    )
+
+
+def test_a_caller_owned_usage_collects_every_round(ran):
+    client = FakeClient(_slate_round(900, 30), _message(_text("ok"), input_tokens=1200, output_tokens=50))
+    usage = AskUsage()
+    outcome = asyncio.run(run_ask(client, QUESTION, CTX, SETTINGS, usage=usage))
+    assert outcome.usage is usage
+    assert usage == AskUsage(requests=2, input_tokens=2100, output_tokens=80)
+
+
+def test_a_caller_owned_usage_keeps_the_rounds_before_a_failure(ran):
+    client = _failing_client(_slate_round(), RuntimeError("provider down"))
+    usage = AskUsage()
+    with pytest.raises(RuntimeError):
+        asyncio.run(run_ask(client, QUESTION, CTX, SETTINGS, usage=usage))
+    assert usage == AskUsage(requests=1, input_tokens=900, output_tokens=60)
