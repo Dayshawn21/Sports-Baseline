@@ -1,5 +1,7 @@
 import re
 from pathlib import Path
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolves to the .env file next to this file (api/app/.env)
@@ -36,6 +38,7 @@ class Settings(BaseSettings):
     ask_model: str = "claude-haiku-5-5"
     ask_max_tokens: int = 1024
     ask_max_tool_iterations: int = 5
+    ask_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
     @property
     def async_database_url(self) -> str:

@@ -288,10 +288,15 @@ Two apps, two command sets. Paths are relative to the repo root.
   database and prints exactly what the model receives, or the one-line error
   it would get. Arguments are `key=value` because Windows PowerShell strips the
   quotes from a JSON argument. Makes no Anthropic API call.
+- Chat: `python -m app.services.ask.chat <question>` (quotes optional). Runs
+  the full tool loop (`run_ask` in `app/services/ask/loop.py`) against the
+  local database and the real API, printing tool status live, then the
+  answer, stop, each tool call and token usage including cache reads. Needs
+  `ANTHROPIC_API_KEY`; every run is a paid request. Never part of Verify or CI.
 - `ANTHROPIC_API_KEY` is read only through `Settings` (`anthropic_api_key`) and
   passed to the client explicitly; it is never needed by tests or CI. The model,
-  max tokens and tool-iteration cap are `ask_model`, `ask_max_tokens` and
-  `ask_max_tool_iterations`.
+  max tokens, tool-iteration cap and effort are `ask_model`, `ask_max_tokens`,
+  `ask_max_tool_iterations` and `ask_effort` (default `low`).
 
 ### Verify (both apps, from the repo root)
 
