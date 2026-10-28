@@ -1,0 +1,169 @@
+[
+ {
+  "id": "17b7cfaa2dc6c21f39412e6017f54e9b",
+  "sport_key": "tennis_atp_swiss_indoors",
+  "sport_title": "ATP Swiss Indoors Basel",
+  "commence_time": "2026-10-29T13:00:00Z",
+  "home_team": "Alex Michelsen",
+  "away_team": "Arthur Fils",
+  "bookmakers": [
+   {
+    "key": "bovada",
+    "title": "Bovada",
+    "last_update": "2026-10-28T21:21:08Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:21:08Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.83,
+        "point": 22.5
+       },
+       {
+        "name": "Under",
+        "price": 1.91,
+        "point": 22.5
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "key": "pinnacle",
+    "title": "Pinnacle",
+    "last_update": "2026-10-28T21:21:04Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:21:04Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.9,
+        "point": 22.5
+       },
+       {
+        "name": "Under",
+        "price": 1.97,
+        "point": 22.5
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "key": "betus",
+    "title": "BetUS",
+    "last_update": "2026-10-28T21:21:04Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:21:04Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.91,
+        "point": 23.0
+       },
+       {
+        "name": "Under",
+        "price": 1.83,
+        "point": 23.0
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "9da35734a02ec2627cd4034086584157",
+  "sport_key": "tennis_atp_swiss_indoors",
+  "sport_title": "ATP Swiss Indoors Basel",
+  "commence_time": "2026-10-29T14:10:00Z",
+  "home_team": "Taylor Fritz",
+  "away_team": "Denis Shapovalov",
+  "bookmakers": [
+   {
+    "key": "betsson",
+    "title": "Betsson",
+    "last_update": "2026-10-28T21:20:39Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:20:39Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.91,
+        "point": 23.5
+       },
+       {
+        "name": "Under",
+        "price": 1.79,
+        "point": 23.5
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "key": "marathonbet",
+    "title": "Marathon Bet",
+    "last_update": "2026-10-28T21:20:43Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:20:43Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.92,
+        "point": 22.5
+       },
+       {
+        "name": "Under",
+        "price": 1.82,
+        "point": 22.5
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "key": "bovada",
+    "title": "Bovada",
+    "last_update": "2026-10-28T21:21:08Z",
+    "markets": [
+     {
+      "key": "totals",
+      "last_update": "2026-10-28T21:21:08Z",
+      "outcomes": [
+       {
+        "name": "Over",
+        "price": 1.83,
+        "point": 22.5
+       },
+       {
+        "name": "Under",
+        "price": 1.91,
+        "point": 22.5
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "53d4ccf860436088aa717efdf2c38d25",
+  "sport_key": "tennis_atp_swiss_indoors",
+  "sport_title": "ATP Swiss Indoors Basel",
+  "commence_time": "2026-10-29T18:10:00Z",
+  "home_team": "Ben Shelton",
+  "away_team": "Jerome Kym",
+  "bookmakers": []
+ }
+]

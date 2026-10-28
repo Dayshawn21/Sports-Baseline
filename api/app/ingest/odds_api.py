@@ -4,10 +4,13 @@ ingest/odds_api.py
 Fetches tennis match odds from Odds-API.io and writes them to `match_odds`.
 
 Bookmakers:
-  - DraftKings: moneyline, totals, set winner markets
-  - FanDuel: moneyline, match total (requested since 2026-10-27)
+  - DraftKings: moneyline (totals and set winners are parsed, but no tennis
+    total has ever arrived; checked 2026-10-28)
+  - FanDuel: moneyline (requested since 2026-10-27)
   - Bet365: paid-only on Odds-API.io since 2026-10-26, no longer requested; its
     stored rows (betonline.ag before 2026-09-25) are still read
+
+Tennis total-games lines come from The Odds API instead (app.ingest.tennis_totals).
 
 ENV VARS:
   ODDS_API_KEY   — required
@@ -440,8 +443,8 @@ BOOK_CONFIGS = (
         standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),
         spread_parser=_parse_bet365_spread, spread_markets=("game_spread", "set_handicap"),
     ),
-    # The 2026-10-27 probe saw FanDuel send only `ML`, named as DraftKings names it;
-    # spreads stay off until a response shows FanDuel's shape.
+    # FanDuel sends only `ML` for tennis, named as DraftKings names it (probes
+    # 2026-10-27 and 2026-10-28); spreads stay off until a response shows its shape.
     BookConfig(
         canonical_name="fanduel", aliases=("fanduel",),
         standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),

@@ -1,0 +1,52 @@
+name: Tennis Total Games
+
+# Tennis total-games lines from The Odds API into match_odds (item 48b). The
+# free Odds-API.io books send tennis moneylines only, so this is the book total
+# prop projections anchor on. Tour-level ATP and WTA keys only; Challenger and
+# WTA 125 have none.
+#
+# Free /sports and /events calls find the keys with a stored upcoming match;
+# each such key costs one /odds call (1 credit), usually 1 to 4 a day. A manual
+# dispatch spends the same. The ingest stops below --min-credits 150, above
+# NBA's 100 and NFL's 50, so tennis is the first to go quiet when the shared
+# 500 a month runs low.
+#
+# 12:45 UTC: after the 06:30 match ingest stores the day's draw, before the
+# 13:00 PrizePicks lines and the 13:30 predictions and prop snapshots.
+on:
+  # GitHub pauses schedules in a public repo after 60 days with no commit.
+  schedule:
+    - cron: "45 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+
+jobs:
+  totals:
+    name: Tennis Total Games
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Store tennis total-games lines
+        run: |
+          cd api
+          python -m app.ingest.tennis_totals --hours-ahead 24

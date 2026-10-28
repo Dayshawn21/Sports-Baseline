@@ -7,10 +7,22 @@ per command; read this file before running, scheduling or changing one.
 
 - Matches: `python -m app.ingest.livetennis --days-back 1 --days-ahead 1`
 - Odds: `python -m app.ingest.odds_api --hours-ahead 4` (Odds-API.io DraftKings
-  and FanDuel; both send tennis moneylines only on the free plan, so no book
-  total-games or game-spread lines are stored after Bet365 went paid on
-  2026-10-26, and prop projections fall back to the model total. Stops before
-  any odds batch once the hourly quota is at `--min-requests-remaining`)
+  and FanDuel; both send tennis moneylines only on the free plan, checked on
+  2026-10-27 and 2026-10-28, and DraftKings never stored a tennis total. No
+  game-spread lines are stored after Bet365 went paid on 2026-10-26; totals
+  come from `tennis_totals` below. Stops before any odds batch once the hourly
+  quota is at `--min-requests-remaining`)
+- Tennis total games: `python -m app.ingest.tennis_totals [--hours-ahead 24]
+  [--min-credits 150] [--dry-run]` (48b; The Odds API. Free `/sports` and
+  `/events` calls keep the active `tennis_*` keys with a stored upcoming
+  match, then one `/odds` call per kept key for `totals` from Pinnacle,
+  Marathonbet, Betsson, NordicBet, 1xBet and Coolbet, 1 credit each, usually
+  1 to 4 a day. Stores one `match_odds` `total_games` row per match from the
+  first of those books that prices it, over in `p1_odds`. ATP and WTA
+  tour-level events only: Challenger and WTA 125 have no keys, so their props
+  keep `no_market_total`. Stops below 150 credits, above NBA's 100, so tennis
+  goes quiet first in a heavy month. `--dry-run` writes nothing but still
+  spends the credits. `tennis-totals.yml` runs it daily at 12:45 UTC)
 - Props: `python -m app.ingest.prizepicks`
 - NFL schedule + player stats: `python -m app.ingest.nflverse --season 2024`
 - NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve

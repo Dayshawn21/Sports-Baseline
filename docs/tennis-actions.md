@@ -1,6 +1,6 @@
 # Tennis GitHub Actions
 
-Tennis uses six workflow files, with the same UTC schedules and ingest commands
+Tennis uses seven workflow files, with the same UTC schedules and ingest commands
 as the previous combined workflow. This split is implemented locally; GitHub
 registration and runner behavior require a separately approved merge/push and
 remote verification. It does not reduce API usage or change provider limits.
@@ -9,6 +9,7 @@ remote verification. It does not reduce API usage or change provider limits.
 |---|---|---|---|
 | Tennis Match Ingest | `tennis-ingest.yml` | Daily 06:30 | Run directly; matches and H2H |
 | Tennis Game Odds | `tennis-odds.yml` | Every four hours at :10 | Run directly; next 14 hours |
+| Tennis Total Games | `tennis-totals.yml` | Daily 12:45 | Run directly; next 24 hours |
 | Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 | Run directly |
 | Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30 | `predictions` or `tennis-elo-comparison` |
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
@@ -19,6 +20,14 @@ paid-only (2026-10-26), both free books send tennis moneylines only, so the
 job stores no total-games or game-spread lines. A run stops before any odds
 batch when the hour's remaining requests are at the safety floor, and exits
 nonzero when the provider's plan refuses every odds batch (402/403).
+
+Total Games (48b, added after the split) stores book total-games lines from
+The Odds API for ATP and WTA tour-level matches, Pinnacle first. It runs after
+the 06:30 match ingest stores the draw and before the 13:00 prop lines and
+13:30 predictions, spends 1 credit per tournament key with a stored match, and
+stops below 150 of the 500 monthly credits shared with NFL and NBA. Challenger
+and WTA 125 matches get no book total. Like the other workflows, it registers
+only after a push changes its file.
 
 For manual runs after publication, open Actions, choose the named workflow,
 and select **Run workflow**. The two workflows containing a dependent ELO job

@@ -110,6 +110,8 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
 - Matches: `python -m app.ingest.livetennis --days-back 1 --days-ahead 1`
 - Tennis odds: `python -m app.ingest.odds_api --hours-ahead 4` (moneyline only
   since 2026-10-26; stops at `--min-requests-remaining`)
+- Tennis total games: `python -m app.ingest.tennis_totals [--hours-ahead 24] [--min-credits 150] [--dry-run]`
+  (The Odds API, 1 credit per tour-level key with a stored match; dry run spends too)
 - Tennis props: `python -m app.ingest.prizepicks`
 - ELO: `python -m app.ingest.elo --web`
 - Player stats: `python -m app.ingest.player_stats --today-only`
