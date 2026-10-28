@@ -3,7 +3,8 @@ import pytest
 
 from app.core.tennis_first_set import first_set_distribution, pmf_probabilities
 from app.core.prop_projection import serve_hold
-from tests.test_props_router_best_of import _enriched, _stats
+from app.routers.props import _enrich
+from tests.test_props_router_best_of import _enriched, _prop, _stats
 
 
 @pytest.mark.parametrize(("stat", "line"), [("1st Set Total Games", "9.5"), ("1st Set Total Games Won", "4.5")])
@@ -38,5 +39,7 @@ def test_a_near_certain_first_set_line_is_still_only_lean() -> None:
 
     assert enriched.hit_probability is not None and enriched.hit_probability > 0.95
     assert enriched.confidence == "LEAN"
-    # The same certainty on a graded stat reaches LOCK, so the cap is what holds it.
-    assert _enriched("Total Games", "12.5", 3).confidence == "LOCK"
+    # A graded stat at the same certainty, with a book total, also tops out at
+    # LEAN: props-v3 withholds LOCK and STRONG (45a).
+    graded = _enrich(_prop("Total Games", "12.5", 3), _stats(), _stats(2), 0.55, market_total_games=22.5)
+    assert graded.hit_probability > 0.95 and graded.confidence == "LEAN"

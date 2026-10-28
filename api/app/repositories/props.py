@@ -33,6 +33,8 @@ class Prop:
     best_of: Optional[int] = None
     source_start_time: Optional[datetime] = None
     match_start_time: Optional[datetime] = None
+    # players.tour (ATP, WTA or CHALLENGER) for 48a's league rates and first-set shift.
+    player_tour: Optional[str] = None
 
 
 async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
@@ -112,7 +114,8 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
             COALESCE(relinked.best_of, m.best_of) AS best_of,
             p.start_time AS source_start_time,
             CASE WHEN relinked.id IS NOT NULL THEN relinked.start_utc
-                 ELSE m.start_utc END AS match_start_time
+                 ELSE m.start_utc END AS match_start_time,
+            pl.tour AS player_tour
         FROM latest_props p
         LEFT JOIN players pl ON pl.id = p.player_id
         LEFT JOIN matches m ON m.id = p.match_id

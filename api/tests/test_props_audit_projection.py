@@ -205,7 +205,7 @@ def test_total_games_probability_uses_match_closeness():
     close = _enrich(prop, stats, opponent, 0.50, market_total_games=23.0)
     lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=23.0)
 
-    assert close.stat_avg == lopsided.stat_avg
+    assert close.market_total_games == lopsided.market_total_games
     assert close.p_over is not None
     assert lopsided.p_over is not None
     assert close.p_over > lopsided.p_over
@@ -221,7 +221,7 @@ def test_total_games_probability_uses_match_closeness_for_best_of_five():
     close = _enrich(prop, stats, opponent, 0.50, market_total_games=30.0)
     lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=30.0)
 
-    assert close.stat_avg == lopsided.stat_avg
+    assert close.market_total_games == lopsided.market_total_games
     assert close.p_over is not None
     assert lopsided.p_over is not None
     assert close.p_over > lopsided.p_over
@@ -241,7 +241,7 @@ class _Db:
 
     async def execute(self, _query, params):
         self.params = params
-        return _Rows([(10, Decimal("22.5"))])
+        return _Rows([(10, Decimal("22.5"), -110, -110)])
 
 
 def test_market_total_games_lookup_returns_latest_lines_by_match_id():
@@ -279,7 +279,7 @@ def test_fantasy_projection_does_not_add_break_points_as_separate_bonus():
 
 def test_stale_stats_cap_confidence_at_lean():
     stale = datetime.now(UTC) - timedelta(days=3)
-    enriched = _enrich(_prop(), _stats(computed_at=stale), _stats(2, computed_at=stale), 0.65)
+    enriched = _enrich(_prop(), _stats(computed_at=stale), _stats(2, computed_at=stale), 0.65, market_total_games=22.5)
 
     assert "stale_stats" in enriched.data_quality_flags
     assert enriched.confidence == "LEAN"
@@ -324,7 +324,7 @@ def test_invalid_match_link_blocks_prizepicks_recommendation():
 
 
 def test_small_sample_caps_confidence_at_lean():
-    enriched = _enrich(_prop(), _stats(matches_count=4), _stats(2), 0.65)
+    enriched = _enrich(_prop(), _stats(matches_count=4), _stats(2), 0.65, market_total_games=22.5)
 
     assert "small_sample" in enriched.data_quality_flags
     assert enriched.confidence == "LEAN"

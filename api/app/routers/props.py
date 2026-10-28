@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional
 
@@ -10,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.odds import american_to_prob, devig_two_way
 from app.core.prop_ev import assess_prop
-from app.core.prop_probs import games_won_probabilities, prop_probabilities, prop_side
+from app.core.prop_probs import (
+    games_won_probabilities,
+    prop_probabilities,
+    prop_side,
+    total_games_mean_from_line,
+)
 from app.core.prop_projection import (
     _ACE_MATCHUP_FACTOR_MAX,
     _ACE_MATCHUP_FACTOR_MIN,
@@ -25,6 +31,7 @@ from app.core.prop_projection import (
     _SERVE_POINTS_PER_MATCH,
     _SURFACE_ACE_FACTOR,
     _SURFACE_DF_FACTOR,
+    TOTALS_DEPENDENT_STATS,
     ace_matchup_factor as _ace_matchup_factor,
     compute_stat_avg as _compute_stat_avg,
     expected_break_point_chances as _expected_break_point_chances,
@@ -70,6 +77,9 @@ _SUPPORTED_PROJECTION_STATS = {
     *FIRST_SET_STATS,
 }
 _CONF_RANK = {"PASS": 0, "LEAN": 1, "STRONG": 2, "LOCK": 3}
+# props-v2 lost at every tier, so no tennis prop is LOCK or STRONG until a
+# props-v3 tier verdict adopts one (48a, 48e).
+_MAX_PROP_CONFIDENCE = "LEAN"
 _CONF_BY_RANK = {v: k for k, v in _CONF_RANK.items()}
 
 
@@ -90,6 +100,21 @@ def _deciding_set_probability(win_prob: Optional[float], best_of: int) -> Option
         return None
     p = _clamp(float(win_prob), 0.01, 0.99)
     return 2.0 * p * (1.0 - p)
+
+
+@dataclass(frozen=True)
+class MarketTotal:
+    """A book's main total-games line and its prices (over in p1_odds, under in p2_odds)."""
+
+    line: float
+    over_odds: Optional[int] = None
+    under_odds: Optional[int] = None
+
+    @property
+    def p_over(self) -> Optional[float]:
+        if self.over_odds is None or self.under_odds is None:
+            return None
+        return devig_two_way(american_to_prob(self.over_odds), american_to_prob(self.under_odds))[0]
 
 
 def _match_link_method(prop: Prop) -> Optional[str]:
@@ -231,6 +256,7 @@ def _enrich(
     opponent_stats: Optional[PlayerRollingStats] = None,
     win_prob: Optional[float] = None,
     market_total_games: Optional[float] = None,
+    market_total_over_prob: Optional[float] = None,
 ) -> PropLine:
     line_f = float(prop.line) if prop.line is not None else None
     stat_norm = _normalize_stat_type(prop.stat_type)
@@ -275,6 +301,22 @@ def _enrich(
     stat_avg = edge_pct = recommendation = None
     expected_service_points = None
     projection_source = "market_total" if market_total_games is not None and market_total_games >= 17.0 else "model_total"
+    # A book line is the 50/50 point, not the mean (48a), so projections read the
+    # mean it implies. The row still reports the line itself.
+    book_total = market_total_games if projection_source == "market_total" else None
+    total_mean = (
+        total_games_mean_from_line(
+            book_total,
+            market_total_over_prob if market_total_over_prob is not None else 0.5,
+            best_of,
+            _deciding_set_probability(win_prob, best_of),
+        )
+        if book_total is not None
+        else None
+    )
+    projection_total = total_mean if total_mean is not None else market_total_games
+    if book_total is None and stat_norm in TOTALS_DEPENDENT_STATS:
+        data_quality_flags.append("no_market_total")
     projection_inputs: dict[str, float | str] = {}
     matches_count = None
     if stats is not None and line_f is not None:
@@ -284,15 +326,22 @@ def _enrich(
             opponent_stats=opponent_stats,
             win_prob=win_prob,
             surface=prop.surface,
-            market_total_games=market_total_games,
+            market_total_games=projection_total,
             best_of=best_of,
+            tour=prop.player_tour,
         )
         expected_service_points = _expected_service_points(
-            stats, opponent_stats, win_prob, market_total_games, best_of
+            stats, opponent_stats, win_prob, projection_total, best_of
         )
         projection_inputs = _projection_inputs(
-            prop.stat_type, stats, opponent_stats, win_prob, market_total_games, best_of
+            prop.stat_type, stats, opponent_stats, win_prob, projection_total, best_of
         )
+        if book_total is not None and total_mean is not None:
+            projection_inputs["market_total_games"] = round(book_total, 2)
+            projection_inputs["market_total_mean"] = round(total_mean, 2)
+            projection_inputs["market_total_price_source"] = (
+                "devigged" if market_total_over_prob is not None else "even"
+            )
         matches_count = stats.matches_count
         if matches_count is not None and matches_count < _SMALL_SAMPLE_MATCHES:
             data_quality_flags.append("small_sample")
@@ -314,7 +363,7 @@ def _enrich(
     ev_pct = break_even_pct = hit_probability = None
     if expected is not None and line_f is not None:
         if stat_norm in FIRST_SET_STATS and stats is not None:
-            probs = pmf_probabilities(stat_pmf(stat_norm, _first_set_for_matchup(stats, opponent_stats)), line_f)
+            probs = pmf_probabilities(stat_pmf(stat_norm, _first_set_for_matchup(stats, opponent_stats, prop.player_tour)), line_f)
         elif stat_norm in ("total_games_won", "games_won") and stats is not None:
             player_hold = _serve_hold(stats)
             opp_hold = _serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT
@@ -394,6 +443,9 @@ def _enrich(
     else:
         projection_status = "unsupported_stat"
 
+    # The ceiling comes before the missing-input downgrade, so a prop missing
+    # inputs still ranks below a complete one.
+    confidence = _cap_confidence(confidence, _MAX_PROP_CONFIDENCE)
     if is_prizepicks:
         hard_blocks = {
             "missing_player",
@@ -412,6 +464,8 @@ def _enrich(
         for flag in ("missing_opponent_stats", "missing_prediction"):
             if flag in data_quality_flags:
                 confidence = _downgrade_confidence(confidence)
+    if "no_market_total" in data_quality_flags:
+        confidence = _cap_confidence(confidence, "PASS")
 
     projection_found = stat_avg is not None
     audit = PropAudit(
@@ -711,6 +765,14 @@ async def _fetch_market_total_games(
     props: list["Prop"],
 ) -> dict[int, float]:
     """Return latest full-match market total-games line keyed by match_id."""
+    return {match_id: total.line for match_id, total in (await _fetch_market_totals(db, props)).items()}
+
+
+async def _fetch_market_totals(
+    db: AsyncSession,
+    props: list["Prop"],
+) -> dict[int, MarketTotal]:
+    """Latest full-match total-games line with its prices, keyed by match_id."""
     match_ids = list({p.match_id for p in props if p.match_id is not None})
     if not match_ids:
         return {}
@@ -718,7 +780,7 @@ async def _fetch_market_total_games(
     rows = await db.execute(
         text("""
             SELECT DISTINCT ON (mo.match_id)
-                mo.match_id, mo.line
+                mo.match_id, mo.line, mo.p1_odds, mo.p2_odds
             FROM match_odds mo
             WHERE mo.match_id = ANY(:mids)
               AND mo.market = 'total_games'
@@ -739,7 +801,14 @@ async def _fetch_market_total_games(
         {"mids": match_ids},
     )
 
-    return {int(match_id): float(line) for match_id, line in rows.fetchall()}
+    return {
+        int(match_id): MarketTotal(
+            float(line),
+            int(over) if over is not None else None,
+            int(under) if under is not None else None,
+        )
+        for match_id, line, over, under in rows.fetchall()
+    }
 
 
 async def _fetch_opponent_ids(
@@ -774,8 +843,8 @@ async def _enrich_props(db: AsyncSession, props: list["Prop"]) -> list[PropLine]
     rolling_stats = await get_rolling_stats_batch_all_surfaces(db, list(player_ids | opponent_ids))
     prediction_probs = await _fetch_win_probs(db, props)
     market_probs = await _fetch_market_win_probs(db, props)
-    market_total_games = await _fetch_market_total_games(db, props)
-    return enrich_with(props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_total_games)
+    market_totals = await _fetch_market_totals(db, props)
+    return enrich_with(props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_totals)
 
 
 def enrich_with(
@@ -784,12 +853,13 @@ def enrich_with(
     rolling_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
     prediction_probs: dict[tuple[int, int], float],
     market_probs: dict[tuple[int, int], float],
-    market_total_games: dict[int, float],
+    market_totals: dict[int, MarketTotal],
 ) -> list[PropLine]:
     """The board's rows from already-loaded inputs; best-pick cards read the same rows."""
     return [
-        _enrich(
+        _enrich_with_total(
             p,
+            market_totals.get(p.match_id) if p.match_id is not None else None,
             _pick_stats(p, rolling_stats),
             _pick_stats_for_player(
                 opponent_ids_map.get((p.player_id, p.match_id)) if p.player_id and p.match_id else None,
@@ -800,10 +870,23 @@ def enrich_with(
                 prediction_probs.get((p.player_id, p.match_id))
                 or market_probs.get((p.player_id, p.match_id))
             ) if p.player_id and p.match_id else None,
-            market_total_games.get(p.match_id) if p.match_id is not None else None,
         )
         for p in props
     ]
+
+
+def _enrich_with_total(
+    prop: Prop,
+    total: Optional[MarketTotal],
+    stats: Optional[PlayerRollingStats],
+    opponent_stats: Optional[PlayerRollingStats],
+    win_prob: Optional[float],
+) -> PropLine:
+    return _enrich(
+        prop, stats, opponent_stats, win_prob,
+        market_total_games=total.line if total is not None else None,
+        market_total_over_prob=total.p_over if total is not None else None,
+    )
 
 
 # Public so the daily snapshot job stores exactly what the page computes. The

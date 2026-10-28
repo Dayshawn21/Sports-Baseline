@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from app.repositories import matches as match_repo
 from app.routers import props as props_router
+from app.routers.props import MarketTotal
 from app.services.tennis import best_picks_response as target
 from app.services.tennis.best_picks import BestPick
 
@@ -64,6 +65,9 @@ def _stub_io(monkeypatch, calls: dict):
     async def lookup(_db, _props):
         return {"lookup": True}
 
+    async def totals(_db, _props):
+        return {1: MarketTotal(21.5, -110, -110)}
+
     def enrich(*args):
         calls["enrich_args"] = args
         return ["line"]
@@ -81,7 +85,7 @@ def _stub_io(monkeypatch, calls: dict):
     monkeypatch.setattr(props_router, "_fetch_opponent_ids", opponents)
     monkeypatch.setattr(props_router, "_fetch_win_probs", lookup)
     monkeypatch.setattr(props_router, "_fetch_market_win_probs", lookup)
-    monkeypatch.setattr(props_router, "_fetch_market_total_games", lookup)
+    monkeypatch.setattr(props_router, "_fetch_market_totals", totals)
     monkeypatch.setattr(props_router, "enrich_with", enrich)
 
 
@@ -97,4 +101,5 @@ def test_orchestration_output_is_unchanged(monkeypatch):
     assert calls["dates"] == [TODAY, date(2026, 10, 28)]
     assert calls["rolling_ids"] == [10, 11, 20, 21, 30]
     assert calls["enrich_args"][0] == [PLAYER_PROP]
-    assert calls["build"][0] == (1, [PLAYER_PROP, ODDS_PROP], ["line"], (10, 11), {"lookup": True})
+    assert calls["enrich_args"][5] == {1: MarketTotal(21.5, -110, -110)}
+    assert calls["build"][0] == (1, [PLAYER_PROP, ODDS_PROP], ["line"], (10, 11), {1: 21.5})

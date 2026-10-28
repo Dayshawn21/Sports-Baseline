@@ -208,7 +208,7 @@ def generate_prop_picks(pred: PredictionOutput, prop_lines: list[PropLine]) -> l
     """Prop picks from the board's own assessment of each line (`_enrich`).
 
     Side, hit probability, tier and flags are read, never recomputed, so a card
-    cannot outrank the board row or the props-v2 snapshot it came from.
+    cannot outrank the board row or the props-v3 snapshot it came from.
     """
     picks: list[BestPick] = []
 

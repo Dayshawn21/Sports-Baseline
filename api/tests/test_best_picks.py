@@ -9,7 +9,7 @@ from app.core.prop_probs import prop_over_under_probs
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import enrich_with
+from app.routers.props import MarketTotal, enrich_with
 from app.services.tennis import best_picks
 from app.services.tennis.best_picks import BestPick, generate_ml_pick
 from app.services.tennis.best_picks import generate_prop_picks
@@ -112,13 +112,14 @@ def test_bo5_games_won_prop_uses_match_format():
         {(1, "Hard"): _stats(1), (2, "Hard"): _stats(2)},
         {(1, 1): 0.74, (2, 1): 0.26},
         {},
-        {},
+        {1: MarketTotal(38.5)},
     )
     picks = generate_prop_picks(pred, lines)
 
     tsitsipas_pick = next(pick for pick in picks if "Tsitsipas" in pick.pick)
+    # Best-of-3 scaling would read about 8 games; a 38.5 best-of-5 book total reads about 14 (45a).
     assert "8." not in tsitsipas_pick.reasoning
-    assert tsitsipas_pick.reasoning.startswith("Tsitsipas projects for 11.")
+    assert tsitsipas_pick.reasoning.startswith("Tsitsipas projects for 14.")
 
 
 def _unpriced(label: str, score: float) -> BestPick:
@@ -157,7 +158,7 @@ def test_first_set_props_are_no_best_pick_until_graded():
         {(1, "Hard"): _stats(1), (2, "Hard"): _stats(2)},
         {(1, 1): 0.61, (2, 1): 0.39},
         {},
-        {},
+        {1: MarketTotal(22.5)},
     )
     picks = generate_prop_picks(_pred(), lines)
 
@@ -197,14 +198,14 @@ def _parity_stats() -> dict:
     }
 
 
-def _board_and_cards(prop: Prop, stats=None, opponents=None, win_probs=None):
+def _board_and_cards(prop: Prop, stats=None, opponents=None, win_probs=None, totals=None):
     lines = enrich_with(
         [prop],
         {(1, 1): 2, (2, 1): 1} if opponents is None else opponents,
         _parity_stats() if stats is None else stats,
         {(1, 1): 0.61, (2, 1): 0.39} if win_probs is None else win_probs,
         {},
-        {},
+        {1: MarketTotal(22.5)} if totals is None else totals,
     )
     return lines[0], generate_prop_picks(_pred(), lines)
 
@@ -264,9 +265,10 @@ def test_missing_input_card_takes_the_boards_downgrade(kwargs, flag):
     full, _ = _board_and_cards(_parity_prop("Aces", "5.5"))
     board, cards = _board_and_cards(_parity_prop("Aces", "5.5"), **kwargs)
 
-    assert full.confidence == "LOCK"
-    assert board.confidence == "STRONG" and flag in board.data_quality_flags
-    _assert_card_is_board_row(board, cards)
+    # props-v3 caps at LEAN before the downgrade, so a missing input drops to PASS and leaves no card.
+    assert full.confidence == "LEAN"
+    assert board.confidence == "PASS" and flag in board.data_quality_flags
+    assert cards == []
 
 
 def test_total_games_card_uses_the_boards_format_aware_probability():

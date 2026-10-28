@@ -150,7 +150,7 @@ def test_prop_tiers_route_serializes_in_camel_case(monkeypatch):
 
     assert res.status_code == 200
     body = res.json()
-    assert body["projectionVersion"] == "props-v2"
+    assert body["projectionVersion"] == "props-v3"
     assert body["breakEven"] > 0.57
     lean = body["tiers"][2]
     assert (lean["tier"], lean["verdict"], lean["verdictSampleSize"]) == ("LEAN", "accruing", 1)

@@ -28,7 +28,7 @@ def _picks(day: date, hits: int, misses: int) -> list[tuple[date, bool]]:
 
 
 def test_rule_constants_are_pinned():
-    assert TIER_RULE_VERSION == "props-v2" == PROJECTION_VERSION
+    assert TIER_RULE_VERSION == "props-v3" == PROJECTION_VERSION
     assert TIER_RULE_TIERS == ("LOCK", "STRONG", "LEAN")
     assert TIER_VERDICT_SAMPLE == 200
     assert TIER_MATURITY_DAYS == 3

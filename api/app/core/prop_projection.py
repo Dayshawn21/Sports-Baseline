@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from app.core.tennis_first_set import (
-    FIRST_SET_STATS, FirstSetDistribution, first_set_distribution, pmf_mean, stat_pmf,
+    FIRST_SET_STATS, FirstSetDistribution, first_set_distribution, pmf_mean, shift_underdog_hold, stat_pmf,
 )
 from app.core.tennis_props import (
     _DOWNSTREAM_GAMES_CALIBRATION,
@@ -34,12 +34,31 @@ _BREAK_CHANCE_FACTOR_MAX = 1.60
 _BASELINE_RET_PTS_WON = 0.38
 _ACE_MATCHUP_FACTOR_MIN = 0.75
 _ACE_MATCHUP_FACTOR_MAX = 1.25
-_LEAGUE_ACE_RATE = 0.075
+# League rates per serve point, keyed by players.tour: what a typical same-tour
+# opponent allows, so a typical opponent's matchup factor is 1.0. Measured
+# 2026-10-28 by app.backtest.tennis_league_rates (48a step 2, players with 5+
+# matches). The single 0.075 / 0.045 they replace overstated ATP and WTA aces
+# and understated WTA double faults. The pooled values serve an unknown tour.
+_LEAGUE_ACE_RATE_BY_TOUR: dict[str, float] = {"ATP": 0.0582, "CHALLENGER": 0.0470, "WTA": 0.0263}
+_LEAGUE_DF_RATE_BY_TOUR: dict[str, float] = {"ATP": 0.0401, "CHALLENGER": 0.0426, "WTA": 0.0544}
+_LEAGUE_ACE_RATE = 0.0431
 _DF_MATCHUP_FACTOR_MIN = 0.80
 _DF_MATCHUP_FACTOR_MAX = 1.20
-_LEAGUE_DF_RATE = 0.045
+_LEAGUE_DF_RATE = 0.0466
+# The first-set chain gave WTA underdogs about 0.31 games too many while their
+# favorites were close (48a step 3, 3,906 completed 2026 matches), so only the
+# weaker server's hold drops. Fitted by tennis_first_set_level
+# --fit-underdog-shift WTA. ATP stayed under the pre-registered 0.25 threshold.
+_FIRST_SET_UNDERDOG_HOLD_SHIFT: dict[str, float] = {"WTA": 0.0522}
 _GAMES_WIN_SCALE = 1.25
 _GAMES_LOSE_SCALE = 0.75
+
+# Stats whose projection scales with the match total (48a). Without a book
+# total they run on the model total, which ran low, so they are never a pick.
+TOTALS_DEPENDENT_STATS = frozenset({
+    "total_games", "total_games_won", "games_won", "aces", "double_faults",
+    "break_points_won", "break_points_converted", "fantasy_score",
+})
 
 _SURFACE_ACE_FACTOR: dict[str, float] = {
     "Hard": 1.0,
@@ -85,7 +104,11 @@ def serve_hold(stats: "PlayerRollingStats") -> float:
     return _f(stats.hold_pct) or _BASELINE_HOLD_PCT
 
 
-def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
+def _league_rate(rates: dict[str, float], pooled: float, tour: Optional[str]) -> float:
+    return rates.get((tour or "").upper(), pooled)
+
+
+def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"], tour: Optional[str] = None) -> float:
     """Multiplier on a player's baseline ace rate based on how the opponent defends serves.
 
     Prefers the opponent's actual allowed-ace rate (`allowed_aces_per_sp`).
@@ -95,7 +118,8 @@ def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
         return 1.0
     allowed_ace = _f(getattr(opponent_stats, "allowed_aces_per_sp", None))
     if allowed_ace is not None and allowed_ace > 0:
-        return clamp(allowed_ace / _LEAGUE_ACE_RATE, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
+        league = _league_rate(_LEAGUE_ACE_RATE_BY_TOUR, _LEAGUE_ACE_RATE, tour)
+        return clamp(allowed_ace / league, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
     opp_ret_pts_won = _f(opponent_stats.ret_pts_won)
     if opp_ret_pts_won is None:
         return 1.0
@@ -104,13 +128,16 @@ def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
     return clamp(opp_nonreturn / baseline_nonreturn, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
 
 
-def double_fault_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
+def double_fault_matchup_factor(
+    opponent_stats: Optional["PlayerRollingStats"], tour: Optional[str] = None,
+) -> float:
     """Multiplier on a player's baseline double-fault rate from opponent pressure."""
     if opponent_stats is None:
         return 1.0
     allowed_df = _f(getattr(opponent_stats, "allowed_df_per_sp", None))
     if allowed_df is not None and allowed_df > 0:
-        return clamp(allowed_df / _LEAGUE_DF_RATE, _DF_MATCHUP_FACTOR_MIN, _DF_MATCHUP_FACTOR_MAX)
+        league = _league_rate(_LEAGUE_DF_RATE_BY_TOUR, _LEAGUE_DF_RATE, tour)
+        return clamp(allowed_df / league, _DF_MATCHUP_FACTOR_MIN, _DF_MATCHUP_FACTOR_MAX)
     opp_ret_pts_won = _f(opponent_stats.ret_pts_won)
     if opp_ret_pts_won is None:
         return 1.0
@@ -210,11 +237,14 @@ def expected_break_point_chances(
 
 
 def first_set_for_matchup(
-    stats: "PlayerRollingStats", opponent_stats: Optional["PlayerRollingStats"],
+    stats: "PlayerRollingStats",
+    opponent_stats: Optional["PlayerRollingStats"],
+    tour: Optional[str] = None,
 ) -> FirstSetDistribution:
     """The first-set chain on the two holds, the opponent at baseline when unknown."""
     opponent_hold = serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT
-    return first_set_distribution(serve_hold(stats), opponent_hold)
+    shift = _FIRST_SET_UNDERDOG_HOLD_SHIFT.get((tour or "").upper(), 0.0)
+    return first_set_distribution(*shift_underdog_hold(serve_hold(stats), opponent_hold, shift))
 
 
 def compute_stat_avg(
@@ -225,6 +255,7 @@ def compute_stat_avg(
     surface: Optional[str] = None,
     market_total_games: Optional[float] = None,
     best_of: int = 3,
+    tour: Optional[str] = None,
 ) -> Optional[float]:
     """Convert per-game rolling stats to a per-match expected value for the given stat type.
 
@@ -232,6 +263,7 @@ def compute_stat_avg(
     surface: court surface used to adjust ace and DF projections.
     market_total_games: live bookmaker total-games line — when available, all projections
         scale to this instead of the model's expected total.
+    tour: the player's `players.tour`, for the league rates and first-set shift (48a).
     """
     st = normalize_stat_type(stat_type)
     surf_key = (surface or "").title()
@@ -244,7 +276,7 @@ def compute_stat_avg(
         svc_pts = expected_service_points(
             stats, opponent_stats, win_prob, market_total_games, best_of
         )
-        matchup = ace_matchup_factor(opponent_stats)
+        matchup = ace_matchup_factor(opponent_stats, tour)
         return ace_rate * svc_pts * surf_factor * matchup
 
     if st == "double_faults" and stats.df_per_game is not None:
@@ -255,7 +287,7 @@ def compute_stat_avg(
         svc_pts = expected_service_points(
             stats, opponent_stats, win_prob, market_total_games, best_of
         )
-        matchup = double_fault_matchup_factor(opponent_stats)
+        matchup = double_fault_matchup_factor(opponent_stats, tour)
         return df_rate * svc_pts * df_surf_factor * matchup
 
     if st in ("break_points_converted", "break_points_won") and stats.break_pct is not None:
@@ -282,7 +314,7 @@ def compute_stat_avg(
         return expected_total_games(stats, opponent_stats, win_prob, market_total_games, best_of)
 
     if st in FIRST_SET_STATS:
-        return pmf_mean(stat_pmf(st, first_set_for_matchup(stats, opponent_stats)))
+        return pmf_mean(stat_pmf(st, first_set_for_matchup(stats, opponent_stats, tour)))
 
     if st == "total_sets" and stats.win_rate is not None:
         wr = win_prob if win_prob is not None else _f(stats.win_rate)
@@ -310,8 +342,8 @@ def compute_stat_avg(
         sets_won, sets_lost = expected_sets_won_lost_from_win_prob(wr)
         ace_surf = _SURFACE_ACE_FACTOR.get(surf_key, 1.0)
         df_surf = _SURFACE_DF_FACTOR.get(surf_key, 1.0)
-        ace_m = ace_matchup_factor(opponent_stats)
-        df_m = double_fault_matchup_factor(opponent_stats)
+        ace_m = ace_matchup_factor(opponent_stats, tour)
+        df_m = double_fault_matchup_factor(opponent_stats, tour)
         svc_pts = expected_service_points(
             stats, opponent_stats, wr, market_total_games, best_of
         )

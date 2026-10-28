@@ -13,7 +13,7 @@ from app.schemas.props import PropLine
 
 # Bump on any change to projection, probability, EV or tier logic, so grading
 # never pools tiers produced by different code.
-PROJECTION_VERSION = "props-v2"
+PROJECTION_VERSION = "props-v3"
 SNAPSHOT_ELIGIBILITY_POLICY = "pre-match-v1"
 
 SkipReason = Literal[

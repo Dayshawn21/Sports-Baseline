@@ -383,7 +383,7 @@ def test_the_summary_counts_standard_lines_with_a_pick_only(monkeypatch):
 
     props = asyncio.run(player_detail.build_player_props(None, 26))
 
-    assert seen["args"] == ("props-v2", 26)
+    assert seen["args"] == ("props-v3", 26)
     assert (props.hits, props.misses) == (1, 2)
     assert len(props.rows) == 6
 
@@ -402,7 +402,7 @@ def test_props_route(monkeypatch):
 
     body = _client().get("/tennis/players/26/props").json()
 
-    assert body["projectionVersion"] == "props-v2"
+    assert body["projectionVersion"] == "props-v3"
     assert body["rows"][0] == {
         "snapshotDate": "2026-09-25", "stat": "total_games", "oddsType": "standard", "line": 19.5,
         "actual": 19, "recommendation": "UNDER", "confidence": "LEAN", "outcome": "hit",

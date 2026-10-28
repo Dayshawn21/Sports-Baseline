@@ -165,7 +165,7 @@ async def build_best_picks_response(
 
     # 3. Get rolling stats for all players in props + their opponents
     from app.routers.props import (
-        _fetch_market_total_games,
+        _fetch_market_totals,
         _fetch_market_win_probs,
         _fetch_opponent_ids,
         _fetch_win_probs,
@@ -181,14 +181,15 @@ async def build_best_picks_response(
     # 4. Get win probs and market totals
     prediction_win_probs = await _fetch_win_probs(db, all_props)
     market_win_probs = await _fetch_market_win_probs(db, all_props)
-    market_total_games = await _fetch_market_total_games(db, all_props)
+    market_totals = await _fetch_market_totals(db, all_props)
+    market_total_games = {match_id: total.line for match_id, total in market_totals.items()}
 
     # 5. Build best picks per match, in a worker thread: pure CPU that would
     # otherwise hold every other request on the hosted instance (37e).
     def assemble() -> list[MatchBestPicksSchema]:
         # Cards read the board's rows for player props, never their own copy (F-04, F-05).
         prop_lines = enrich_with(
-            player_props, opponent_ids_map, rolling_stats, prediction_win_probs, market_win_probs, market_total_games
+            player_props, opponent_ids_map, rolling_stats, prediction_win_probs, market_win_probs, market_totals
         )
         match_picks = []
         for pred in predictions:

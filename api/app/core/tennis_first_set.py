@@ -75,6 +75,15 @@ def first_set_distribution(player_hold: float, opponent_hold: float) -> FirstSet
     return FirstSetDistribution(dict(sorted(total.items())), dict(sorted(games.items())))
 
 
+def shift_underdog_hold(player_hold: float, opponent_hold: float, shift: float) -> tuple[float, float]:
+    """Lower only the weaker server's hold by `shift` (48a); equal holds have no underdog."""
+    if player_hold < opponent_hold:
+        return player_hold - shift, opponent_hold
+    if opponent_hold < player_hold:
+        return player_hold, opponent_hold - shift
+    return player_hold, opponent_hold
+
+
 def stat_pmf(stat: str, dist: FirstSetDistribution) -> dict[int, float]:
     """The distribution a first-set stat settles on: the whole set, or the player's games."""
     return dist.total_games if stat == "1st_set_total_games" else dist.player_games

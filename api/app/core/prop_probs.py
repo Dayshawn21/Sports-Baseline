@@ -261,3 +261,36 @@ def total_games_probs(
         p_under=p2 * short.p_under + p3 * long.p_under,
         p_push=p2 * short.p_push + p3 * long.p_push,
     )
+
+
+_MEAN_SEARCH_HALF_WIDTH = 30.0
+_MEAN_SEARCH_ITERATIONS = 60
+_LINE_P_OVER_MIN = 0.02
+_LINE_P_OVER_MAX = 0.98
+
+
+def total_games_mean_from_line(
+    line: float,
+    p_over: float = 0.5,
+    best_of: int = 3,
+    p_deciding_set: float | None = None,
+) -> float:
+    """The expected total implied by a book total-games line (48a).
+
+    A book line is the point the market prices near 50/50, not the mean. Total
+    games is skewed by the deciding-set mode, so the mean sits above the line.
+    This finds the mean whose set-count mixture gives the line's over price,
+    push excluded. P(over) rises with the mean, so a bounded bisection is exact
+    enough and cannot loop.
+    """
+    target = clamp(float(p_over), _LINE_P_OVER_MIN, _LINE_P_OVER_MAX)
+    low, high = line - _MEAN_SEARCH_HALF_WIDTH, line + _MEAN_SEARCH_HALF_WIDTH
+    for _ in range(_MEAN_SEARCH_ITERATIONS):
+        mid = (low + high) / 2.0
+        probs = total_games_probs(line, mid, p_deciding_set=p_deciding_set, best_of=best_of)
+        decided = max(1e-12, probs.p_over + probs.p_under)
+        if probs.p_over / decided < target:
+            low = mid
+        else:
+            high = mid
+    return (low + high) / 2.0

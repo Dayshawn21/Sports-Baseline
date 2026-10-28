@@ -21,7 +21,9 @@ Verdict = Literal["accruing", "pass", "reject"]
 
 SIGNAL_SE_MULTIPLE = 2.0
 
-TIER_RULE_VERSION = "props-v2"
+# Re-registered unchanged for props-v3 (48a) before any v3 snapshot existed.
+# The props-v2 verdict stays readable with the snapshot CLI's --version.
+TIER_RULE_VERSION = "props-v3"
 TIER_RULE_TIERS = ("LOCK", "STRONG", "LEAN")
 TIER_VERDICT_SAMPLE = 200
 # Box-score stats settle after the next day's refetch (26e), so a snapshot day
