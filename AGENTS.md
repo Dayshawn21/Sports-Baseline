@@ -144,6 +144,9 @@ Full notes, the guardrails, the SSE contract and a `curl` example: `docs/command
 - Chat: `python -m app.services.ask.chat <question>`. **Every run is a paid
   request**; needs `ANTHROPIC_API_KEY`, read only through `Settings`. Never
   part of Verify or CI.
+- Evals (47e): `python -m app.evals.ask --dry-run` (no API call), then
+  `--confirm-spend [--only ids] [--out]` for a paid run (30 cases, about
+  $0.02). Never part of Verify or CI.
 - **Off unless `ASK_ENABLED=true`.** In production `ASK_ENABLED` and
   `ANTHROPIC_API_KEY` are Render dashboard values (`sync: false`); never
   commit `ASK_ENABLED=true`. Production refuses to start with it on and no

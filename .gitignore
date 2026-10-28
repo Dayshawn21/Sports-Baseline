@@ -54,6 +54,9 @@ api/data/valuebetennis/
 # Immutable source files and manifests for candidate tennis ELO (41b).
 api/data/tennismylife-elo/
 
+# Ask Lineform eval results (47e): answers from paid runs, kept local.
+api/data/ask-evals/
+
 # Playwright MCP writes snapshots and screenshots here during manual UI checks.
 .playwright-mcp/
 

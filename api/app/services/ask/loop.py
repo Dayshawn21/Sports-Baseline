@@ -30,6 +30,7 @@ class ToolCallRecord:
     input: dict[str, object]
     is_error: bool
     ms: int
+    content: str
 
 
 @dataclass
@@ -94,7 +95,9 @@ async def run_one_tool(
         await ctx.db.rollback()
         content, is_error = TOOL_FAILED.format(name=block.name), True
     ms = round((time.perf_counter() - started) * 1000)
-    tool_calls.append(ToolCallRecord(name=block.name, input=dict(block.input), is_error=is_error, ms=ms))
+    tool_calls.append(ToolCallRecord(
+        name=block.name, input=dict(block.input), is_error=is_error, ms=ms, content=content,
+    ))
     if on_event:
         await on_event(ToolFinished(name=block.name, ok=not is_error, note=note))
     return tool_result_block(block.id, content, is_error=is_error)

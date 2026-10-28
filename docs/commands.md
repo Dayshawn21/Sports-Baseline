@@ -121,6 +121,20 @@ per command; read this file before running, scheduling or changing one.
   local database and the real API, printing tool status live, then the
   answer, stop, each tool call and token usage including cache reads. Needs
   `ANTHROPIC_API_KEY`; every run is a paid request. Never part of Verify or CI.
+- Evals (47e): `python -m app.evals.ask --dry-run` validates
+  `app/evals/ask_questions.json` and lists the cases (no API call);
+  `python -m app.evals.ask --confirm-spend [--only id1,id2] [--out]` runs them
+  through `run_ask` against the local database and the real API, one at a
+  time, then prints PASS/FAIL/ERROR per case with failure reasons and
+  ungrounded numbers, the pass count, tokens and estimated cost (47d's
+  `estimate_cost_usd`). Every real run is paid and refuses without
+  `--confirm-spend`; 30 cases cost about $0.02. `--out` writes results JSON
+  (answers, no tool content) to `api/data/ask-evals/`, which is gitignored.
+  Exit 0 only when every case passed, 1 otherwise, 2 on setup errors. Never
+  part of Verify or CI. Case rules (`app/core/ask_eval.py`) describe the shape
+  of a good answer, never today's values, because data is live; regex
+  backslashes are doubled in the JSON. Ungrounded numbers are reported, never
+  a failure (percentages of 0-1 rates land there).
 - `ANTHROPIC_API_KEY` is read only through `Settings` (`anthropic_api_key`) and
   passed to the client explicitly; it is never needed by tests or CI. The model,
   max tokens, tool-iteration cap and effort are `ask_model`, `ask_max_tokens`,

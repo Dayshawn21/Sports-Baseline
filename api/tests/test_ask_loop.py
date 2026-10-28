@@ -261,6 +261,25 @@ def test_tool_calls_are_recorded(ran):
     assert all(isinstance(c.ms, int) and c.ms >= 0 for c in outcome.tool_calls)
 
 
+def test_each_record_keeps_the_exact_result_the_model_saw(ran):
+    """The 47e evals check links against what the tools returned, so the
+    record must hold the same string the tool_result block carried."""
+    client = FakeClient(
+        _message(
+            _tool_use("toolu_a", "get_slate", {"sport": "nba"}),
+            _tool_use("toolu_b", "get_weather", {"city": "Dallas"}),
+            stop="tool_use",
+        ),
+        _message(_text("done")),
+    )
+    outcome = _ask(client)
+
+    sent = [block["content"] for block in _results_sent(client)]
+    assert [c.content for c in outcome.tool_calls] == sent
+    assert outcome.tool_calls[0].content == _tool_result("get_slate", "nba").model_dump_json()
+    assert outcome.tool_calls[1].content.startswith("unknown tool 'get_weather'")
+
+
 class FakeDb:
     def __init__(self):
         self.rollbacks = 0

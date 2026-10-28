@@ -24,8 +24,8 @@ def test_outcome_shows_answer_stop_tools_and_usage():
         text="Two NBA games tonight: [Lakers at Suns](/nba/game/401).",
         stop="answered",
         tool_calls=[
-            ToolCallRecord(name="get_slate", input={"sport": "nba"}, is_error=False, ms=412),
-            ToolCallRecord(name="get_weather", input={}, is_error=True, ms=0),
+            ToolCallRecord(name="get_slate", input={"sport": "nba"}, is_error=False, ms=412, content="{}"),
+            ToolCallRecord(name="get_weather", input={}, is_error=True, ms=0, content="unknown tool 'get_weather'"),
         ],
         usage=AskUsage(
             requests=2, input_tokens=5210, output_tokens=312,
