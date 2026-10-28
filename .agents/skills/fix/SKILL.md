@@ -26,6 +26,18 @@ that ledger entry. Use this form only between work items, when
 `current-feature.md` is the reset stub: this skill overwrites that file, so
 while a spec is active, repair its findings through `/implement` instead.
 
+## Checkout guard
+
+Run this before writing anything, as `/feature` does. Check
+`git branch --show-current`, `git status --short` and `git worktree list`. If
+`current-feature.md` holds another unfinished spec, the branch is another
+item's, or the tree has another item's changes, another session may be using
+this checkout: never overwrite the spec, switch branches, stash or clean.
+Offer a worktree off the main branch instead
+(`git worktree add .claude/worktrees/fix-<name> -b fix/<name> <main>`); after a
+yes, write the fix spec there and tell the user to run `/implement` in a
+session opened on that folder.
+
 ## Step 1 - write the fix spec
 
 Pull context from `blueprint/context/project-overview.md` and `blueprint/context/coding-standards.md`,
