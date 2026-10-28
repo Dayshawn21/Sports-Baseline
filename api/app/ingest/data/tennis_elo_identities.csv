@@ -55,7 +55,10 @@ WTA,330364,223360,verified,exact name; implied birth date spread 0d; country CZE
 WTA,330970,239456,verified,normalized name; implied birth date spread 1d; country FRA; never same event or opponents; WTA profile Tiantsoa Rakotomanga Rajaonah FRA 2005-12-15
 WTA,331102,243420,verified,exact name; implied birth date spread 0d; country BEL; never same event or opponents
 WTA,332285,260300,verified,exact name; implied birth date spread 1d; country USA; never same event or opponents
+WTA,332575,260581,verified,exact name; implied birth date spread 0d; country RUS; wta_ongoing_tourneys.csv re-emitted Iasi 2026 R32/R16 and Seoul 2026 R32 under the new ID with identical tourney_id; match_num; opponents; scores; rank and age; both resolve by name to local 2463; checked 2026-10-28
 WTA,333132,261963,verified,exact name; implied birth date spread 1d; country GBR; never same event or opponents
+WTA,267020,266640,verified,exact name; implied birth date spread 0d; country SRB; ongoing-file copies re-emitted six matches from Madrid 2025 to Sao Paulo 2026 under the new ID with identical tourney_id; match_num; opponents; scores; rank and age; both resolve by name to local 2433; checked 2026-10-28
+WTA,335958,266647,verified,exact name; implied birth date spread 0d; country CHN; ongoing-file copies re-emitted Beijing 2026 R128/R64/R32 under the new ID with identical tourney_id; match_num; opponents and age (one copy drops the R128 RET); both resolve by name to local 79903; provider implied birth about 2010 disagrees with local 2002-08-27; recorded not corrected; checked 2026-10-28
 WTA,223168,269265,verified,exact name; implied birth date spread 1d; country USA; never same event or opponents
 WTA,259733,269267,verified,exact name; implied birth date spread 0d; country ESP/USA; never same event or opponents
 WTA,222034,329512,verified,exact name; implied birth date spread 1d; country USA; never same event or opponents
