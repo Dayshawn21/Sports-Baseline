@@ -168,12 +168,31 @@ def _team_and_game_candidates(sport: AskSport, games: Sequence[Row]) -> list[Can
     return candidates
 
 
+async def _nba_roster_candidates(ctx: ToolContext, games: Sequence[Row]) -> list[Candidate]:
+    """Full team names, and every rostered player, so a player with no posted line still reaches the game."""
+    candidates: list[Candidate] = []
+    team_games: dict[str, int] = {}
+    for game in games:
+        game_id = int(str(game["game_id"]))
+        for side in ("away", "home"):
+            team_games[str(game[f"{side}_team"])] = game_id
+            candidates.append(Candidate("team", str(game[f"{side}_team_name"]), game_path("nba", game_id), None, game_id))
+    for player in await nba_repo.get_team_players(ctx.db, list(team_games)):
+        game_id = team_games[str(player["team"])]
+        candidates.append(
+            Candidate("player", str(player["player_name"]), game_path("nba", game_id), int(str(player["player_id"])), game_id)
+        )
+    return candidates
+
+
 async def _find_candidates(inp: FindInput, ctx: ToolContext) -> tuple[list[Candidate], str]:
     if inp.sport == "nba":
         date = inp.date or ctx.nba_today
         slate = await build_nba_slate(ctx.db, date, ctx.nba_today)
-        rows, _ = trim_nba_slate([g.model_dump(mode="json") for g in slate.games])
+        games = [g.model_dump(mode="json") for g in slate.games]
+        rows, _ = trim_nba_slate(games)
         candidates = _team_and_game_candidates("nba", rows)
+        candidates += await _nba_roster_candidates(ctx, games)
         for game_id, lines in (await nba_repo.get_date_modelled_lines(ctx.db, slate.date)).items():
             candidates += [
                 Candidate("player", str(line["player_name"]), game_path("nba", game_id), int(str(line["player_id"])), game_id)

@@ -176,6 +176,21 @@ async def get_player_candidates(db: AsyncSession) -> list[tuple[int, str, str | 
     return [(row[0], row[1], row[2], row[3]) for row in rows.fetchall()]
 
 
+async def get_team_players(db: AsyncSession, team_codes: Sequence[str]) -> list[dict[str, object]]:
+    """NBA players whose latest loaded game was for one of these teams, lines or not."""
+    if not team_codes:
+        return []
+    statement = text("""
+        SELECT p.id, p.name, t.team_code
+        FROM sport_players p
+        JOIN sport_teams t ON t.sport = 'nba' AND t.id = p.team_id
+        WHERE p.sport = 'nba' AND t.team_code IN :codes
+        ORDER BY p.name, p.id
+    """).bindparams(bindparam("codes", expanding=True))
+    rows = await db.execute(statement, {"codes": list(set(team_codes))})
+    return [{"player_id": row[0], "player_name": row[1], "team": row[2]} for row in rows.fetchall()]
+
+
 async def get_upcoming_odds_games(db: AsyncSession, days_ahead: int) -> list[dict[str, object]]:
     """Scheduled NBA games with a tip-off time, for matching The Odds API events (item 20d)."""
     rows = await db.execute(

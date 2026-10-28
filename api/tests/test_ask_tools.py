@@ -110,6 +110,49 @@ def test_find_with_several_matches_asks_to_choose(monkeypatch):
     assert result.note == "Several matches; pick the one the user means, or ask them."
 
 
+def _stub_nba_find(monkeypatch, lines):
+    game = {"game_id": 21259, "away_team": "DEN", "home_team": "NO",
+            "away_team_name": "Denver Nuggets", "home_team_name": "New Orleans Pelicans"}
+
+    async def slate(_db, _requested, _today):
+        return SimpleNamespace(date=dt.date(2026, 10, 28), games=[SimpleNamespace(model_dump=lambda mode: game)])
+
+    async def roster(_db, codes):
+        assert sorted(codes) == ["DEN", "NO"]
+        return [{"player_id": 7, "player_name": "Nikola Jokić", "team": "DEN"},
+                {"player_id": 8, "player_name": "Jamal Murray", "team": "DEN"}]
+
+    async def modelled(_db, _date):
+        return lines
+
+    monkeypatch.setattr(tools, "build_nba_slate", slate)
+    monkeypatch.setattr(tools.nba_repo, "get_team_players", roster)
+    monkeypatch.setattr(tools.nba_repo, "get_date_modelled_lines", modelled)
+
+
+def test_nba_find_reaches_a_rostered_player_without_lines(monkeypatch):
+    _stub_nba_find(monkeypatch, {})
+    result = _run(tools.find, FindInput(sport="nba", query="Jokic"))
+    assert [(r["kind"], r["id"], r["game_id"], r["url"]) for r in result.data] == [
+        ("player", 7, 21259, "/nba/game/21259")
+    ]
+
+
+def test_nba_find_matches_full_team_names(monkeypatch):
+    _stub_nba_find(monkeypatch, {})
+    for query in ("Nuggets", "Denver"):
+        result = _run(tools.find, FindInput(sport="nba", query=query))
+        assert [(r["kind"], r["name"], r["url"]) for r in result.data] == [
+            ("team", "Denver Nuggets", "/nba/game/21259")
+        ]
+
+
+def test_nba_find_lists_a_player_with_lines_once(monkeypatch):
+    _stub_nba_find(monkeypatch, {21259: [{"player_id": 8, "player_name": "Jamal Murray"}]})
+    result = _run(tools.find, FindInput(sport="nba", query="Murray"))
+    assert [(r["kind"], r["id"]) for r in result.data] == [("player", 8)]
+
+
 def _none(*_args):
     async def none(*_inner):
         return None
