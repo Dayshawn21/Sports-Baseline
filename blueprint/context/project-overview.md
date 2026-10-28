@@ -51,10 +51,12 @@
 > confirms them once on a fresh 2026-27 sample. Two of NFL's four 27j
 > ranking slices (standard under, demon over) are now rejected; 27h stays
 > blocked on the other two. Ask Lineform (item 47) has its tools, tool
-> loop and streaming panel (47a-47c), still off in production until 47d's
-> guardrails. Item 48 rebuilds the tennis PrizePicks prop projections:
-> `props-v2` lost at every tier, and 48a's `props-v3` removes the measured
-> biases and withholds LOCK and STRONG until a forward verdict.
+> loop, streaming panel, guardrails and evals (47a-47e), off in production
+> unless `ASK_ENABLED`. Item 48 rebuilds the tennis PrizePicks prop
+> projections: `props-v2` lost at every tier, 48a's `props-v3` removes the
+> measured biases, 48b restores a book total-games line from The Odds API
+> for tour-level matches, and tennis tiers are being retired (48f) so tennis
+> rates lines by P(over) against break-even like NFL and NBA.
 
 > **Generated file. Don't hand-edit.** Produced by `/overview` from
 > [../project-plan.md](../project-plan.md) and [../build-plan.md](../build-plan.md).
@@ -80,10 +82,19 @@ Those gaps remain listed below.
 `ebe1bba4`. It was first drafted locally as item 45 and renumbered because
 45 is NHL. 47b and 47c are now checked (`3fef951`, `cc8deb3`). The project
 plan is unchanged and does not mention item 48 (open question 66).
+**Thirteenth refresh (2026-10-28):** 47d and 47e completed (`f1f4d66`,
+`2b9b594`), so parent 47 is done. 48b completed as `c3acad0`: neither free
+Odds-API.io book sends tennis totals, so a new The Odds API ingest stores
+Pinnacle-first total-games lines for ATP and WTA tour-level matches (open
+question 67 resolved). The owner then decided tennis props should be rated
+like the other sports, with no confidence tiers: the parent 48 line gains
+that clause, new 48f (retire tennis tiers, built before 48c) and 48g (adopt
+in ranking) were added, and 48e now grades P(over) slices instead of tiers.
+The project plan is unchanged and never mentioned tiers.
 
-There are **136 checked leaf items out of 151**, including the explicitly
-dropped 40b; **15 product items remain unchecked** (the previous 9, Ask
-Lineform's 47d-47e and the tennis rebuild's 48b-48e). 46a-46c completed
+There are **139 checked leaf items out of 153**, including the explicitly
+dropped 40b; **14 product items remain unchecked** (the previous 9 and the
+tennis rebuild's 48c-48g). 46a-46c completed
 2026-10-24 and 46d 2026-10-27, so parent 46 is checked. NHL 45a-45f and parent 45 are complete
 as implementation. Migration 0049, a four-season NHL backfill, 941 linked
 PrizePicks snapshots and 168 game-odds snapshots are prior recorded local
@@ -176,7 +187,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 26 | Tennis model validation | Complete |
 | 40 | WTA 125 blend group | Complete: keep pooled; 40b dropped |
 | 41 | TennisMyLife match data | 41a, 41b locally complete; 41c conditional |
-| 48 | Tennis prop rebuild | 48a complete (`props-v3`); 48b-48e open |
+| 48 | Tennis prop rebuild | 48a, 48b complete; 48f next, then 48c-48e and 48g |
 | 17 | Multi-sport foundation | Complete |
 | 18 | NFL data sourcing | Complete |
 | 19 | NFL support | Complete |
@@ -195,7 +206,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 36 | NFL best line | Complete |
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
 | 37 | Public read-only demo | Complete |
-| 47 | Ask Lineform | 47a-47c complete; 47d next, production still off |
+| 47 | Ask Lineform | Complete (47a-47e); production off unless `ASK_ENABLED` |
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
@@ -206,16 +217,17 @@ Checked items record completed work, including explicitly retired surfaces.
 | 38 | Structural redesign | Complete |
 | 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46d) |
 
-15 leaf items remain, with these gates:
+14 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
 | 16f | Tennis set-handicap projection | Parked until regular, correctly identified provider lines exist |
 | 41c | Serve in-house ELO | Conditional on 41b's forward verdict passing (accruing from 2026-10-22); dropped if it fails |
-| 48b | Total-games price source | The 2026-10-27 fix found DraftKings and FanDuel send tennis `ML` only on the free plan (open question 67) |
-| 48c | Match simulation | Needs a book total; served only under a version 48e judges |
+| 48f | Retire tennis tiers | Next; must land before 48e pre-registers its rule; coordinate the shared prop code with the NBA LOCK removal |
+| 48c | Match simulation | Book totals exist for tour-level matches only (48b); served only under a version 48e judges |
 | 48d | Sportsbook player props | Independent bounded probe; display only until 48e adopts a slice |
-| 48e | Forward prop check | Rule pre-registered before any `props-v3` or later snapshot is graded |
+| 48e | Forward prop check | After 48f; rule pre-registered before any `props-v3` or later snapshot is graded, per P(over) slice |
+| 48g | Adopt in ranking | Only slices 48e adopts |
 | 25c | Anytime-TD market-relative rating | Requires passing forward validation; no adoption inferred here |
 | 27h | NFL probability-based ranking | Requires an `adopt` verdict for a 27j slice. Standard under and demon over are rejected (final for v4); standard over (128 of 200 picks) and goblin over (10 of 200) are accruing |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
@@ -226,10 +238,9 @@ Checked items record completed work, including explicitly retired surfaces.
 | 47d | Guardrails and cost | Next for Ask Lineform; enables production only once the limits exist |
 | 47e | Evals | After 47d; separate script, never in the Verify command |
 
-`/feature 47d` continues Ask Lineform. `/feature 48e` is the safest next
-tennis step, since its rule must be registered before the first
-`props-v3` snapshot settles; 48b first needs a decision on a totals source
-(open question 67). `/feature 21`
+Ask Lineform is complete. `/feature 48f` is the next tennis step: it
+retires tiers so 48e's rule, which must be registered before the first
+`props-v3` snapshot settles, is written against P(over) slices. `/feature 21`
 specs the next planned new sport, WNBA; NHL operational
 acceptance is a separate follow-up documented in `docs/nhl-context.md`.
 44b resumes on its own branch once its gate reads `ready`. Rec Targets reporting
@@ -239,7 +250,7 @@ verdicts; this refresh makes no new verdict or model claim.
 
 ### Detailed feature context
 
-**48. Tennis prop rebuild (added 2026-10-28; 48a complete 2026-10-28, archive `blueprint/history/features/48a-tennis-props-v3.md`).** The
+**48. Tennis prop rebuild (added 2026-10-28; 48a and 48b complete 2026-10-28, archives `blueprint/history/features/48a-tennis-props-v3.md`, `48b-total-games-price-source.md`; tiers retired by owner decision 2026-10-28).** The
 `props-v2` grading (26f, 32b) loses at every confidence tier: 8,893 lines,
 LOCK 51.9% +/- 3.3 against a 57.7% break-even while predicting 77.4%; lines
 rated 80-90% hit 49%. A read-only deep dive on 2026-10-28 (no holdout, no
@@ -256,10 +267,33 @@ losses to biased projections:
 | Step | Outcome |
 |---|---|
 | 48a | *Complete 2026-10-28.* `props-v3`: book total solved as a median; tour league rates; WTA underdog first-set hold shift; `no_market_total`; LEAN ceiling |
-| 48b | Restore a book total-games price within the Odds-API.io quota |
+| 48b | *Complete 2026-10-28.* Book total-games lines from The Odds API (`app.ingest.tennis_totals`), Pinnacle first, ATP and WTA tour-level only |
+| 48f | Retire LOCK, STRONG, LEAN and PASS; show projection, gap and P(over) against each payout's break-even, gray and unranked; built before 48c |
 | 48c | One game-level simulation anchored to the de-vigged moneyline and book total |
 | 48d | Probe sportsbook tennis player props; show each PrizePicks line beside its fair price, display only |
-| 48e | Per-stat, per-tour forward check pre-registered before any v3 or later snapshot is graded, with break-even per PrizePicks entry type |
+| 48e | Forward check pre-registered before any v3 or later snapshot is graded, per stat, tour and payout slice, P(over) against break-even, adopt or hide |
+| 48g | Rank and pick only the slices 48e adopts, as NFL 27h and NBA 44c |
+
+- **48b findings** (2026-10-28): DraftKings priced 1,238 tennis matches
+  within 3 hours of start over 120 days and never stored a total; raw
+  captures showed DraftKings and FanDuel send only `ML`. The Odds API priced
+  totals on every Basel event from 6 to 15 books. Cost is 1 credit per
+  active tour-level key with a stored match (usually 1 to 4 a day), stopping
+  below 150 credits; `tennis-totals.yml` runs daily at 12:45 UTC. Challenger
+  and WTA 125 have no keys and keep `no_market_total`. First real run: 12
+  Pinnacle totals.
+- **Load-bearing (48b):** totals stay in `match_odds` as `total_games`,
+  `line` = main line, `p1_odds` = over, `p2_odds` = under, book = The Odds
+  API's lowercase key. `match_odds` has no provider column, and the prop
+  reader takes the newest row from any book. Best picks reads only
+  `settings.live_odds_bookmakers`, so these rows never become priced best
+  picks; the retired bankroll builder reads any book and will price Total
+  Games picks at them. 48e must split by `projection_source` (tour-level
+  lines are book-anchored, Challenger and WTA 125 are not), and set-weight
+  refits must filter `total_games` rows by book.
+- **Tier decision (2026-10-28):** tennis props will carry no confidence tier
+  (48f). The 32b tier record and the `props-v3` LEAN ceiling below hold only
+  until 48f ships.
 
 - **48a measurements** (2026-10-28, read before any v3 snapshot; no line
   outcome read): league rates per `players.tour` from `last_52w` rolling
@@ -1634,8 +1668,14 @@ the 2026-09-25 review fixes, archived under `blueprint/history/`):
   (`/tennis/props/bet`) is removed; old `?source=bet` links open PrizePicks.
   Best picks reads odds props for the configured books
   (`settings.live_odds_bookmakers`). Stored Bet365 rows remain readable.
+- **Totals back for tour-level matches (48b, 2026-10-28).** The Odds API
+  totals (`app.ingest.tennis_totals`, Pinnacle first) restore `total_games`
+  rows for ATP and WTA tour-level matches; Challenger and WTA 125 stay
+  without. Best picks still reads only the configured Odds-API.io books, so
+  priced Total Games picks do not return there; the retired bankroll
+  builder reads any book.
 - **Match totals.** Parsed from the market's main two-sided line, for stored
-  Bet365 rows.
+  Bet365 rows and for The Odds API rows.
 - **Quota floor.** `app.ingest.odds_api` checks the hourly floor before every
   odds batch, so a run that starts at the floor sends none; it exits nonzero
   only when the plan refuses every batch (402/403).
@@ -2351,7 +2391,7 @@ outcomes are driven more by volume.
 
 | Sport | Schedule | Stats / ratings | Odds | Props |
 |---|---|---|---|---|
-| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io (DraftKings and FanDuel, moneyline only) | PrizePicks, DraftKings |
+| Tennis | livetennisapi | TennisAbstract (ELO, rolling and per-match stats, WTA 125); TennisMyLife (ATP, Challenger, qualifying and WTA box-score display gaps, 41a; shadow ELO `tennismylife-elo-v1`, 41b, not served) | Odds-API.io (DraftKings and FanDuel, moneyline only); The Odds API (total games, Pinnacle first, tour-level only, 48b) | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly stats, play-by-play, rosters, injuries, depth charts, snap counts | The Odds API (free plan: us books, Pinnacle via eu from 36a); Odds-API.io (DraftKings and FanDuel; Bet365 from 36a until 2026-10-26) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display snapshots, 42c locally complete) | The Odds API (free plan, game lines only) | PrizePicks |
 | NHL | NHL web API (`api-web.nhle.com`, 45b complete) | NHL stats REST per-game skater and goalie reports (45b); sportsdataverse fallback choice; ESPN injuries/probable goalies (45f implemented; storage activation pending) | Odds-API.io (DraftKings and FanDuel; Bet365 until 2026-10-26) | PrizePicks (45c complete, line-only) |
@@ -2369,7 +2409,9 @@ database and no app code fetches the site.
   2026-10-27); Bet365, sharp books and exchanges are paid only. Bet365 became
   paid-only on 2026-10-26; free keys get a 403. Tennis receives moneylines
   only from both free books.
-- **The Odds API** (`api.the-odds-api.com`, `THE_ODDS_API_KEY`): NFL and NBA,
+- **The Odds API** (`api.the-odds-api.com`, `THE_ODDS_API_KEY`): NFL, NBA and
+  tennis total games (48b: 1 credit per tour-level key with a stored match,
+  usually 1 to 4 a day, stopping below 150 credits so tennis yields first),
   on the **free plan: 500 credits a month**. Event listing is free; odds cost
   one credit per market per region per request. NFL game odds cost about 3
   credits a week, plus about 3 a run for Pinnacle (`eu` region) from 36a;
@@ -3008,10 +3050,7 @@ the request path the same way.
     edited. If 48b or 48d adds a lasting tennis book or player-prop market,
     §4's data sources should name it.
 
-67. **48b's build-plan line predates the moneyline-only decision.** It asks
-    why DraftKings tennis totals are never stored and suggests FanDuel, but
-    fix `tennis-after-bet365` (2026-10-27) found both send tennis `ML` only
-    on the free plan, and the owner accepted moneyline-only tennis. As
-    written, 48b has no free source, so nearly every totals-based prop stays
-    `no_market_total`. Decide whether 48b becomes a paid-plan or
-    other-provider probe, or is reworded, before `/feature 48b`.
+67. **Resolved (2026-10-28):** 48b probed the free books, confirmed neither
+    sends tennis totals, and with the owner's choice added The Odds API as
+    the tour-level totals source. Challenger and WTA 125 remain without a
+    book total.
