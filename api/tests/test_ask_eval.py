@@ -114,11 +114,18 @@ def test_rejects_non_string_patterns():
 
 
 def test_an_answered_case_must_say_what_tools_it_expects():
-    rejects("nba-slate: an answered case needs expect_tools or expect_no_tools", case(expect_tools=[]))
+    rejects("nba-slate: an answered case needs expect_tools, expect_no_tools or tools_optional", case(expect_tools=[]))
 
 
 def test_rejects_no_tools_with_expected_tools():
     rejects("nba-slate: expect_no_tools conflicts with expect_tools", case(expect_no_tools=True))
+
+
+def test_rejects_tools_optional_conflicts():
+    rejects("nba-slate: tools_optional conflicts with expect_tools", case(tools_optional=True))
+    rejects("nba-slate: tools_optional conflicts with expect_no_tools",
+            case(expect_tools=[], tools_optional=True, expect_no_tools=True))
+    rejects("nba-slate: tools_optional must be true or false", case(expect_tools=[], tools_optional="yes"))
 
 
 SLATE_JSON = '{"tool": "get_slate", "url": "/nba?date=2026-10-28", "data": [{"url": "/nba/game/21265", "spread": -3.5}]}'
@@ -164,6 +171,16 @@ def test_extra_and_out_of_order_calls_never_fail():
 def test_a_forbidden_tool_fails():
     result = evaluate("x", call(), call("get_player", "{}"), forbid_tools=["get_player"])
     assert result.failures == ("forbidden tool get_player called",)
+
+
+def test_tools_optional_passes_with_or_without_calls():
+    [parsed] = parse({"id": "bet-sizing", "question": "q", "tools_optional": True, "forbid_tools": ["get_player"]})
+    assert parsed.tools_optional and parsed.expect_tools == ()
+    assert check_case(parsed, outcome("I can't size bets.")).passed
+    assert check_case(parsed, outcome("x", "answered", call("get_top_props", "{}"))).passed
+    assert check_case(parsed, outcome("x", "answered", call("get_player", "{}"))).failures == (
+        "forbidden tool get_player called",
+    )
 
 
 def test_expect_no_tools_fails_on_any_call():

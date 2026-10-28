@@ -19,7 +19,7 @@ FILE_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CASE_KEYS = frozenset({
     "id", "question", "expect_tools", "forbid_tools", "expect_no_tools",
-    "expect_stop", "must_match", "must_not_match", "notes",
+    "tools_optional", "expect_stop", "must_match", "must_not_match", "notes",
 })
 STOPS: frozenset[str] = frozenset(get_args(AskStop))
 
@@ -41,6 +41,7 @@ class EvalCase:
     expect_tools: tuple[ToolExpectation, ...] = ()
     forbid_tools: tuple[str, ...] = ()
     expect_no_tools: bool = False
+    tools_optional: bool = False
     expect_stop: AskStop = "answered"
     must_match: tuple[str, ...] = ()
     must_not_match: tuple[str, ...] = ()
@@ -96,6 +97,13 @@ def _identity(raw: Mapping[str, object], index: int) -> tuple[str, str]:
     return case_id, question.strip()
 
 
+def _flag(case_id: str, raw: Mapping[str, object], field: str) -> bool:
+    value = raw.get(field, False)
+    if not isinstance(value, bool):
+        raise EvalFileError(f"{case_id}: {field} must be true or false")
+    return value
+
+
 def parse_case(raw: object, index: int, tool_names: Collection[str]) -> EvalCase:
     if not isinstance(raw, dict):
         raise EvalFileError(f"case {index}: must be an object")
@@ -103,22 +111,25 @@ def parse_case(raw: object, index: int, tool_names: Collection[str]) -> EvalCase
     stop = raw.get("expect_stop", "answered")
     if stop not in STOPS:
         raise EvalFileError(f"{case_id}: expect_stop must be one of {', '.join(sorted(STOPS))}")
-    no_tools = raw.get("expect_no_tools", False)
-    if not isinstance(no_tools, bool):
-        raise EvalFileError(f"{case_id}: expect_no_tools must be true or false")
+    no_tools = _flag(case_id, raw, "expect_no_tools")
+    optional = _flag(case_id, raw, "tools_optional")
     notes = raw.get("notes", "")
     if not isinstance(notes, str):
         raise EvalFileError(f"{case_id}: notes must be a string")
     expect = _expectations(case_id, raw.get("expect_tools", []), tool_names)
     if no_tools and expect:
         raise EvalFileError(f"{case_id}: expect_no_tools conflicts with expect_tools")
-    if not expect and not no_tools and stop == "answered":
-        raise EvalFileError(f"{case_id}: an answered case needs expect_tools or expect_no_tools")
+    if optional and expect:
+        raise EvalFileError(f"{case_id}: tools_optional conflicts with expect_tools")
+    if optional and no_tools:
+        raise EvalFileError(f"{case_id}: tools_optional conflicts with expect_no_tools")
+    if not expect and not no_tools and not optional and stop == "answered":
+        raise EvalFileError(f"{case_id}: an answered case needs expect_tools, expect_no_tools or tools_optional")
     forbid = tuple(_tool_name(case_id, "forbid_tools", name, tool_names)
                    for name in _strings(case_id, "forbid_tools", raw.get("forbid_tools", [])))
     return EvalCase(
         id=case_id, question=question, expect_tools=expect, forbid_tools=forbid,
-        expect_no_tools=no_tools, expect_stop=stop,
+        expect_no_tools=no_tools, tools_optional=optional, expect_stop=stop,
         must_match=_patterns(case_id, "must_match", raw.get("must_match", [])),
         must_not_match=_patterns(case_id, "must_not_match", raw.get("must_not_match", [])),
         notes=notes,
