@@ -314,5 +314,5 @@ def test_a_full_sample_reads_its_verdict():
 
     assert lean.verdict == "reject"
     assert lean.verdict_hit_rate == 0.0
-    assert grading.projection_version == "props-v3"
+    assert grading.projection_version == "props-v2"
     assert grading.verdict_sample == 200

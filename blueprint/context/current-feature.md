@@ -87,7 +87,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
 
 ## Build steps
 
-- [ ] **Step 1 - Tennis prop lines carry no tier (API)** - in `_enrich`, stop
+- [x] **Step 1 - Tennis prop lines carry no tier (API)** - in `_enrich`, stop
   assigning `confidence` and delete `_CONF_RANK`, `_MAX_PROP_CONFIDENCE`,
   `_cap_confidence`, `_downgrade_confidence` and the PASS cap. Hard blocks still
   null `recommendation`. Remove `/props/top`, its `_CONF_*`/`_MIN_CONF_MAP` and

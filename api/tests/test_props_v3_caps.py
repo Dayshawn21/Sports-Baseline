@@ -61,8 +61,8 @@ def test_tennis_prop_lines_carry_no_tier(case, stat, line, total, overrides, p_o
     assert row.recommendation == side
 
 
-def test_version_is_props_v3_for_projection_and_tier_rule():
-    assert PROJECTION_VERSION == TIER_RULE_VERSION == "props-v3"
+def test_snapshots_stay_props_v3_and_the_tier_record_is_v2_history():
+    assert (PROJECTION_VERSION, TIER_RULE_VERSION) == ("props-v3", "props-v2")
 
 
 def test_the_tier_ranked_top_props_route_is_gone():
