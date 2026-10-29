@@ -112,7 +112,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   and asserts `confidence is None` with `p_over` and `recommendation` kept, and
   `build_tier_grading` reports `projection_version == "props-v2"`. The report
   test covers the v3 no-tier message.
-- [ ] **Step 3 - Ask check** - the best-picks half of this step moved into
+- [x] **Step 3 - Ask check** - the best-picks half of this step moved into
   Step 1, because nulling `confidence` made `generate_prop_picks` skip every
   line and broke its tests. Check `ask_results`/Ask tools and
   `ask_questions.json` for tennis prop pick assumptions and update them.
