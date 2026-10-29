@@ -62,9 +62,6 @@ def _stub_io(monkeypatch, calls: dict):
     async def opponents(_db, _props):
         return {10: 11}
 
-    async def lookup(_db, _props):
-        return {"lookup": True}
-
     async def totals(_db, _props):
         return {1: MarketTotal(21.5, -110, -110)}
 
@@ -72,8 +69,8 @@ def _stub_io(monkeypatch, calls: dict):
         calls["enrich_args"] = args
         return ["line"]
 
-    def build(pred, all_props, rolling_stats, prop_lines, pair, totals):
-        calls.setdefault("build", []).append((pred.match_id, all_props, prop_lines, pair, totals))
+    def build(pred, all_props, rolling_stats, pair, totals):
+        calls.setdefault("build", []).append((pred.match_id, all_props, pair, totals))
         return _match_picks(pred.match_id, [PICK] if pred.match_id == 1 else [])
 
     monkeypatch.setattr(target, "cached_predictions", predictions)
@@ -83,8 +80,6 @@ def _stub_io(monkeypatch, calls: dict):
     monkeypatch.setattr(target, "get_rolling_stats_batch_all_surfaces", rolling)
     monkeypatch.setattr(target, "build_best_picks", build)
     monkeypatch.setattr(props_router, "_fetch_opponent_ids", opponents)
-    monkeypatch.setattr(props_router, "_fetch_win_probs", lookup)
-    monkeypatch.setattr(props_router, "_fetch_market_win_probs", lookup)
     monkeypatch.setattr(props_router, "_fetch_market_totals", totals)
     monkeypatch.setattr(props_router, "enrich_with", enrich)
 
@@ -100,6 +95,6 @@ def test_orchestration_output_is_unchanged(monkeypatch):
     assert response.model_dump_json() == GOLDEN
     assert calls["dates"] == [TODAY, date(2026, 10, 28)]
     assert calls["rolling_ids"] == [10, 11, 20, 21, 30]
-    assert calls["enrich_args"][0] == [PLAYER_PROP]
-    assert calls["enrich_args"][5] == {1: MarketTotal(21.5, -110, -110)}
-    assert calls["build"][0] == (1, [PLAYER_PROP, ODDS_PROP], ["line"], (10, 11), {1: 21.5})
+    # 48f: PrizePicks lines are never cards, so best picks no longer builds board rows.
+    assert "enrich_args" not in calls
+    assert calls["build"][0] == (1, [PLAYER_PROP, ODDS_PROP], (10, 11), {1: 21.5})

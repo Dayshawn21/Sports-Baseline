@@ -6,12 +6,7 @@ import pytest
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import MarketTotal, enrich_with
-from app.services.tennis.best_picks import (
-    generate_market_odds_picks,
-    generate_ml_pick,
-    generate_prop_picks,
-)
+from app.services.tennis.best_picks import generate_market_odds_picks, generate_ml_pick
 from app.services.tennis.predictor import PredictionOutput
 
 
@@ -200,32 +195,3 @@ def test_priced_picks_carry_ev_pct():
     assert picks
     assert all(p.ev_pct is not None for p in picks)
     assert ml is not None and ml.ev_pct is not None
-
-
-def test_unpriced_picks_leave_ev_pct_none():
-    """A pick with no payout has no honest EV — it must not be given a fabricated one.
-
-    PrizePicks publishes no per-leg odds, so its props reach the generator with
-    p1_odds/p2_odds unset.
-    """
-    prop = Prop(
-        id=3,
-        player_id=10,
-        player_name="Jannik Sinner",
-        match_id=99,
-        source="prizepicks",
-        stat_type="aces",
-        line=Decimal("4.5"),
-        odds_type="standard",
-        fetched_at=datetime(2026, 4, 7, 12, 0, 0),
-        start_time=datetime(2026, 4, 7, 18, 0, 0),
-        p1_odds=None,
-        p2_odds=None,
-        surface="Hard",
-    )
-
-    lines = enrich_with([prop], {(10, 99): 20}, _two_big_servers(), {(10, 99): 0.64}, {}, {99: MarketTotal(22.5)})
-    picks = generate_prop_picks(_prediction(), lines)
-
-    assert picks
-    assert all(p.ev_pct is None for p in picks)

@@ -112,7 +112,7 @@ function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row
       <PairCell pair={row.model} format={pct} />
       <td className="tennis-slate-table__pick"><span>{!row.primaryPick && propPath
         ? <Link to={propPath}>{bestPickText(row)}</Link> : bestPickText(row)}</span></td>
-      <td className={`tennis-slate-table__ev${row.primaryIsBestBet ? ' is-play' : ''}`}>{fmtEv(row.primaryPick ? row.primaryPick.evPct : row.primaryProp?.evPct)}</td>
+      <td className={`tennis-slate-table__ev${row.primaryIsBestBet ? ' is-play' : ''}`}>{fmtEv(row.primaryPick?.evPct)}</td>
       <PairCell pair={row.odds} format={(value) => fmtAmerican(value)} extra />
       {showFlags && <FlagsCell flags={row.flags} />}
     </tr>

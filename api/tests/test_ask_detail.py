@@ -191,12 +191,13 @@ def test_clv_and_tennis_grading_carry_their_baselines():
     tennis = trim_tennis_grading(
         {"model_version": "ensemble-v3", "groups": [{"group": "ATP", "n": 120, "components": [
             {"name": "market"}, {"name": "ensemble", "vs_market": {"mean": -0.00161, "standard_error": 0.0017}}]}]},
-        {"break_even": 0.57737, "verdict_sample": 200, "tiers": [
+        {"break_even": 0.57737, "verdict_sample": 200, "projection_version": "props-v2", "tiers": [
             {"tier": "LOCK", "verdict": "reject", "decided": 220, "hit_rate": 0.527, "standard_error": 0.034}]},
     )
     assert tennis["ensemble_vs_market"][0]["log_loss_vs_market"] == -0.0016
     assert "above zero means worse" in tennis["ensemble_vs_market_label"]
     assert tennis["prop_tiers"][0]["meaning"] == VERDICT_MEANING["reject"]
+    assert tennis["prop_tiers_label"].startswith("retired PrizePicks tier record (props-v2), history only")
 
 
 def test_player_filter_is_rejected_for_tennis_games():

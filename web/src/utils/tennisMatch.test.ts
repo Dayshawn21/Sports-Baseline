@@ -109,7 +109,7 @@ describe('matchProps', () => {
     }
   }
 
-  it('keeps this match only, standard before goblin and demon, then by tier', () => {
+  it('keeps this match only, standard before goblin and demon, then feed order: a stale tier is ignored (48f)', () => {
     const props = [
       prop(1, 5, 'demon', null),
       prop(2, 5, 'standard', 'LEAN'),
@@ -119,7 +119,7 @@ describe('matchProps', () => {
       prop(6, 5, null, null),
     ]
 
-    expect(matchProps(props, 5).map((p) => p.id)).toEqual([5, 2, 6, 4, 1])
+    expect(matchProps(props, 5).map((p) => p.id)).toEqual([2, 5, 6, 1, 4])
   })
 
   it('is empty for a match with no lines', () => {

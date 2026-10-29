@@ -76,24 +76,6 @@ _SUPPORTED_PROJECTION_STATS = {
     "fantasy_score",
     *FIRST_SET_STATS,
 }
-_CONF_RANK = {"PASS": 0, "LEAN": 1, "STRONG": 2, "LOCK": 3}
-# props-v2 lost at every tier, so no tennis prop is LOCK or STRONG until a
-# props-v3 tier verdict adopts one (48a, 48e).
-_MAX_PROP_CONFIDENCE = "LEAN"
-_CONF_BY_RANK = {v: k for k, v in _CONF_RANK.items()}
-
-
-def _cap_confidence(confidence: Optional[str], cap: str) -> Optional[str]:
-    if confidence is None:
-        return None
-    return _CONF_BY_RANK[min(_CONF_RANK.get(confidence, 0), _CONF_RANK[cap])]
-
-
-def _downgrade_confidence(confidence: Optional[str]) -> Optional[str]:
-    if confidence is None:
-        return None
-    return _CONF_BY_RANK[max(0, _CONF_RANK.get(confidence, 0) - 1)]
-
 
 def _deciding_set_probability(win_prob: Optional[float], best_of: int) -> Optional[float]:
     if win_prob is None:
@@ -281,7 +263,7 @@ def _enrich(
         data_quality_flags.append("missing_prediction")
     if stat_norm not in _SUPPORTED_PROJECTION_STATS:
         data_quality_flags.append("unsupported_stat")
-    # New and not yet graded forward (26f): shown, but never above LEAN.
+    # New and not yet graded forward (26f).
     if stat_norm in FIRST_SET_STATS:
         data_quality_flags.append("ungraded_stat")
     if _match_link_method(prop) == "player_date_fallback":
@@ -349,9 +331,7 @@ def _enrich(
             edge_pct = round((stat_avg - line_f) / line_f * 100, 1)
             recommendation = "OVER" if stat_avg >= line_f else "UNDER"
             # PrizePicks demon/goblin are OVER-only bets, so OVER is the only side
-            # there is. Whether it is worth playing is the EV tier's call — this
-            # used to blank the side whenever the projection sat below the line,
-            # which left rows showing a confidence and no direction to act on.
+            # there is, even when the projection sits below the line.
             if (prop.odds_type or "").lower() in ("demon", "goblin"):
                 recommendation = "OVER"
     elif stats is not None:
@@ -359,7 +339,7 @@ def _enrich(
 
     # Poisson probabilities — stat_avg is already per-match count (same scale as line)
     expected = stat_avg if stat_avg is not None else _DEFAULT_EXPECTED.get(stat_norm)
-    p_over = p_under = p_push = confidence = None
+    p_over = p_under = p_push = None
     ev_pct = break_even_pct = hit_probability = None
     if expected is not None and line_f is not None:
         if stat_norm in FIRST_SET_STATS and stats is not None:
@@ -407,7 +387,6 @@ def _enrich(
             source=prop.source,
         )
         if assessment is not None:
-            confidence = assessment.confidence
             ev_pct = assessment.ev_pct
             break_even_pct = round(assessment.break_even_probability * 100.0, 1)
 
@@ -443,9 +422,6 @@ def _enrich(
     else:
         projection_status = "unsupported_stat"
 
-    # The ceiling comes before the missing-input downgrade, so a prop missing
-    # inputs still ranks below a complete one.
-    confidence = _cap_confidence(confidence, _MAX_PROP_CONFIDENCE)
     if is_prizepicks:
         hard_blocks = {
             "missing_player",
@@ -458,14 +434,6 @@ def _enrich(
         }
         if hard_blocks.intersection(data_quality_flags):
             recommendation = None
-            confidence = None
-        if {"stale_stats", "small_sample", "ungraded_stat"}.intersection(data_quality_flags):
-            confidence = _cap_confidence(confidence, "LEAN")
-        for flag in ("missing_opponent_stats", "missing_prediction"):
-            if flag in data_quality_flags:
-                confidence = _downgrade_confidence(confidence)
-    if "no_market_total" in data_quality_flags:
-        confidence = _cap_confidence(confidence, "PASS")
 
     projection_found = stat_avg is not None
     audit = PropAudit(
@@ -498,7 +466,7 @@ def _enrich(
         p_over=round(p_over, 3) if p_over is not None else None,
         p_under=round(p_under, 3) if p_under is not None else None,
         p_push=round(p_push, 3) if p_push is not None else None,
-        confidence=confidence,
+        confidence=None,
         recommendation=recommendation,
         stat_avg=round(stat_avg, 2) if stat_avg is not None else None,
         edge_pct=edge_pct,
@@ -914,52 +882,6 @@ def _audit_summary(props: list[PropLine]) -> PropsAuditSummary:
         small_sample_count=sum(1 for p in props if has("small_sample", p)),
         top_flagged_examples=flagged[:10],
     )
-
-
-_CONF_TIERS = {"LOCK", "STRONG", "LEAN"}
-_CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0}
-_MIN_CONF_MAP = {
-    "LOCK": {"LOCK"},
-    "STRONG": {"LOCK", "STRONG"},
-    "LEAN": {"LOCK", "STRONG", "LEAN"},
-}
-
-
-def _prop_score(prop: PropLine) -> float:
-    """Rank picks by expected value, discounted for a thin sample.
-
-    This used to score `abs(edge_pct)` — a projection delta, not a betting edge —
-    and then apply a per-tier fudge (demon x1.2, goblin x0.85) to compensate for
-    the fact that the delta ignored payout. `ev_pct` accounts for payout directly,
-    so that fudge is gone: reapplying it would double-count the same correction.
-    """
-    if prop.ev_pct is None or prop.confidence not in _CONF_MULT:
-        return 0.0
-    n = prop.matches_count
-    sample_bonus = 1.2 if n and n >= 20 else 1.0 if n and n >= 10 else 0.8 if n and n >= 5 else 0.5
-    return prop.ev_pct * _CONF_MULT[prop.confidence] * sample_bonus
-
-
-@router.get("/top", response_model=PropsResponse)
-async def get_top_props(
-    limit: int = 10,
-    min_confidence: str = "LEAN",
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        keep = _MIN_CONF_MAP.get(min_confidence.upper(), _MIN_CONF_MAP["LEAN"])
-        cap = min(max(limit, 1), 20)
-        props = await get_today_props(db, source="prizepicks")
-        enriched = await _enrich_props(db, props)
-        filtered = [
-            p for p in enriched
-            if p.confidence in keep and p.recommendation is not None
-        ]
-        top = sorted(filtered, key=_prop_score, reverse=True)[:cap]
-        return PropsResponse(source="prizepicks", count=len(top), props=top)
-    except Exception as e:
-        logger.exception("Top props failed")
-        raise HTTPException(status_code=500, detail="Top props are temporarily unavailable.") from e
 
 
 @router.get("/prizepicks/audit", response_model=PropsAuditResponse)

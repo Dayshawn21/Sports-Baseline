@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import type { MatchBestPicks, MatchPrediction, RecentMatchResult } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
 import { moneylineBoardRows, winASetBoardRows } from '~/utils/tennisPropBoard'
-import { fantasyScore, propCard, recentStatBars, startLabel } from '~/utils/tennisPropCards'
+import { decisionOverPct, fantasyScore, propCard, recentStatBars, startLabel } from '~/utils/tennisPropCards'
 
 function row(overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
   return {
     id: 7, playerId: 7, playerName: 'Ben Shelton', matchId: 10, source: 'prizepicks', statType: 'aces', line: '11.5', oddsType: 'standard',
-    fetchedAt: '2026-09-28T10:00:00Z', startTime: '2026-09-29T05:10:00Z', pOver: null, pUnder: null, confidence: 'STRONG', recommendation: 'OVER',
+    fetchedAt: '2026-09-28T10:00:00Z', startTime: '2026-09-29T05:10:00Z', pOver: 0.66, pUnder: 0.34, confidence: null, recommendation: 'OVER',
     statAvg: 13.4, evPct: 14.4, hitProbability: 0.66, breakEvenPct: 57.7, matchesCount: 34, surface: 'Hard', opponentStatAvg: 0.61,
     dataQualityFlags: [], projectionStatus: 'ok', audit: { playerResolved: true, matchLinked: true, statsFresh: true, sampleSize: 34, opponentStatsFound: true, predictionFound: true, projectionFound: true },
     matchup: 'Ben Shelton vs Jakub Mensik', tournament: 'Tokyo', tour: 'ATP',
@@ -40,60 +40,49 @@ describe('propCard', () => {
     expect(propCard(row({ dataQualityFlags: [flag] })).meta).toBe('Ben Shelton vs Jakub Mensik · Tokyo')
   })
 
-  it('shows a standard prop the way the table cells did', () => {
+  it('shows a standard prop gray: projection, gap and P(over) against break-even, no side or tier (48f)', () => {
     const card = propCard(row())
     expect(card).toMatchObject({
       key: 'prizepicks-7', playerName: 'Ben Shelton', meta: 'Ben Shelton vs Jakub Mensik · Tokyo', startText: 'Sep 29, 12:10 AM CT',
-      confidence: 'STRONG', payoutTier: 'standard', isUnder: false, pickLabel: 'OVER', valueLabel: 'Line', valueText: '11.5', unit: 'aces',
-      projectionText: '13.4', hitPct: 66, breakEvenPct: 57.7, breakEvenLabel: 'Break-even 57.7% · standard', evText: '+14.4%', evTone: 'positive',
-      opponentText: 'Opp allows 0.6', trust: 'Ready', source: 'PrizePicks', sampleText: 'n=34',
+      payoutTier: 'standard', isUnder: false, pickLabel: 'Over / under', valueLabel: 'Line', valueText: '11.5', unit: 'aces',
+      projectionText: '13.4', gapText: '+1.9', hitPct: 66, breakEvenPct: 57.7, breakEvenLabel: 'Break-even 57.7% · standard',
+      evText: '+14.4%', evTone: null, opponentText: 'Opp allows 0.6', trust: 'Reference', source: 'PrizePicks', sampleText: 'n=34',
     })
+    expect(card).not.toHaveProperty('confidence')
   })
 
-  it('marks an under so the page keeps side coloring', () => {
+  it('exposes no tier even from a row that still carries one', () => {
+    const card = propCard(row({ confidence: 'LEAN' }))
+    expect(Object.values(card)).not.toContain('LEAN')
+    expect(card.pickLabel).toBe('Over / under')
+  })
+
+  it('reads the gap as projection minus line, with its sign', () => {
+    expect(propCard(row({ statAvg: 6.9, line: '5.5' })).gapText).toBe('+1.4')
+    expect(propCard(row({ statAvg: 3.5, line: '5.0' })).gapText).toBe('-1.5')
+    expect(propCard(row({ statAvg: null })).gapText).toBeNull()
+  })
+
+  it('never marks a PrizePicks under or colors its EV', () => {
     const card = propCard(row({ recommendation: 'UNDER', evPct: -3.25 }))
-    expect(card.isUnder).toBe(true)
-    expect(card.pickLabel).toBe('UNDER')
-    expect(card.evText).toBe('-3.3%')
-    expect(card.evTone).toBe('negative')
+    expect(card).toMatchObject({ isUnder: false, pickLabel: 'Over / under', evText: '-3.3%', evTone: null })
+    expect(propCard(row({ evPct: 40 })).evTone).toBeNull()
   })
 
-  it('colors EV by its sign, not the side', () => {
-    const card = propCard(row({ recommendation: 'OVER', evPct: -41 }))
-    expect(card.isUnder).toBe(false)
-    expect(card.evTone).toBe('negative')
-    expect(propCard(row({ recommendation: 'UNDER', evPct: 5 })).evTone).toBe('positive')
-    expect(propCard(row({ evPct: 0 })).evTone).toBeNull()
+  it('shows a goblin as over only, its P(over) beside the 75.8% goblin break-even', () => {
+    const card = propCard(row({ oddsType: 'goblin', pOver: 0.7, pUnder: 0.25, breakEvenPct: 75.8 }))
+    expect(card).toMatchObject({ pickLabel: 'Over only', payoutTier: 'goblin', breakEvenLabel: 'Break-even 75.8% · goblin', evTone: null })
+    expect(card.hitPct).toBeCloseTo(73.68, 2)
   })
 
-  it.each(['demon', 'goblin'])('labels %s overs as availability, preserving the tier and PASS status', oddsType => {
-    expect(propCard(row({ oddsType, confidence: 'PASS', evPct: 3.5 }))).toMatchObject({
-      pickLabel: 'OVER only', payoutTier: oddsType, confidence: 'PASS', evText: '+3.5%', evTone: null,
-    })
-    expect(propCard(row({ oddsType, confidence: 'STRONG' }))).toMatchObject({
-      pickLabel: 'OVER only', evTone: 'positive',
-    })
+  it('shows a demon as over only too', () => {
+    expect(propCard(row({ oddsType: 'demon', breakEvenPct: 41.3 }))).toMatchObject({ pickLabel: 'Over only', breakEvenLabel: 'Break-even 41.3% · demon' })
   })
 
-  it.each([
-    [3.5, '+3.5%'], [-3.5, '-3.5%'], [0, '+0.0%'], [null, '--'],
-  ] as const)('keeps PASS EV %s neutral without hiding its value', (evPct, evText) => {
-    expect(propCard(row({ confidence: 'PASS', evPct }))).toMatchObject({ evText, evTone: null })
-  })
-
-  it('preserves directions for standard, priced-book, missing and under rows', () => {
-    expect(propCard(row({ confidence: 'PASS' })).pickLabel).toBe('OVER')
-    expect(propCard(row({ source: 'draftkings', oddsType: 'demon' })).pickLabel).toBe('OVER')
-    expect(propCard(row({ oddsType: 'demon', recommendation: null })).pickLabel).toBe('--')
-    expect(propCard(row({ oddsType: 'demon', recommendation: 'UNDER' })).pickLabel).toBe('UNDER')
-  })
-
-  it('carries the demon and goblin payout tiers, and none for priced books', () => {
-    expect(propCard(row({ oddsType: 'demon' })).payoutTier).toBe('demon')
-    expect(propCard(row({ oddsType: 'goblin' })).breakEvenLabel).toBe('Break-even 57.7% · goblin')
-    const dk = propCard(row({ source: 'draftkings' }))
-    expect(dk.payoutTier).toBeNull()
-    expect(dk.breakEvenLabel).toBe('Break-even 57.7%')
+  it('keeps a priced book row on its own side, colored by EV', () => {
+    const dk = propCard(row({ source: 'draftkings', recommendation: 'UNDER', evPct: 5 }))
+    expect(dk).toMatchObject({ payoutTier: null, pickLabel: 'UNDER', isUnder: true, evTone: 'positive', breakEvenLabel: 'Break-even 57.7%' })
+    expect(dk.hitPct).toBe(66)
   })
 
   it('shows a moneyline row as signed odds against the market probability, with no pick or EV', () => {
@@ -103,7 +92,7 @@ describe('propCard', () => {
       hitPct: 57.8, source: 'Market odds', sampleText: '--', flags: ['small_sample'],
     })
     expect(card.breakEvenLabel).toMatch(/^Market \d+\.\d%$/)
-    expect(card).toMatchObject({ evText: '--', evTone: null, confidence: null, trust: 'Review' })
+    expect(card).toMatchObject({ evText: '--', evTone: null, gapText: null, trust: 'Review' })
   })
 
   it('shows a win-a-set row as the confidence, unpriced, with no bar', () => {
@@ -120,15 +109,15 @@ describe('propCard', () => {
     expect(propCard(boardRow({ ...winASetBoardRows([picks])[0], confidence: null })).pickLabel).toBe('MODEL')
   })
 
-  it('leaves out the bar when hit probability or break-even is missing', () => {
-    expect(propCard(row({ hitProbability: null })).hitPct).toBeNull()
+  it('leaves out the bar when P(over) or break-even is missing', () => {
+    expect(propCard(row({ pOver: null })).hitPct).toBeNull()
     const card = propCard(row({ breakEvenPct: null }))
     expect(card.breakEvenPct).toBeNull()
     expect(card.breakEvenLabel).toBeNull()
   })
 
   it('clamps hit and break-even percentages to 0-100', () => {
-    const card = propCard(row({ hitProbability: 1.2, breakEvenPct: -4 }))
+    const card = propCard(row({ source: 'draftkings', hitProbability: 1.2, breakEvenPct: -4 }))
     expect(card.hitPct).toBe(100)
     expect(card.breakEvenPct).toBe(0)
   })
@@ -139,6 +128,18 @@ describe('propCard', () => {
       flags: ['small_sample', 'ungraded_stat'], playerName: 'Unknown player', meta: 'ATP · Hard', valueText: '--',
       projectionText: '--', evText: '--', evTone: null, opponentText: null, sampleText: '--',
     })
+  })
+})
+
+describe('decisionOverPct', () => {
+  it('excludes pushes from P(over)', () => {
+    expect(decisionOverPct({ pOver: 0.45, pUnder: 0.45 })).toBe(50)
+    expect(decisionOverPct({ pOver: 0.6, pUnder: 0.4 })).toBeCloseTo(60)
+  })
+
+  it('is null without both sides', () => {
+    expect(decisionOverPct({ pOver: null, pUnder: 0.4 })).toBeNull()
+    expect(decisionOverPct({ pOver: 0, pUnder: 0 })).toBeNull()
   })
 })
 

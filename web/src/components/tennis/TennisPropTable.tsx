@@ -9,11 +9,12 @@ import '~/components/shared/prop-table.css'
 import '~/components/tennis/tennis-slate.css'
 import './tennis-prop-table.css'
 
-const OTHER_LINES_NOTE = 'Excluded from ranking. These may be unpriced, have no positive EV, or have missing, stale, unsupported, or thin-sample data. View evidence for each line\'s context.'
+const OTHER_LINES_NOTE = 'Not rated. These are unpriced, ungraded, or have missing, stale, unsupported or thin-sample data. View evidence for each line\'s context.'
 
+/** Tennis lines are gray and unranked (48f): a row is rated or for review, never numbered. */
 export interface TennisPropTableRow {
   row: TennisBoardLine
-  rank: number | null
+  rated: boolean
 }
 
 function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardModel, selected: boolean, onOpen: () => void, matchPath: string | null }) {
@@ -30,7 +31,8 @@ function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardMod
 }
 
 function Line({ card }: { card: TennisPropCardModel }) {
-  const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  // A PrizePicks row names its playable sides, not a pick, so it stays gray (48f).
+  const side = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
   const payout = card.payoutTier ? ` · ${card.payoutTier}` : ''
   return <>
     <span className={`tennis-prop-table__pick${side}`}>{card.pickLabel}</span>{' '}
@@ -53,7 +55,7 @@ function HitAgainstBreakEven({ card }: { card: TennisPropCardModel }) {
 
 function Trust({ card }: { card: TennisPropCardModel }) {
   return <>
-    <span className="tennis-prop-table__mobile-tier">{card.confidence ?? '--'} · </span>
+    <span className="tennis-prop-table__mobile-gap">{card.gapText ?? '--'} · </span>
     <span className={`tennis-prop-table__trust${card.flags.length ? ' is-flagged' : ''}`}>{card.trust}</span>
     <Tooltip title={card.flags.length ? card.flags.join(' · ') : 'No quality notes'}>
       <small>{card.sampleText}</small>
@@ -61,27 +63,26 @@ function Trust({ card }: { card: TennisPropCardModel }) {
   </>
 }
 
-function PropRow({ item: { row, rank }, selected, onOpen, showMatchLinks }: { item: TennisPropTableRow, selected: boolean, onOpen: (row: TennisBoardLine) => void, showMatchLinks: boolean }) {
+function PropRow({ item: { row, rated }, selected, onOpen, showMatchLinks }: { item: TennisPropTableRow, selected: boolean, onOpen: (row: TennisBoardLine) => void, showMatchLinks: boolean }) {
   const card = propCard(row)
-  const classes = ['is-row', selected && 'is-selected', rank === null && 'is-dim'].filter(Boolean).join(' ')
+  const classes = ['is-row', selected && 'is-selected', !rated && 'is-dim'].filter(Boolean).join(' ')
   const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button, a'))) onOpen(row) }
   return <tr className={classes} onClick={open}>
-    <td className="prop-table__lead prop-table__rank">{rank === null ? '--' : `#${rank}`}</td>
     <td className="prop-table__player"><Player card={card} selected={selected} onOpen={() => onOpen(row)} matchPath={showMatchLinks ? propMatchPath(row) : null} /></td>
     <td className="tennis-prop-table__line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionText}</td>
-    <td className="tennis-prop-table__hit" data-label="hit"><HitAgainstBreakEven card={card} /></td>
+    <td className="is-num tennis-prop-table__gap" data-label="gap">{card.gapText ?? '--'}</td>
+    <td className="tennis-prop-table__hit" data-label="P(over)"><HitAgainstBreakEven card={card} /></td>
     <td className={`prop-table__end is-num tennis-prop-table__ev${card.evTone ? ` is-${card.evTone}` : ''}`} data-label="EV">{card.evText}</td>
-    <td className="tennis-prop-table__tier" data-label="tier">{card.confidence ?? '--'}</td>
     <td><Trust card={card} /><button type="button" className="tennis-prop-text-action tennis-prop-table__evidence" aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}, ${row.statType.replaceAll('_', ' ')}, ${card.valueText}`} onClick={() => onOpen(row)}>View evidence</button></td>
   </tr>
 }
 
 const COLUMNS: Array<[string, ReactNode]> = [
-  ['rank', '#'], ['player', 'Player'], ['line', 'Line'], ['model', 'Model'],
-  ['hit', 'Hit / BE'], ['ev', 'EV'], ['tier', 'Tier'], ['trust', 'Trust'],
+  ['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'],
+  ['hit', 'P(over) / BE'], ['ev', 'EV'], ['trust', 'Trust'],
 ]
-const NUMERIC = new Set(['model', 'ev'])
+const NUMERIC = new Set(['model', 'gap', 'ev'])
 
 interface Props {
   showMatchLinks?: boolean
@@ -93,7 +94,7 @@ interface Props {
   onOpen: (row: TennisBoardLine) => void
 }
 
-/** One market's tennis lines in the board's existing rank order. */
+/** One market's tennis lines in board order: rated lines, then lines for review. */
 export function TennisPropTable({ category, rateable, other, selectedId, onOpen, tableId = 'tennis-prop-lines', showMatchLinks = true }: Props) {
   const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} selected={item.row.id === selectedId} onOpen={onOpen} showMatchLinks={showMatchLinks} />
   return <table id={tableId} className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
@@ -101,7 +102,7 @@ export function TennisPropTable({ category, rateable, other, selectedId, onOpen,
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>
       {rateable.map(renderRow)}
-      {other.length > 0 && <tr className="prop-table__divider"><td colSpan={COLUMNS.length}><strong>Reference lines</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
+      {other.length > 0 && <tr className="prop-table__divider"><td colSpan={COLUMNS.length}><strong>Lines for review</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
       {other.map(renderRow)}
     </tbody>
   </table>

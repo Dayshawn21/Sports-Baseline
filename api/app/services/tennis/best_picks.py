@@ -3,7 +3,7 @@ Best-picks generator: for each matchup, score all available angles and return th
 
 Pick sources:
  1. Moneyline value — ensemble prob vs market odds (EV / Kelly edge)
- 2. Prop-line edges — aces, break points, total games, etc. (Poisson + rolling stats)
+ 2. Book-priced Total Games and Game Spread lines (PrizePicks lines are never picks, 48f)
  3. Derived picks — 2-0 sweep, match goes 3 sets, underdog wins a set (from win prob math)
 """
 
@@ -19,10 +19,8 @@ from app.core.odds import american_to_prob, devig_two_way
 from app.core.poisson import confidence_tier
 from app.core.prop_probs import total_games_probs
 from app.core.prop_projection import compute_stat_avg as _compute_stat_avg
-from app.core.tennis_first_set import FIRST_SET_STATS
 from app.core.tennis_sets import set_outcomes
 from app.repositories.players import PlayerRollingStats
-from app.schemas.props import PropLine
 from app.services.tennis.predictor import PredictionOutput
 
 # 26d's holdout: betting the served blend's moneyline gaps at the close lost
@@ -31,20 +29,6 @@ MONEYLINE_PICKS_ENABLED = False
 
 # Confidence multiplier for scoring
 _CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0, "PASS": 0.3}
-
-STAT_LABELS = {
-    "aces": "Aces",
-    "double_faults": "Double Faults",
-    "total_games": "Total Games",
-    "total_games_won": "Games Won",
-    "break_points_converted": "Break Points",
-    "break_points_won": "Break Points Won",
-    "fantasy_score": "Fantasy Score",
-    "total_sets": "Total Sets",
-    "total_tie_breaks": "Tie Breaks",
-    "game_spread": "Game Spread",
-    "set_handicap": "Set Handicap",
-}
 
 
 @dataclass
@@ -202,67 +186,6 @@ def _pick_stats_for_player(
     if surface_stats is not None and (surface_stats.matches_count or 0) >= 10:
         return surface_stats
     return all_stats.get((player_id, None))
-
-
-def generate_prop_picks(pred: PredictionOutput, prop_lines: list[PropLine]) -> list[BestPick]:
-    """Prop picks from the board's own assessment of each line (`_enrich`).
-
-    Side, hit probability, tier and flags are read, never recomputed, so a card
-    cannot outrank the board row or the props-v3 snapshot it came from.
-    """
-    picks: list[BestPick] = []
-
-    for line in prop_lines:
-        if line.match_id != pred.match_id or line.line is None:
-            continue
-        if line.recommendation is None or line.confidence in (None, "PASS"):
-            continue
-        stat_key = line.stat_type.strip().lower().replace(" ", "_")
-        # Ungraded (16e): the props page caps them at LEAN, so they are no best pick.
-        if stat_key in FIRST_SET_STATS:
-            continue
-        if line.hit_probability is None or line.stat_avg is None or line.edge_pct is None:
-            continue
-
-        line_f = float(line.line)
-        direction = line.recommendation
-        prob = line.hit_probability
-        stat_label = STAT_LABELS.get(stat_key, line.stat_type)
-        player_last = (line.player_name or "").split()[-1] if line.player_name else "Unknown"
-
-        avg_word = "projects for" if stat_key in ("fantasy_score", "total_games_won", "games_won") else "averages"
-        reasoning = (
-            f"{player_last} {avg_word} {line.stat_avg:.1f} {stat_label.lower()} vs {line_f:.1f} line — "
-            f"{prob:.0%} probability {direction.lower()}"
-        )
-        if line.matches_count and line.matches_count < 10:
-            reasoning += " (small sample)"
-
-        # Only a real book price earns an EV here. The board's PrizePicks EV is
-        # against assumed payouts, which the card has always shown as unpriced.
-        pick_odds = line.p1_odds if direction == "OVER" else line.p2_odds
-        ev_pct = line.ev_pct if pick_odds is not None else None
-        kelly = compute_kelly_fraction(prob, pick_odds) if pick_odds is not None else None
-
-        picks.append(BestPick(
-            pick_type="prop",
-            label=stat_label,
-            pick=f"{player_last} {stat_label} {direction} {line_f:.1f}",
-            player_name=line.player_name,
-            edge_pct=line.edge_pct,
-            confidence=line.confidence,
-            reasoning=reasoning,
-            odds_american=pick_odds,
-            ev_pct=ev_pct,
-            model_prob=round(prob, 4),
-            market_prob=None,
-            kelly_fraction=round(kelly, 4) if kelly is not None else None,
-            data_quality_flags=tuple(line.data_quality_flags),
-            odds_source="posted" if pick_odds is not None else "unpriced",
-            score=_score_pick(ev_pct if ev_pct is not None else line.edge_pct, line.confidence, line.matches_count),
-        ))
-
-    return picks
 
 
 def generate_market_odds_picks(
@@ -714,7 +637,6 @@ def build_best_picks(
     pred: PredictionOutput,
     props: list,
     rolling_stats: dict,
-    prop_lines: list[PropLine] | None = None,
     match_player_ids: tuple[Optional[int], Optional[int]] | None = None,
     market_total_games_map: dict | None = None,
 ) -> MatchBestPicks:
@@ -738,8 +660,7 @@ def build_best_picks(
 
     # Bucket B: Prop picks (top 3 by score)
     prop_picks: list[BestPick] = sorted(
-        generate_prop_picks(pred, prop_lines or [])
-        + generate_market_odds_picks(pred, props, rolling_stats, match_player_ids, market_total_games_map),
+        generate_market_odds_picks(pred, props, rolling_stats, match_player_ids, market_total_games_map),
         key=lambda p: p.score,
         reverse=True,
     )[:3]

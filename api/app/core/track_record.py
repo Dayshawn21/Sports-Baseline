@@ -1,4 +1,4 @@
-"""Color rules for the model track record pages, and the tennis tier verdict rule.
+"""Color rules for the model track record pages, and the retired tennis tier verdict rule.
 
 Shared by tennis (32b) and NFL (33d). A number earns a signal color only when it
 clears its baseline by more than two standard errors. The tier rule was fixed on
@@ -21,9 +21,9 @@ Verdict = Literal["accruing", "pass", "reject"]
 
 SIGNAL_SE_MULTIPLE = 2.0
 
-# Re-registered unchanged for props-v3 (48a) before any v3 snapshot existed.
-# The props-v2 verdict stays readable with the snapshot CLI's --version.
-TIER_RULE_VERSION = "props-v3"
+# History only: tennis props carry no tier since 48f (2026-10-28), so the 48a
+# re-registration for props-v3 was withdrawn before any v3 row was graded by it.
+TIER_RULE_VERSION = "props-v2"
 TIER_RULE_TIERS = ("LOCK", "STRONG", "LEAN")
 TIER_VERDICT_SAMPLE = 200
 # Box-score stats settle after the next day's refetch (26e), so a snapshot day

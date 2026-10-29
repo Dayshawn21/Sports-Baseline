@@ -12,7 +12,6 @@ from app.repositories.props import Prop
 from app.routers.props import MarketTotal, enrich_with
 from app.services.tennis import best_picks
 from app.services.tennis.best_picks import BestPick, generate_ml_pick
-from app.services.tennis.best_picks import generate_prop_picks
 
 
 def _pred(**overrides):
@@ -90,7 +89,6 @@ def _stats(player_id: int) -> PlayerRollingStats:
 
 
 def test_bo5_games_won_prop_uses_match_format():
-    pred = _pred(best_of=5, p1_win_prob=0.74, p2_win_prob=0.26)
     prop = Prop(
         id=1,
         player_id=2,
@@ -114,12 +112,8 @@ def test_bo5_games_won_prop_uses_match_format():
         {},
         {1: MarketTotal(38.5)},
     )
-    picks = generate_prop_picks(pred, lines)
-
-    tsitsipas_pick = next(pick for pick in picks if "Tsitsipas" in pick.pick)
     # Best-of-3 scaling would read about 8 games; a 38.5 best-of-5 book total reads about 14 (45a).
-    assert "8." not in tsitsipas_pick.reasoning
-    assert tsitsipas_pick.reasoning.startswith("Tsitsipas projects for 14.")
+    assert 14 <= lines[0].stat_avg < 15
 
 
 def _unpriced(label: str, score: float) -> BestPick:
@@ -137,34 +131,11 @@ def test_priced_moneyline_pick_is_never_pushed_out_by_unpriced_picks(monkeypatch
     monkeypatch.setattr(best_picks, "generate_derived_picks", lambda *a, **k: derived)
     monkeypatch.setattr(best_picks, "generate_serve_edge_picks", lambda *a, **k: [])
 
-    result = best_picks.build_best_picks(_pred(start_utc=None), [], {}, {})
+    result = best_picks.build_best_picks(_pred(start_utc=None), [], {})
 
     labels = [p.label for p in result.picks]
     assert labels[0] == "Moneyline"
     assert labels[1:3] == ["Derived 2", "Derived 1"]
-
-
-def test_first_set_props_are_no_best_pick_until_graded():
-    def prop(prop_id: int, stat_type: str) -> Prop:
-        return Prop(
-            id=prop_id, player_id=1, player_name="Player One", match_id=1, source="prizepicks",
-            stat_type=stat_type, line=Decimal("2.5"), odds_type=None,
-            fetched_at=datetime.now(timezone.utc), start_time=None, surface="Hard", best_of=3,
-        )
-
-    lines = enrich_with(
-        [prop(1, "Total Games Won"), prop(2, "1st Set Total Games"), prop(3, "1st Set Total Games Won")],
-        {(1, 1): 2, (2, 1): 1},
-        {(1, "Hard"): _stats(1), (2, "Hard"): _stats(2)},
-        {(1, 1): 0.61, (2, 1): 0.39},
-        {},
-        {1: MarketTotal(22.5)},
-    )
-    picks = generate_prop_picks(_pred(), lines)
-
-    # The games-won control clears its 2.5 line easily, so only the skip keeps the first-set lines out.
-    assert any("Games Won" in pick.pick and "1st Set" not in pick.pick for pick in picks)
-    assert not any("1st Set" in pick.pick or "1st set" in pick.reasoning.lower() for pick in picks)
 
 
 def test_moneyline_picks_off_skips_a_priced_positive_ev_pick(monkeypatch):
@@ -172,7 +143,7 @@ def test_moneyline_picks_off_skips_a_priced_positive_ev_pick(monkeypatch):
     monkeypatch.setattr(best_picks, "generate_derived_picks", lambda *a, **k: [_unpriced("Derived", 1.0)])
     monkeypatch.setattr(best_picks, "generate_serve_edge_picks", lambda *a, **k: [])
 
-    result = best_picks.build_best_picks(_pred(start_utc=None), [], {}, {})
+    result = best_picks.build_best_picks(_pred(start_utc=None), [], {})
 
     assert [p.pick_type for p in result.picks] == ["derived"]
 
@@ -198,8 +169,8 @@ def _parity_stats() -> dict:
     }
 
 
-def _board_and_cards(prop: Prop, stats=None, opponents=None, win_probs=None, totals=None):
-    lines = enrich_with(
+def _board(prop: Prop, stats=None, opponents=None, win_probs=None, totals=None):
+    [line] = enrich_with(
         [prop],
         {(1, 1): 2, (2, 1): 1} if opponents is None else opponents,
         _parity_stats() if stats is None else stats,
@@ -207,17 +178,16 @@ def _board_and_cards(prop: Prop, stats=None, opponents=None, win_probs=None, tot
         {},
         {1: MarketTotal(22.5)} if totals is None else totals,
     )
-    return lines[0], generate_prop_picks(_pred(), lines)
+    return line
 
 
-def _assert_card_is_board_row(board, cards):
-    assert len(cards) == 1
-    card = cards[0]
-    assert card.pick.endswith(f"{board.recommendation} {float(board.line):.1f}")
-    assert card.confidence == board.confidence
-    assert card.model_prob == board.hit_probability
-    assert card.edge_pct == board.edge_pct
-    assert card.data_quality_flags == tuple(board.data_quality_flags)
+def test_prizepicks_lines_are_never_best_picks():
+    """48f: tennis PrizePicks lines are gray and unranked, so no card is built from one."""
+    props = [_parity_prop("Total Games", "21.5"), _parity_prop("Aces", "2.5")]
+
+    result = best_picks.build_best_picks(_pred(), props, _parity_stats(), (1, 2), {})
+
+    assert [p for p in result.picks if p.pick_type == "prop"] == []
 
 
 @pytest.mark.parametrize(
@@ -228,69 +198,24 @@ def _assert_card_is_board_row(board, cards):
         (_parity_prop("Total Sets", "3.5", best_of=5), "bo5_unsupported_stat"),
     ],
 )
-def test_board_hard_blocks_leave_no_card(prop, flag):
-    board, cards = _board_and_cards(prop)
+def test_board_hard_blocks_leave_no_side(prop, flag):
+    board = _board(prop)
 
     assert flag in board.data_quality_flags and board.recommendation is None
-    assert cards == []
+    assert board.confidence is None
 
 
-def test_stale_stats_card_is_capped_like_the_board():
-    stats = _parity_stats()
-    stats[(1, "Hard")] = replace(stats[(1, "Hard")], computed_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+def test_total_games_uses_the_format_aware_probability():
+    board = _board(_parity_prop("Total Games", "25.5"))
 
-    board, cards = _board_and_cards(_parity_prop("Aces", "5.5"), stats=stats)
-
-    assert board.confidence == "LEAN" and "stale_stats" in board.data_quality_flags
-    _assert_card_is_board_row(board, cards)
-
-
-def test_small_sample_card_is_capped_like_the_board():
-    stats = _parity_stats()
-    small = replace(stats.pop((1, "Hard")), matches_count=6, surface=None)
-    stats[(1, None)] = small
-
-    board, cards = _board_and_cards(_parity_prop("Aces", "5.5"), stats=stats)
-
-    assert board.confidence == "LEAN" and "small_sample" in board.data_quality_flags
-    _assert_card_is_board_row(board, cards)
-    assert cards[0].reasoning.endswith("(small sample)")
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "flag"),
-    [({"opponents": {}}, "missing_opponent_stats"), ({"win_probs": {}}, "missing_prediction")],
-)
-def test_missing_input_card_takes_the_boards_downgrade(kwargs, flag):
-    full, _ = _board_and_cards(_parity_prop("Aces", "5.5"))
-    board, cards = _board_and_cards(_parity_prop("Aces", "5.5"), **kwargs)
-
-    # props-v3 caps at LEAN before the downgrade, so a missing input drops to PASS and leaves no card.
-    assert full.confidence == "LEAN"
-    assert board.confidence == "PASS" and flag in board.data_quality_flags
-    assert cards == []
-
-
-def test_total_games_card_uses_the_boards_format_aware_probability():
-    board, cards = _board_and_cards(_parity_prop("Total Games", "25.5"))
-
-    _assert_card_is_board_row(board, cards)
-    assert (board.recommendation, board.confidence) == ("UNDER", "LEAN")
-    # The card's old marginal normal put this UNDER near .67, a tier above the board.
+    assert board.recommendation == "UNDER"
+    # The old marginal normal put this UNDER near .67.
     _, old_under = prop_over_under_probs("Total Games", 25.5, board.stat_avg)
     assert old_under - board.hit_probability > 0.04
 
 
-def test_integer_line_card_is_push_conditioned_like_the_board():
-    board, cards = _board_and_cards(_parity_prop("Total Games", "19"))
+def test_integer_line_is_push_conditioned():
+    board = _board(_parity_prop("Total Games", "19"))
 
     assert board.p_push > 0
     assert board.hit_probability == pytest.approx(board.p_over / (board.p_over + board.p_under), abs=1e-3)
-    _assert_card_is_board_row(board, cards)
-
-
-def test_goblin_below_break_even_is_no_card():
-    board, cards = _board_and_cards(_parity_prop("Aces", "9.5", odds_type="goblin"))
-
-    assert board.confidence == "PASS"
-    assert cards == []

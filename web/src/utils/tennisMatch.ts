@@ -74,15 +74,11 @@ export function isFinished(detail: MatchDetail): boolean {
   return detail.status !== 'scheduled' && detail.status !== 'live'
 }
 
-const TIER_ORDER = ['LOCK', 'STRONG', 'LEAN', 'PASS']
-
 function propRank(prop: PropLine): number {
-  const standard = !prop.oddsType || prop.oddsType === 'standard' ? 0 : 1
-  const tier = prop.confidence ? TIER_ORDER.indexOf(prop.confidence.toUpperCase()) : -1
-  return standard * 10 + (tier === -1 ? TIER_ORDER.length : tier)
+  return !prop.oddsType || prop.oddsType === 'standard' ? 0 : 1
 }
 
-/** A match's prop lines, standard lines first, then by confidence tier, unrated last. */
+/** A match's prop lines, standard lines first, otherwise in feed order: tennis props carry no tier (48f). */
 export function matchProps(props: PropLine[], matchId: number): PropLine[] {
   return props
     .filter((p) => p.matchId === matchId)

@@ -11,8 +11,9 @@ from typing import Literal
 from app.repositories.props import Prop
 from app.schemas.props import PropLine
 
-# Bump on any change to projection, probability, EV or tier logic, so grading
-# never pools tiers produced by different code.
+# Bump on any change to projection, probability or EV logic, so grading never
+# pools P(over) produced by different code. Rows written after 48f carry no
+# confidence; their probabilities match the earlier v3 rows.
 PROJECTION_VERSION = "props-v3"
 SNAPSHOT_ELIGIBILITY_POLICY = "pre-match-v1"
 

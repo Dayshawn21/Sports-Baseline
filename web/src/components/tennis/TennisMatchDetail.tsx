@@ -9,14 +9,16 @@ import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unif
 import { fmtAmerican, fmtPct } from '~/utils/odds'
 import { fmtStartCT, fmtSurface, fmtTournament } from '~/utils/format'
 import { getDisplayFlagLabel, getDisplayFlags } from '~/components/tennis/qualityFlags'
+import { payoutTier } from '~/utils/tennisPropBoard'
+import { decisionOverPct } from '~/utils/tennisPropCards'
 import './tennis-match-detail.css'
 
 const MISSING = '--'
 const BEST_BET = 'Best bet'
 
-/** Gray: no tennis tier has passed the 32b tier rule yet. */
-function ConfidenceTag({ value }: { value: string | null | undefined }) {
-  return <span className="tennis-tier is-neutral">{value ?? 'Review'}</span>
+/** Gray: no tennis tier has passed the 32b tier rule. Prop rows carry no tier at all (48f). */
+function ConfidenceTag({ value }: { value: string }) {
+  return <span className="tennis-tier is-neutral">{value}</span>
 }
 
 /** Green only for a priced best bet's positive EV, the table and digest rule. */
@@ -32,7 +34,7 @@ interface PickItem {
   detail: string
   cells: string[]
   ev: number | null | undefined
-  confidence: string | null | undefined
+  confidence: string | null
 }
 
 function pickItem(pick: BestPick, kind: string, index: number): PickItem {
@@ -47,32 +49,34 @@ function pickItem(pick: BestPick, kind: string, index: number): PickItem {
   }
 }
 
+/** Gray and unranked (48f): projection, gap and P(over) against the payout's break-even, never a side. */
 function propItem(prop: PropLine): PickItem {
-  const line = prop.line == null ? MISSING : Number(prop.line).toFixed(1)
+  const line = prop.line == null ? null : Number(prop.line)
+  const payout = payoutTier(prop)
+  const pOver = decisionOverPct(prop)
+  const gap = line != null && prop.statAvg != null ? ` (${prop.statAvg - line >= 0 ? '+' : ''}${(prop.statAvg - line).toFixed(1)})` : ''
   return {
     key: `prop-${prop.id}`,
     kind: 'Player prop',
     title: `${prop.playerName} · ${prop.statType}`,
-    detail: `${prop.recommendation?.toUpperCase() ?? 'Review'} ${line}`,
-    cells: [`Line ${line}`, `Hit ${fmtPct(prop.hitProbability)}`, `${prop.matchesCount ?? MISSING} match sample`],
+    detail: `Line ${line == null ? MISSING : line.toFixed(1)}${payout ? ` · ${payout}` : ''}`,
+    cells: [
+      `Model ${prop.statAvg == null ? MISSING : prop.statAvg.toFixed(1)}${gap}`,
+      `P(over) ${pOver == null ? MISSING : `${pOver.toFixed(0)}%`} vs ${prop.breakEvenPct == null ? MISSING : `${prop.breakEvenPct.toFixed(1)}%`} BE`,
+      `${prop.matchesCount ?? MISSING} match sample`,
+    ],
     ev: prop.evPct,
-    confidence: prop.confidence,
+    confidence: null,
   }
 }
 
-/**
- * Best bets, then angles, then props: the old decision board's order. With no pick, the
- * highest-EV prop leads, as the old "best opportunity" box showed it.
- */
+/** Best bets, then angles, then props in board order: props are never ranked (48f). */
 function pickItems(match: UnifiedTennisMatch): PickItem[] {
-  const picks = [
+  return [
     ...bestBetPicks(match).map((pick, index) => pickItem(pick, BEST_BET, index)),
     ...anglePicks(match).map((pick, index) => pickItem(pick, 'Angle', index)),
+    ...match.props.map(propItem),
   ]
-  const props = match.props.map(propItem)
-  if (picks.length > 0 || props.length < 2) return [...picks, ...props]
-  const top = props.reduce((best, item) => ((item.ev ?? Number.NEGATIVE_INFINITY) > (best.ev ?? Number.NEGATIVE_INFINITY) ? item : best))
-  return [top, ...props.filter((item) => item !== top)]
 }
 
 function Picks({ items }: { items: PickItem[] }) {
@@ -88,7 +92,7 @@ function Picks({ items }: { items: PickItem[] }) {
           <div className="tennis-detail__cells">
             {item.cells.map((cell, index) => <span key={index}>{cell}</span>)}
             <span className={evClass(item)}>{fmtEv(item.ev)}</span>
-            <ConfidenceTag value={item.confidence} />
+            {item.confidence && <ConfidenceTag value={item.confidence} />}
           </div>
         </div>
       ))}

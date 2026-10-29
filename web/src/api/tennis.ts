@@ -26,13 +26,6 @@ export async function fetchDKProps(): Promise<PropsResponse> {
   return data
 }
 
-export async function fetchTopProps(limit = 10, minConfidence = 'LEAN'): Promise<PropsResponse> {
-  const { data } = await client.get<PropsResponse>('/tennis/props/top', {
-    params: { limit, min_confidence: minConfidence },
-  })
-  return data
-}
-
 export async function fetchBestPicks(params?: {
   date?: string
   tour?: string
