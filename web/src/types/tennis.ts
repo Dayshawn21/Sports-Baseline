@@ -33,6 +33,16 @@ export interface PredictionsResponse {
   matches: MatchPrediction[]
 }
 
+/** A line whose slice 48e's forward check adopted, so it is ranked and colored (48g). */
+export interface AdoptedPick {
+  side: 'over' | 'under'
+  probability: number   // push-excluded P(side)
+  breakEven: number
+  margin: number        // probability - breakEven, the ranking key
+  rule: string
+  projectionVersion: string
+}
+
 export interface PropLine {
   id: number
   playerId: number | null
@@ -78,6 +88,7 @@ export interface PropLine {
     projectionFound: boolean
     matchLinkMethod?: string | null
   } | null
+  adoptedPick?: AdoptedPick | null
 }
 
 export interface PlayerStats {

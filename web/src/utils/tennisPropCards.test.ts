@@ -51,6 +51,17 @@ describe('propCard', () => {
     expect(card).not.toHaveProperty('confidence')
   })
 
+  it('gives an unadopted card no side label and no signal (48g)', () => {
+    expect(propCard(row())).toMatchObject({ adopted: false, marginText: null, pickLabel: 'Over / under', evTone: null })
+    expect(propCard(row({ oddsType: 'goblin' }))).toMatchObject({ adopted: false, pickLabel: 'Over only' })
+  })
+
+  it('names the side and margin of an adopted line (48g, synthetic slice)', () => {
+    const adoptedPick = { side: 'under' as const, probability: 0.642, breakEven: 0.577, margin: 0.065, rule: 'tennis-props-check-v1', projectionVersion: 'props-v3' }
+    const card = propCard(row({ adoptedPick }))
+    expect(card).toMatchObject({ adopted: true, pickLabel: 'UNDER', marginText: '+6.5 pts vs break-even', trust: 'Pick', isUnder: false })
+  })
+
   it('exposes no tier even from a row that still carries one', () => {
     const card = propCard(row({ confidence: 'LEAN' }))
     expect(Object.values(card)).not.toContain('LEAN')

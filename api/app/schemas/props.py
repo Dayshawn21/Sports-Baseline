@@ -35,6 +35,17 @@ class PropsAuditSummary(_CamelModel):
     top_flagged_examples: list[str]
 
 
+class AdoptedPick(_CamelModel):
+    """A line whose slice 48e's forward check adopted, so it may be ranked (48g)."""
+
+    side: str                  # "over" | "under"
+    probability: float         # push-excluded P(side)
+    break_even: float
+    margin: float              # probability - break_even, the ranking key
+    rule: str
+    projection_version: str
+
+
 class PropLine(_CamelModel):
     id: int
     player_id: Optional[int]
@@ -74,6 +85,7 @@ class PropLine(_CamelModel):
     data_quality_flags: list[str] = Field(default_factory=list)
     projection_status: str = "ok"
     audit: Optional[PropAudit] = None
+    adopted_pick: Optional[AdoptedPick] = None  # null unless 48e adopted the line's slice; never snapshotted
 
 
 class PropsResponse(_CamelModel):

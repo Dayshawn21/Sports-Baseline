@@ -52,7 +52,7 @@ function pair(p1: number | null | undefined, p2?: number | null): Pair | null {
   return [p1, p2 ?? 1 - p1]
 }
 
-// The card's first line in board order, never the highest-EV one: tennis props are unranked (48f).
+// The card's first line in board order, never the highest-EV one: only adopted props are ranked (48f, 48g).
 function firstProp(match: UnifiedTennisMatch): PropLine | null {
   return match.props[0] ?? null
 }

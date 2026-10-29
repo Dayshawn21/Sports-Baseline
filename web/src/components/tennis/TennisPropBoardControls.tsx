@@ -9,7 +9,7 @@ export function PropBoardHead({ lines, rateable, markets }: { lines: number, rat
     meta="Next 24 hours"
     stats={<section className="tennis-prop-summary" aria-label="Prop board summary">
       <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Available lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">rated + review</span></div>
-      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rated lines</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">gray, unranked · {markets} markets</span></div>
+      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rated lines</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">ranked only if adopted · {markets} markets</span></div>
     </section>}
   />
 }

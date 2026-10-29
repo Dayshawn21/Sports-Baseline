@@ -1,6 +1,6 @@
 # Tennis GitHub Actions
 
-Tennis uses seven workflow files, with the same UTC schedules and ingest commands
+Tennis uses eight workflow files, with the same UTC schedules and ingest commands
 as the previous combined workflow. This split is implemented locally; GitHub
 registration and runner behavior require a separately approved merge/push and
 remote verification. It does not reduce API usage or change provider limits.
@@ -14,6 +14,7 @@ remote verification. It does not reduce API usage or change provider limits.
 | Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30 | `predictions` or `tennis-elo-comparison` |
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
 | Tennis Player Stats | `tennis-player-stats.yml` | Daily 10:00 | Run directly |
+| Tennis Prop Adoption | `tennis-prop-adoption.yml` | None (manual, 48g) | `version`, `dry_run` (default true) |
 
 Game Odds requests DraftKings and FanDuel from Odds-API.io. Since Bet365 went
 paid-only (2026-10-26), both free books send tennis moneylines only, so the

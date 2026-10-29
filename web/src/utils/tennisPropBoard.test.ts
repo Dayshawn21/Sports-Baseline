@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
+import type { AdoptedPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
 import { buildTennisPropBoard, compareLines, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
@@ -137,6 +137,54 @@ describe('buildTennisPropBoard', () => {
     const [category] = buildTennisPropBoard(rows, [prediction], 'all')
     expect(category.rateable).toEqual([])
     expect(category.other).toHaveLength(2)
+  })
+})
+
+// Synthetic: no real slice has been adopted.
+function adopted(margin: number, side: AdoptedPick['side'] = 'over'): AdoptedPick {
+  return { side, probability: .577 + margin, breakEven: .577, margin, rule: 'tennis-props-check-v1', projectionVersion: 'props-v3' }
+}
+
+describe('adopted lines (48g)', () => {
+  const lines = () => [
+    prop(1, { startTime: '2026-09-21T18:00:00Z', evPct: 45, pOver: .9, pUnder: .1 }),
+    prop(2, { startTime: '2026-09-21T14:00:00Z', evPct: -20, pOver: .3, pUnder: .7 }),
+    prop(3, { startTime: '2026-09-21T16:00:00Z', evPct: 11 }),
+  ]
+
+  it('leaves the 48f order untouched when nothing is adopted', () => {
+    const plain = buildTennisPropBoard(lines(), [prediction], 'all')
+    const withNulls = buildTennisPropBoard(lines().map(line => ({ ...line, adoptedPick: null })), [prediction], 'all')
+    expect(plain[0].rateable.map(line => line.id)).toEqual([2, 3, 1])
+    expect(withNulls[0].rateable.map(line => line.id)).toEqual([2, 3, 1])
+  })
+
+  it('ranks an adopted line ahead of earlier unadopted ones', () => {
+    const [first, second, third] = lines()
+    const board = buildTennisPropBoard([{ ...first, adoptedPick: adopted(.05) }, second, third], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([1, 2, 3])
+  })
+
+  it('orders adopted lines by margin over break-even', () => {
+    const [first, second, third] = lines()
+    const board = buildTennisPropBoard([
+      { ...first, adoptedPick: adopted(.04) }, { ...second, adoptedPick: adopted(.09, 'under') }, third,
+    ], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([2, 1, 3])
+  })
+
+  it('puts an adopted goblin on the board even with alternates hidden', () => {
+    const board = buildTennisPropBoard([
+      prop(1, { oddsType: 'goblin', adoptedPick: adopted(.06) }),
+      prop(2, { oddsType: 'goblin' }),
+    ], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([1])
+    expect(board[0].other).toEqual([])
+  })
+
+  it('reads Pick only when adopted', () => {
+    expect(trustLabel(prop(1, { adoptedPick: adopted(.05) }))).toBe('Pick')
+    expect(trustLabel(prop(1))).toBe('Reference')
   })
 })
 

@@ -77,13 +77,15 @@ function RecentBars({ row, players }: { row: TennisBoardLine, players: PlayerRec
 
 function LineSummary({ row }: { row: TennisBoardLine }) {
   const card = propCard(row)
-  const side = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  const unadopted = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  const side = card.adopted ? '' : unadopted
   return <>
     <p>{row.matchup ?? 'Match unavailable'}</p>
     <p>{card.startText}</p>
     <div className="tennis-prop-evidence__summary">
       <span className={`tennis-prop-evidence__pick${side}`}>{card.pickLabel}</span>
       <b>{card.valueText}</b>
+      {card.marginText && <span className="tennis-prop-evidence__margin">{card.marginText}</span>}
       {card.evText !== '--' && <span className={`tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>{card.evText} EV</span>}
     </div>
   </>

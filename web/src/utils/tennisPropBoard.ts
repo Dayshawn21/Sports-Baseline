@@ -248,7 +248,13 @@ export function isTennisRateable(line: PropLine): boolean {
     && line.audit?.matchLinked !== false
 }
 
+/** True only on a line 48e's forward check adopted; nothing else is ranked or colored. */
+export function isAdopted(line: Pick<PropLine, 'adoptedPick'>): boolean {
+  return line.adoptedPick != null
+}
+
 export function trustLabel(line: PropLine): string {
+  if (isAdopted(line)) return 'Pick'
   return isTennisRateable(line) ? 'Reference' : 'Review'
 }
 
@@ -273,9 +279,17 @@ function startMs(line: Pick<PropLine, 'startTime'>): number {
   return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
 }
 
-// Unranked: no slice is adopted (48e, 48g), so lines read in start order, never
-// by EV or probability. Win a Set is a derived match angle and keeps its order.
+// Only adopted lines are ranked, by margin over break-even (48g). Every other
+// line reads in start order, never by EV or probability. Win a Set is a
+// derived match angle and keeps its order.
 export function compareLines(left: PropLine, right: PropLine): number {
+  const leftMargin = left.adoptedPick?.margin
+  const rightMargin = right.adoptedPick?.margin
+  if (leftMargin != null || rightMargin != null) {
+    if (leftMargin == null) return 1
+    if (rightMargin == null) return -1
+    if (rightMargin !== leftMargin) return rightMargin - leftMargin
+  }
   if (isWinASet(left) && isWinASet(right)) {
     const probability = (right.hitProbability ?? Number.NEGATIVE_INFINITY) - (left.hitProbability ?? Number.NEGATIVE_INFINITY)
     if (probability !== 0) return probability
@@ -288,7 +302,7 @@ export function compareLines(left: PropLine, right: PropLine): number {
 }
 
 export function enrichTennisPropLines(props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, includeAlternates = false): TennisBoardLine[] {
-  return props.filter(line => sourceMatches(line, source) && (includeAlternates || !isGoblin(line))).map(line => {
+  return props.filter(line => sourceMatches(line, source) && (includeAlternates || !isGoblin(line) || isAdopted(line))).map(line => {
     const match = findPrediction(line, predictions)
     const opponent = match && normalized(match.p1Name) === normalized(line.playerName)
       ? match.p2Name
@@ -306,6 +320,11 @@ export function enrichTennisPropLines(props: PropLine[], predictions: MatchPredi
   })
 }
 
+// An adopted goblin is a pick, so it leaves the alternates bucket.
+function isBoardRateable(line: PropLine): boolean {
+  return isAdopted(line) || (!isGoblin(line) && isTennisRateable(line))
+}
+
 export function buildTennisPropBoard(
   props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, tour: TennisTourFilter = 'all', includeAlternates = false,
 ): TennisBoardCategory[] {
@@ -319,7 +338,7 @@ export function buildTennisPropBoard(
     .map(([market, lines]) => ({
       market,
       label: marketLabel(market),
-      rateable: lines.filter(line => !isGoblin(line) && isTennisRateable(line)).sort(compareLines),
-      other: lines.filter(line => isGoblin(line) || !isTennisRateable(line)).sort(compareLines),
+      rateable: lines.filter(isBoardRateable).sort(compareLines),
+      other: lines.filter(line => !isBoardRateable(line)).sort(compareLines),
     }))
 }

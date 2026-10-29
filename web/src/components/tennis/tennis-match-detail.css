@@ -141,6 +141,12 @@
   color: var(--positive);
 }
 
+/* Green only on a prop whose slice 48e adopted (48g). */
+.tennis-detail__adopted {
+  color: var(--positive);
+  font-weight: 700;
+}
+
 .tennis-detail__cells .tennis-tier {
   margin-left: auto;
 }

@@ -126,6 +126,10 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
 - Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
   [--version props-v3] [--as-of YYYY-MM-DD]` (read-only; the first real run
   needs a separate yes in chat)
+- Tennis prop adoption (48g): `python -m app.ingest.tennis_prop_adoption
+  [--version props-v3] [--as-of YYYY-MM-DD] [--dry-run]` (stores the adopted
+  slices the props page ranks; the first real run, dry run included, needs a
+  separate yes in chat)
 - NFL schedule + stats: `python -m app.ingest.nflverse --season 2024`
 - NFL props: `python -m app.ingest.prizepicks_nfl [--relink]`
 - NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14 [--dry-run]`

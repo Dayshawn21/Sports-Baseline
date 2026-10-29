@@ -29,7 +29,7 @@ export default function MatchPropsPanel({ detail }: { detail: MatchDetail }) {
   return <div className="tennis-match-prop-panel">
     <MatchPicks detail={detail} />
     <section aria-label="Match prop lines">
-      <div className="tennis-match-prop-head"><h2>Prop lines <span>{count}</span></h2><p>All available linked lines, including alternate lines and lines for review. Gray and unranked: rated by P(over) against each payout&apos;s break-even, never picks.</p></div>
+      <div className="tennis-match-prop-head"><h2>Prop lines <span>{count}</span></h2><p>All available linked lines, including alternate lines and lines for review. Rated by P(over) against each payout&apos;s break-even, gray and unranked unless a forward check adopts the line&apos;s slice.</p></div>
       <div className="tennis-match-prop-filters" role="group" aria-label="Match prop filters">
         {adminView && <Select aria-label="Prop source" value={source} onChange={value => setView({ source: value, market: 'all', prop: null })} options={[
           { value: 'prizepicks', label: 'PrizePicks' }, { value: 'dk', label: 'DraftKings' },

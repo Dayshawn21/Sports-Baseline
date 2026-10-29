@@ -47,6 +47,7 @@ from app.db.pool import get_db
 from app.repositories.players import PlayerRollingStats, get_rolling_stats_batch_all_surfaces
 from app.repositories.props import Prop, get_today_match_odds_as_props, get_today_props
 from app.schemas.props import PropAudit, PropLine, PropsAuditResponse, PropsAuditSummary, PropsResponse
+from app.services.tennis import prop_adoption
 from app.services.tennis.live_odds_cache import LiveOddsRateLimited
 
 logger = logging.getLogger(__name__)
@@ -905,6 +906,8 @@ async def get_prizepicks_props(db: AsyncSession = Depends(get_db)):
     try:
         props = await get_today_props(db, source="prizepicks")
         enriched = await _enrich_props(db, props)
+        adopted = await prop_adoption.load_adopted(db)
+        enriched = prop_adoption.apply_adoption(props, enriched, adopted, datetime.now(UTC))
         return PropsResponse(
             source="prizepicks",
             count=len(props),

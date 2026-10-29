@@ -72,3 +72,23 @@ def test_match_odds_rows_keep_their_existing_positional_mapping():
 
     assert prop.best_of == 3
     assert prop.source_start_time is None and prop.match_start_time is None
+
+
+def test_live_props_carry_the_resolved_match_tours():
+    # 17 base columns, the two timing columns, then player, match and both players' tours.
+    session = _Session((*_row(), SOURCE_START, None, "WTA", "CHALLENGER", "WTA", "WTA"))
+    [prop] = asyncio.run(get_today_props(cast(AsyncSession, session), source="prizepicks"))
+
+    # Like match_start_time, a relinked match never borrows the stale link's tours.
+    resolved = "CASE WHEN relinked.id IS NOT NULL THEN relinked.{0} ELSE m.{0} END"
+    assert f"{resolved.format('tour')} AS match_tour" in session.sql
+    assert "mm.tour, mm.p1_id, mm.p2_id" in session.sql
+    assert f"LEFT JOIN players mp1 ON mp1.id = {resolved.format('p1_id')}" in session.sql
+    assert f"LEFT JOIN players mp2 ON mp2.id = {resolved.format('p2_id')}" in session.sql
+    assert (prop.player_tour, prop.match_tour, prop.p1_tour, prop.p2_tour) == ("WTA", "CHALLENGER", "WTA", "WTA")
+
+
+def test_props_without_the_tour_columns_still_map():
+    [prop] = asyncio.run(get_today_props(cast(AsyncSession, _Session(_row())), source="prizepicks"))
+
+    assert (prop.match_tour, prop.p1_tour, prop.p2_tour) == (None, None, None)

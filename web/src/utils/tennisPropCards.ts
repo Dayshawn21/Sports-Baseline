@@ -24,6 +24,10 @@ export interface TennisPropCardModel {
   breakEvenLabel: string | null
   evText: string
   evTone: 'positive' | 'negative' | null
+  /** True only on a line 48e adopted: the one case a PrizePicks card shows a side and a signal color. */
+  adopted: boolean
+  /** Push-excluded P(side) minus break-even, in points, on an adopted line. */
+  marginText: string | null
   opponentText: string | null
   trust: string
   source: string
@@ -75,8 +79,10 @@ function gapText(row: TennisBoardLine, priced: boolean): string | null {
   return signed(row.statAvg - line, 1)
 }
 
-// Gray and unranked (48f): a PrizePicks line names which sides are playable, never a side to take.
-function prizePicksSideLabel(tier: TennisPropCardModel['payoutTier']): string {
+// Gray and unranked unless adopted (48f, 48g): an unadopted PrizePicks line
+// names which sides are playable, never a side to take.
+function prizePicksSideLabel(row: TennisBoardLine, tier: TennisPropCardModel['payoutTier']): string {
+  if (row.adoptedPick) return row.adoptedPick.side.toUpperCase()
   return tier === 'goblin' || tier === 'demon' ? 'Over only' : 'Over / under'
 }
 
@@ -97,7 +103,7 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     payoutTier: tier,
     flags: row.dataQualityFlags ?? [],
     isUnder: tier == null && row.recommendation === 'UNDER',
-    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : tier != null ? prizePicksSideLabel(tier) : direction,
+    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : tier != null ? prizePicksSideLabel(row, tier) : direction,
     valueLabel: isMoneyline(row) ? 'Odds' : isWinASet(row) ? 'Market' : 'Line',
     valueText: valueText(row),
     unit: priced ? null : marketLabel(row.statType).toLowerCase(),
@@ -108,6 +114,8 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     breakEvenLabel: breakEvenLabel(row, breakEven),
     evText: row.evPct == null ? '--' : `${signed(row.evPct, 1)}%`,
     evTone: tier != null ? null : evTone(row.evPct),
+    adopted: row.adoptedPick != null,
+    marginText: row.adoptedPick ? `${signed(row.adoptedPick.margin * 100, 1)} pts vs break-even` : null,
     opponentText: row.opponentStatAvg == null ? null : `Opp allows ${row.opponentStatAvg.toFixed(1)}`,
     trust: trustLabel(row),
     source: sourceLabel(row.source),

@@ -67,6 +67,8 @@
 
 .tennis-prop-evidence__pick.is-negative { color: var(--negative); }
 .tennis-prop-evidence__pick.is-none { color: var(--text-muted); }
+/* Green only on a line 48e's forward check adopted (48g). */
+.tennis-prop-evidence__margin { color: var(--positive); font-weight: 700; }
 
 .tennis-prop-evidence__ev {
   color: var(--text-secondary);

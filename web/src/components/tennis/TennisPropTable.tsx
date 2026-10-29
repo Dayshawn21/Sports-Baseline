@@ -11,7 +11,7 @@ import './tennis-prop-table.css'
 
 const OTHER_LINES_NOTE = 'Not rated. These are unpriced, ungraded, or have missing, stale, unsupported or thin-sample data. View evidence for each line\'s context.'
 
-/** Tennis lines are gray and unranked (48f): a row is rated or for review, never numbered. */
+/** Tennis lines are gray and unranked unless adopted (48f, 48g): a row is rated or for review, never numbered. */
 export interface TennisPropTableRow {
   row: TennisBoardLine
   rated: boolean
@@ -31,8 +31,10 @@ function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardMod
 }
 
 function Line({ card }: { card: TennisPropCardModel }) {
-  // A PrizePicks row names its playable sides, not a pick, so it stays gray (48f).
-  const side = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  // A PrizePicks row names its playable sides, not a pick, so it stays gray (48f)
+  // unless 48e adopted its slice (48g); an adopted under is a pick, not a negative.
+  const unadopted = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  const side = card.adopted ? '' : unadopted
   const payout = card.payoutTier ? ` · ${card.payoutTier}` : ''
   return <>
     <span className={`tennis-prop-table__pick${side}`}>{card.pickLabel}</span>{' '}
@@ -50,6 +52,7 @@ function HitAgainstBreakEven({ card }: { card: TennisPropCardModel }) {
     <span>{card.hitPct == null ? '--' : `${card.hitPct.toFixed(0)}%`}</span>
     {hasComparison && <span className="tennis-prop-table__prob" style={style}><span /></span>}
     <small>{card.breakEvenLabel ?? 'Break-even --'}</small>
+    {card.marginText && <small className="tennis-prop-table__margin">{card.marginText}</small>}
   </>
 }
 

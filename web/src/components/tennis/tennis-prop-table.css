@@ -32,6 +32,8 @@
 .tennis-prop-table__mobile-gap { display: none; color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.04em; }
 .tennis-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
 .tennis-prop-table__trust.is-flagged { color: var(--caution); }
+/* Green only on a line 48e's forward check adopted (48g). */
+.prop-table td small.tennis-prop-table__margin { color: var(--positive); font-weight: 700; }
 
 .tennis-prop-empty-state {
   margin: 0;

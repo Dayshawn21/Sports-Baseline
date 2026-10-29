@@ -554,8 +554,8 @@ export function composeUnifiedMatches(
       (pick) => pick.evPct,
       (pick) => pick.edgePct,
     )
-    // Gray and unranked (48f): every rateable line shows in board order, whatever
-    // its EV, and the leans toggle no longer applies to props.
+    // Every rateable line shows in board order, whatever its EV: adopted lines
+    // lead (48g), the rest stay gray, and the leans toggle no longer applies to props.
     const visibleProps = dedupe(match.props.filter(isTennisRateable), propKey).sort(compareLines)
 
     const compatibleProps = filterCompatibleProps(bestPicks, visibleProps)

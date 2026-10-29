@@ -71,6 +71,17 @@ per command; read this file before running, scheduling or changing one.
   break-even by 3 SE, and a reject is final for that version. Undecided slices
   print size only, no running hit rate. The first real run needs a separate
   yes in chat; changing a rule constant means a new rule name and sample.
+- Tennis prop adoption (48g): `python -m app.ingest.tennis_prop_adoption
+  [--version props-v3] [--as-of YYYY-MM-DD] [--dry-run]`. Runs the 48e check
+  the same way and stores only the adopted slice keys and counts (no hit
+  rates) in `report_snapshots` as `tennis_prop_adoption:<version>`, season 0.
+  `/tennis/props/prizepicks` reads the row for the version the board shows
+  (`PROJECTION_VERSION`, `props-v3`) and ranks and colors only lines whose
+  slice it adopts; a missing, malformed or other-version row means nothing is
+  adopted and the board stays gray (never a 503). Every run, dry run included,
+  reads settled outcomes, so the first one needs a separate yes in chat. Runs
+  by hand from Actions (`tennis-prop-adoption.yml`, dry run by default); no
+  schedule yet.
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]
   [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
   schedule plus box scores from the last 3 days; `--season` backfills it all)

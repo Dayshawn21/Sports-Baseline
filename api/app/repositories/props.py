@@ -35,6 +35,11 @@ class Prop:
     match_start_time: Optional[datetime] = None
     # players.tour (ATP, WTA or CHALLENGER) for 48a's league rates and first-set shift.
     player_tour: Optional[str] = None
+    # The resolved match's tour and both players' tours, so 48g keys a live
+    # line with the `display_tour` inputs 48e's grader read.
+    match_tour: Optional[str] = None
+    p1_tour: Optional[str] = None
+    p2_tour: Optional[str] = None
 
 
 async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
@@ -115,7 +120,10 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
             p.start_time AS source_start_time,
             CASE WHEN relinked.id IS NOT NULL THEN relinked.start_utc
                  ELSE m.start_utc END AS match_start_time,
-            pl.tour AS player_tour
+            pl.tour AS player_tour,
+            CASE WHEN relinked.id IS NOT NULL THEN relinked.tour ELSE m.tour END AS match_tour,
+            mp1.tour AS p1_tour,
+            mp2.tour AS p2_tour
         FROM latest_props p
         LEFT JOIN players pl ON pl.id = p.player_id
         LEFT JOIN matches m ON m.id = p.match_id
@@ -132,7 +140,7 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
         -- sat within 6h of their match and the rest tailed to 11h before a clean
         -- gap, with the wrong-day matches clustering past 21h.
         LEFT JOIN LATERAL (
-            SELECT mm.id, mm.start_utc, mm.surface, mm.status, mm.best_of
+            SELECT mm.id, mm.start_utc, mm.surface, mm.status, mm.best_of, mm.tour, mm.p1_id, mm.p2_id
             FROM matches mm
             WHERE (
                     p.match_id IS NULL
@@ -161,6 +169,8 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
                 mm.id ASC
             LIMIT 1
         ) relinked ON TRUE
+        LEFT JOIN players mp1 ON mp1.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p1_id ELSE m.p1_id END
+        LEFT JOIN players mp2 ON mp2.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p2_id ELSE m.p2_id END
     """
     query += " ORDER BY p.start_time ASC NULLS LAST, p.player_id, p.stat_type"
 

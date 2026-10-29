@@ -1,0 +1,54 @@
+name: Tennis Prop Adoption
+
+# Manual only (48g): every run grades settled v3 outcomes, so the first real
+# run waits for the owner's yes. A weekly schedule can follow as its own change.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Projection version to grade (never pooled)"
+        required: true
+        default: "props-v3"
+      dry_run:
+        description: "Grade and print only, store nothing"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  adoption:
+    name: Store Adopted Prop Slices
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Grade and store adopted slices
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          cd api
+          if [ "$DRY_RUN" = "true" ]; then
+            python -m app.ingest.tennis_prop_adoption --version "$VERSION" --dry-run
+          else
+            python -m app.ingest.tennis_prop_adoption --version "$VERSION"
+          fi

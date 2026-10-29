@@ -35,6 +35,8 @@ interface PickItem {
   cells: string[]
   ev: number | null | undefined
   confidence: string | null
+  /** The adopted side and margin (48g), the one prop cell shown in the signal color. */
+  adopted?: string
 }
 
 function pickItem(pick: BestPick, kind: string, index: number): PickItem {
@@ -49,7 +51,7 @@ function pickItem(pick: BestPick, kind: string, index: number): PickItem {
   }
 }
 
-/** Gray and unranked (48f): projection, gap and P(over) against the payout's break-even, never a side. */
+/** Projection, gap and P(over) against the payout's break-even, gray unless 48e adopted its slice (48f, 48g). */
 function propItem(prop: PropLine): PickItem {
   const line = prop.line == null ? null : Number(prop.line)
   const payout = payoutTier(prop)
@@ -67,10 +69,13 @@ function propItem(prop: PropLine): PickItem {
     ],
     ev: prop.evPct,
     confidence: null,
+    adopted: prop.adoptedPick
+      ? `${prop.adoptedPick.side.toUpperCase()} +${(prop.adoptedPick.margin * 100).toFixed(1)} pts vs BE`
+      : undefined,
   }
 }
 
-/** Best bets, then angles, then props in board order: props are never ranked (48f). */
+/** Best bets, then angles, then props in board order: only adopted props are ranked (48f, 48g). */
 function pickItems(match: UnifiedTennisMatch): PickItem[] {
   return [
     ...bestBetPicks(match).map((pick, index) => pickItem(pick, BEST_BET, index)),
@@ -91,6 +96,7 @@ function Picks({ items }: { items: PickItem[] }) {
           {item.detail && <small>{item.detail}</small>}
           <div className="tennis-detail__cells">
             {item.cells.map((cell, index) => <span key={index}>{cell}</span>)}
+            {item.adopted && <span className="tennis-detail__adopted">{item.adopted}</span>}
             <span className={evClass(item)}>{fmtEv(item.ev)}</span>
             {item.confidence && <ConfidenceTag value={item.confidence} />}
           </div>
