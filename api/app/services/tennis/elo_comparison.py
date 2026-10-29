@@ -27,7 +27,7 @@ from app.services.tennis.ensemble import (
 from app.services.tennis.feature_builder import SURFACE_MAP
 from app.services.tennis.predictor import PredictionBatch, PredictionOutput, _elo_probability
 
-SPEC_APPROVED_ON = date(2026, 10, 20)
+SPEC_APPROVED_ON = date(2026, 10, 29)
 
 
 def _digest(value: object) -> str:

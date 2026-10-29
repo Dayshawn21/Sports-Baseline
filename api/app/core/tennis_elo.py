@@ -169,7 +169,7 @@ def parse_row(row: Mapping[str, str | None], family: Family) -> TennisEloMatch |
     )
 
 
-IDENTITY_VERSION = "tennis-elo-identities-v1"
+IDENTITY_VERSION = "tennis-elo-identities-v2"
 IDENTITY_COLUMNS = ("namespace", "raw_provider_id", "canonical_provider_id", "status", "evidence")
 OVERRIDE_COLUMNS = ("namespace", "canonical_provider_id", "local_player_id", "status", "evidence")
 _PROVIDER_ID = re.compile(r"[A-Za-z0-9]+")

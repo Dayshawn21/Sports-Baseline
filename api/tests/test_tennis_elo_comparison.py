@@ -18,7 +18,7 @@ from app.services.tennis.elo_comparison import (
 )
 from app.services.tennis.ensemble import EnsembleInput, blend
 
-NOW = datetime(2026, 10, 21, 13, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 31, 13, 30, tzinfo=timezone.utc)
 DAY = NOW.date()
 
 
@@ -211,9 +211,9 @@ def test_inactive_and_not_yet_started_experiments_preview_without_storable_pairs
 
 
 def test_activation_start_is_utc_based_even_when_local_date_differs():
-    cfg = replace(config(), activated_at=datetime(2026, 10, 20, 20, 30,
+    cfg = replace(config(), activated_at=datetime(2026, 10, 30, 20, 30,
                                                 tzinfo=timezone(timedelta(hours=-5))))
-    assert cfg.eligible_from == date(2026, 10, 22)
+    assert cfg.eligible_from == date(2026, 11, 1)
 
 
 def test_pinned_version_coefficient_gate_or_identity_changes_stop_runtime(monkeypatch):

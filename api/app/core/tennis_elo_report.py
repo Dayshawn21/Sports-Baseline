@@ -16,7 +16,7 @@ from app.core.tennis_grading import (
     paired_loss_difference, score_component,
 )
 
-EXPERIMENT = "tennis-elo-source-v1"
+EXPERIMENT = "tennis-elo-source-v2"
 SOURCE = "tennismylife-elo-v1"
 GROUPS = ("ATP", "WTA", "ATP_CHALLENGER")
 MIN_CASES = 300

@@ -138,6 +138,16 @@ The config hash is copied into pairs and coverage attempts, so later pin
 changes stop accrual even when the previous cycle had only missing-source
 skips. Never update this file automatically to match a changed runtime.
 
+### Experiment history
+
+| Experiment | Identity version | Status |
+|---|---|---|
+| `tennis-elo-source-v1` | `tennis-elo-identities-v1` | Closed 2026-10-29, stopped with no verdict. Activated 2026-10-21; the WTA alias fix (`e4fe60b7`) changed the registry and stopped accrual on 2026-10-28. Its 52 pairs and 6 freeze cycles stay stored unchanged and are never pooled with v2 or scored. |
+| `tennis-elo-source-v2` | `tennis-elo-identities-v2` | Pinned 2026-10-29 under the same pre-registered rule. Coefficient, gate and incumbent pins are unchanged from v1. Activated 2026-10-29T20:00:36Z; first eligible UTC day 2026-10-30. |
+
+The next post-activation registry change closes v2 the same way. Batch
+reviewed alias fixes to avoid repeated restarts.
+
 ## Scheduled handoff and recovery
 
 The 11:00 UTC TennisMyLife workflow starts an isolated candidate refresh after

@@ -14,9 +14,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.odds import american_to_prob, devig_two_way, odds_are_stale
+from app.core.tennis_elo_report import EXPERIMENT
 from app.repositories.tennis_elo import TennisEloSnapshot
 
-EXPERIMENT = "tennis-elo-source-v1"
 ComparisonGroup = Literal["ATP", "WTA", "ATP_CHALLENGER"]
 _GROUPS = {"ATP", "WTA", "ATP_CHALLENGER"}
 

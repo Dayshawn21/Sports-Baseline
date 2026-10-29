@@ -150,7 +150,7 @@ def test_reviewed_manifest_is_pinned_to_the_identity_registry(rows, tmp_path, mo
     write_registry(registry_dir, [alias("Z999", "A001", "ATP")], [])
     writes, _, _ = setup_run(monkeypatch, tmp_path, rows[:1])
     preview = asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir))
-    assert "Identity registry tennis-elo-identities-v1" in capsys.readouterr().out
+    assert "Identity registry tennis-elo-identities-v2" in capsys.readouterr().out
     write_registry(registry_dir, [alias("Z999", "A001", "ATP"), alias("Y888", "B002", "ATP")], [])
     with pytest.raises(ValueError, match="identity registry changed"):
         asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir, dry_run=False,
