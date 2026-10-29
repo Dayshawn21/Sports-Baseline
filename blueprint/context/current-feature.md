@@ -198,3 +198,8 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   19:00, ATP Basel 17:00 and 18:30; no WTA), one starting at the check, so a
   capture would likely select 3 and be void. The owner chose to wait for the
   2026-10-30 quarterfinal window (about 10:30 UTC), re-counting before asking.
+- **One probe (owner decision 2026-10-29):** a second session wrote a broader
+  48d spec on `feature/48d-sportsbook-player-props` (`a401d8dc`, its own
+  12 to 30 hour capture window). The owner kept 48d1 as the only probe; that
+  spec is input for 48d2 and 48d3 only if 48d1 finds props, and it runs no
+  capture.
