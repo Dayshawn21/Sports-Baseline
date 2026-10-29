@@ -8,7 +8,6 @@ export interface TennisPropCardModel {
   meta: string
   startText: string
   tour: string | null
-  confidence: string | null
   payoutTier: 'standard' | 'goblin' | 'demon' | null
   flags: string[]
   isUnder: boolean
@@ -17,6 +16,9 @@ export interface TennisPropCardModel {
   valueText: string
   unit: string | null
   projectionText: string
+  /** Signed projection minus line, or null where the row has no line to compare. */
+  gapText: string | null
+  /** P(over), push excluded, on a PrizePicks line; the model's probability on a moneyline or Win a Set row. */
   hitPct: number | null
   breakEvenPct: number | null
   breakEvenLabel: string | null
@@ -61,12 +63,28 @@ function breakEvenLabel(row: TennisBoardLine, breakEven: number | null): string 
   return `Break-even ${breakEven.toFixed(1)}%${tier ? ` · ${tier}` : ''}`
 }
 
+/** P(over) with pushes excluded, the rate a payout's break-even is measured against. */
+export function decisionOverPct(row: Pick<TennisBoardLine, 'pOver' | 'pUnder'>): number | null {
+  if (row.pOver == null || row.pUnder == null || row.pOver + row.pUnder <= 0) return null
+  return clampPct(row.pOver / (row.pOver + row.pUnder) * 100)
+}
+
+function gapText(row: TennisBoardLine, priced: boolean): string | null {
+  const line = lineNumber(row)
+  if (priced || line == null || row.statAvg == null) return null
+  return signed(row.statAvg - line, 1)
+}
+
+// Gray and unranked (48f): a PrizePicks line names which sides are playable, never a side to take.
+function prizePicksSideLabel(tier: TennisPropCardModel['payoutTier']): string {
+  return tier === 'goblin' || tier === 'demon' ? 'Over only' : 'Over / under'
+}
+
 /** What one prop card shows, in the same strings the board table showed. */
 export function propCard(row: TennisBoardLine): TennisPropCardModel {
   const priced = isMoneyline(row) || isWinASet(row)
   const tier = payoutTier(row)
   const direction = row.recommendation?.toUpperCase() ?? '--'
-  const overOnly = direction === 'OVER' && (tier === 'demon' || tier === 'goblin')
   const breakEven = clampPct(row.breakEvenPct)
   const matchFinished = !row.matchup && row.dataQualityFlags?.some(flag => flag === 'match_finished' || flag === 'match_link_invalid')
   const matchMeta = matchFinished ? 'Match finished' : row.matchup ?? [row.tour, row.surface].filter(Boolean).join(' · ')
@@ -76,20 +94,20 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     meta: [matchMeta, row.tournament].filter(Boolean).join(' · '),
     startText: startLabel(row.startTime),
     tour: row.tour,
-    confidence: row.confidence,
     payoutTier: tier,
     flags: row.dataQualityFlags ?? [],
-    isUnder: row.recommendation === 'UNDER',
-    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : overOnly ? 'OVER only' : direction,
+    isUnder: tier == null && row.recommendation === 'UNDER',
+    pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : tier != null ? prizePicksSideLabel(tier) : direction,
     valueLabel: isMoneyline(row) ? 'Odds' : isWinASet(row) ? 'Market' : 'Line',
     valueText: valueText(row),
     unit: priced ? null : marketLabel(row.statType).toLowerCase(),
     projectionText: row.statAvg == null ? '--' : priced ? `${row.statAvg.toFixed(1)}%` : row.statAvg.toFixed(1),
-    hitPct: row.hitProbability == null ? null : clampPct(row.hitProbability * 100),
+    gapText: gapText(row, priced),
+    hitPct: tier != null ? decisionOverPct(row) : row.hitProbability == null ? null : clampPct(row.hitProbability * 100),
     breakEvenPct: breakEven,
     breakEvenLabel: breakEvenLabel(row, breakEven),
     evText: row.evPct == null ? '--' : `${signed(row.evPct, 1)}%`,
-    evTone: row.confidence === 'PASS' ? null : evTone(row.evPct),
+    evTone: tier != null ? null : evTone(row.evPct),
     opponentText: row.opponentStatAvg == null ? null : `Opp allows ${row.opponentStatAvg.toFixed(1)}`,
     trust: trustLabel(row),
     source: sourceLabel(row.source),

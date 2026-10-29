@@ -277,12 +277,12 @@ def test_fantasy_projection_does_not_add_break_points_as_separate_bonus():
     assert round(projection_high_break, 2) == round(projection_zero_break, 2)
 
 
-def test_stale_stats_cap_confidence_at_lean():
+def test_stale_stats_are_flagged_and_keep_their_side():
     stale = datetime.now(UTC) - timedelta(days=3)
     enriched = _enrich(_prop(), _stats(computed_at=stale), _stats(2, computed_at=stale), 0.65, market_total_games=22.5)
 
     assert "stale_stats" in enriched.data_quality_flags
-    assert enriched.confidence == "LEAN"
+    assert enriched.confidence is None
     assert enriched.recommendation is not None
 
 
@@ -323,11 +323,11 @@ def test_invalid_match_link_blocks_prizepicks_recommendation():
     assert enriched.confidence is None
 
 
-def test_small_sample_caps_confidence_at_lean():
+def test_small_sample_is_flagged():
     enriched = _enrich(_prop(), _stats(matches_count=4), _stats(2), 0.65, market_total_games=22.5)
 
     assert "small_sample" in enriched.data_quality_flags
-    assert enriched.confidence == "LEAN"
+    assert enriched.confidence is None
 
 
 def test_surface_stats_fall_back_to_all_surface_when_sample_is_tiny():

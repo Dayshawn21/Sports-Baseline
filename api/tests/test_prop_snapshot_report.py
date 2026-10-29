@@ -79,7 +79,7 @@ def test_a_stat_with_no_source_is_counted_apart_from_join_failures():
 
 
 def test_pushes_are_left_out_of_the_hit_rate():
-    text = report([_row(line=19.5), _row(recommendation="OVER", line=19.5), _row(line=19.0)])
+    text = report([_row(line=19.5), _row(recommendation="OVER", line=19.5), _row(line=19.0)], "props-v2")
     lean = next(line for line in text.splitlines() if line.strip().startswith("LEAN"))
     assert "50.0% +/- " in lean  # 1 hit, 1 miss, 1 push
 
@@ -88,7 +88,7 @@ def test_goblin_and_demon_tiers_carry_no_error_bar():
     text = report([
         _row(odds_type="goblin", recommendation="OVER", line=15.5),
         _row(odds_type="demon", recommendation="OVER", line=22.5),
-    ])
+    ], "props-v2")
     tier_lines = [line for line in text.splitlines() if line.strip().startswith("LEAN")]
     assert len(tier_lines) == 2 and all("+/-" not in line for line in tier_lines)
 
@@ -109,3 +109,9 @@ def test_picks_are_also_reported_by_stat():
     first_set = next(line for line in section.splitlines() if line.strip().startswith("1st_set_total_games"))
     assert "    2 " in first_set and "50.0%" in first_set
     assert any(line.strip().startswith("total_games ") for line in section.splitlines())
+
+
+def test_props_v3_and_later_report_no_tiers():
+    text = report([_row(line=19.5)], "props-v3")
+    assert "By confidence tier: no tiers under props-v3 (retired by 48f)" in text
+    assert not any(line.strip().startswith("LEAN") for line in text.split("By stat")[0].splitlines())

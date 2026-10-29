@@ -1,12 +1,11 @@
-/* Tennis prop rows (38d2). Recommendation and EV colors preserve the card rules. */
+/* Tennis prop rows (38d2). PrizePicks rows are gray (48f); priced book rows keep side and EV colors. */
 .tennis-prop-table a.prop-table__open:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
-.tennis-prop-table col.is-rank { width: 48px; }
 .tennis-prop-table col.is-player { width: auto; }
 .tennis-prop-table col.is-line { width: 180px; }
 .tennis-prop-table col.is-model { width: 88px; }
 .tennis-prop-table col.is-hit { width: 150px; }
 .tennis-prop-table col.is-ev { width: 84px; }
-.tennis-prop-table col.is-tier { width: 88px; }
+.tennis-prop-table col.is-gap { width: 72px; }
 .tennis-prop-table col.is-trust { width: 96px; }
 
 .tennis-prop-table__line-value { font: 600 14px var(--font-mono); }
@@ -29,8 +28,8 @@
 .tennis-prop-table__ev { color: var(--text-secondary); font-weight: 600; }
 .tennis-prop-table__ev.is-positive { color: var(--positive); }
 .tennis-prop-table__ev.is-negative { color: var(--negative); }
-.tennis-prop-table__tier { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
-.tennis-prop-table__mobile-tier { display: none; color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.04em; }
+.tennis-prop-table__gap { color: var(--text-secondary); font-weight: 600; }
+.tennis-prop-table__mobile-gap { display: none; color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.04em; }
 .tennis-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
 .tennis-prop-table__trust.is-flagged { color: var(--caution); }
 
@@ -83,7 +82,7 @@
   .tennis-prop-table__line { flex: 1 1 150px; min-width: 0; }
   .tennis-prop-table__hit { flex: 1 1 118px; min-width: 100px; }
   .tennis-prop-table__prob { max-width: 108px; }
-  .tennis-prop-table__tier { min-width: 44px; }
+  .tennis-prop-table__gap { min-width: 44px; }
   .tennis-prop-table td:last-child { min-width: 64px; }
 }
 
@@ -94,7 +93,7 @@
   .tennis-prop-table__hit { flex: 0 1 82px; min-width: 72px; }
   .tennis-prop-table__prob { display: none; }
   .tennis-prop-table__hit small { max-width: 82px; }
-  .tennis-prop-table__tier { display: none; }
-  .tennis-prop-table__mobile-tier { display: inline; }
+  .tennis-prop-table__gap { display: none; }
+  .tennis-prop-table__mobile-gap { display: inline; }
   .tennis-prop-table td:last-child { min-width: 0; }
 }

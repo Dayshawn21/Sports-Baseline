@@ -7,7 +7,7 @@ interface Props {
   strongOrBetter: number
 }
 
-/** The slate's four counts in the shared chip strip every slate uses; Locks and Strong+ stay green, as tier counts. */
+/** The slate's four counts in the shared chip strip every slate uses. Locks and Strong+ count priced best bets only (48f). */
 export default function TennisSlateSummary({ matches, props, locks, strongOrBetter }: Props) {
   return (
     <section className="page-head__stats" aria-label="Slate summary">

@@ -121,7 +121,7 @@
       "expect_tools": [{"name": "get_top_props", "input": {"sport": "tennis"}}],
       "must_match": ["/tennis/match/\\d+|no (tennis )?(aces )?(props|picks|matches)|aces"],
       "must_not_match": ["you should bet", "\\bparlay", "sure thing", "guaranteed"],
-      "notes": "Tennis market text filter. Only the sport is required: the model may filter with 'aces' or read the full list."
+      "notes": "Tennis market text filter. Only the sport is required: the model may filter with 'aces' or read the full list. PrizePicks aces lines are never picks (48f), so an honest no-picks answer passes."
     },
     {
       "id": "tennis-wta-today",

@@ -45,7 +45,7 @@ function RecordCard({ query }: { query: UseQueryResult<PlayerMatches> }) {
 }
 
 const OUTCOME_TEXT: Record<PastProp['outcome'], string> = {
-  hit: 'hit', miss: 'miss', push: 'push', pass: 'no pick', void: 'void', awaiting: 'pending', ungradable: 'no source',
+  hit: 'hit', miss: 'miss', push: 'push', pass: 'no side', void: 'void', awaiting: 'pending', ungradable: 'no source',
 }
 
 function PickCell({ prop }: { prop: PastProp }) {
@@ -73,7 +73,7 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
     <Card title={title}>
       <div className="tennis-player-props-scroll">
         <table className="tennis-player-table tennis-player-props">
-          <thead><tr><th>Date</th><th className="l">Stat</th><th>Line</th><th>Actual</th><th className="l pick">Pick</th></tr></thead>
+          <thead><tr><th>Date</th><th className="l">Stat</th><th>Line</th><th>Actual</th><th className="l pick">Side</th></tr></thead>
           <tbody>
             {rows.slice(0, PROPS_SHOWN).map((prop, i) => (
               <tr key={`${prop.snapshotDate}-${prop.stat}-${prop.oddsType}-${prop.line}-${i}`}>
@@ -87,11 +87,11 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
           </tbody>
         </table>
       </div>
-      <Row label={`Model picks on ${name}`} value={recordText({ wins: summary.hits, losses: summary.misses })} />
+      <Row label={`Projected side on ${name}`} value={recordText({ wins: summary.hits, losses: summary.misses })} />
       <p className="tennis-match-aside__note">
         {rows.length > PROPS_SHOWN ? `Newest ${PROPS_SHOWN} of ${rows.length} lines. ` : ''}
-        The pick is the frozen pre-match recommendation ({projectionVersion}); the record counts standard lines only.
-        A handful of picks is anecdote, not evidence: the model page grades the full sample.
+        The side is the frozen pre-match projection ({projectionVersion}), a reference, never a pick; the record counts
+        standard lines only. A handful of lines is anecdote, not evidence: the model page grades the full sample.
       </p>
     </Card>
   )

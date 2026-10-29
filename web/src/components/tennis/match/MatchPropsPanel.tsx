@@ -29,7 +29,7 @@ export default function MatchPropsPanel({ detail }: { detail: MatchDetail }) {
   return <div className="tennis-match-prop-panel">
     <MatchPicks detail={detail} />
     <section aria-label="Match prop lines">
-      <div className="tennis-match-prop-head"><h2>Prop lines <span>{count}</span></h2><p>All available linked lines, including alternate and reference lines.</p></div>
+      <div className="tennis-match-prop-head"><h2>Prop lines <span>{count}</span></h2><p>All available linked lines, including alternate lines and lines for review. Gray and unranked: rated by P(over) against each payout&apos;s break-even, never picks.</p></div>
       <div className="tennis-match-prop-filters" role="group" aria-label="Match prop filters">
         {adminView && <Select aria-label="Prop source" value={source} onChange={value => setView({ source: value, market: 'all', prop: null })} options={[
           { value: 'prizepicks', label: 'PrizePicks' }, { value: 'dk', label: 'DraftKings' },
@@ -49,8 +49,8 @@ export default function MatchPropsPanel({ detail }: { detail: MatchDetail }) {
         : visible.map(category => <section key={category.market} className="prop-table-panel" aria-label={`${category.label} prop lines`}>
           <h3>{category.label}</h3>
           <TennisPropTable category={category} tableId={`match-props-${category.market}`} showMatchLinks={false} selectedId={selected?.id ?? null} onOpen={row => setView({ prop: row.id })}
-            rateable={category.rateable.map((row, index) => ({ row, rank: index + 1 }))}
-            other={category.other.map(row => ({ row, rank: null }))} />
+            rateable={category.rateable.map(row => ({ row, rated: true }))}
+            other={category.other.map(row => ({ row, rated: false }))} />
         </section>)}
     </section>
     <Drawer open={selected !== null} onClose={() => setView({ prop: null })} width={mobile ? '100%' : 460} title={null}

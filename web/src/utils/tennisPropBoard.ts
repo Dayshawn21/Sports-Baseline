@@ -234,14 +234,14 @@ export function winASetBoardRows(matches: MatchBestPicks[]): PropLine[] {
     }))
 }
 
+/** A line with a complete, unblocked projection. Rated, never ranked: tennis props carry no tier (48f). */
 export function isTennisRateable(line: PropLine): boolean {
   const status = line.projectionStatus ?? 'ok'
   const flags = line.dataQualityFlags ?? []
   return !isMoneyline(line)
     && line.recommendation != null
     && line.statAvg != null
-    && line.evPct != null
-    && line.evPct > 0
+    && line.pOver != null
     && numeric(line.line) != null
     && status === 'ok'
     && !flags.some(flag => BLOCKING_FLAGS.has(flag))
@@ -249,9 +249,7 @@ export function isTennisRateable(line: PropLine): boolean {
 }
 
 export function trustLabel(line: PropLine): string {
-  if (!isTennisRateable(line)) return 'Review'
-  if (line.confidence === 'LOCK' || line.confidence === 'STRONG') return 'Ready'
-  return 'Lean'
+  return isTennisRateable(line) ? 'Reference' : 'Review'
 }
 
 export function signalSummary(line: PropLine): string {
@@ -261,41 +259,32 @@ export function signalSummary(line: PropLine): string {
   if (line.dataQualityFlags?.includes('small_sample')) return 'Thin rolling sample'
   const lineValue = numeric(line.line)
   if (!isMoneyline(line) && line.statAvg != null && lineValue != null && line.recommendation) {
-    const pick = line.recommendation.toUpperCase() === 'UNDER' ? 'Under' : 'Over'
     const opponent = line.opponentStatAvg != null ? ` Opponent allows ${line.opponentStatAvg.toFixed(1)}.` : ''
     const ungraded = line.dataQualityFlags?.includes('ungraded_stat') ? 'New stat, not yet graded. ' : ''
-    return `${ungraded}Model projects ${line.statAvg.toFixed(1)} vs the ${lineValue.toFixed(1)} line (${pick}).${opponent}`
+    return `${ungraded}Model projects ${line.statAvg.toFixed(1)} vs the ${lineValue.toFixed(1)} line.${opponent}`
   }
   if (line.opponentStatAvg != null) return `Opponent allows ${line.opponentStatAvg.toFixed(1)}`
   if (line.matchesCount != null) return `${line.matchesCount}-match rolling sample`
   return line.recommendation ? 'Model context is limited' : 'Model score unavailable'
 }
 
-const CONFIDENCE_RANK: Record<string, number> = { LOCK: 0, STRONG: 1, LEAN: 2 }
-
-function confidenceRank(line: TennisBoardLine): number {
-  return CONFIDENCE_RANK[(line.confidence ?? '').toUpperCase()] ?? 3
+function startMs(line: Pick<PropLine, 'startTime'>): number {
+  const time = line.startTime ? Date.parse(line.startTime) : Number.NaN
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
 }
 
-// Highest EV first with its sign, so a -30% line never outranks a +5% one;
-// unpriced lines go last.
-function compareEv(left: number | null | undefined, right: number | null | undefined): number {
-  if (left == null || right == null) return (left == null ? 1 : 0) - (right == null ? 1 : 0)
-  return right - left
-}
-
-// Tier before EV: the tiers carry a hit-probability floor, so a high-EV coin-flip
-// demon cannot outrank a reliable standard pick.
-function compareLines(left: TennisBoardLine, right: TennisBoardLine): number {
+// Unranked: no slice is adopted (48e, 48g), so lines read in start order, never
+// by EV or probability. Win a Set is a derived match angle and keeps its order.
+export function compareLines(left: PropLine, right: PropLine): number {
   if (isWinASet(left) && isWinASet(right)) {
     const probability = (right.hitProbability ?? Number.NEGATIVE_INFINITY) - (left.hitProbability ?? Number.NEGATIVE_INFINITY)
     if (probability !== 0) return probability
   }
-  const tier = confidenceRank(left) - confidenceRank(right)
-  if (tier !== 0) return tier
-  const ev = compareEv(left.evPct, right.evPct)
-  if (ev !== 0) return ev
-  return (left.playerName ?? '').localeCompare(right.playerName ?? '') || left.id - right.id
+  const start = startMs(left) - startMs(right)
+  if (start !== 0 && !Number.isNaN(start)) return start
+  return (left.playerName ?? '').localeCompare(right.playerName ?? '')
+    || left.statType.localeCompare(right.statType)
+    || left.id - right.id
 }
 
 export function enrichTennisPropLines(props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, includeAlternates = false): TennisBoardLine[] {

@@ -23,13 +23,3 @@ export function fmtAmerican(odds: number | null | undefined): string {
   if (odds == null) return '—'
   return odds > 0 ? `+${odds}` : `${odds}`
 }
-
-/** Confidence label color for Ant Design Tag */
-export function confidenceColor(confidence: string | null | undefined): string {
-  switch (confidence) {
-    case 'LOCK': return 'green'
-    case 'STRONG': return 'blue'
-    case 'LEAN': return 'orange'
-    default: return 'default'
-  }
-}

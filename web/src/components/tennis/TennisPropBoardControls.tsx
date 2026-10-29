@@ -8,8 +8,8 @@ export function PropBoardHead({ lines, rateable, markets }: { lines: number, rat
     title="Tennis props"
     meta="Next 24 hours"
     stats={<section className="tennis-prop-summary" aria-label="Prop board summary">
-      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Available lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">ranked + reference</span></div>
-      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Ranked lines</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">across {markets} markets</span></div>
+      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Available lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">rated + review</span></div>
+      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rated lines</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">gray, unranked · {markets} markets</span></div>
     </section>}
   />
 }
@@ -17,7 +17,7 @@ export function PropBoardHead({ lines, rateable, markets }: { lines: number, rat
 export function MarketPills({ categories, selected, onSelect }: { categories: TennisBoardCategory[], selected: string, onSelect: (market: string) => void }) {
   return <nav className="tennis-prop-pills" aria-label="Tennis prop categories">
     {categories.map(category => <button key={category.market} type="button" className={[category.market === selected && 'is-selected', category.rateable.length === 0 && 'is-empty'].filter(Boolean).join(' ')} aria-pressed={category.market === selected} onClick={() => onSelect(category.market)}>
-      {marketTitle(category.market)}<em>{category.rateable.length} ranked / {category.other.length} reference</em>
+      {marketTitle(category.market)}<em>{category.rateable.length} rated / {category.other.length} review</em>
     </button>)}
   </nav>
 }
@@ -41,6 +41,6 @@ export function PropBoardFilters({ source, tour, showAll, onSource, onTour, onSh
   return <section className="tennis-prop-filter-bar" aria-label="Tennis prop board filters">
     <Segment label="Source" options={TENNIS_PROP_SOURCES} value={source} onChange={onSource} />
     <Segment label="Tour" options={TENNIS_TOUR_FILTERS} value={tour} onChange={onTour} />
-    <label className="tennis-prop-toggle"><Switch size="small" checked={showAll} onChange={onShowAll} aria-label="Include reference lines" /><span>Include reference lines</span></label>
+    <label className="tennis-prop-toggle"><Switch size="small" checked={showAll} onChange={onShowAll} aria-label="Include lines for review" /><span>Include lines for review</span></label>
   </section>
 }

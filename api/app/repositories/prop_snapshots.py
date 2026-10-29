@@ -106,6 +106,18 @@ def build_graded_prop_snapshot(row: dict) -> GradedPropSnapshot:
     return GradedPropSnapshot(**{**row, "line": float(row["line"])})
 
 
+_LINE_KEY = "s.player_id, s.match_id, s.stat_type, COALESCE(s.odds_type, ''), s.line"
+_LATEST_PRESTART_FINISHED_SQL = """s.projection_version = :version
+              AND s.snapshot_at < s.start_time
+              AND CASE WHEN s.projection_inputs ? 'snapshot_eligibility_policy' THEN (
+                  """ + _captured_prestart_sql('s', 's.snapshot_at') + """
+                  AND (m.start_utc IS NULL OR s.snapshot_at < m.start_utc)
+              ) ELSE TRUE END
+              AND s.player_id IN (m.p1_id, m.p2_id)
+              AND m.status = 'completed' AND m.winner_id IS NOT NULL
+              """
+
+
 async def get_graded_prop_snapshots(
     db: AsyncSession, version: str, player_id: int | None = None,
 ) -> list[GradedPropSnapshot]:
@@ -122,24 +134,66 @@ async def get_graded_prop_snapshots(
         params["player_id"] = player_id
     rows = await db.execute(
         text("""
-            SELECT DISTINCT ON (s.player_id, s.match_id, s.stat_type, COALESCE(s.odds_type, ''), s.line)
+            SELECT DISTINCT ON (""" + _LINE_KEY + """)
                 s.id AS snapshot_id, s.player_id, s.match_id, m.tour, s.stat_type, s.odds_type, s.line,
                 s.recommendation, s.confidence, s.hit_probability,
                 (s.player_id = m.p1_id) AS player_is_p1, m.score, m.best_of, s.snapshot_at
             FROM prop_projection_snapshots s
             JOIN matches m ON m.id = s.match_id
-            WHERE s.projection_version = :version
-              AND s.snapshot_at < s.start_time
-              AND CASE WHEN s.projection_inputs ? 'snapshot_eligibility_policy' THEN (
-                  """ + _captured_prestart_sql('s', 's.snapshot_at') + """
-                  AND (m.start_utc IS NULL OR s.snapshot_at < m.start_utc)
-              ) ELSE TRUE END
-              AND s.player_id IN (m.p1_id, m.p2_id)
-              AND m.status = 'completed' AND m.winner_id IS NOT NULL
-              """ + player_filter + """
-            ORDER BY s.player_id, s.match_id, s.stat_type, COALESCE(s.odds_type, ''), s.line,
-                     s.snapshot_at DESC, s.id DESC
+            WHERE """ + _LATEST_PRESTART_FINISHED_SQL + player_filter + """
+            ORDER BY """ + _LINE_KEY + """, s.snapshot_at DESC, s.id DESC
         """),
         params,
     )
     return [build_graded_prop_snapshot(dict(r)) for r in rows.mappings().all()]
+
+
+@dataclass(frozen=True)
+class PropCheckSnapshot:
+    """The latest pre-start snapshot of a line with what 48e's forward check slices and settles on."""
+
+    snapshot_id: int
+    player_id: int
+    match_id: int
+    match_tour: str | None
+    p1_tour: str | None
+    p2_tour: str | None
+    stat_type: str
+    odds_type: str | None
+    line: float
+    start_time: datetime
+    p_over: float | None
+    p_under: float | None
+    p_push: float | None
+    market_total_games: float | None
+    data_quality_flags: tuple[str, ...]
+    player_is_p1: bool
+    score: str | None
+    best_of: int | None
+
+
+def build_prop_check_snapshot(row: dict) -> PropCheckSnapshot:
+    return PropCheckSnapshot(**{
+        **row, "line": float(row["line"]), "data_quality_flags": tuple(row["data_quality_flags"] or ()),
+    })
+
+
+async def get_prop_check_snapshots(db: AsyncSession, version: str) -> list[PropCheckSnapshot]:
+    """The same latest pre-start snapshot per finished line that `get_graded_prop_snapshots` grades."""
+    rows = await db.execute(
+        text("""
+            SELECT DISTINCT ON (""" + _LINE_KEY + """)
+                s.id AS snapshot_id, s.player_id, s.match_id, m.tour AS match_tour,
+                p1.tour AS p1_tour, p2.tour AS p2_tour, s.stat_type, s.odds_type, s.line, s.start_time,
+                s.p_over, s.p_under, s.p_push, s.market_total_games, s.data_quality_flags,
+                (s.player_id = m.p1_id) AS player_is_p1, m.score, m.best_of
+            FROM prop_projection_snapshots s
+            JOIN matches m ON m.id = s.match_id
+            LEFT JOIN players p1 ON p1.id = m.p1_id
+            LEFT JOIN players p2 ON p2.id = m.p2_id
+            WHERE """ + _LATEST_PRESTART_FINISHED_SQL + """
+            ORDER BY """ + _LINE_KEY + """, s.snapshot_at DESC, s.id DESC
+        """),
+        {"version": version, "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY},
+    )
+    return [build_prop_check_snapshot(dict(r)) for r in rows.mappings().all()]

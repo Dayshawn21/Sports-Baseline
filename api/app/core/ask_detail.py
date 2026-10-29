@@ -380,6 +380,10 @@ def trim_tennis_grading(predictions: Source | None, tiers: Source | None) -> Jso
         "ensemble_vs_market": groups,
         "ensemble_vs_market_label": "log loss minus the de-vigged market's; above zero means worse than the market",
         "prop_tiers": tier_rows,
+        "prop_tiers_label": (
+            f"retired PrizePicks tier record ({tier_grading.get('projection_version')}), history only: "
+            "tennis props carry no tier since 2026-10-28 and are rated by P(over) against break-even"
+        ),
         "prop_tier_break_even": _num(tier_grading.get("break_even"), 3),
     }
 

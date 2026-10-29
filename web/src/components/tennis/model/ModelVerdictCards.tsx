@@ -61,20 +61,17 @@ export default function ModelVerdictCards({ modelVersion }: { modelVersion?: str
           say: <>{row.standardError != null && <>&plusmn;<span className="num">{pct(row.standardError)}</span> on {row.settled.toLocaleString()} lines. </>}Break-even for a 2-3 pick Power entry is <span className="num">{row.breakEven != null ? pct(row.breakEven) : '—'}</span>.</>,
         }
       }} />
-      <VerdictCard label="Confidence tiers" query={tiers} render={(data) => {
+      <VerdictCard label="Retired tiers" query={tiers} render={(data) => {
+        // History only: tennis props carry no tier since 48f, so this card never reads as accruing.
         const decided = data.tiers.filter((t) => t.verdict !== 'accruing')
         const furthest = [...data.tiers].sort((a, b) => b.verdictSampleSize - a.verdictSampleSize)[0]
-        if (decided.length === 0) {
-          return {
-            value: 'Accruing',
-            valueClass: 'is-dim',
-            say: <>No tier has reached its <span className="num">{data.verdictSample}</span>-pick sample{furthest ? <>; {furthest.tier} is at <span className="num">{furthest.verdictSampleSize}</span></> : null}.</>,
-          }
-        }
+        const record = decided.length > 0
+          ? decided.map((t) => `${t.tier} ${t.verdict}`).join(', ')
+          : <>no tier reached its <span className="num">{data.verdictSample}</span>-pick sample{furthest ? <>; {furthest.tier} stopped at <span className="num">{furthest.verdictSampleSize}</span></> : null}</>
         return {
-          value: `${decided.length} of ${data.tiers.length} decided`,
+          value: 'Retired',
           valueClass: 'is-dim',
-          say: decided.map((t) => `${t.tier} ${t.verdict}`).join(', '),
+          say: <>Retired 2026-10-28; {data.projectionVersion} record: {record}.</>,
         }
       }} />
     </section>

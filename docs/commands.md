@@ -58,6 +58,15 @@ per command; read this file before running, scheduling or changing one.
   scores or activates the experiment automatically.
 - PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
   predictions; safe to re-run, a stored prop row is skipped)
+- Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
+  [--version props-v3] [--as-of YYYY-MM-DD]`. Read-only. Applies the rule
+  pre-registered in `app/core/tennis_prop_check.py` (`tennis-props-check-v1`)
+  to one projection version's settled snapshots, never pooling versions. A
+  slice is stat, tour, anchor (book total of 17+ games or model), payout and
+  side; it reads adopt only when its fixed 200-pick, 4-week sample clears
+  break-even by 3 SE, and a reject is final for that version. Undecided slices
+  print size only, no running hit rate. The first real run needs a separate
+  yes in chat; changing a rule constant means a new rule name and sample.
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]
   [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
   schedule plus box scores from the last 3 days; `--season` backfills it all)

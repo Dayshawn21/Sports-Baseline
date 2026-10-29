@@ -138,8 +138,9 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     ),
     "get_top_props": (
         "The model's largest prop gaps for one day, ranked the way the Lineform page ranks them. NBA rows are "
-        "reference projections only (signal reference_only), never picks. Tennis rows are upcoming best picks "
-        "with a confidence tier: priced best bets have signal pick, unpriced angles have signal reference_only. "
+        "reference projections only (signal reference_only), never picks. Tennis rows are upcoming match-market "
+        "best picks with a confidence tier: priced best bets have signal pick, unpriced angles have signal "
+        "reference_only. Tennis PrizePicks player props are never picks and are not listed here. "
         "Call this when the user asks which props the model likes, the biggest edges, or best plays. NFL is not "
         "supported: say so and offer get_slate instead."
     ),

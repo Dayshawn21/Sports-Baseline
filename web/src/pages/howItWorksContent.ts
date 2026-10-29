@@ -14,9 +14,9 @@ export interface SportStatus {
 export const SPORT_STATUS: Record<SportCode, SportStatus> = {
   tennis: {
     model: 'The closing market price, adjusted by an ELO term, with weights fitted on 2022 matches and checked once on 2023-2025.',
-    picks: 'Derived, serve-edge and prop picks, with their expected value.',
+    picks: 'Derived, serve-edge and book-priced Total Games and Game Spread picks, with their expected value.',
     reference: 'Moneyline picks are off: the model\'s moneyline disagreements lost money against the closing line.',
-    status: 'Prop confidence tiers are still being graded on lines frozen before each match.',
+    status: 'PrizePicks props carry no confidence tier: each line shows its projection and P(over) against the payout\'s break-even, gray until a forward check of lines frozen before each match adopts a slice.',
   },
   nfl: {
     model: 'Player-history prop projections; ELO-based game lines.',
