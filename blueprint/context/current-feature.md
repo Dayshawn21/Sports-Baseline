@@ -148,7 +148,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   gone, since a `prop` best pick is now always a book-priced line.
   `TennisPropTable`'s tier cell shows the gap, so this step builds; Step 6 does
   the table's labels and layout.
-- [ ] **Step 6 - Web components and copy** - `TennisPropTable` swaps its tier
+- [x] **Step 6 - Web components and copy** - `TennisPropTable` swaps its tier
   column for P(over) vs break-even and shows the gap. `TennisMatchDetail`
   prop rows show projection, gap, P(over) and break-even with no
   `ConfidenceTag`, and props keep board order instead of top EV leading.
@@ -166,7 +166,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   the slate's fallback prop was the highest-EV line (now the first in board
   order, with no EV shown), and the model page's "Confidence tiers" verdict card
   now reads as the retired props-v2 record.
-- [ ] **Step 7 - Verify and docs** - run the full Verify command. Update
+- [x] **Step 7 - Verify and docs** - run the full Verify command. Update
   `docs/SportApp-Employer-Interview-Guide.md` if it exists locally (it is
   untracked and never staged): tennis props are now rated like NFL and NBA,
   with no tiers. *Done when:* `npm --prefix web run verify && cd api && python -m pytest`
