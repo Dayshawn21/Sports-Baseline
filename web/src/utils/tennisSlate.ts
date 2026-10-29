@@ -28,7 +28,7 @@ export interface SlateRow {
   odds: [number | null, number | null]
   primaryPick: BestPick | null
   primaryIsBestBet: boolean
-  /** Highest-EV prop, the fallback the slate shows when a match has no pick. */
+  /** First prop in board order, the fallback the slate shows when a match has no pick. */
   primaryProp: PropLine | null
   propCount: number
   flags: string[]

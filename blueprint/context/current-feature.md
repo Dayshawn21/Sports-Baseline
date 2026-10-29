@@ -1,7 +1,7 @@
 # Feature: Retire tennis tiers
 
 **From build-plan:** feature 48f
-**Status:** not started (spec awaiting owner review)
+**Status:** built (steps 1-7 done; invariants review 2026-10-29: two low findings, no blocker)
 
 ## Goal
 
@@ -255,6 +255,13 @@ Test gate on. Logic-bearing steps ship tests:
 - No em dashes in new comments, copy or docs.
 
 ## Open questions for review
+
+*Answered 2026-10-29.* Questions 2-4 were built with this spec's defaults.
+Question 5 was confirmed by the owner after the invariants review: keep
+`props-v3`, because P(over) code is unchanged, 48e never reads the tier, and
+a bump would strand the v3 snapshots already accrued. Question 1 stays open:
+no NBA file changed. The review also led to one copy fix: the player page's
+past-props table calls the frozen side a reference projection, not "the pick".
 
 1. **"Coordinated with the NBA LOCK removal":** `master` has no NBA tier. The
    NBA board, `nbaProps.ts` and the NBA API carry no `confidence`, and the only
