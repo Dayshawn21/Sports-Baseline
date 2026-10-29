@@ -53,7 +53,7 @@ function HitAgainstBreakEven({ card }: { card: TennisPropCardModel }) {
 
 function Trust({ card }: { card: TennisPropCardModel }) {
   return <>
-    <span className="tennis-prop-table__mobile-tier">{card.confidence ?? '--'} · </span>
+    <span className="tennis-prop-table__mobile-tier">{card.gapText ?? '--'} · </span>
     <span className={`tennis-prop-table__trust${card.flags.length ? ' is-flagged' : ''}`}>{card.trust}</span>
     <Tooltip title={card.flags.length ? card.flags.join(' · ') : 'No quality notes'}>
       <small>{card.sampleText}</small>
@@ -72,14 +72,14 @@ function PropRow({ item: { row, rank }, selected, onOpen, showMatchLinks }: { it
     <td className="is-num" data-label="model">{card.projectionText}</td>
     <td className="tennis-prop-table__hit" data-label="hit"><HitAgainstBreakEven card={card} /></td>
     <td className={`prop-table__end is-num tennis-prop-table__ev${card.evTone ? ` is-${card.evTone}` : ''}`} data-label="EV">{card.evText}</td>
-    <td className="tennis-prop-table__tier" data-label="tier">{card.confidence ?? '--'}</td>
+    <td className="tennis-prop-table__tier" data-label="gap">{card.gapText ?? '--'}</td>
     <td><Trust card={card} /><button type="button" className="tennis-prop-text-action tennis-prop-table__evidence" aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}, ${row.statType.replaceAll('_', ' ')}, ${card.valueText}`} onClick={() => onOpen(row)}>View evidence</button></td>
   </tr>
 }
 
 const COLUMNS: Array<[string, ReactNode]> = [
   ['rank', '#'], ['player', 'Player'], ['line', 'Line'], ['model', 'Model'],
-  ['hit', 'Hit / BE'], ['ev', 'EV'], ['tier', 'Tier'], ['trust', 'Trust'],
+  ['hit', 'Hit / BE'], ['ev', 'EV'], ['tier', 'Gap'], ['trust', 'Trust'],
 ]
 const NUMERIC = new Set(['model', 'ev'])
 

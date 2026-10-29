@@ -1,4 +1,5 @@
 import type { BankrollPick, BestPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
+import { compareLines, isTennisRateable } from '~/utils/tennisPropBoard'
 
 export interface UnifiedTennisMatch {
   /** Stable React key. Prop-only groups have no matchId, so this is not the id. */
@@ -267,15 +268,12 @@ function mergeBankrollPicks(existing: BestPick[], bankrollPicks: BestPick[], sho
 }
 
 /**
- * Best picks to render alongside the prop rows.
- *
- * When real prop rows exist, best picks of type `prop` are suppressed — they
- * restate the same recommendation from a second endpoint. Shared by the card
- * and the header counts so the two cannot drift.
+ * Best picks to render alongside the prop rows. PrizePicks lines are never best
+ * picks (48f), so a `prop` pick here is a book-priced market line, not a second
+ * copy of a prop row. Shared by the card and the header counts so the two cannot drift.
  */
 export function displayedBestPicks(match: UnifiedTennisMatch): BestPick[] {
-  if (match.props.length === 0) return match.bestPicks
-  return match.bestPicks.filter((pick) => pick.pickType !== 'prop')
+  return match.bestPicks
 }
 
 export function bestBetPicks(match: UnifiedTennisMatch): BestPick[] {
@@ -293,7 +291,7 @@ export interface PropsHealth {
   /** True when props loaded but are structurally unusable, not merely absent. */
   degraded: boolean
   /**
-   * `unlinked`   — props exist but never got a matchId, so confidence was suppressed.
+   * `unlinked`   — props exist but never got a matchId, so the board cleared their side.
    * `unsupported`— the source only carries markets the projection model can't score.
    * `none`       — healthy, or nothing loaded at all.
    */
@@ -302,13 +300,14 @@ export interface PropsHealth {
 
 /**
  * Props can arrive in bulk and still be unusable: linking happens upstream, and
- * an unlinked prop also loses its confidence. `isError` is false in that case,
+ * an unlinked prop also loses its side. `isError` is false in that case,
  * so without this the page reports a broken pipeline as a confident zero.
  */
 export function assessPropsHealth(props: PropLine[]): PropsHealth {
   const total = props.length
   const linked = props.filter((prop) => prop.matchId != null).length
-  const scored = props.filter((prop) => prop.confidence != null).length
+  // A hard block clears the side but can leave a P(over) computed from defaults.
+  const scored = props.filter((prop) => prop.recommendation != null && prop.pOver != null).length
   const unsupported = props.filter((prop) => prop.projectionStatus === 'unsupported_stat').length
 
   if (total === 0 || scored / total >= 0.1) {
@@ -334,25 +333,15 @@ function dedupe<T>(values: T[], keyFor: (value: T) => string): T[] {
 }
 
 /**
- * Every item the card actually renders, once each.
- *
- * `displayedBestPicks` drops best picks of type `prop` when real prop rows are
- * present, so the same underlying edge is not counted twice — that double count
- * used to inflate exactly the matches where both endpoints had data.
+ * The best picks a match card ranks by. PrizePicks prop rows are rendered but
+ * never ranked (48f), so they add nothing to a card's score, tier or count.
  */
 function rankedItems(match: UnifiedTennisMatch): Array<{ confidence: string | null; evPct: number | null; priced: boolean }> {
-  return [
-    ...displayedBestPicks(match).map((pick) => ({
-      confidence: pick.confidence,
-      evPct: finite(pick.evPct),
-      priced: isPricedBestBet(pick),
-    })),
-    ...match.props.map((prop) => ({
-      confidence: prop.confidence,
-      evPct: finite(prop.evPct),
-      priced: prop.evPct != null && prop.evPct >= MIN_BEST_BET_EV_PCT,
-    })),
-  ]
+  return displayedBestPicks(match).map((pick) => ({
+    confidence: pick.confidence,
+    evPct: finite(pick.evPct),
+    priced: isPricedBestBet(pick),
+  }))
 }
 
 /**
@@ -565,24 +554,13 @@ export function composeUnifiedMatches(
       (pick) => pick.evPct,
       (pick) => pick.edgePct,
     )
-    const visibleProps = sortByConfidenceAndEv(
-      dedupe(match.props.filter((prop) => (
-        isVisibleConfidence(prop.confidence, filters.showLeans)
-          && (prop.evPct == null || prop.evPct >= MIN_BEST_BET_EV_PCT)
-      )), propKey),
-      (prop) => prop.confidence,
-      // Rank on expected value. edgePct is a projection-vs-line delta that
-      // ignores payout, so it ranked cheap near-certain goblins at the top.
-      (prop) => prop.evPct,
-      (prop) => prop.edgePct,
-    )
+    // Gray and unranked (48f): every rateable line shows in board order, whatever
+    // its EV, and the leans toggle no longer applies to props.
+    const visibleProps = dedupe(match.props.filter(isTennisRateable), propKey).sort(compareLines)
 
-    const candidateBestPicks = visibleProps.length > 0
-      ? bestPicks.filter((pick) => pick.pickType !== 'prop')
-      : bestPicks
-    const compatibleProps = filterCompatibleProps(candidateBestPicks, visibleProps)
-    const candidate = { ...match, bestPicks: candidateBestPicks, props: compatibleProps }
-    if (candidateBestPicks.length === 0 && compatibleProps.length === 0) return []
+    const compatibleProps = filterCompatibleProps(bestPicks, visibleProps)
+    const candidate = { ...match, bestPicks, props: compatibleProps }
+    if (bestPicks.length === 0 && compatibleProps.length === 0) return []
     if (filters.tour && matchTour(candidate) !== filters.tour) return []
     if (filters.date && dateCT(matchStart(candidate)) !== filters.date) return []
     if (filters.upcomingOnly && !isUpcoming(matchStart(candidate), now)) return []

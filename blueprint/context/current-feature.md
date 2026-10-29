@@ -118,7 +118,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   `ask_questions.json` for tennis prop pick assumptions and update them.
   *Done when:* the Ask results tests pass, and `python -m app.evals.ask --dry-run`
   loads without a case that expects a tennis prop pick.
-- [ ] **Step 4 - Shared tier helpers** - delete the dead `generateOpinion`
+- [x] **Step 4 - Shared tier helpers** - delete the dead `generateOpinion`
   (and `web/src/utils/props.ts` with it, since that is its only export, once
   you approve deleting the file) and `confidenceColor`. Reword the
   `prop_ev.py` docstring: its tier now grades only market picks, never a
@@ -140,7 +140,14 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   two lines with different EVs keep start-time order; a goblin card reads
   "Over only" with a 75.8% break-even (1 / `GOBLIN_LEG_DECIMAL` 1.32) beside
   its P(over); the gap reads "+1.4" for projection 6.9 on a 5.5 line;
-  a card built from a LEAN-confidence fixture exposes no tier.
+  a card built from a LEAN-confidence fixture exposes no tier. *Added at build
+  time:* `composeUnifiedMatches` showed a prop only at LOCK/STRONG (or LEAN with
+  the toggle), which would have hidden every PrizePicks line from the Tennis
+  Intelligence page, so it now shows each match's rateable lines in board order.
+  Both copies of the "hide `prop` best picks when prop rows exist" filter are
+  gone, since a `prop` best pick is now always a book-priced line.
+  `TennisPropTable`'s tier cell shows the gap, so this step builds; Step 6 does
+  the table's labels and layout.
 - [ ] **Step 6 - Web components and copy** - `TennisPropTable` swaps its tier
   column for P(over) vs break-even and shows the gap. `TennisMatchDetail`
   prop rows show projection, gap, P(over) and break-even with no
