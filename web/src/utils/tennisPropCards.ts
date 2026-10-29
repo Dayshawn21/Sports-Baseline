@@ -10,7 +10,8 @@ export interface TennisPropCardModel {
   tour: string | null
   payoutTier: 'standard' | 'goblin' | 'demon' | null
   flags: string[]
-  isUnder: boolean
+  /** Gray unless a priced book row recommends a side: no tennis tier has passed the 32b rule. */
+  pickTone: 'positive' | 'negative' | 'none'
   pickLabel: string
   valueLabel: 'Line' | 'Odds' | 'Market'
   valueText: string
@@ -75,6 +76,11 @@ function gapText(row: TennisBoardLine, priced: boolean): string | null {
   return signed(row.statAvg - line, 1)
 }
 
+function pickTone(row: TennisBoardLine, tier: TennisPropCardModel['payoutTier'], direction: string): TennisPropCardModel['pickTone'] {
+  if (tier != null || isWinASet(row) || direction === '--') return 'none'
+  return direction === 'UNDER' ? 'negative' : 'positive'
+}
+
 // Gray and unranked (48f): a PrizePicks line names which sides are playable, never a side to take.
 function prizePicksSideLabel(tier: TennisPropCardModel['payoutTier']): string {
   return tier === 'goblin' || tier === 'demon' ? 'Over only' : 'Over / under'
@@ -96,7 +102,7 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     tour: row.tour,
     payoutTier: tier,
     flags: row.dataQualityFlags ?? [],
-    isUnder: tier == null && row.recommendation === 'UNDER',
+    pickTone: pickTone(row, tier, direction),
     pickLabel: isWinASet(row) ? row.confidence ?? 'MODEL' : tier != null ? prizePicksSideLabel(tier) : direction,
     valueLabel: isMoneyline(row) ? 'Odds' : isWinASet(row) ? 'Market' : 'Line',
     valueText: valueText(row),

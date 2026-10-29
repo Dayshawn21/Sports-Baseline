@@ -44,7 +44,7 @@ describe('propCard', () => {
     const card = propCard(row())
     expect(card).toMatchObject({
       key: 'prizepicks-7', playerName: 'Ben Shelton', meta: 'Ben Shelton vs Jakub Mensik · Tokyo', startText: 'Sep 29, 12:10 AM CT',
-      payoutTier: 'standard', isUnder: false, pickLabel: 'Over / under', valueLabel: 'Line', valueText: '11.5', unit: 'aces',
+      payoutTier: 'standard', pickTone: 'none', pickLabel: 'Over / under', valueLabel: 'Line', valueText: '11.5', unit: 'aces',
       projectionText: '13.4', gapText: '+1.9', hitPct: 66, breakEvenPct: 57.7, breakEvenLabel: 'Break-even 57.7% · standard',
       evText: '+14.4%', evTone: null, opponentText: 'Opp allows 0.6', trust: 'Reference', source: 'PrizePicks', sampleText: 'n=34',
     })
@@ -65,13 +65,13 @@ describe('propCard', () => {
 
   it('never marks a PrizePicks under or colors its EV', () => {
     const card = propCard(row({ recommendation: 'UNDER', evPct: -3.25 }))
-    expect(card).toMatchObject({ isUnder: false, pickLabel: 'Over / under', evText: '-3.3%', evTone: null })
+    expect(card).toMatchObject({ pickTone: 'none', pickLabel: 'Over / under', evText: '-3.3%', evTone: null })
     expect(propCard(row({ evPct: 40 })).evTone).toBeNull()
   })
 
   it('shows a goblin as over only, its P(over) beside the 75.8% goblin break-even', () => {
     const card = propCard(row({ oddsType: 'goblin', pOver: 0.7, pUnder: 0.25, breakEvenPct: 75.8 }))
-    expect(card).toMatchObject({ pickLabel: 'Over only', payoutTier: 'goblin', breakEvenLabel: 'Break-even 75.8% · goblin', evTone: null })
+    expect(card).toMatchObject({ pickLabel: 'Over only', pickTone: 'none', payoutTier: 'goblin', breakEvenLabel: 'Break-even 75.8% · goblin', evTone: null })
     expect(card.hitPct).toBeCloseTo(73.68, 2)
   })
 
@@ -81,21 +81,22 @@ describe('propCard', () => {
 
   it('keeps a priced book row on its own side, colored by EV', () => {
     const dk = propCard(row({ source: 'draftkings', recommendation: 'UNDER', evPct: 5 }))
-    expect(dk).toMatchObject({ payoutTier: null, pickLabel: 'UNDER', isUnder: true, evTone: 'positive', breakEvenLabel: 'Break-even 57.7%' })
+    expect(dk).toMatchObject({ payoutTier: null, pickLabel: 'UNDER', pickTone: 'negative', evTone: 'positive', breakEvenLabel: 'Break-even 57.7%' })
     expect(dk.hitPct).toBe(66)
+    expect(propCard(row({ source: 'draftkings', recommendation: 'over' }))).toMatchObject({ pickLabel: 'OVER', pickTone: 'positive' })
   })
 
   it('shows a moneyline row as signed odds against the market probability, with no pick or EV', () => {
     const card = propCard(boardRow(moneylineBoardRows([prediction])[0]))
     expect(card).toMatchObject({
-      pickLabel: '--', isUnder: false, valueLabel: 'Odds', valueText: '+129', unit: null, projectionText: '57.8%',
+      pickLabel: '--', pickTone: 'none', valueLabel: 'Odds', valueText: '+129', unit: null, projectionText: '57.8%',
       hitPct: 57.8, source: 'Market odds', sampleText: '--', flags: ['small_sample'],
     })
     expect(card.breakEvenLabel).toMatch(/^Market \d+\.\d%$/)
     expect(card).toMatchObject({ evText: '--', evTone: null, gapText: null, trust: 'Review' })
   })
 
-  it('shows a win-a-set row as the confidence, unpriced, with no bar', () => {
+  it('shows a win-a-set row as the gray strength, unpriced, with no bar', () => {
     const picks: MatchBestPicks = {
       matchId: 30, startUtc: null, p1Name: 'A', p2Name: 'B', tour: 'WTA', surface: 'Hard', tournament: null, round: null,
       p1WinProb: null, p2WinProb: null, p1OddsAmerican: null, p2OddsAmerican: null, h2hP1Wins: 0, h2hP2Wins: 0,
@@ -103,10 +104,11 @@ describe('propCard', () => {
     }
     const card = propCard(boardRow(winASetBoardRows([picks])[0]))
     expect(card).toMatchObject({
-      pickLabel: 'LOCK', valueLabel: 'Market', valueText: 'Unpriced', projectionText: '74.0%', hitPct: 74,
+      pickLabel: 'LOCK', pickTone: 'none', valueLabel: 'Market', valueText: 'Unpriced', projectionText: '74.0%', hitPct: 74,
       breakEvenPct: null, breakEvenLabel: null, evText: '--', startText: 'Time unavailable',
     })
-    expect(propCard(boardRow({ ...winASetBoardRows([picks])[0], confidence: null })).pickLabel).toBe('MODEL')
+    expect(propCard(boardRow({ ...winASetBoardRows([picks])[0], confidence: null }))).toMatchObject({ pickLabel: 'MODEL', pickTone: 'none' })
+    expect(propCard(boardRow({ ...winASetBoardRows([picks])[0], recommendation: 'OVER' })).pickTone).toBe('none')
   })
 
   it('leaves out the bar when P(over) or break-even is missing', () => {

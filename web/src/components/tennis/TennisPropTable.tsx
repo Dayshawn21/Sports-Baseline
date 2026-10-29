@@ -31,8 +31,7 @@ function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardMod
 }
 
 function Line({ card }: { card: TennisPropCardModel }) {
-  // A PrizePicks row names its playable sides, not a pick, so it stays gray (48f).
-  const side = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  const side = card.pickTone === 'positive' ? '' : ` is-${card.pickTone}`
   const payout = card.payoutTier ? ` · ${card.payoutTier}` : ''
   return <>
     <span className={`tennis-prop-table__pick${side}`}>{card.pickLabel}</span>{' '}
