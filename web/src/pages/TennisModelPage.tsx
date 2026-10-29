@@ -62,8 +62,8 @@ export default function TennisModelPage() {
       <ModelSection query={lines} loading="Settling PrizePicks lines...">
         {(data) => <ModelPrizePicksTable data={data} />}
       </ModelSection>
-      <h2 className="tennis-model-heading">Model picks by confidence tier · frozen snapshots</h2>
-      <ModelSection query={tiers} loading="Grading confidence tiers...">
+      <h2 className="tennis-model-heading">Retired confidence tiers · props-v2 record</h2>
+      <ModelSection query={tiers} loading="Loading the retired tier record...">
         {(data) => <ModelTierCards data={data} />}
       </ModelSection>
     </div></div>

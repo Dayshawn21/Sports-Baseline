@@ -77,7 +77,7 @@ function RecentBars({ row, players }: { row: TennisBoardLine, players: PlayerRec
 
 function LineSummary({ row }: { row: TennisBoardLine }) {
   const card = propCard(row)
-  const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''
+  const side = card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
   return <>
     <p>{row.matchup ?? 'Match unavailable'}</p>
     <p>{card.startText}</p>

@@ -465,7 +465,7 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
           </div>
 
           {/* Props pipeline health — unlinked props silently lose their
-              confidence, so the board can only show them as missing. */}
+              side, so the board can only show them as missing. */}
           <PropsAuditBanner />
 
           {/* Error */}

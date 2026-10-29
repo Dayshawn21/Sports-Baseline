@@ -41,7 +41,7 @@ function SourceNotice({ label, onRetry }: { label: string; onRetry: () => void }
 
 /**
  * A props response can succeed and still be unusable — unlinked props lose their
- * confidence upstream, so the page would otherwise show a clean `0` for what is
+ * side upstream, so the page would otherwise show a clean `0` for what is
  * actually a broken pipeline.
  */
 function PropsHealthNotice({ label, health }: { label: string; health: PropsHealth }) {
@@ -58,7 +58,7 @@ function PropsHealthNotice({ label, health }: { label: string; health: PropsHeal
         ) : (
           <>
             {total.toLocaleString()} {label} props loaded, but only {linked.toLocaleString()} are
-            linked to a match and {scored.toLocaleString()} have a confidence rating. Prop rows are
+            linked to a match and {scored.toLocaleString()} have a projected P(over). Prop rows are
             mostly unavailable — this is a data pipeline issue, not an empty slate.
           </>
         )}
@@ -111,7 +111,8 @@ export default function TennisIntelligencePage() {
     for (const match of matches) {
       const picks = bestBetPicks(match)
       props += match.props.length
-      for (const item of [...match.props, ...picks]) {
+      // Tier counts are priced best bets only: tennis props carry no tier (48f).
+      for (const item of picks) {
         if (item.confidence === 'LOCK') locks += 1
         if (item.confidence === 'LOCK' || item.confidence === 'STRONG') strongOrBetter += 1
       }

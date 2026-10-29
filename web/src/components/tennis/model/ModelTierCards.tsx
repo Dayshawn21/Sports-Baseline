@@ -42,7 +42,7 @@ function TierCard({ tier, sample }: { tier: TrackTierRow, sample: number }) {
 export default function ModelTierCards({ data }: { data: ModelPropTiersResponse }) {
   return (
     <>
-      <section className="tennis-model-tiers" aria-label="Hit rate by confidence tier">
+      <section className="tennis-model-tiers" aria-label="Retired hit rate by confidence tier">
         {data.tiers.map((tier) => <TierCard key={tier.tier} tier={tier} sample={data.verdictSample} />)}
         <div className="tennis-model-card tennis-model-tier">
           <div className="tennis-model-tier__name">PASS</div>
@@ -53,6 +53,8 @@ export default function ModelTierCards({ data }: { data: ModelPropTiersResponse 
         </div>
       </section>
       <p className="tennis-model-note">
+        History only: tennis props carry no tier since 2026-10-28. Lines are now rated by P(over) against each
+        payout&apos;s break-even, gray and unranked until a pre-registered forward check adopts a slice.{' '}
         Graded from <code>prop_projection_snapshots</code> frozen before the start, {data.projectionVersion} standard
         lines only, against the {pct(data.breakEven)} per-leg break-even. The verdict sample is each tier&apos;s first
         whole snapshot days, 3 or more days old, holding {data.verdictSample} decided picks; it passes only if its hit

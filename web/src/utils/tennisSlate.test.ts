@@ -120,10 +120,10 @@ describe('slateRow', () => {
     expect(row.primaryIsBestBet).toBe(false)
   })
 
-  it('keeps the highest-EV prop as the fallback when the match has no pick', () => {
+  it('falls back to the first prop in board order, never the highest-EV one (48f)', () => {
     const row = slateRow(match({ props: [prop({ id: 1, evPct: 4 }), prop({ id: 2, statType: 'total_games', evPct: 16.7 }), prop({ id: 3, evPct: null })] }))
     expect(row.primaryPick).toBeNull()
-    expect(row.primaryProp?.id).toBe(2)
+    expect(row.primaryProp?.id).toBe(1)
   })
 
   it('leaves a probability pair null when the prediction lacks it, instead of inventing a 50/50', () => {

@@ -52,11 +52,9 @@ function pair(p1: number | null | undefined, p2?: number | null): Pair | null {
   return [p1, p2 ?? 1 - p1]
 }
 
-function bestProp(match: UnifiedTennisMatch): PropLine | null {
-  const sorted = [...match.props].sort(
-    (left, right) => (right.evPct ?? Number.NEGATIVE_INFINITY) - (left.evPct ?? Number.NEGATIVE_INFINITY),
-  )
-  return sorted[0] ?? null
+// The card's first line in board order, never the highest-EV one: tennis props are unranked (48f).
+function firstProp(match: UnifiedTennisMatch): PropLine | null {
+  return match.props[0] ?? null
 }
 
 function propPlayers(match: UnifiedTennisMatch): [string, string | null] {
@@ -82,7 +80,7 @@ export function slateRow(match: UnifiedTennisMatch): SlateRow {
     odds: [prediction?.p1OddsAmerican ?? null, prediction?.p2OddsAmerican ?? null],
     primaryPick: bestBet ?? anglePicks(match)[0] ?? null,
     primaryIsBestBet: bestBet != null,
-    primaryProp: bestProp(match),
+    primaryProp: firstProp(match),
     propCount: match.props.length,
     flags: prediction ? getDisplayFlags(prediction.qualityFlags) : [],
   }
