@@ -56,8 +56,12 @@ per command; read this file before running, scheduling or changing one.
   Preserve `api/data/tennismylife-elo/reports/` with the experiment evidence:
   its locked sample/report artifacts prevent repeating the test. No workflow
   scores or activates the experiment automatically.
-- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
-  predictions; safe to re-run, a stored prop row is skipped)
+- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots
+  [--dry-run]` (after predictions; safe to re-run, a stored prop row is
+  skipped). Each eligible line is stored twice: the page's `props-v3` row and
+  the match simulation's `props-v4` shadow row (48c), never shown or picked
+  until 48e adopts a slice. `--dry-run` builds both and prints counts per
+  version without inserting.
 - Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
   [--version props-v3] [--as-of YYYY-MM-DD]`. Read-only. Applies the rule
   pre-registered in `app/core/tennis_prop_check.py` (`tennis-props-check-v1`)

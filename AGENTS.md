@@ -121,7 +121,8 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   run by default; never substitute new downloads for a stored roster's originals)
 - Tennis ELO report: `python -m app.backtest.tennis_elo --count` (`--score`
   needs a separate once-only approval)
-- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots`
+- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots [--dry-run]`
+  (stores `props-v3` and the `props-v4` simulation shadow row per line)
 - Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
   [--version props-v3] [--as-of YYYY-MM-DD]` (read-only; the first real run
   needs a separate yes in chat)

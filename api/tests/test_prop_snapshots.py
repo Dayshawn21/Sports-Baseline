@@ -8,7 +8,7 @@ from app.repositories.props import Prop
 from app.routers.props import _enrich
 from app.schemas.props import PropLine
 from app.services.tennis.prop_snapshots import (
-    PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
+    PROJECTION_VERSION, SIM_PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
 )
 from tests.test_props_audit_projection import _stats
 
@@ -111,6 +111,11 @@ class TestToSnapshot:
         assert snap.confidence is None
         assert snap.p_over is not None and (snap.p_over, snap.p_under) == (line.p_over, line.p_under)
         assert snap.recommendation is not None and snap.recommendation == line.recommendation
+
+    def test_the_page_keeps_v3_and_the_simulation_writes_v4(self):
+        assert (PROJECTION_VERSION, SIM_PROJECTION_VERSION) == ("props-v3", "props-v4")
+        snap = to_snapshot(_prop(), _line(stat_avg=21.7), NOW, SIM_PROJECTION_VERSION)
+        assert (snap.projection_version, snap.stat_avg) == ("props-v4", 21.7)
 
     def test_carries_the_page_projection(self):
         line = _line()

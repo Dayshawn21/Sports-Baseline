@@ -799,6 +799,66 @@ async def get_completed_match_scores(db: AsyncSession, since: date) -> list[Comp
 
 
 @dataclass(frozen=True)
+class PreStartMarketMatch:
+    """A completed match with its last moneyline and book total from before the start."""
+
+    match_id: int
+    tour: str
+    best_of: int
+    surface: Optional[str]
+    start_utc: datetime
+    p1_id: int
+    p2_id: int
+    score: str
+    p1_odds: int
+    p2_odds: int
+    total_line: float
+    over_odds: Optional[int]
+    under_odds: Optional[int]
+
+
+async def get_pre_start_market_matches(
+    db: AsyncSession, since: date, until: date, total_book: str,
+) -> list[PreStartMarketMatch]:
+    """Completed ATP and WTA matches in [since, until) with both markets priced before the start.
+
+    The moneyline is any book's latest, as the v4 path reads it; the total is
+    `total_book`'s latest main line, so one book's era is checked at a time.
+    """
+    rows = await db.execute(
+        text("""
+            SELECT m.id, m.tour, COALESCE(m.best_of, 3), m.surface, m.start_utc, m.p1_id, m.p2_id, m.score,
+                   ml.p1_odds, ml.p2_odds, tot.line, tot.p1_odds, tot.p2_odds
+            FROM matches m
+            JOIN LATERAL (
+                SELECT mo.p1_odds, mo.p2_odds FROM match_odds mo
+                WHERE mo.match_id = m.id AND mo.market = 'moneyline'
+                  AND mo.p1_odds IS NOT NULL AND mo.p2_odds IS NOT NULL AND mo.fetched_at < m.start_utc
+                ORDER BY mo.fetched_at DESC LIMIT 1
+            ) ml ON TRUE
+            JOIN LATERAL (
+                SELECT mo.line, mo.p1_odds, mo.p2_odds FROM match_odds mo
+                WHERE mo.match_id = m.id AND mo.market = 'total_games' AND mo.line >= 17
+                  AND LOWER(mo.book) = :book AND mo.fetched_at < m.start_utc
+                ORDER BY mo.fetched_at DESC LIMIT 1
+            ) tot ON TRUE
+            WHERE m.status = 'completed' AND m.winner_id IS NOT NULL AND m.score IS NOT NULL
+              AND m.tour IN ('ATP', 'WTA') AND m.start_utc IS NOT NULL
+              AND m.match_date >= :since AND m.match_date < :until
+            ORDER BY m.match_date, m.id
+        """),
+        {"since": since, "until": until, "book": total_book.lower()},
+    )
+    return [
+        PreStartMarketMatch(
+            *row[:8], int(row[8]), int(row[9]), float(row[10]),
+            int(row[11]) if row[11] is not None else None, int(row[12]) if row[12] is not None else None,
+        )
+        for row in rows.fetchall()
+    ]
+
+
+@dataclass(frozen=True)
 class NextMatch:
     match_id: int
     start_utc: Optional[datetime]
