@@ -102,7 +102,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   `generate_prop_picks` and the `prop_lines` path through `build_best_picks`
   and `best_picks_response` are removed, so no PrizePicks line becomes a best
   pick, and best picks no longer builds board rows.
-- [ ] **Step 2 - Snapshots and the tier record** - snapshots write
+- [x] **Step 2 - Snapshots and the tier record** - snapshots write
   `confidence=None` under `props-v3`, and the `PROJECTION_VERSION` comment is
   reworded (bump on projection, probability or EV changes). `TIER_RULE_VERSION`
   becomes `props-v2`, and the 48a note on the v3 re-registration is withdrawn
