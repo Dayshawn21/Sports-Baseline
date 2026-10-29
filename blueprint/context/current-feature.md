@@ -98,7 +98,10 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   `hit_probability` and `break_even_pct` on the first three (compared against
   values pinned from `master` before the change), the `no_market_total` flag
   still present, and `recommendation is None` only on the hard-blocked one.
-  `/tennis/props/top` returns 404.
+  `/tennis/props/top` returns 404. *Added at build time (from Step 3):*
+  `generate_prop_picks` and the `prop_lines` path through `build_best_picks`
+  and `best_picks_response` are removed, so no PrizePicks line becomes a best
+  pick, and best picks no longer builds board rows.
 - [ ] **Step 2 - Snapshots and the tier record** - snapshots write
   `confidence=None` under `props-v3`, and the `PROJECTION_VERSION` comment is
   reworded (bump on projection, probability or EV changes). `TIER_RULE_VERSION`
@@ -109,14 +112,12 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   and asserts `confidence is None` with `p_over` and `recommendation` kept, and
   `build_tier_grading` reports `projection_version == "props-v2"`. The report
   test covers the v3 no-tier message.
-- [ ] **Step 3 - Best picks drop PrizePicks prop picks** - `generate_prop_picks`
-  returns no picks for PrizePicks lines: delete it and its call if nothing else
-  remains, or leave it gated to real book-priced player props, which none exist
-  today (48d). Check `ask_results`/Ask tools and `ask_questions.json` for tennis
-  prop pick assumptions and update them. *Done when:* the best-picks tests show
-  a match with LEAN-era PrizePicks lines yields only its market picks, the Ask
-  results tests pass, and `python -m app.evals.ask --dry-run` loads without a
-  case that expects a tennis prop pick.
+- [ ] **Step 3 - Ask check** - the best-picks half of this step moved into
+  Step 1, because nulling `confidence` made `generate_prop_picks` skip every
+  line and broke its tests. Check `ask_results`/Ask tools and
+  `ask_questions.json` for tennis prop pick assumptions and update them.
+  *Done when:* the Ask results tests pass, and `python -m app.evals.ask --dry-run`
+  loads without a case that expects a tennis prop pick.
 - [ ] **Step 4 - Shared tier helpers** - delete the dead `generateOpinion`
   (and `web/src/utils/props.ts` with it, since that is its only export, once
   you approve deleting the file) and `confidenceColor`. Reword the
