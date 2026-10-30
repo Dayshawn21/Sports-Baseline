@@ -1,7 +1,7 @@
 # Feature: Volume times efficiency projection
 
 **From build-plan:** feature 49a (NFL market-anchored prop model)
-**Status:** in progress (Steps 1-5 done)
+**Status:** in progress (Steps 1-7 done)
 **Proposed branch:** `feature/nfl-volume-projection`
 
 ## Goal
@@ -195,7 +195,7 @@ Split any diff too large to read in one sitting.
   - A group with fewer than 2 cases gets no fit and falls out of the cohort.
   - The existing `nfl_over_probability` tests still pass untouched.
 
-- [ ] **Step 6 - Rolling-origin scoring and the pre-registered rule.** In the
+- [x] **Step 6 - Rolling-origin scoring and the pre-registered rule.** In the
   same module:
   - `score_origin(cases, season)` fits both arms on 2018 to season-1 and
     scores that season's common cohort (both arms produce a distribution) on
@@ -220,7 +220,7 @@ Split any diff too large to read in one sitting.
 
   The checkpoint commit exists and its hash is recorded here.
 
-- [ ] **Step 7 - CLI and report.** Add `app/backtest/nfl_volume_projection.py`.
+- [x] **Step 7 - CLI and report.** Add `app/backtest/nfl_volume_projection.py`.
   It loads 2018-2025 once, runs the five origins and prints, per market:
   - Cases, CRPS for both arms, the paired difference with its SE, and wins
     by season.
@@ -248,6 +248,10 @@ Split any diff too large to read in one sitting.
   result, calling it backtest-only.
 
 ## The pre-registered rule (locked in Step 6, before any score)
+
+**Pre-registration commit:** `5b9531259278d93de1ba70b010cfe266c46cb875`
+(2026-10-30), made before any scoring run. Merge it `--ff-only`, never
+squashed, so this hash stays on `master`.
 
 A market adopts `nfl-volume-v1` only if all of the following hold:
 
