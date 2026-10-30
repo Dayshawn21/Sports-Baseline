@@ -2,10 +2,11 @@
 
 [![Verify](https://github.com/Dayshawn21/Sports-Baseline/actions/workflows/verify.yml/badge.svg)](https://github.com/Dayshawn21/Sports-Baseline/actions/workflows/verify.yml)
 
-A sports betting research app for tennis, NFL and NBA. It ingests matches,
-odds, player stats and prop lines on a schedule, and builds model
+A sports betting research app for tennis, NFL, NBA and NHL. It ingests
+matches, odds, player stats and prop lines on a schedule, and builds model
 projections. It then grades those projections against the betting market,
-so an edge is measured rather than assumed.
+so an edge is measured rather than assumed. An AI assistant, Ask Lineform,
+answers questions about that data in plain English.
 
 **Live demo:** https://sportapp-web-7v3r.onrender.com
 (read-only; anyone can browse every page)
@@ -17,18 +18,45 @@ so an edge is measured rather than assumed.
 
 | Sport | Pages | What is a pick today |
 |---|---|---|
-| Tennis | Daily slate, prop board, match (research and picks tabs), player, model track record | Derived game-spread, serve-edge and PrizePicks picks. Moneyline picks are off (see below). |
+| Tennis | Daily slate, prop board, match (research and picks tabs), player, model track record | Derived game-spread and serve-edge picks. PrizePicks lines stay gray and unranked until a forward check adopts their slice (none has yet). Moneyline picks are off (see below). |
 | NFL | Game-first slate, prop board, game (matchups, usage, injuries, best line), player, model track record | None. Prop edges, the Rec Targets projection, the game-line model and the best-line view are reference only, shown in gray. |
 | NBA | Slate, prop board, game (injuries, team stats), model track record | None. A reference projection with P(over) for assists only, shown in gray. |
+| NHL | Slate, game (market, line movement, injuries, starting goalies) | None. Odds and prop lines only; no model yet. |
 
 ![Tennis slate](docs/screenshots/tennis-slate.png)
 
 ![NBA prop board: gray reference rows, P(over) for assists only](docs/screenshots/nba-board.png)
 
 The tennis slate ranks its remaining picks by modelled EV. A large EV figure
-there is the model's own estimate, not a validated edge. Those picks are
-graded forward on the tennis track record page, and their confidence tiers
-are still accruing.
+there is the model's own estimate, not a validated edge. Tennis prop lines
+no longer carry confidence tiers: the old tier record lost at every tier, so
+it is kept as history, and each line is now graded forward by P(over) slice
+under a rule written down before the data is read.
+
+## Ask Lineform
+
+![Ask Lineform answering "What are today's top tennis picks?"](docs/screenshots/ask-lineform.png)
+
+A chat panel in the top bar answers questions such as "what are tonight's
+NBA props?" or "how has the NFL model done?". It is built on the Claude API
+with six tools that call the same services the pages use, so the assistant
+and a page cannot describe one line differently.
+
+- **Numbers come only from tool results.** Every answer links to the
+  Lineform page behind it, and reference-only or rejected signals are never
+  presented as picks. Asked for picks on a day with none, it says so.
+- **The tool loop is written by hand**, not with a framework. It handles
+  parallel tool calls, tool errors, unknown tools and a five-round limit,
+  and is tested against a mocked client. Answers stream over Server-Sent
+  Events.
+- **Cost is capped before Claude is called:** a per-visitor daily question
+  limit, a global daily spend cap and a token cap per answer, with each
+  request's tokens and estimated cost logged. A monthly limit in the
+  Anthropic Console is the hard stop.
+- **An eval script** (kept out of CI because it spends money) runs 30
+  questions, each checking the tools called, the facts required and that
+  every number in the answer appears in a tool result. A full run costs
+  about two cents.
 
 ## What I found
 
@@ -81,7 +109,10 @@ The live track records:
   The code is layered: thin routers, services for orchestration, pure
   functions in `app/core/` with no I/O, and all SQL in `app/repositories/`.
 - **Web** (`web/`): a React single-page app that only talks to the API.
-- **Database:** PostgreSQL on Neon, with 48 Alembic migrations.
+- **Ask Lineform:** `POST /ask` in the API, streaming over SSE. The tools
+  live in `app/services/ask/` and the cost math in `app/core/ask_cost.py`.
+  It is off unless `ASK_ENABLED` is set.
+- **Database:** PostgreSQL on Neon, with 50 Alembic migrations.
 - **Ingest:** standalone `python -m app.ingest.<name>` jobs, scheduled in
   GitHub Actions. The hosted API runs no cron jobs.
 - **Hosting:** Render, a Python web service and a static site, defined in
@@ -97,14 +128,17 @@ The live track records:
 
 - **Backend:** FastAPI, SQLAlchemy 2 (async, psycopg 3), Alembic,
   Pydantic 2, LightGBM, scikit-learn.
+- **AI:** the Anthropic Messages API (Claude Haiku) for Ask Lineform.
 - **Frontend:** React 19, Vite, TypeScript (strict), Ant Design 5,
   Tailwind CSS v4, TanStack Query.
-- **Tests:** pytest (about 3,750 tests) and Vitest (about 800).
+- **Tests:** pytest (about 4,800 tests) and Vitest (about 800).
 - **Data:**
   - **Tennis:** livetennisapi, TennisAbstract, TennisMyLife, Odds-API.io,
     PrizePicks.
   - **NFL:** NFLverse, The Odds API, Odds-API.io, PrizePicks.
   - **NBA:** hoopR's ESPN releases, ESPN's injury feed, The Odds API,
+    PrizePicks.
+  - **NHL:** the NHL API, ESPN's injury and goalie feed, Odds-API.io,
     PrizePicks.
 
 ## Running locally
