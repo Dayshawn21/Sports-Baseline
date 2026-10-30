@@ -210,7 +210,7 @@ extrapolation the log-loss clause is there to catch.
   and its hash is recorded in this file. Target: before 2026-11-06 01:15 UTC
   (week 9 first kickoff), and ideally this week.
 
-- [ ] **Step 4 - Read-only loader.** Add `app/repositories/nfl_volume_anchor.py`
+- [x] **Step 4 - Read-only loader.** Add `app/repositories/nfl_volume_anchor.py`
   with `get_anchor_lines(db, season, first_week, last_week)` returning, for
   each player-game, the last standard full-game receptions line fetched
   before kickoff, the player's team and position, and the settled
