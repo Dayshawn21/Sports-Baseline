@@ -1,7 +1,7 @@
 # Feature: Volume times efficiency projection
 
 **From build-plan:** feature 49a (NFL market-anchored prop model)
-**Status:** in progress (Step 1 done)
+**Status:** in progress (Steps 1-5 done)
 **Proposed branch:** `feature/nfl-volume-projection`
 
 ## Goal
@@ -98,7 +98,7 @@ Split any diff too large to read in one sitting.
     output, which shows the new seasons do not leak into v4.
   - No migration ran.
 
-- [ ] **Step 2 - Pure outcome distributions.** Add
+- [x] **Step 2 - Pure outcome distributions.** Add
   `app/core/outcome_distribution.py` with no NFL imports:
   - A negative binomial parameterized by mean and dispersion.
   - A compound yards distribution: N opportunities from a negative binomial,
@@ -115,7 +115,7 @@ Split any diff too large to read in one sitting.
   hand-computed small case. Two more cases are covered: CRPS is zero for a
   point mass at the actual, and invalid parameters raise.
 
-- [ ] **Step 3 - Pure volume times efficiency projection.** Add
+- [x] **Step 3 - Pure volume times efficiency projection.** Add
   `app/core/nfl_volume_projection.py`. It takes typed pre-week player
   history and team context and returns one distribution per eligible
   (position, market), using `REPLAY_MARKETS_BY_POSITION` for the seven
@@ -148,7 +148,7 @@ Split any diff too large to read in one sitting.
   The input is not mutated. Every constant is a parameter, with no default
   that silently stands in for a fitted value.
 
-- [ ] **Step 4 - Read-only season loader.** Add
+- [x] **Step 4 - Read-only season loader.** Add
   `app/repositories/nfl_volume.py` with
   `get_volume_history(db, first_season, last_season)`. It returns typed rows:
   - Every regular-season player-game: player, team from weekly rosters,
@@ -167,7 +167,7 @@ Split any diff too large to read in one sitting.
   - Nullable stats stay null, with no `coalesce` to zero.
   - One row per player-game.
 
-- [ ] **Step 5 - Fitting both arms on fit seasons.** Add
+- [x] **Step 5 - Fitting both arms on fit seasons.** Add
   `app/core/nfl_volume_backtest.py` with `fit_volume(cases, fit_seasons)` and
   `fit_reference(cases, fit_seasons)`.
 
@@ -175,10 +175,11 @@ Split any diff too large to read in one sitting.
   - The team-volume regression.
   - Dispersion per (market, position).
   - Per-opportunity yards sd per (market, position).
-  - `K_share` and `K_rate[market]`, chosen from the fixed grid {2, 4, 8, 16,
-    32} for share and {10, 25, 50, 100, 200} for rates, by fit-season CRPS.
-    Share is chosen first, then each rate separately, so the search is 5 +
-    5 x markets evaluations, not a product.
+  - `K_share` and `K_rate[market]`, chosen from the fixed grid {0.5, 1, 2,
+    4, 8, 16, 32} for share and {2, 5, 10, 25, 50, 100, 200} for rates, by
+    fit-season CRPS. Share is chosen first (rates held at the grid's middle,
+    25), then each rate separately, so the search is 7 + 7 x markets
+    evaluations, not a product.
 
   **The reference arm** (also fitted only on fit seasons): v4's core baseline
   (`blend_averages` at 0.6, regressed to the position average over
@@ -259,6 +260,8 @@ A market adopts `nfl-volume-v1` only if all of the following hold:
    thresholds: ECE <= 0.02, and no bin of 200 or more pairs off by more than
    0.05.
 5. The pooled share of actuals below volume's median lies within 0.47-0.53.
+   An actual exactly on the median counts as half, since counts often land
+   on it.
 
 Otherwise the verdict is `reject`, or `insufficient` when clause 1 fails.
 Verdicts are final for `nfl-volume-v1`. 2025 is scored here as one of five
@@ -324,6 +327,22 @@ final gate.
   `get_volume_history` bounds the season from below with it. The reference
   arm is built in pure code from those rows, never from v4's slate readers,
   which are floored at 2024 by `PROJECTION_FIRST_HISTORY_SEASON`.
+
+- **Disclosed read (2026-10-30, Step 5a).** A mechanics check scored the
+  reference arm alone on 2025 (mean CRPS per market, fit on 2018-2024). No
+  volume-arm score and no comparison was read. The rule, grid, cohort and
+  seasons were already fixed above and do not change. Later mechanics checks
+  score fit seasons only.
+- **Grids extended (2026-10-30, Step 5b, owner's yes).** The spec's grids
+  were {2, 4, 8, 16, 32} for share and {10, 25, 50, 100, 200} for rates. A
+  fit on 2018-2020 (fit seasons only, no scored season read) chose the
+  smallest share K (2) and the smallest rate K for rushing yards and
+  completions (10), so the optimum could lie below the grid. Both grids were
+  extended downward before the pre-registration commit; no volume-arm score
+  on a scored season had been read.
+- **Step 5 is built in two reviewed parts:** 5a (cases, `ratio_cdf`, the
+  shared CRPS grids and the reference arm) and 5b (the volume arm's fit and
+  grid search).
 
 ## Results
 
