@@ -4,6 +4,9 @@ import pytest
 
 from app.core.nfl_volume_projection import (
     MARKET_SPECS,
+    NFL_VOLUME_MODEL_VERSION,
+    NFL_VOLUME_V1_MARKETS,
+    NFL_VOLUME_V1_PARAMETERS,
     NO_FIT,
     NO_HISTORY,
     NO_OPPORTUNITIES,
@@ -177,3 +180,36 @@ def test_the_history_is_not_mutated() -> None:
     project_player("WR", history, GAME, _params())
 
     assert history == snapshot
+
+
+def test_nfl_volume_v1_freezes_receptions_only() -> None:
+    params = NFL_VOLUME_V1_PARAMETERS
+
+    assert NFL_VOLUME_MODEL_VERSION == "nfl-volume-v1"
+    assert NFL_VOLUME_V1_MARKETS == ("receptions",)
+    assert params.pass_volume == TeamVolumeFit(18.66424569101621, 0.6696186572220967, -0.32765809633336157)
+    assert (params.previous_season_weight, params.k_share, dict(params.k_rate)) == (0.6, 0.5, {"receptions": 25.0})
+    assert params.position_share == {
+        ("RB", "targets"): pytest.approx(0.0631555), ("TE", "targets"): pytest.approx(0.0926555),
+        ("WR", "targets"): pytest.approx(0.1263716),
+    }
+    assert params.position_rate == {
+        ("RB", "receptions"): pytest.approx(0.7732795), ("TE", "receptions"): pytest.approx(0.6967870),
+        ("WR", "receptions"): pytest.approx(0.6317435),
+    }
+    assert params.dispersion == {
+        ("receptions", "RB"): pytest.approx(4.6379037), ("receptions", "TE"): pytest.approx(9.6855627),
+        ("receptions", "WR"): pytest.approx(9.3857812),
+    }
+    assert params.yards_sd == {}
+
+
+@pytest.mark.parametrize("position", POSITIONS)
+def test_nfl_volume_v1_projects_only_its_adopted_markets(position: str) -> None:
+    history = [_game(2024, 3, targets=8.0, receptions=6.0, rushing_attempts=10.0, passing_attempts=30.0)]
+
+    projection = project_player(position, history, GAME, NFL_VOLUME_V1_PARAMETERS)
+
+    assert set(projection.distributions) <= set(NFL_VOLUME_V1_MARKETS)
+    assert set(projection.distributions) == ({"receptions"} if position != "QB" else set())
+    assert all(reason == NO_FIT for reason in projection.skipped.values())
