@@ -34,7 +34,7 @@ from typing import Any, Callable, Optional
 import httpx
 
 from app.core.bookmakers import bookmaker_scope_param
-from app.core.tennis_odds_events import event_start, match_event, odds_event_tour
+from app.core.tennis_odds_events import event_start, match_event, near_start_events, odds_event_tour
 from app.ingest.log_config import configure_ingest_logging
 
 logger = logging.getLogger("odds_api_ingest")
@@ -218,6 +218,7 @@ def render_market_inventory(
     captured_at: datetime,
     request_scope: str,
     result: str | None = None,
+    event_lines: list[str] | None = None,
 ) -> str:
     """Render the safe, durable portion of a provider inventory capture."""
     lines = [
@@ -232,7 +233,34 @@ def render_market_inventory(
     for entry in inventory:
         markets = ", ".join(entry.markets) or "No named markets returned"
         lines.append(f"| {entry.bookmaker} | {markets} |")
+    if event_lines is not None:
+        lines.extend(("", "## Per event", ""))
+        lines.extend(event_lines or ["- No events captured."])
     return "\n".join(lines) + "\n"
+
+
+def render_event_lines(selected: list[dict], odds_events: list[dict], captured_at: datetime) -> list[str]:
+    """One line per selected event: league, minutes to start, and each book's market names.
+
+    Markets stay per event here because the merged table cannot show how many
+    captured events carry a market.
+    """
+    odds_by_id = {_event_id(event): event for event in odds_events}
+    lines: list[str] = []
+    for event in selected:
+        league = (event.get("league") or {}).get("name") or "unknown league"
+        start = event_start(event)
+        minutes = "?" if start is None else str(round((start - captured_at).total_seconds() / 60))
+        returned = odds_by_id.get(_event_id(event))
+        if returned is None:
+            books = "not returned"
+        else:
+            inventory = bookmaker_market_inventory(returned.get("bookmakers"))
+            books = "; ".join(
+                f"{entry.bookmaker}: {', '.join(entry.markets) or 'no named markets'}" for entry in inventory
+            ) or "no bookmakers"
+        lines.append(f"- {league}, starts in {minutes} min: {books}")
+    return lines
 
 
 def _find_set_spread_markets(bookmakers: Any) -> dict[str, set[str]]:
@@ -483,12 +511,18 @@ async def _fetch_odds_batch(
     return events, rate_limit
 
 
+def _event_id(event: dict) -> int | None:
+    try:
+        return int(event["id"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _inventory_event_ids(events: list[dict]) -> list[int]:
     event_ids: list[int] = []
     for event in events:
-        try:
-            event_id = int(event["id"])
-        except (KeyError, TypeError, ValueError):
+        event_id = _event_id(event)
+        if event_id is None:
             continue
         if event_id not in event_ids:
             event_ids.append(event_id)
@@ -497,19 +531,30 @@ def _inventory_event_ids(events: list[dict]) -> list[int]:
     return event_ids
 
 
-def _inventory_request_scope(bookmakers: str, event_count: int) -> str:
-    return (
+def _inventory_request_scope(bookmakers: str, event_count: int, within_hours: float | None = None) -> str:
+    scope = (
         "sport=tennis; one /events request; one /odds/multi request for "
         f"{event_count} event(s), up to {BATCH_SIZE}; bookmakers={bookmakers}"
     )
+    if within_hours is not None:
+        scope += f"; tour-level ATP/WTA singles starting within {within_hours:g}h, soonest first"
+    return scope
 
 
 async def capture_market_inventory(
     output_path: Path,
     bookmakers: str | None = None,
     api_key: str | None = None,
+    within_hours: float | None = None,
+    min_requests_remaining: int = DEFAULT_MIN_REQUESTS_REMAINING,
+    now: datetime | None = None,
 ) -> Path:
-    """Capture one read-only tennis odds batch as a safe market inventory."""
+    """Capture one read-only tennis odds batch as a safe market inventory.
+
+    With within_hours, the batch is the tour-level singles events starting soonest
+    inside that window and the report adds one line per event; without it, the
+    first listed ids, as the 16c inventory did.
+    """
     if api_key is None or bookmakers is None:
         from app.config import settings
 
@@ -521,22 +566,34 @@ async def capture_market_inventory(
         raise RuntimeError("ODDS_API_KEY is required - set it in api/app/.env")
     bookmaker_scope = bookmaker_scope_param(bookmakers)
 
+    captured_at = now or datetime.now(timezone.utc)
     async with httpx.AsyncClient() as client:
-        events, _ = await _fetch_events(client, api_key)
-        event_ids = _inventory_event_ids(events)
-        scope = _inventory_request_scope(bookmaker_scope, len(event_ids))
-        if not event_ids:
-            report = render_market_inventory(
-                [],
-                datetime.now(timezone.utc),
-                scope,
-                "No active tennis events returned.",
+        events, rate_limit = await _fetch_events(client, api_key)
+        selected = None
+        if within_hours is None:
+            event_ids = _inventory_event_ids(events)
+        else:
+            selected = [
+                event for event in near_start_events(events, captured_at, within_hours, BATCH_SIZE)
+                if _event_id(event) is not None
+            ]
+            event_ids = _inventory_event_ids(selected)
+        scope = _inventory_request_scope(bookmaker_scope, len(event_ids), within_hours)
+        if _quota_too_low(rate_limit, min_requests_remaining):
+            result = (
+                f"Stopped at the quota floor: {rate_limit.remaining} request(s) remaining, "
+                f"floor {min_requests_remaining}; no odds request sent."
             )
+            report = render_market_inventory([], captured_at, scope, result)
+        elif not event_ids:
+            report = render_market_inventory([], captured_at, scope, "No active tennis events returned.")
         else:
             odds_events, _ = await _fetch_odds_batch(client, api_key, event_ids, bookmaker_scope)
-            inventory = event_market_inventory([event for event in odds_events if isinstance(event, dict)])
+            odds_events = [event for event in odds_events if isinstance(event, dict)]
+            inventory = event_market_inventory(odds_events)
             result = None if inventory else "No bookmaker markets returned for the scoped batch."
-            report = render_market_inventory(inventory, datetime.now(timezone.utc), scope, result)
+            event_lines = None if selected is None else render_event_lines(selected, odds_events, captured_at)
+            report = render_market_inventory(inventory, captured_at, scope, result, event_lines)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
@@ -771,9 +828,15 @@ async def _main() -> None:
     parser.add_argument("--min-requests-remaining", type=int, default=DEFAULT_MIN_REQUESTS_REMAINING)
     parser.add_argument("--inventory-only", action="store_true")
     parser.add_argument("--inventory-output", type=Path, default=DEFAULT_INVENTORY_OUTPUT)
+    parser.add_argument("--inventory-within-hours", type=float)
     args = parser.parse_args()
     if args.inventory_only:
-        await capture_market_inventory(args.inventory_output, bookmakers=args.bookmakers)
+        await capture_market_inventory(
+            args.inventory_output,
+            bookmakers=args.bookmakers,
+            within_hours=args.inventory_within_hours,
+            min_requests_remaining=args.min_requests_remaining,
+        )
         return
     await run(
         hours_ahead=args.hours_ahead,
