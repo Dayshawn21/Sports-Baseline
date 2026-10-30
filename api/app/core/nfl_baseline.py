@@ -16,6 +16,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+# v4 and Rec Targets were validated on history from 2024 on. Older seasons
+# backfilled for later work (2026-10-29) must not move them under the same version.
+PROJECTION_FIRST_HISTORY_SEASON = 2024
+
 # One threshold governs both the baseline choice and the `small_sample` flag, so
 # a season can never be good enough to select yet too thin to trust.
 MIN_BASELINE_GAMES = 4

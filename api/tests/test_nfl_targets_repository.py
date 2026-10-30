@@ -9,6 +9,7 @@ from sqlalchemy import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_targets_projection import TargetsObservation, project_targets
 from app.repositories.nfl import _player_teams_cte
 from app.repositories.nfl_targets import get_targets_replay_rows
@@ -95,7 +96,10 @@ def test_history_is_batched_for_distinct_players_and_strictly_before_the_week() 
 
     assert len(session.calls) == 2
     sql, params = session.calls[1]
-    assert params == {"season": 2024, "week": 5, "player_ids": [7, 9]}
+    assert params == {
+        "season": 2024, "week": 5, "player_ids": [7, 9], "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
+    assert "g.season >= :first_history_season AND (g.season < :season" in sql
     assert "JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id" in sql
     assert "s.player_id = ANY(CAST(:player_ids AS bigint[]))" in sql
     assert "g.game_type = 'REG' AND g.status = 'completed'" in sql

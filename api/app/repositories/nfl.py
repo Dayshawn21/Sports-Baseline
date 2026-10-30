@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from app.core.nfl_baseline import SeasonGames, choose_baseline_season
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON, SeasonGames, choose_baseline_season
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
@@ -1232,11 +1232,14 @@ async def _attach_snap_history(db: AsyncSession, season: int, week: int, rows: l
     player_ids = sorted({row["player_id"] for row in rows})
     if not player_ids:
         return
-    params = {"player_ids": player_ids, "season": season, "week": week}
+    params = {
+        "player_ids": player_ids, "season": season, "week": week,
+        "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
     player_rows = await db.execute(text("""
         SELECT player_id, season, COUNT(offense_pct), AVG(offense_pct)
         FROM nfl_player_snap_counts
-        WHERE player_id = ANY(:player_ids) AND offense_pct IS NOT NULL
+        WHERE player_id = ANY(:player_ids) AND offense_pct IS NOT NULL AND season >= :first_history_season
           AND (season < :season OR (season = :season AND week < :week))
         GROUP BY player_id, season ORDER BY player_id, season
     """), params)
@@ -1246,7 +1249,8 @@ async def _attach_snap_history(db: AsyncSession, season: int, week: int, rows: l
     position_rows = await db.execute(text("""
         SELECT p.position, s.season, AVG(s.offense_pct)
         FROM nfl_player_snap_counts s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE s.offense_pct IS NOT NULL AND (s.season < :season OR (s.season = :season AND s.week < :week))
+        WHERE s.offense_pct IS NOT NULL AND s.season >= :first_history_season
+          AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
     """), params)
     position_shares = {(position, year): float(share) for position, year, share in position_rows.fetchall()}
@@ -1268,10 +1272,10 @@ async def _td_history(
     player_rows = await db.execute(text("""
         SELECT s.player_id, s.season, COUNT(*), AVG(s.touchdowns)
         FROM nfl_player_weekly_stats s JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
-        WHERE g.game_type = 'REG' AND s.player_id = ANY(:player_ids)
+        WHERE g.game_type = 'REG' AND s.player_id = ANY(:player_ids) AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.player_id, s.season ORDER BY s.player_id, s.season
-    """), {"player_ids": player_ids, "season": season, "week": week})
+    """), {"player_ids": player_ids, "season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     td_seasons: dict[int, list[dict]] = {}
     for player_id, year, games, touchdowns in player_rows.fetchall():
         td_seasons.setdefault(player_id, []).append({"season": year, "games": games, "touchdowns": float(touchdowns or 0)})
@@ -1279,9 +1283,10 @@ async def _td_history(
         SELECT p.position, s.season, AVG(s.touchdowns)
         FROM nfl_player_weekly_stats s JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG' AND (s.season < :season OR (s.season = :season AND s.week < :week))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+          AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
-    """), {"season": season, "week": week})
+    """), {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return td_seasons, {(position, year): float(rate or 0) for position, year, rate in position_rows.fetchall()}
 
 
@@ -1406,6 +1411,7 @@ _BASELINES_CTE = f"""
         FROM nfl_player_weekly_stats s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.player_id, s.season
     ),
@@ -1422,6 +1428,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
     ),
@@ -1437,6 +1444,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG' AND s.opponent_team_id IS NOT NULL
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.opponent_team_id, p.position
     ),
@@ -1452,6 +1460,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position
     )
@@ -1989,7 +1998,7 @@ async def _slate_line_rows(
             WHERE g.season = :season AND g.week = :week AND g.game_type = 'REG'
             ORDER BY p.name, l.market, l.line, l.id, b.season
         """),
-        {"season": season, "week": week, **params},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON, **params},
     )
 
     by_line: dict[int, dict] = {}
@@ -2064,11 +2073,11 @@ async def get_slate_player_history(
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
             LEFT JOIN sport_teams opponent ON opponent.sport = 'nfl' AND opponent.id = s.opponent_team_id
             WHERE s.player_id = ANY(CAST(:player_ids AS bigint[]))
-              AND g.game_type = 'REG' AND g.status = 'completed'
+              AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season
               AND (g.season < :season OR (g.season = :season AND g.week < :week))
             ORDER BY s.player_id, g.season DESC, g.week DESC, g.start_utc DESC NULLS LAST, g.id DESC
         """),
-        {"season": season, "week": week, "player_ids": player_ids},
+        {"season": season, "week": week, "player_ids": player_ids, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     history: dict[int, list[dict]] = {}
     for row in rows.mappings():
@@ -2089,7 +2098,7 @@ async def get_slate_player_history(
 
 
 async def get_slate_opponent_position_history(db: AsyncSession, season: int, week: int) -> dict[tuple[int, str], list[dict]]:
-    rows = await db.execute(text("""SELECT s.opponent_team_id defense_team_id, p.position, offense.team_code opponent_team, g.season, g.week, SUM(s.passing_yards) passing_yards, SUM(s.passing_attempts) passing_attempts, SUM(s.passing_completions) passing_completions, SUM(s.rushing_yards) rushing_yards, SUM(s.rushing_attempts) rushing_attempts, SUM(s.receiving_yards) receiving_yards, SUM(s.receptions) receptions, SUM(s.touchdowns) touchdowns, SUM(s.fantasy_points) fantasy_points FROM nfl_player_weekly_stats s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id LEFT JOIN sport_teams offense ON offense.sport = 'nfl' AND offense.id = s.team_id WHERE s.opponent_team_id IS NOT NULL AND g.game_type = 'REG' AND g.status = 'completed' AND (g.season < :season OR (g.season = :season AND g.week < :week)) GROUP BY s.opponent_team_id, p.position, offense.team_code, g.id, g.season, g.week ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC"""), {"season": season, "week": week})
+    rows = await db.execute(text("""SELECT s.opponent_team_id defense_team_id, p.position, offense.team_code opponent_team, g.season, g.week, SUM(s.passing_yards) passing_yards, SUM(s.passing_attempts) passing_attempts, SUM(s.passing_completions) passing_completions, SUM(s.rushing_yards) rushing_yards, SUM(s.rushing_attempts) rushing_attempts, SUM(s.receiving_yards) receiving_yards, SUM(s.receptions) receptions, SUM(s.touchdowns) touchdowns, SUM(s.fantasy_points) fantasy_points FROM nfl_player_weekly_stats s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id LEFT JOIN sport_teams offense ON offense.sport = 'nfl' AND offense.id = s.team_id WHERE s.opponent_team_id IS NOT NULL AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season AND (g.season < :season OR (g.season = :season AND g.week < :week)) GROUP BY s.opponent_team_id, p.position, offense.team_code, g.id, g.season, g.week ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC"""), {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     history: dict[tuple[int, str], list[dict]] = {}
     fields = ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts", "receiving_yards", "receptions", "touchdowns", "fantasy_points")
     for row in rows.mappings():
@@ -2120,11 +2129,12 @@ async def get_team_game_position_totals(
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
             WHERE g.game_type = 'REG' AND g.status = 'completed'
               AND s.opponent_team_id IS NOT NULL AND p.position IS NOT NULL
+              AND s.season >= :first_history_season
               AND (s.season < :season OR (s.season = :season AND s.week < :week))
             GROUP BY s.opponent_team_id, p.position, g.id, g.season, g.week
             ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC, g.id DESC
         """),
-        {"season": season, "week": week},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     totals: dict[tuple[int, str], list[NflTeamGameTotals]] = {}
     for row in rows.mappings():

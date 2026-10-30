@@ -8,6 +8,7 @@ from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nfl_availability import NflAvailability
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_game_lines import market_home_probability
 from app.core.nfl_targets_projection import TargetsObservation, TargetsProjectionInput, TargetsReplayRow
 from app.repositories.nfl import _AVAILABILITY_COLUMNS, _AVAILABILITY_CTE, _player_teams_cte
@@ -133,11 +134,14 @@ async def _get_history_with_opponents(
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         LEFT JOIN sport_teams opponent ON opponent.sport = 'nfl' AND opponent.id = s.opponent_team_id
         WHERE s.player_id = ANY(CAST(:player_ids AS bigint[]))
-          AND g.game_type = 'REG' AND g.status = 'completed'
+          AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season
           AND (g.season < :season OR (g.season = :season AND g.week < :week))
         ORDER BY s.player_id, g.season DESC, g.week DESC,
                  g.start_utc DESC NULLS LAST, g.id DESC
-    """), {"season": season, "week": week, "player_ids": player_ids})
+    """), {
+        "season": season, "week": week, "player_ids": player_ids,
+        "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    })
     by_player: dict[int, list[TargetsHistoryGame]] = {}
     for row in result.mappings():
         by_player.setdefault(row["player_id"], []).append(TargetsHistoryGame(
