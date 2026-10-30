@@ -1017,8 +1017,8 @@ async def get_weekly_td_rows(db: AsyncSession) -> list[NflWeeklyTdRow]:
         FROM nfl_player_weekly_stats s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG'
-    """))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+    """), {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return [NflWeeklyTdRow(*row) for row in rows.fetchall()]
 
 
@@ -1029,8 +1029,8 @@ async def get_snap_rows(db: AsyncSession) -> list[NflSnapRow]:
         FROM nfl_player_snap_counts s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG'
-    """))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+    """), {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return [NflSnapRow(*row) for row in rows.fetchall()]
 
 
@@ -1172,7 +1172,7 @@ async def get_current_week(db: AsyncSession, now: datetime) -> tuple[int, int] |
 
 
 async def get_historical_player_baselines(db: AsyncSession, season: int, week: int) -> list[dict]:
-    """Return upcoming-game players with transparent pre-week career-season averages."""
+    """Return upcoming-game players with transparent pre-week averages since the history floor."""
     rows = await db.execute(
         text(f"""
             WITH {_player_teams_cte()},
@@ -1191,12 +1191,13 @@ async def get_historical_player_baselines(db: AsyncSession, season: int, week: i
                    COALESCE(AVG(s.receptions), 0), COALESCE(AVG(s.touchdowns), 0), AVG(s.fantasy_points)
             FROM slate_players sp
             LEFT JOIN nfl_player_weekly_stats s ON s.player_id = sp.player_id
+                AND s.season >= :first_history_season
                 AND (s.season < :season OR (s.season = :season AND s.week < :week))
             GROUP BY sp.game_id, sp.player_id, sp.player_name, sp.position
             HAVING COUNT(s.id) > 0
             ORDER BY sp.game_id, sp.player_name
         """),
-        {"season": season, "week": week},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     baselines = [
         {

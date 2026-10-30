@@ -219,6 +219,25 @@ def test_projection_players_are_placed_in_games_by_the_as_of_team() -> None:
     assert "p.team_id IN" not in statement
 
 
+def test_projection_career_averages_ignore_seasons_before_the_floor() -> None:
+    session = _ScriptedSession([])
+
+    asyncio.run(get_historical_player_baselines(cast(AsyncSession, session), 2026, 7))
+
+    ((sql, params),) = session.calls
+    assert "AND s.season >= :first_history_season AND (s.season < :season" in sql
+    assert params == {"season": 2026, "week": 7, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
+
+
+def test_backtest_td_rows_ignore_seasons_before_the_floor() -> None:
+    session = _RecordingSession()
+
+    assert asyncio.run(get_weekly_td_rows(cast(AsyncSession, session))) == []
+
+    assert "WHERE g.game_type = 'REG' AND s.season >= :first_history_season" in _flat(session.statement)
+    assert session.params == {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
+
+
 def test_link_candidates_carry_the_latest_roster_team_with_no_week_bound() -> None:
     session = _RecordingSession()
 
@@ -590,8 +609,10 @@ def test_backtest_snap_rows_are_regular_season_and_keep_null_shares() -> None:
 
     rows = asyncio.run(get_snap_rows(cast(AsyncSession, session)))
 
-    ((sql, _),) = session.calls
+    ((sql, params),) = session.calls
     assert "FROM nfl_player_snap_counts s" in sql and "WHERE g.game_type = 'REG'" in sql
+    assert "AND s.season >= :first_history_season" in sql
+    assert params == {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
     assert rows == [NflSnapRow(1, "TE", 2025, 3, 0.62), NflSnapRow(1, "TE", 2025, 4, None)]
 
 
