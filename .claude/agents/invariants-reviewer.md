@@ -1,6 +1,6 @@
 ---
 name: invariants-reviewer
-description: Read-only review of a diff or branch against SportApp V2's load-bearing invariants (sport filters, odds provider filters, holdout discipline, gray-signal display rules, shared-module import boundaries). Use before /complete, after a larger change to queries, models or UI signal colors, or when asked to check project invariants.
+description: Read-only review of a diff or branch against SportApp V2's load-bearing invariants (sport filters, odds provider filters, holdout discipline, history floors, gray-signal display rules, shared-module import boundaries). Use before /complete, after a larger change to queries, models or UI signal colors, or when asked to check project invariants.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -54,6 +54,12 @@ Source of truth: `blueprint/context/project-overview.md` and
    `/admin` URLs.
 10. **Render memory.** No new heavy report on a request path in production
     (the 512 MB instance); heavy reports go through `report_snapshots`.
+11. **History floors.** A model's history reads (player, position, opponent and
+    league baselines, usage, snap and TD history, team-game totals) bound the
+    season from below with the model's named floor, such as
+    `PROJECTION_FIRST_HISTORY_SEASON` for NFL v4 and Rec Targets. A new reader
+    feeding a floored model applies the same floor; a new model names its own.
+    Moving a floor changes model output, so it bumps the version (invariant 7).
 
 ## Output
 

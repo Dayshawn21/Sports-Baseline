@@ -1,6 +1,6 @@
 ---
 name: invariants-review
-description: Read-only review of the current branch or named files against SportApp V2's load-bearing invariants (sport and odds-provider filters, NBA game types, modelled-market filters, import boundaries, holdout discipline, versions, gray signal colors, secrets, Render memory). Use when the user runs /invariants-review or $invariants-review, asks to check project invariants, or before /complete.
+description: Read-only review of the current branch or named files against SportApp V2's load-bearing invariants (sport and odds-provider filters, NBA game types, modelled-market filters, import boundaries, holdout discipline, versions, history floors, gray signal colors, secrets, Render memory). Use when the user runs /invariants-review or $invariants-review, asks to check project invariants, or before /complete.
 ---
 
 # Invariants review
