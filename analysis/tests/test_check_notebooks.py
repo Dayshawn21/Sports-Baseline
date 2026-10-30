@@ -29,8 +29,9 @@ def test_outputs_and_counts_are_flagged():
     [
         "url = 'postgresql+psycopg://user:pw@host/db'",
         "DATABASE_URL = 'x'",
-        "key = '0123456789abcdef0123456789abcdef'",
-        # Assembled at runtime so no key-shaped literal trips GitHub push protection.
+        # Assembled at runtime so no key-shaped literal trips GitHub push
+        # protection or the CI gitleaks scan.
+        "key = '" + "0123456789abcdef" * 2 + "'",
         "token = '" + "a1B2c3D4e5" * 4 + "'",
     ],
 )
