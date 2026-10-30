@@ -208,3 +208,23 @@ def project_player(
         else:
             distributions[market] = result
     return PlayerProjection(distributions, skipped)
+
+
+NFL_VOLUME_MODEL_VERSION = "nfl-volume-v1"
+# Only receptions passed the pre-registered rule (49a Step 8, 2026-10-30); the
+# other six markets were rejected and hold no constants here, so
+# `project_player` skips them with NO_FIT rather than serve an unadopted market.
+NFL_VOLUME_V1_MARKETS = ("receptions",)
+# Refitted on 2018-2025 with `fit_volume`, the same search the scored origins used.
+# Rush volume is fitted but unused while no rush market is adopted.
+NFL_VOLUME_V1_PARAMETERS = VolumeParameters(
+    pass_volume=TeamVolumeFit(intercept=18.66424569101621, total_slope=0.6696186572220967, margin_slope=-0.32765809633336157),
+    rush_volume=TeamVolumeFit(intercept=32.481171790500284, total_slope=-0.25511932919853736, margin_slope=0.3528277296032612),
+    previous_season_weight=0.6,
+    k_share=0.5,
+    k_rate={"receptions": 25.0},
+    position_share={("RB", "targets"): 0.06315550788351015, ("TE", "targets"): 0.09265548235133098, ("WR", "targets"): 0.12637159628821593},
+    position_rate={("RB", "receptions"): 0.7732795093739083, ("TE", "receptions"): 0.6967870133369257, ("WR", "receptions"): 0.6317435400596019},
+    dispersion={("receptions", "RB"): 4.637903725685104, ("receptions", "TE"): 9.685562654390903, ("receptions", "WR"): 9.385781211717882},
+    yards_sd={},
+)
