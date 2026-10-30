@@ -15,7 +15,13 @@ from datetime import date
 
 import httpx
 
-from app.ingest.nflverse import NFLVERSE_RELEASE_BASE, SeasonNotPublished, current_nfl_season, get_release_asset
+from app.ingest.nflverse import (
+    NFLVERSE_RELEASE_BASE,
+    SeasonNotPublished,
+    current_nfl_season,
+    franchise_code,
+    get_release_asset,
+)
 
 
 @dataclass(frozen=True)
@@ -48,7 +54,7 @@ def parse_weekly_rosters(lines: Iterable[str], season: int) -> list[NflverseRost
         if not player_id or not team or week is None:
             continue
         by_player_week[(player_id, week)] = NflverseRosterWeek(
-            player_id=player_id, season=season, week=week, team=team, status=row.get("status") or "",
+            player_id=player_id, season=season, week=week, team=franchise_code(team), status=row.get("status") or "",
         )
     return list(by_player_week.values())
 

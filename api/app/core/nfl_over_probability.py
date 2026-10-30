@@ -53,6 +53,13 @@ def _ratio_cdf(quantiles: Sequence[float], ratio: float) -> float:
     return QUANTILE_LEVELS[i] + fraction * (QUANTILE_LEVELS[i + 1] - QUANTILE_LEVELS[i])
 
 
+def ratio_cdf(quantiles: Sequence[float], projection: float, x: float) -> float:
+    """P(result <= x) at any threshold, integers included, for a positive projection."""
+    if projection <= 0:
+        raise ValueError(f"ratio_cdf needs a positive projection, got {projection}")
+    return _ratio_cdf(quantiles, x / projection)
+
+
 def over_probability(quantiles: Sequence[float], projection: float, line: float) -> OverProbability | None:
     """P(result > line), or None when it cannot be read.
 

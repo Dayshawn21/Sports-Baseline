@@ -166,7 +166,8 @@ def schedule_url(season: int) -> str:
 def player_stats_url(season: int) -> str:
     # The older player_stats aggregate is frozen at 2023-2024 and carries only
     # fantasy-relevant skill players, which is why kickers were unmatchable. The
-    # per-season asset covers 2022 onward and every position.
+    # per-season asset covers every position, back to 2012 at least (checked
+    # 2026-10-29).
     return f"{NFLVERSE_RELEASE_BASE}/stats_player/stats_player_week_{season}.csv"
 
 
@@ -459,7 +460,7 @@ async def _main() -> None:
     )
     parser.add_argument(
         "--schedule-only", action="store_true",
-        help="load games without player stats, for seasons before the 2022 stats asset",
+        help="load games without player stats",
     )
     parser.add_argument("--through-season", type=int, default=None, help="last season of a --schedule-only range")
     parser.add_argument("--dry-run", action="store_true")
