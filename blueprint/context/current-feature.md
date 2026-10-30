@@ -166,7 +166,7 @@ extrapolation the log-loss clause is there to catch.
 - **Only counts were read before this spec:** snapshot, line and
   player-game counts and week dates. No outcome was joined to a projection,
   and no line was compared with a result.
-- **Pre-registration commit:** to be recorded here (Step 3). Merge it
+- **Pre-registration commit:** `33c53e2575fe04754a6a12dfb33b295bd0b5cff6` (2026-10-30), made before any 2026 outcome was joined to a projection. Merge it
   `--ff-only`, never squashed, so the hash stays on `master`.
 
 ## Build steps
@@ -200,7 +200,7 @@ extrapolation the log-loss clause is there to catch.
   separated sample raises rather than returning infinite constants; ties on
   the line (several snapshots) are the caller's job, not this function's.
 
-- [ ] **Step 3 - Pre-registration checkpoint.** Show the owner the Step 1 and
+- [x] **Step 3 - Pre-registration checkpoint.** Show the owner the Step 1 and
   2 diff and the rule above. With the owner's yes in chat, make a checkpoint
   commit of the rule, the blend form and the fit code, before the loader or
   any 2026 outcome is touched. Record its hash under "Pre-registration
