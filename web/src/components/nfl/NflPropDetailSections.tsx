@@ -2,7 +2,7 @@ import { Tag, Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
-import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
+import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormRow, type FormWindow } from '~/utils/nflFormWindow'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
 import { formatProjection } from '~/utils/nflLabels'
 import { formBars } from '~/utils/nflPropCards'
@@ -19,7 +19,7 @@ export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
   </section>
 }
 
-function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySample }) {
+export function GameLogBars({ row, sample }: { row: Parameters<typeof formBars>[1], sample: NflHistorySample }) {
   const { bars, linePct } = formBars(sample, row)
   const now = new Date()
   if (!bars.length) return null
@@ -41,7 +41,7 @@ function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySam
   </div>
 }
 
-function FormSwitch({ row, window }: { row: NflSlateLine, window: FormWindow }) {
+export function FormSwitch({ row, window }: { row: FormRow, window: FormWindow }) {
   const [params, setParams] = useSearchParams()
   const choose = (next: FormWindow) => setParams(playerSearch(params, { [FORM_PARAM]: next === '5' ? null : next }), { replace: true })
   return <div className="nfl-prop-detail__switch" role="group" aria-label="Recent form window">

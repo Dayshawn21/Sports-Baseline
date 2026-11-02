@@ -25,11 +25,12 @@ function LineRow({ item, selected, params, onJump }: { item: NflPlayerWeekLine, 
 }
 
 /** This week's full-game lines, ranked against the week-wide board; a row shows that prop's evidence below. */
-export function NflPlayerLines({ week, isLoading, isError }: { week: NflPlayerWeek | null, isLoading: boolean, isError: boolean }) {
+export function NflPlayerLines({ week, isLoading, isError, otherMarkets }: { week: NflPlayerWeek | null, isLoading: boolean, isError: boolean, otherMarkets: string[] }) {
   const [params] = useSearchParams()
   const markets = week?.lines.map(item => item.row.market) ?? []
   const selectedMarket = selectedPropMarket(params, markets)
-  const selectedIndex = selectedMarket === null ? 0 : markets.indexOf(selectedMarket)
+  const otherSelected = selectedMarket === null && selectedPropMarket(params, otherMarkets) !== null
+  const selectedIndex = otherSelected ? -1 : selectedMarket === null ? 0 : markets.indexOf(selectedMarket)
   const opponent = week ? `${week.game.awayTeam} @ ${week.game.homeTeam} · ${formatKickoffTime(week.game.startUtc)}` : null
   return <section className="nfl-player-card" aria-label="This week's lines">
     <div className="nfl-player-card__head">

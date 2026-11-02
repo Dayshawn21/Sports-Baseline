@@ -1,6 +1,5 @@
-import type { NflLineOnlyLine, NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { nflGameProps } from '~/utils/nflGameProps'
-import { lineOnlyGroups, type NflLineOnlyGroup } from '~/utils/nflLineOnly'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
@@ -44,11 +43,6 @@ export function propSectionIds(markets: string[]): string[] {
 export function selectedPropMarket(params: URLSearchParams, markets: string[]): string | null {
   const market = params.get('market')
   return market !== null && markets.includes(market) ? market : null
-}
-
-/** This player's stored line-only markets, grouped and ordered as the prop board shows them. */
-export function playerLineOnlyGroups(lines: NflLineOnlyLine[], playerId: number): NflLineOnlyGroup[] {
-  return lineOnlyGroups(lines.filter(line => line.playerId === playerId), 'all')
 }
 
 export const SPECIALIST_COLUMNS = {

@@ -5,7 +5,7 @@ export type FormWindow = '5' | '10' | 'opp'
 export const FORM_PARAM = 'form'
 export const LONG_WINDOW_GAMES = 10
 
-type FormRow = Pick<NflSlateLine, 'recentForm' | 'recentFormLong' | 'opponentHistory' | 'opponentTeam'>
+export type FormRow = Pick<NflSlateLine, 'recentForm' | 'recentFormLong' | 'opponentHistory' | 'opponentTeam'>
 
 export interface FormOption {
   window: FormWindow

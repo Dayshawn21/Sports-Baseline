@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { NflLineOnlyLine, NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerLineOnlyGroups, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -148,23 +148,6 @@ describe('selectedPropMarket', () => {
     expect(selectedPropMarket(new URLSearchParams(''), markets)).toBeNull()
     expect(selectedPropMarket(new URLSearchParams('market='), markets)).toBeNull()
     expect(selectedPropMarket(new URLSearchParams('market=passing_yards'), markets)).toBeNull()
-  })
-})
-
-describe('playerLineOnlyGroups', () => {
-  const only = (playerId: number, market: string): NflLineOnlyLine => ({
-    playerId, playerName: `Player ${playerId}`, position: 'QB', team: 'BUF', market, oddsType: 'standard', line: 1.5,
-    fetchedAt: '2026-10-01T12:00:00Z', recent: [],
-  })
-
-  it('keeps only the player and orders markets as the board does', () => {
-    const groups = playerLineOnlyGroups([only(2, 'interceptions'), only(1, 'interceptions'), only(1, 'passing_touchdowns')], 1)
-    expect(groups.map(group => group.market)).toEqual(['passing_touchdowns', 'interceptions'])
-    expect(groups.every(group => group.rows.every(row => row.playerId === 1))).toBe(true)
-  })
-
-  it('is empty for a player with no line-only rows', () => {
-    expect(playerLineOnlyGroups([only(2, 'interceptions')], 1)).toEqual([])
   })
 })
 

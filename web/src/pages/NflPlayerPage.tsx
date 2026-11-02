@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
-import { NflPlayerOtherMarkets } from '~/components/nfl/NflPlayerOtherMarkets'
 import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
 import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerRecord'
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
@@ -10,7 +9,7 @@ import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
-import { useNflPlayer, useNflSlate } from '~/hooks/useNfl'
+import { useNflOtherMarkets, useNflPlayer, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
@@ -73,6 +72,7 @@ export default function NflPlayerPage() {
   const fromBoard = arrivedFromBoard(useLocation().state)
   const detail = useNflPlayer(playerId)
   const slate = useNflSlate(detail.data?.season ?? null, detail.data?.week ?? null)
+  const others = useNflOtherMarkets(playerId, detail.data?.season ?? null, detail.data?.week ?? null)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
   if (playerId === null || isNotFound(detail.error)) return <NotFound />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
@@ -92,11 +92,10 @@ export default function NflPlayerPage() {
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
     <div className="nfl-player-grid">
       {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
-      <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
+      <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} otherMarkets={others.data?.markets.map(item => item.market) ?? []} />
     </div>
-    {week && <NflPlayerProps key={playerId} week={week} showUsage={!isNflSpecialist(player.position)} />}
-    <NflPlayerOtherMarkets season={player.season} week={player.week} playerId={player.playerId} />
-    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={week?.lines.map(item => item.row.market) ?? []} />
+    <NflPlayerProps key={playerId} week={week} others={others} showUsage={!isNflSpecialist(player.position)} />
+    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={[...(week?.lines.map(item => item.row.market) ?? []), ...(others.data?.markets.map(item => item.market) ?? [])]} />
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
   </div></div>
