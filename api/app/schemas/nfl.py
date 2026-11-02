@@ -236,6 +236,8 @@ class NflSlateLineSchema(_CamelModel):
     recent_form: "NflHistorySampleSchema"
     opponent_history: "NflHistorySampleSchema"
     opponent_allowed_history: "NflHistorySampleSchema"
+    # Up to ten games for the player page window; `recent_form` stays five and is its prefix.
+    recent_form_long: "NflHistorySampleSchema | None" = None
     market: str
     segment: str
     odds_type: str | None

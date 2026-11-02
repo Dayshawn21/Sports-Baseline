@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
 import { NflPlayerOtherMarkets } from '~/components/nfl/NflPlayerOtherMarkets'
@@ -15,7 +15,7 @@ import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvide
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nflGame'
-import { FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -69,6 +69,8 @@ function Chips({ player }: { player: NflPlayerDetail }) {
 
 export default function NflPlayerPage() {
   const playerId = parseGameId(useParams().playerId)
+  const navigate = useNavigate()
+  const fromBoard = arrivedFromBoard(useLocation().state)
   const detail = useNflPlayer(playerId)
   const slate = useNflSlate(detail.data?.season ?? null, detail.data?.week ?? null)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
@@ -78,7 +80,9 @@ export default function NflPlayerPage() {
   const player = detail.data
   const week = slate.data && playerId !== null ? playerWeekLines(slate.data.games, playerId) : null
   return <div className="page-shell nfl-slate nfl-player"><div className="page-container is-wide">
-    {week
+    {fromBoard
+      ? <Link className="nfl-player-crumb" to="/nfl/board" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
+      : week
       ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
       : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>}
     <PageHead title={player.name}

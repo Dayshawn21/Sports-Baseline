@@ -75,6 +75,7 @@ def targets_slate_line(row: TargetsServingLine) -> NflSlateLineSchema:
         line_id=row.line_id, player_id=row.player_id, player_name=row.player_name, position=row.position,
         opponent_team=row.opponent_team, opponent_position_average=None,
         recent_form=_history_sample(observations[:5], history),
+        recent_form_long=_history_sample(observations[:10], history),
         opponent_history=_history_sample([item for item in observations if item.game_id in opponent_games], history),
         opponent_allowed_history=NflHistorySampleSchema(average=None, values=[]),
         market=row.market, segment=row.segment, odds_type=row.odds_type,

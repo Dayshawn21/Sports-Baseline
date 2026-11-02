@@ -357,6 +357,27 @@ def test_slate_line_keeps_recent_and_scheduled_opponent_history_separate() -> No
     assert result.opponent_history.average == 43
 
 
+def test_long_form_is_ten_games_and_starts_with_the_five_game_form() -> None:
+    row = _usage_row("receiving_yards") | {"opponent_team_id": 2}
+    history = [_history_row(opponent_team_id=2 + index % 2, opponent_team="CAR" if index % 2 else "ATL", receiving_yards=100 - index) for index in range(12)]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert result.recent_form_long is not None
+    assert [item.value for item in result.recent_form_long.values] == [100 - index for index in range(10)]
+    assert result.recent_form_long.values[:5] == result.recent_form.values
+    assert len(result.recent_form.values) == 5
+
+
+def test_long_form_marks_anytime_td_games_zero_or_one() -> None:
+    row = _usage_row("anytime_touchdown")
+    history = [_history_row(2, 10) | {"touchdowns": touchdowns} for touchdowns in (2, 0, 1, 0, 0, 0, 1)]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert [item.value for item in result.recent_form_long.values] == [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+
+
 def test_weather_schema_uses_registry_venue_when_no_snapshot_exists() -> None:
     assert _weather_schema({"home_team": "LAC"}, {"venue_type": None}).venue_type == "dome"
 

@@ -85,6 +85,8 @@ def test_history_uses_valid_pre_week_targets_newest_first_and_separates_opponent
     assert result.projection == 5.0 and result.games_in_sample == 6
     assert [item.value for item in result.recent_form.values] == [10, 8, 6, 4, 2]
     assert result.recent_form.average == 6.0
+    assert [item.value for item in result.recent_form_long.values] == [10, 8, 6, 4, 2, 0]
+    assert result.recent_form_long.values[:5] == result.recent_form.values
     assert [item.opponent_team for item in result.recent_form.values] == ["BUF", "BUF", "BUF", "DET", "BUF"]
     assert [item.value for item in result.opponent_history.values] == [10, 8, 6, 2, 0]
     assert result.opponent_history.average == 5.2

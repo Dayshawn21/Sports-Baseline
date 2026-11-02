@@ -6,7 +6,7 @@ import { NflPlayerPropSection } from '~/components/nfl/NflPlayerPropSection'
 import { marketLabel } from '~/utils/nflLabels'
 import { useNflGameContext } from '~/hooks/useNfl'
 import { evidenceContextGameId } from '~/utils/nflEvidenceContext'
-import { propSectionIds, selectedPropMarket, type NflPlayerWeek } from '~/utils/nflPlayer'
+import { playerSearch, propSectionIds, selectedPropMarket, type NflPlayerWeek } from '~/utils/nflPlayer'
 import { nflPropDetail } from '~/utils/nflPropDetail'
 
 const TABS_ID = 'prop-tabs'
@@ -42,7 +42,7 @@ export function NflPlayerProps({ week, showUsage }: { week: NflPlayerWeek, showU
       </div>
     </section>
     <nav id={TABS_ID} className="nfl-player-jump" aria-label="Choose a prop">
-      {week.lines.map((item, index) => <Link key={ids[index]} to={`?market=${encodeURIComponent(item.row.market)}`} replace
+      {week.lines.map((item, index) => <Link key={ids[index]} to={playerSearch(params, { market: item.row.market })} replace
         aria-current={index === selectedIndex ? 'true' : undefined}>{marketLabel(item.row.market)}</Link>)}
     </nav>
     <NflPlayerPropSection key={ids[selectedIndex]} id={ids[selectedIndex]} item={shown} game={week.game} />

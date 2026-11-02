@@ -86,6 +86,31 @@
   font-size: 12px;
 }
 
+.nfl-prop-detail__switch {
+  display: inline-flex;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nfl-prop-detail__switch button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  cursor: pointer;
+}
+
+.nfl-prop-detail__switch button:last-child { border-right: 0; }
+.nfl-prop-detail__switch button:hover:not(:disabled) { color: var(--text-primary); }
+.nfl-prop-detail__switch button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.nfl-prop-detail__switch button[aria-pressed='true'] { background: var(--chart-low); color: var(--text-primary); }
+.nfl-prop-detail__switch button:disabled { color: var(--text-muted); cursor: not-allowed; }
+
 .nfl-prop-detail__list {
   margin: var(--space-2) 0 0;
   color: var(--text-secondary);

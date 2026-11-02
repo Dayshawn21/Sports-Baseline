@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflHistoryResult } from '~/types/nfl'
 import type { NflBoardLine } from '~/utils/nflPropBoard'
-import { nflPropCard, pickLabel, recentBars } from '~/utils/nflPropCards'
+import { formBars, nflPropCard, pickLabel, recentBars } from '~/utils/nflPropCards'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -158,5 +158,13 @@ describe('recentBars', () => {
   it('does not draw whole-game history against a partial-segment line', () => {
     const half = recentBars(row({ segment: 'first_half', line: 0.5, recentForm: games(30, 15) }))
     expect([half.bars.map(bar => [bar.heightPct, bar.vsLine]), half.linePct]).toEqual([[[50, null], [100, null]], null])
+  })
+})
+
+describe('formBars', () => {
+  it('draws any sample the way recentBars draws the five-game form', () => {
+    const sample = games(60, 50, 20)
+    expect(formBars(sample, row({ line: 50 }))).toEqual(recentBars(row({ line: 50, recentForm: sample })))
+    expect(formBars(games(1, 0), row({ market: 'anytime_touchdown' }))).toEqual({ bars: [], linePct: null })
   })
 })

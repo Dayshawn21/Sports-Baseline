@@ -30,7 +30,7 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
     </div>
     <div className="nfl-player-prop__body">
       <DetailProjection detail={detail} />
-      <DetailGameLog row={row} detail={detail} />
+      <DetailGameLog row={row} />
       <NflOpponentAllowed row={row} game={game} />
       <DetailContext detail={detail} />
       <DetailBreakdown detail={detail} />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflLineOnlyLine, NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerLineOnlyGroups, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerLineOnlyGroups, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -165,5 +165,26 @@ describe('playerLineOnlyGroups', () => {
 
   it('is empty for a player with no line-only rows', () => {
     expect(playerLineOnlyGroups([only(2, 'interceptions')], 1)).toEqual([])
+  })
+})
+
+describe('playerSearch', () => {
+  it('changes one param and keeps the rest', () => {
+    const params = new URLSearchParams('market=receptions&form=opp')
+    expect(playerSearch(params, { market: 'receiving_yards' })).toBe('?market=receiving_yards&form=opp')
+    expect(playerSearch(params, { form: '10' })).toBe('?market=receptions&form=10')
+  })
+
+  it('removes a param set to null and encodes values', () => {
+    expect(playerSearch(new URLSearchParams('market=receptions&form=opp'), { form: null })).toBe('?market=receptions')
+    expect(playerSearch(new URLSearchParams(''), { market: 'a b' })).toBe('?market=a+b')
+    expect(playerSearch(new URLSearchParams('form=10'), { form: null })).toBe('?')
+  })
+})
+
+describe('arrivedFromBoard', () => {
+  it('is true only for the state a board row sets', () => {
+    expect(arrivedFromBoard(FROM_BOARD)).toBe(true)
+    expect([arrivedFromBoard(null), arrivedFromBoard(undefined), arrivedFromBoard({}), arrivedFromBoard({ from: 'game' }), arrivedFromBoard('board')]).toEqual([false, false, false, false, false])
   })
 })

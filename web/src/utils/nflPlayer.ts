@@ -8,8 +8,26 @@ export function isNflSpecialist(position: string | null): boolean {
   return position === 'K' || position === 'P'
 }
 
+/** Router state a prop board row sets, so the player page can send Back to the board instead of the slate. */
+export const FROM_BOARD = { from: 'board' } as const
+
+export function arrivedFromBoard(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && (state as { from?: unknown }).from === 'board'
+}
+
 export function nflPlayerMarketLink(playerId: number, market: string): string {
   return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}`
+}
+
+/** The query string with `updates` applied; a null value removes the key, so other params (market, form) survive a change to one. */
+export function playerSearch(params: URLSearchParams, updates: Record<string, string | null>): string {
+  const next = new URLSearchParams(params)
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === null) next.delete(key)
+    else next.set(key, value)
+  }
+  const text = next.toString()
+  return text ? `?${text}` : '?'
 }
 
 /** One DOM id per prop section, in order; a market that repeats gets a numeric suffix so ids never collide. */

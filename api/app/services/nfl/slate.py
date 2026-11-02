@@ -244,6 +244,7 @@ def _slate_line(
             baseline_projection(market, opponent_averages) if opponent_averages is not None else None
         ),
         recent_form=_history_sample(market, player_history, limit=5),
+        recent_form_long=_history_sample(market, player_history, limit=10),
         opponent_history=_history_sample(market, opponent_history),
         opponent_allowed_history=_history_sample(market, opponent_allowed or [], limit=5),
         market=market.value, segment=row["segment"],

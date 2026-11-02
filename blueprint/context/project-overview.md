@@ -217,9 +217,10 @@ Checked items record completed work, including explicitly retired surfaces.
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 | 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46d) |
-| 50 | NFL props as player pages | 50a complete; 50b next |
+| 50 | NFL props as player pages | Complete (50a-50b), 2026-11-02 |
+| 51 | NFL recent form window | Complete 2026-11-02 |
 
-18 leaf items remain, with these gates:
+16 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -236,8 +237,6 @@ Checked items record completed work, including explicitly retired surfaces.
 | 49b | Line anchor fit | After 49a adopts at least one market; fitted on 2026 weeks 1-8 only, rule fixed before week 9 settles |
 | 49c | Serve and freeze | Only markets 49a adopts; own model and P(over) versions, gray |
 | 49d | Forward verdict | After 49c accrues; one-time verdict per slice under 49b's rule |
-| 50a | Evidence on the player page | Complete 2026-11-01; every full-game prop for the week as an expanded section with a per-market anchor, drawers still work |
-| 50b | Rows open the page | Next; board, game and player-page rows navigate to the anchor, then the three NFL prop drawers, `useNflDrawerFocus` and their CSS go |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |

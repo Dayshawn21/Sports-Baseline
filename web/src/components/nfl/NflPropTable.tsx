@@ -6,7 +6,7 @@ import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { FLAG_LABELS, formatHistoryValue, marketLabel } from '~/utils/nflLabels'
 import type { NflBoardCategory, NflBoardLine } from '~/utils/nflPropBoard'
 import { openedRowKey } from '~/utils/nflOpenedRow'
-import { nflPlayerMarketLink } from '~/utils/nflPlayer'
+import { FROM_BOARD, nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nflPropCard, recentBars, type NflPropCardModel } from '~/utils/nflPropCards'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import '~/components/shared/prop-table.css'
@@ -30,7 +30,7 @@ function Player({ card, row, to, inGame }: { card: NflPropCardModel, row: NflBoa
   const meta = inGame ? card.gameMeta : card.meta
   return <>
     <span className="prop-table__player-name">
-      <Link className="prop-table__open" to={to} data-open-key={openedRowKey('table', row.lineId)} onClick={() => rememberOpened('table', row.lineId)}>{card.playerName}</Link>
+      <Link className="prop-table__open" to={to} state={inGame ? undefined : FROM_BOARD} data-open-key={openedRowKey('table', row.lineId)} onClick={() => rememberOpened('table', row.lineId)}>{card.playerName}</Link>
       {card.injury && <Tag color={card.injury.color}>{card.injury.label}</Tag>}
       {card.depthText && <span className="prop-table__tag">Depth: {card.depthText}</span>}
     </span>
@@ -77,7 +77,7 @@ function PropRow({ item: { row, rank }, category, inGame, now }: RowProps) {
     const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
     if (!plain || (event.target instanceof Element && event.target.closest('a, button'))) return
     rememberOpened('table', row.lineId)
-    navigate(to)
+    navigate(to, { state: inGame ? undefined : FROM_BOARD })
   }
   const player = <td className="prop-table__player"><Player card={card} row={row} to={to} inGame={inGame} /></td>
   const rankCell = <td className="prop-table__lead prop-table__rank">{card.rank === null ? '--' : `#${card.rank}`}</td>

@@ -11,6 +11,8 @@ export interface NflSlateLine {
   recentForm: NflHistorySample
   opponentHistory: NflHistorySample
   opponentAllowedHistory: NflHistorySample
+  /** Up to 10 games, newest first, starting with `recentForm`. Absent in a slate snapshot stored before item 51. */
+  recentFormLong?: NflHistorySample
   market: string
   segment: string
   oddsType: string | null

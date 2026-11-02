@@ -1,3 +1,4 @@
+import type { NflHistorySample } from '~/types/nfl'
 import { depthLabel, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence } from '~/utils/nflBookOdds'
 import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '~/utils/nflLabels'
@@ -109,8 +110,13 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
  * so TD gets none. History is whole-game, so a partial-segment line is not drawn against it.
  */
 export function recentBars(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'segment'>): NflRecentBars {
-  if (row.market === TD_MARKET || !row.recentForm.values.length) return { bars: [], linePct: null }
-  const values = [...row.recentForm.values].reverse()
+  return formBars(row.recentForm, row)
+}
+
+/** The same bars for any newest-first sample of the row's market. */
+export function formBars(sample: NflHistorySample, row: Pick<NflBoardLine, 'market' | 'line' | 'segment'>): NflRecentBars {
+  if (row.market === TD_MARKET || !sample.values.length) return { bars: [], linePct: null }
+  const values = [...sample.values].reverse()
   const line = row.segment === 'full_game' ? row.line : null
   const scale = Math.max(line ?? 0, ...values.map(item => item.value))
   const pct = (value: number) => (scale > 0 ? Math.min(100, Math.max(0, (value / scale) * 100)) : 0)

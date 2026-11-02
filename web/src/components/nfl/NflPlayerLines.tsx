@@ -1,20 +1,20 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { scrollToPropTabs } from '~/components/nfl/NflPlayerProps'
 import { formatKickoffTime, formatProjection, marketLabel } from '~/utils/nflLabels'
-import { selectedPropMarket, type NflPlayerWeek, type NflPlayerWeekLine } from '~/utils/nflPlayer'
+import { playerSearch, selectedPropMarket, type NflPlayerWeek, type NflPlayerWeekLine } from '~/utils/nflPlayer'
 import { edgeLabel, edgePctLabel } from '~/utils/nflSignal'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 
 const TD = 'anytime_touchdown'
 
-function LineRow({ item, selected, onJump }: { item: NflPlayerWeekLine, selected: boolean, onJump: () => void }) {
+function LineRow({ item, selected, params, onJump }: { item: NflPlayerWeekLine, selected: boolean, params: URLSearchParams, onJump: () => void }) {
   const { row } = item
   const isTd = row.market === TD
   const reference = isTargetsReference(row.market)
   // The de-vigged price where there is one, else the raw price, as the prop cards read it.
   const bookPrice = row.bookProbabilityDevigged ?? row.bookProbability
   const books = bookPrice === null ? 'no books' : `books ${formatProjection(TD, bookPrice)}`
-  return <Link to={`?market=${encodeURIComponent(row.market)}`} replace className={`nfl-player-line${selected ? ' is-selected' : ''}`}
+  return <Link to={playerSearch(params, { market: row.market })} replace className={`nfl-player-line${selected ? ' is-selected' : ''}`}
     aria-current={selected ? 'true' : undefined} onClick={onJump}>
     <span title={reference ? TARGETS_REFERENCE_NOTE : undefined}>{marketLabel(row.market)}{reference ? <small>reference</small> : item.rank !== null && <small>#{item.rank}</small>}</span>
     <span className={`nfl-player-num${isTd ? ' is-dim' : ''}`}>{isTd ? '--' : row.line?.toFixed(1) ?? '--'}</span>
@@ -44,7 +44,7 @@ export function NflPlayerLines({ week, isLoading, isError }: { week: NflPlayerWe
         <span className="nfl-player-label">Market</span><span className="nfl-player-label">Line</span>
         <span className="nfl-player-label">Model</span><span className="nfl-player-label">Edge</span><span />
       </div>
-      {week.lines.map((item, index) => <LineRow key={item.row.lineId} item={item} selected={index === selectedIndex}
+      {week.lines.map((item, index) => <LineRow key={item.row.lineId} item={item} selected={index === selectedIndex} params={params}
         onJump={scrollToPropTabs} />)}
       <p className="nfl-player-note">Ranks and edges are read against the week's prop board. Edges are gray until the forward ranking check (27j) adopts a slice. Anytime TD shows the model beside the books, with no edge.</p>
     </div>}

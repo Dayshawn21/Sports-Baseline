@@ -74,7 +74,7 @@ function typeLabel(oddsType: string | null, fallback: string): string {
   return oddsType ? ODDS_TYPE_LABELS[oddsType] ?? oddsType : fallback
 }
 
-function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
+export function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
   if (sample.average === null) return { title, value: 'No completed history', detail: null }
   return {
     title,

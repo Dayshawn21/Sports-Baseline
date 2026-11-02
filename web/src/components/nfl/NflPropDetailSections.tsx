@@ -1,10 +1,13 @@
 import { Tag, Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
-import type { NflSlateLine } from '~/types/nfl'
+import { useSearchParams } from 'react-router-dom'
+import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
+import { FORM_PARAM, formEmptyText, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
-import { formatHistoryValue } from '~/utils/nflLabels'
-import { recentBars } from '~/utils/nflPropCards'
-import type { NflDetailHistory, NflPropDetailModel } from '~/utils/nflPropDetail'
+import { formatHistoryValue, formatProjection } from '~/utils/nflLabels'
+import { formBars } from '~/utils/nflPropCards'
+import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
+import { playerSearch } from '~/utils/nflPlayer'
 import './nfl-prop-detail.css'
 
 export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
@@ -16,11 +19,11 @@ export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
   </section>
 }
 
-function GameLogBars({ row }: { row: NflSlateLine }) {
-  const { bars, linePct } = recentBars(row)
+function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySample }) {
+  const { bars, linePct } = formBars(sample, row)
   if (!bars.length) return null
   const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
-  return <div className="nfl-prop-detail__chart" aria-label={`Last ${bars.length} games against the line`}>
+  return <div className="nfl-prop-detail__chart" aria-label={`${bars.length} games against the line`}>
     <div className="nfl-prop-detail__plot" style={style}>
       {linePct !== null && <span className="nfl-prop-detail__line-mark"><span>{row.line?.toFixed(1)}</span></span>}
       {bars.map((bar, index) => <div key={index} className={`nfl-prop-detail__col is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties}>
@@ -32,16 +35,31 @@ function GameLogBars({ row }: { row: NflSlateLine }) {
   </div>
 }
 
+function FormSwitch({ row, window }: { row: NflSlateLine, window: FormWindow }) {
+  const [params, setParams] = useSearchParams()
+  const choose = (next: FormWindow) => setParams(playerSearch(params, { [FORM_PARAM]: next === '5' ? null : next }), { replace: true })
+  return <div className="nfl-prop-detail__switch" role="group" aria-label="Recent form window">
+    {formOptions(row).map(option => <button key={option.window} type="button" aria-pressed={option.window === window}
+      disabled={option.disabledReason !== null} title={option.disabledReason ?? undefined} onClick={() => choose(option.window)}>{option.label}</button>)}
+  </div>
+}
+
 /** Bars only where a game is a count against a full-game line; a TD game is 0 or 1, so TD keeps the text list. */
-export function DetailGameLog({ row, detail }: { row: NflSlateLine, detail: NflPropDetailModel }) {
-  const bars = recentBars(row).bars.length > 0
+export function DetailGameLog({ row }: { row: NflSlateLine }) {
+  const [params] = useSearchParams()
+  const window = resolveFormWindow(row, parseFormWindow(params))
+  const sample = formSample(row, window)
+  const form = history(formTitle(row, window), row.market, sample)
+  const note = formShortNote(row, window)
+  const bars = formBars(sample, row).bars.length > 0
   return <section className="nfl-prop-detail__section">
     <div className="nfl-prop-detail__section-head">
-      <h3>{detail.recentForm.title}</h3>
-      <span>{detail.recentForm.value}</span>
+      <h3>{form.title}</h3>
+      <span>{sample.average === null ? formEmptyText(row, window) : note ? `${formatProjection(row.market, sample.average)} avg · ${note}` : form.value}</span>
     </div>
-    <GameLogBars row={row} />
-    {!bars && detail.recentForm.detail && <p className="nfl-prop-detail__list">{detail.recentForm.detail}</p>}
+    <FormSwitch row={row} window={window} />
+    <GameLogBars row={row} sample={sample} />
+    {!bars && form.detail && <p className="nfl-prop-detail__list">{form.detail}</p>}
   </section>
 }
 
