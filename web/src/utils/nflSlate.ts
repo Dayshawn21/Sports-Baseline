@@ -134,8 +134,11 @@ const MISSING = '--'
 export interface NflSlateDigestItem {
   lineId: number
   gameId: number
+  playerId: number
   playerName: string
   market: string
+  /** The raw market, for links; `market` is the display label. */
+  marketKey: string
   matchup: string
   /** Central kickoff time. */
   when: string
@@ -156,7 +159,9 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
   return rankTopProps(categories, limit).map(({ row, edgeShare: share }) => ({
     lineId: row.lineId,
     gameId: row.gameId,
+    playerId: row.playerId,
     playerName: row.playerName,
+    marketKey: row.market,
     market: isTargetsReference(row.market) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
     matchup: `${row.awayTeam} @ ${row.homeTeam}`,
     when: digestKickoff(row.startUtc),

@@ -90,9 +90,9 @@ export default function NflPlayerPage() {
       {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
       <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
     </div>
-    {week && <NflPlayerProps week={week} showUsage={!isNflSpecialist(player.position)} />}
+    {week && <NflPlayerProps key={playerId} week={week} showUsage={!isNflSpecialist(player.position)} />}
     <NflPlayerOtherMarkets season={player.season} week={player.week} playerId={player.playerId} />
-    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} />
+    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={week?.lines.map(item => item.row.market) ?? []} />
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
   </div></div>

@@ -13,13 +13,13 @@ import './nfl-prop-detail.css'
 const TD = 'anytime_touchdown'
 
 /** One prop's evidence on the player page. The game market and the usage table are the same for every prop, so the page shows them once. */
-export function NflPlayerPropSection({ id, item, game, selected }: { id: string, item: NflPlayerWeekLine, game: NflSlateGame, selected: boolean }) {
+export function NflPlayerPropSection({ id, item, game }: { id: string, item: NflPlayerWeekLine, game: NflSlateGame }) {
   const { row } = item
   const detail = nflPropDetail(row, game, item.alternates, Date.now())
   const reference = isTargetsReference(row.market)
   const isTd = row.market === TD
   const gap = reference ? `${edgeLabel(row.edge)} gap` : isTd ? null : edgePctLabel(item.edgeShare)
-  return <section id={id} className={`nfl-player-card nfl-player-prop${selected ? ' is-selected' : ''}`} aria-labelledby={`${id}-title`} aria-current={selected ? 'true' : undefined}>
+  return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
       <h3 id={`${id}-title`} className="nfl-player-prop__title" title={reference ? TARGETS_REFERENCE_NOTE : undefined}>
         {marketLabel(row.market)}{reference ? <small>reference</small> : item.rank !== null && <small>#{item.rank}</small>}

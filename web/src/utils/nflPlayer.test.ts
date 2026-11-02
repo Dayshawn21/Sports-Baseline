@@ -121,8 +121,8 @@ describe('specialist player pages', () => {
     ])
     expect(SPECIALIST_COLUMNS.P).toEqual([{ field: 'punts', label: 'Punts', market: 'punts' }])
   })
-  it('carries the encoded market to the player game log', () => {
-    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
+  it('carries the encoded market to the player page', () => {
+    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points')
     expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
   })
 })

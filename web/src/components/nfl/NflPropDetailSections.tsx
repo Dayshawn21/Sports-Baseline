@@ -1,22 +1,11 @@
 import { Tag, Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
 import type { NflSlateLine } from '~/types/nfl'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
 import { formatHistoryValue } from '~/utils/nflLabels'
 import { recentBars } from '~/utils/nflPropCards'
 import type { NflDetailHistory, NflPropDetailModel } from '~/utils/nflPropDetail'
 import './nfl-prop-detail.css'
-
-export function DetailHeader({ detail, playerLink }: { detail: NflPropDetailModel, playerLink: string | null }) {
-  return <div className="nfl-prop-detail__player">
-    <span className="nfl-prop-detail__badge" aria-hidden="true">{detail.badge}</span>
-    <div>
-      <h2>{playerLink ? <Link className="nfl-prop-detail__player-link" to={playerLink}>{detail.playerName}</Link> : detail.playerName}</h2>
-      <p>{detail.meta}</p>
-    </div>
-  </div>
-}
 
 export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
   const tone = !detail.hasEdge ? '' : detail.isUnder ? ' is-under' : ' is-over'
@@ -112,8 +101,7 @@ export function DetailSportsbook({ detail }: { detail: NflPropDetailModel }) {
   </section>
 }
 
-/** `gameLink` is the game page's path, or null where the reader is already on it. */
-export function DetailGameMarket({ detail, gameLink }: { detail: NflPropDetailModel, gameLink: string | null }) {
+export function DetailGameMarket({ detail }: { detail: NflPropDetailModel }) {
   const market = detail.gameMarket
   return <section className="nfl-prop-detail__section">
     <SectionHead title="Game market" aside={market?.book} />
@@ -121,7 +109,6 @@ export function DetailGameMarket({ detail, gameLink }: { detail: NflPropDetailMo
       <dl className="nfl-prop-detail__kv">{market.rows.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
       {market.modelText && <Tooltip title={NFL_GAME_MODEL_CAVEAT}><p className="nfl-prop-detail__model"><span>Model · not a pick</span><span>{market.modelText}</span></p></Tooltip>}
     </>}
-    {gameLink && <Link className="nfl-prop-detail__game-link" to={gameLink}>Open game page →</Link>}
   </section>
 }
 

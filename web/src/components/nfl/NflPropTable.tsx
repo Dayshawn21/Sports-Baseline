@@ -1,8 +1,12 @@
 import { Tag, Tooltip } from 'antd'
 import type { MouseEvent, ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { FLAG_LABELS, formatHistoryValue, marketLabel } from '~/utils/nflLabels'
 import type { NflBoardCategory, NflBoardLine } from '~/utils/nflPropBoard'
+import { openedRowKey } from '~/utils/nflOpenedRow'
+import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nflPropCard, recentBars, type NflPropCardModel } from '~/utils/nflPropCards'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import '~/components/shared/prop-table.css'
@@ -20,13 +24,13 @@ function edgeNote(category: NflBoardCategory): string | null {
   return `Model minus line, then as a share of a typical ${marketLabel(category.market).toLowerCase()} line (${category.referenceLine.toFixed(1)}). Scoring against one shared line keeps players comparable; a row's own line can be small enough to make any gap look huge.`
 }
 
-function Player({ card, row, selected, inGame, onOpen }: { card: NflPropCardModel, row: NflBoardLine, selected: boolean, inGame: boolean, onOpen: () => void }) {
+function Player({ card, row, to, inGame }: { card: NflPropCardModel, row: NflBoardLine, to: string, inGame: boolean }) {
   // The badge falls back to the position, which the meta line already leads with.
   const team = card.badge === (row.position ?? '--') ? '' : `${card.badge} · `
   const meta = inGame ? card.gameMeta : card.meta
   return <>
     <span className="prop-table__player-name">
-      <button type="button" className="prop-table__open" data-line-id={row.lineId} aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
+      <Link className="prop-table__open" to={to} data-open-key={openedRowKey('table', row.lineId)} onClick={() => rememberOpened('table', row.lineId)}>{card.playerName}</Link>
       {card.injury && <Tag color={card.injury.color}>{card.injury.label}</Tag>}
       {card.depthText && <span className="prop-table__tag">Depth: {card.depthText}</span>}
     </span>
@@ -59,18 +63,23 @@ function Sample({ card }: { card: NflPropCardModel }) {
 interface RowProps {
   item: NflPropTableRow
   category: NflBoardCategory
-  selected: boolean
   inGame: boolean
   now: number
-  onOpen: (row: NflBoardLine) => void
 }
 
-function PropRow({ item: { row, rank }, category, selected, inGame, now, onOpen }: RowProps) {
+function PropRow({ item: { row, rank }, category, inGame, now }: RowProps) {
+  const navigate = useNavigate()
+  const to = nflPlayerMarketLink(row.playerId, row.market)
   const card = nflPropCard(row, rank, category.referenceLine, now)
-  const classes = ['is-row', selected && 'is-selected', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
-  // The player button handles its own clicks, so a click on it never opens twice.
-  const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button'))) onOpen(row) }
-  const player = <td className="prop-table__player"><Player card={card} row={row} selected={selected} inGame={inGame} onOpen={() => onOpen(row)} /></td>
+  const classes = ['is-row', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
+  // Links and the mini bars handle their own clicks; a modified click keeps the browser's new-tab behavior.
+  const open = (event: MouseEvent) => {
+    const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+    if (!plain || (event.target instanceof Element && event.target.closest('a, button'))) return
+    rememberOpened('table', row.lineId)
+    navigate(to)
+  }
+  const player = <td className="prop-table__player"><Player card={card} row={row} to={to} inGame={inGame} /></td>
   const rankCell = <td className="prop-table__lead prop-table__rank">{card.rank === null ? '--' : `#${card.rank}`}</td>
   if (card.kind === 'td') {
     return <tr className={classes} title={card.why} onClick={open}>
@@ -99,19 +108,17 @@ interface Props {
   category: NflBoardCategory
   rateable: NflPropTableRow[]
   other: NflPropTableRow[]
-  selectedLineId: number | null
   now: number
   /** On a game page the rows drop the matchup and kickoff the page already shows. */
   inGame?: boolean
-  onOpen: (row: NflBoardLine) => void
 }
 
-/** One market's lines, one row each, ranked as the board ranks them; a row opens the evidence drawer. Gray until 27h. */
-export function NflPropTable({ category, rateable, other, selectedLineId, now, inGame = false, onOpen }: Props) {
+/** One market's lines, one row each, ranked as the board ranks them; a row opens the player page. Gray until 27h. */
+export function NflPropTable({ category, rateable, other, now, inGame = false }: Props) {
   const td = category.market === 'anytime_touchdown'
   const reference = isTargetsReference(category.market)
   const columns = td ? TD_COLUMNS : STAT_COLUMNS.map(([key, label]): [string, ReactNode] => [key, reference && key === 'model' ? 'Reference' : label])
-  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} selected={item.row.lineId === selectedLineId} inGame={inGame} now={now} onOpen={onOpen} />
+  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} inGame={inGame} now={now} />
   return <table className={`prop-table nfl-prop-table${td ? ' is-td' : ''}`} aria-label={`${marketLabel(category.market)} lines`}>
     {reference && <caption className="nfl-prop-table__reference-note">{TARGETS_REFERENCE_NOTE} Rows are unranked.</caption>}
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>

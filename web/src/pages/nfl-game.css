@@ -126,7 +126,6 @@
 .nfl-line-only-card__rungs { color: var(--text-secondary); font: 400 12px var(--font-mono); }
 .nfl-game-note.is-inline { padding: 0; }
 .nfl-game-note.is-qb-change { padding-bottom: 0; color: var(--caution); font-size: 12px; }
-.nfl-game-drawer .ant-drawer-body { padding: 0; background: var(--bg-app); }
 
 .nfl-game-side { display: grid; gap: 14px; align-content: start; }
 .nfl-game-side__availability { display: grid; gap: 14px; }

@@ -9,7 +9,7 @@ export function isNflSpecialist(position: string | null): boolean {
 }
 
 export function nflPlayerMarketLink(playerId: number, market: string): string {
-  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}#game-log`
+  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}`
 }
 
 /** One DOM id per prop section, in order; a market that repeats gets a numeric suffix so ids never collide. */

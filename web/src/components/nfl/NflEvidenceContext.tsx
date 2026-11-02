@@ -42,10 +42,6 @@ export function NflUsageContext({ row, game, children }: { row: NflSlateLine, ga
   </section>
 }
 
-export function NflEvidenceContext({ row, game }: { row: NflSlateLine, game: NflSlateGame | null }) {
-  return <NflUsageContext row={row} game={game}><NflOpponentAllowed row={row} game={game} /></NflUsageContext>
-}
-
 /** The opponent's production allowed to the player's position for the row's market; nothing when none applies. */
 export function NflOpponentAllowed({ row, game }: { row: NflSlateLine, game: NflSlateGame | null }) {
   const { selected } = useSelectedEvidence(row, game)
