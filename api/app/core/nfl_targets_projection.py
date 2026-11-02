@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from math import isfinite
 
 from app.core.nfl_baseline import MIN_BASELINE_GAMES, SeasonGames, choose_baseline_season
@@ -23,6 +23,7 @@ class TargetsObservation:
     week: int
     start_utc: datetime | None
     targets: float | None
+    game_date: date | None = None
 
 
 @dataclass(frozen=True)

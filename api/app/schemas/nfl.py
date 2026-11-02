@@ -301,6 +301,8 @@ class NflHistorySampleSchema(_CamelModel):
 class NflHistoryResultSchema(_CamelModel):
     value: float
     opponent_team: str | None
+    # The local game date; `start_utc` would read a day late for a night game.
+    game_date: date | None = None
 
 
 class NflUnmatchedLineSchema(_CamelModel):

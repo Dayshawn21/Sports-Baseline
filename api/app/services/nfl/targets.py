@@ -47,6 +47,7 @@ def _history_sample(
         NflHistoryResultSchema(
             value=observation.targets,
             opponent_team=history[observation.game_id].opponent_team if observation.game_id in history else None,
+            game_date=observation.game_date,
         )
         for observation in observations if observation.targets is not None
     ]

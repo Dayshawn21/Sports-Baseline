@@ -2066,7 +2066,7 @@ async def get_slate_player_history(
     rows = await db.execute(
         text("""
             SELECT s.player_id, s.opponent_team_id, opponent.team_code AS opponent_team,
-                   g.season, g.week, g.start_utc,
+                   g.season, g.week, g.start_utc, g.game_date,
                    s.passing_yards, s.passing_attempts, s.passing_completions,
                    s.rushing_yards, s.rushing_attempts, s.receiving_yards,
                    s.receptions, s.touchdowns, s.fantasy_points
@@ -2085,6 +2085,7 @@ async def get_slate_player_history(
         history.setdefault(row["player_id"], []).append({
             "opponent_team_id": row["opponent_team_id"],
             "opponent_team": row["opponent_team"],
+            "game_date": row.get("game_date"),
             "passing_yards": float(row["passing_yards"] or 0),
             "passing_attempts": float(row["passing_attempts"] or 0),
             "passing_completions": float(row["passing_completions"] or 0),

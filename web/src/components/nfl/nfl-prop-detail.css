@@ -190,6 +190,16 @@
   text-align: center;
 }
 
+.nfl-prop-detail__opps > span > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
 .nfl-prop-detail__line-mark {
   position: absolute;
   right: 0;

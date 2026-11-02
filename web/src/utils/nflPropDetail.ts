@@ -8,6 +8,7 @@ import {
   formatProjection, marketLabel, matchupAllowedLabel, segmentLabel,
 } from '~/utils/nflLabels'
 import { teamBadge } from '~/utils/nflPropCards'
+import { formDateText, formHistoryDate } from '~/utils/nflFormWindow'
 import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
@@ -79,7 +80,10 @@ export function history(title: string, market: string, sample: NflHistorySample)
   return {
     title,
     value: `${formatProjection(market, sample.average)} avg · ${sample.values.length} games`,
-    detail: sample.values.map(item => `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}`).join(' · '),
+    detail: sample.values.map(item => {
+      const date = formDateText(formHistoryDate(item.gameDate, new Date()))
+      return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
+    }).join(' · '),
   }
 }
 

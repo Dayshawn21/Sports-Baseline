@@ -2,7 +2,7 @@ import { Tag, Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
-import { FORM_PARAM, formEmptyText, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
+import { FORM_PARAM, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
 import { formatHistoryValue, formatProjection } from '~/utils/nflLabels'
 import { formBars } from '~/utils/nflPropCards'
@@ -21,6 +21,7 @@ export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
 
 function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySample }) {
   const { bars, linePct } = formBars(sample, row)
+  const now = new Date()
   if (!bars.length) return null
   const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
   return <div className="nfl-prop-detail__chart" aria-label={`${bars.length} games against the line`}>
@@ -31,7 +32,12 @@ function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySam
         <span className="nfl-prop-detail__bar" />
       </div>)}
     </div>
-    <div className="nfl-prop-detail__opps">{bars.map((bar, index) => <span key={index}>{bar.opponentTeam ?? '--'}</span>)}</div>
+    <div className="nfl-prop-detail__opps">{bars.map((bar, index) => {
+      const date = formHistoryDate(bar.gameDate, now)
+      return <span key={index}>{bar.opponentTeam ?? '--'}
+        {date && <small title={`${date.month} ${date.day}${date.year ? ` ${date.year}` : ''}`}>{date.month}<br />{date.day}{date.year && <><br />{date.year}</>}</small>}
+      </span>
+    })}</div>
   </div>
 }
 

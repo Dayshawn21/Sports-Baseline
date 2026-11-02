@@ -75,6 +75,8 @@ export interface NflHistorySample {
 export interface NflHistoryResult {
   value: number
   opponentTeam: string | null
+  /** Local game date, YYYY-MM-DD; absent in a slate snapshot stored before dates were served. */
+  gameDate?: string | null
 }
 
 export interface NflUnmatchedLine {

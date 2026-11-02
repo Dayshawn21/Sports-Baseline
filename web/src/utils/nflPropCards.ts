@@ -39,6 +39,7 @@ export interface NflPropCardModel {
 export interface NflRecentBar {
   value: number
   opponentTeam: string | null
+  gameDate?: string | null
   heightPct: number
   vsLine: 'above' | 'below' | 'push' | null
 }
@@ -124,6 +125,7 @@ export function formBars(sample: NflHistorySample, row: Pick<NflBoardLine, 'mark
     bars: values.map(item => ({
       value: item.value,
       opponentTeam: item.opponentTeam,
+      gameDate: item.gameDate ?? null,
       heightPct: pct(item.value),
       vsLine: line === null ? null : item.value > line ? 'above' : item.value < line ? 'below' : 'push',
     })),

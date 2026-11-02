@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflHistorySample } from '~/types/nfl'
-import { formEmptyText, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow } from '~/utils/nflFormWindow'
+import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow } from '~/utils/nflFormWindow'
 
 const sample = (...values: number[]): NflHistorySample => ({
   average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
@@ -64,5 +64,30 @@ describe('labels and states', () => {
   it('explains an empty vs Opponent window by opponent and start year', () => {
     expect(formEmptyText(row({ opponentHistory: sample() }), 'opp')).toBe('No earlier games against MIA since 2024.')
     expect(formEmptyText(row(), '5')).toBe('No completed history')
+  })
+})
+
+describe('formHistoryDate', () => {
+  const now = new Date('2026-11-02T12:00:00Z')
+
+  it('reads the date as written and adds a year only for an earlier NFL season', () => {
+    expect(formHistoryDate('2026-10-12', now)).toEqual({ month: 'Oct', day: 12, year: null })
+    expect(formHistoryDate('2025-09-07', now)).toEqual({ month: 'Sep', day: 7, year: "'25" })
+    expect(formDateText(formHistoryDate('2025-09-07', now))).toBe("Sep 7 '25")
+    expect(formDateText(formHistoryDate('2026-01-04', now))).toBe("Jan 4 '26")
+  })
+
+  it('returns null for a missing or malformed date', () => {
+    expect([formHistoryDate(null, now), formHistoryDate(undefined, now), formHistoryDate('', now), formHistoryDate('10/12/2026', now), formHistoryDate('2026-13-01', now)]).toEqual([null, null, null, null, null])
+    expect(formDateText(null)).toBeNull()
+  })
+})
+
+describe('formHistoryDate in January', () => {
+  it('keeps the year off a game from the same season', () => {
+    const january = new Date('2027-01-10T12:00:00Z')
+    expect(formDateText(formHistoryDate('2026-12-20', january))).toBe('Dec 20')
+    expect(formDateText(formHistoryDate('2027-01-03', january))).toBe('Jan 3')
+    expect(formDateText(formHistoryDate('2026-01-04', january))).toBe("Jan 4 '26")
   })
 })

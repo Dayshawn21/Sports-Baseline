@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from app.core.nfl_baseline import FULL_SEASON_GAMES
 import pytest
@@ -376,6 +376,20 @@ def test_long_form_marks_anytime_td_games_zero_or_one() -> None:
     result = _slate_line(row, 2026, None, history)
 
     assert [item.value for item in result.recent_form_long.values] == [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+
+
+def test_every_form_sample_carries_the_game_date_and_a_missing_date_stays_none() -> None:
+    row = _usage_row("receiving_yards") | {"opponent_team_id": 2}
+    history = [
+        _history_row(opponent_team_id=2, receiving_yards=61) | {"game_date": date(2026, 10, 12)},
+        _history_row(opponent_team_id=3, receiving_yards=42),
+    ]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert [item.game_date for item in result.recent_form.values] == [date(2026, 10, 12), None]
+    assert [item.game_date for item in result.recent_form_long.values] == [date(2026, 10, 12), None]
+    assert [item.game_date for item in result.opponent_history.values] == [date(2026, 10, 12)]
 
 
 def test_weather_schema_uses_registry_venue_when_no_snapshot_exists() -> None:

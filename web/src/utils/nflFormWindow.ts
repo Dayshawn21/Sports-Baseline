@@ -55,3 +55,27 @@ export function formShortNote(row: FormRow, window: FormWindow): string | null {
 export function formEmptyText(row: FormRow, window: FormWindow): string {
   return resolveFormWindow(row, window) === 'opp' ? `No earlier games against ${row.opponentTeam} since 2024.` : 'No completed history'
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export interface FormDate {
+  month: string
+  day: number
+  /** Two-digit calendar year, only when the game is from an earlier NFL season than the current one (a January game belongs to the season that began the year before). */
+  year: string | null
+}
+
+/** A game date as shown under a bar; null for a missing or malformed date. The string is read as written, so no timezone shifts it. */
+export function formHistoryDate(date: string | null | undefined, now: Date): FormDate | null {
+  const match = date ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(date) : null
+  if (!match) return null
+  const month = MONTHS[Number(match[2]) - 1]
+  if (!month) return null
+  const season = (year: number, monthIndex: number) => (monthIndex < 2 ? year - 1 : year)
+  const sameSeason = season(Number(match[1]), Number(match[2]) - 1) === season(now.getFullYear(), now.getMonth())
+  return { month, day: Number(match[3]), year: sameSeason ? null : `'${match[1].slice(2)}` }
+}
+
+export function formDateText(date: FormDate | null): string | null {
+  return date ? `${date.month} ${date.day}${date.year ? ` ${date.year}` : ''}` : null
+}

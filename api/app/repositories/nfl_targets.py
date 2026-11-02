@@ -127,7 +127,7 @@ async def _get_history_with_opponents(
     db: AsyncSession, season: int, week: int, player_ids: list[int],
 ) -> dict[int, tuple[TargetsHistoryGame, ...]]:
     result = await db.execute(text("""
-        SELECT s.player_id, s.game_id, g.season, g.week, g.start_utc,
+        SELECT s.player_id, s.game_id, g.season, g.week, g.start_utc, g.game_date,
                s.targets::double precision AS targets, s.opponent_team_id,
                opponent.team_code AS opponent_team
         FROM nfl_player_weekly_stats s
@@ -148,6 +148,7 @@ async def _get_history_with_opponents(
             observation=TargetsObservation(
                 game_id=row["game_id"], season=row["season"], week=row["week"], start_utc=row["start_utc"],
                 targets=float(row["targets"]) if row["targets"] is not None else None,
+                game_date=row.get("game_date"),
             ),
             opponent_team_id=row.get("opponent_team_id"), opponent_team=row.get("opponent_team"),
         ))

@@ -92,7 +92,7 @@ def _history_value(market: NflPropMarket, row: dict) -> float:
 def _history_sample(market: NflPropMarket, rows: list[dict], limit: int | None = None) -> NflHistorySampleSchema:
     values = [
         NflHistoryResultSchema(
-            value=_history_value(market, item), opponent_team=item.get("opponent_team"),
+            value=_history_value(market, item), opponent_team=item.get("opponent_team"), game_date=item.get("game_date"),
         )
         for item in rows[:limit]
     ]
