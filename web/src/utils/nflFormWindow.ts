@@ -56,6 +56,11 @@ export function formEmptyText(row: FormRow, window: FormWindow): string {
   return resolveFormWindow(row, window) === 'opp' ? `No earlier games against ${row.opponentTeam} since 2024.` : 'No completed history'
 }
 
+/** The label above a bar: a whole count without its ".0", so ten bars fit on a phone; a fraction keeps one decimal. */
+export function formBarLabel(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export interface FormDate {

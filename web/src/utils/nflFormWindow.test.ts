@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflHistorySample } from '~/types/nfl'
-import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow } from '~/utils/nflFormWindow'
+import { formBarLabel, formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow } from '~/utils/nflFormWindow'
 
 const sample = (...values: number[]): NflHistorySample => ({
   average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
@@ -89,5 +89,11 @@ describe('formHistoryDate in January', () => {
     expect(formDateText(formHistoryDate('2026-12-20', january))).toBe('Dec 20')
     expect(formDateText(formHistoryDate('2027-01-03', january))).toBe('Jan 3')
     expect(formDateText(formHistoryDate('2026-01-04', january))).toBe("Jan 4 '26")
+  })
+})
+
+describe('formBarLabel', () => {
+  it('drops the decimal from a whole count and keeps it for a fraction', () => {
+    expect([formBarLabel(271), formBarLabel(0), formBarLabel(13.5), formBarLabel(28.4)]).toEqual(['271', '0', '13.5', '28.4'])
   })
 })

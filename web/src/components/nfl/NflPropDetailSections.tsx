@@ -2,9 +2,9 @@ import { Tag, Tooltip } from 'antd'
 import type { CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
-import { FORM_PARAM, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
+import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormWindow } from '~/utils/nflFormWindow'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
-import { formatHistoryValue, formatProjection } from '~/utils/nflLabels'
+import { formatProjection } from '~/utils/nflLabels'
 import { formBars } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
 import { playerSearch } from '~/utils/nflPlayer'
@@ -28,7 +28,7 @@ function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySam
     <div className="nfl-prop-detail__plot" style={style}>
       {linePct !== null && <span className="nfl-prop-detail__line-mark"><span>{row.line?.toFixed(1)}</span></span>}
       {bars.map((bar, index) => <div key={index} className={`nfl-prop-detail__col is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties}>
-        <span className="nfl-prop-detail__val">{formatHistoryValue(row.market, bar.value)}</span>
+        <span className="nfl-prop-detail__val">{formBarLabel(bar.value)}</span>
         <span className="nfl-prop-detail__bar" />
       </div>)}
     </div>
