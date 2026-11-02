@@ -1,5 +1,5 @@
 import client from './client'
-import type { NbaGameDetail, NbaLineOnlyProps, NbaPropBoardResponse, NbaProps, NbaSlateGapsResponse, NbaSlateResponse } from '~/types/nba'
+import type { NbaGameDetail, NbaLineOnlyProps, NbaPlayerProps, NbaPropBoardResponse, NbaProps, NbaSlateGapsResponse, NbaSlateResponse } from '~/types/nba'
 import type { PropRankingRecord } from '~/types/propRanking'
 
 /** A null date lets the API choose: today, else the next date with games. */
@@ -25,6 +25,12 @@ export async function fetchNbaLineOnlyProps(gameId: number): Promise<NbaLineOnly
 
 export async function fetchNbaProps(gameId: number): Promise<NbaProps> {
   const { data } = await client.get<NbaProps>(`/nba/games/${gameId}/props`)
+  return data
+}
+
+/** A null date lets the API choose the board's default date. */
+export async function fetchNbaPlayerProps(playerId: number, date: string | null): Promise<NbaPlayerProps> {
+  const { data } = await client.get<NbaPlayerProps>(`/nba/players/${playerId}/props`, { params: date === null ? {} : { date } })
   return data
 }
 

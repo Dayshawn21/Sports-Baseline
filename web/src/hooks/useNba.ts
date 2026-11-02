@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaPropBoard, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
+import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaPlayerProps, fetchNbaPropBoard, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
 import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 
@@ -65,6 +65,16 @@ export function useNbaModelRanking() {
     queryFn: fetchNbaModelRanking,
     // The API caches the check for 15 minutes, so refetching sooner gains nothing.
     staleTime: 15 * 60 * 1000,
+    retry: retryUnlessNotFound,
+  })
+}
+
+export function useNbaPlayerProps(playerId: number | null, date: string | null) {
+  return useQuery({
+    queryKey: ['nba', 'player', playerId, 'props', date],
+    queryFn: () => fetchNbaPlayerProps(playerId as number, date),
+    enabled: playerId !== null,
+    staleTime: 5 * 60 * 1000,
     retry: retryUnlessNotFound,
   })
 }

@@ -9,12 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.pool import get_db
 from app.schemas.nba import (
     NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
-    NbaPropBoardResponse, NbaSlateResponse,
+    NbaPlayerPropsResponse, NbaPropBoardResponse, NbaSlateResponse,
 )
 from app.services.nba import track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
 from app.services.nba.prop_board_cache import cached_prop_board_json
+from app.services.nba.player_props_service import build_player_props
 from app.services.nba.props import build_props
 from app.services.nba.slate import build_slate
 from app.services.nba.slate_gaps import build_slate_gaps
@@ -64,6 +65,16 @@ async def get_game_props(game_id: int, db: AsyncSession = Depends(get_db)) -> Nb
     props = await build_props(db, game_id)
     if props is None:
         raise HTTPException(status_code=404, detail=f"NBA game {game_id} not found")
+    return props
+
+
+@router.get("/players/{player_id}/props", response_model=NbaPlayerPropsResponse)
+async def get_player_props(
+    player_id: int, date: dt.date | None = None, db: AsyncSession = Depends(get_db),
+) -> NbaPlayerPropsResponse:
+    props = await build_player_props(db, player_id, date, dt.datetime.now(EASTERN).date())
+    if props is None:
+        raise HTTPException(status_code=404, detail=f"NBA player {player_id} not found")
     return props
 
 
