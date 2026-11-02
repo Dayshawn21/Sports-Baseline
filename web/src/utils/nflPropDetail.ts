@@ -23,6 +23,8 @@ export interface NflDetailHistory {
   title: string
   value: string
   detail: string | null
+  /** The games behind `detail`, one entry each, for a layout that puts one per line. */
+  games: string[]
 }
 
 export interface NflDetailLine {
@@ -76,14 +78,16 @@ function typeLabel(oddsType: string | null, fallback: string): string {
 }
 
 export function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
-  if (sample.average === null) return { title, value: 'No completed history', detail: null }
+  if (sample.average === null) return { title, value: 'No completed history', detail: null, games: [] }
+  const games = sample.values.map(item => {
+    const date = formDateText(formHistoryDate(item.gameDate, new Date()))
+    return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
+  })
   return {
     title,
     value: `${formatProjection(market, sample.average)} avg · ${sample.values.length} games`,
-    detail: sample.values.map(item => {
-      const date = formDateText(formHistoryDate(item.gameDate, new Date()))
-      return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
-    }).join(' · '),
+    detail: games.join(' · '),
+    games,
   }
 }
 

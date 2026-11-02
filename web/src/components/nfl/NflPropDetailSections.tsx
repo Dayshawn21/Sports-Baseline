@@ -65,7 +65,7 @@ export function DetailGameLog({ row }: { row: NflSlateLine }) {
     </div>
     <FormSwitch row={row} window={window} />
     <GameLogBars row={row} sample={sample} />
-    {!bars && form.detail && <p className="nfl-prop-detail__list">{form.detail}</p>}
+    {!bars && form.games.length > 0 && <ul className="nfl-prop-detail__list nfl-prop-detail__games" aria-label={form.title}>{form.games.map((game, index) => <li key={index}>{game}</li>)}</ul>}
   </section>
 }
 

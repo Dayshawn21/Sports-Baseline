@@ -119,6 +119,20 @@
   line-height: 1.5;
 }
 
+.nfl-prop-detail__games {
+  padding: 0;
+  list-style: none;
+}
+
+.nfl-prop-detail__games li { display: inline; }
+.nfl-prop-detail__games li + li::before { content: ' \00b7  '; }
+
+/* One game per line where the list would wrap into a block of text. */
+@media (max-width: 600px) {
+  .nfl-prop-detail__games li { display: block; }
+  .nfl-prop-detail__games li + li::before { content: none; }
+}
+
 /* Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Heights are
    shares of the plot box, so the mark and the bars read off the same scale. */
 .nfl-prop-detail__chart {
