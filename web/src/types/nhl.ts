@@ -1,4 +1,4 @@
-import type { NhlGameContext } from '~/types/nhlContext'
+import type { NhlContextFreshness, NhlGameContext, NhlGoalieContext, NhlInjury } from '~/types/nhlContext'
 
 /** CamelCase responses from `app/schemas/nhl.py`; dates are Eastern calendar dates. */
 export type NhlBook = 'draftkings' | 'fanduel' | 'bet365'
@@ -96,4 +96,55 @@ export interface NhlLineOnlyLine {
 export interface NhlLineOnlyProps {
   gameId: number
   lines: NhlLineOnlyLine[]
+}
+
+export interface NhlPlayerLine {
+  line: number
+  oddsType: 'standard' | 'demon' | 'goblin'
+  fetchedAt: string
+}
+
+/** `value` is null when the box score left the stat unloaded, never zero; time on ice is minutes. Goalie markets count started games only. */
+export interface NhlPlayerGame {
+  gameDate: string
+  opponent: string | null
+  value: number | null
+}
+
+export interface NhlPlayerMarket {
+  market: NhlLineOnlyMarket
+  lines: NhlPlayerLine[]
+  /** Newest first, up to 10; Last 5 is the first five. */
+  recent: NhlPlayerGame[]
+  /** Newest first, season 2023 onward; empty when the opponent is unknown. */
+  opponentGames: NhlPlayerGame[]
+}
+
+export interface NhlPlayerGameRef {
+  gameId: number
+  gameType: 'REG' | 'PST'
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+}
+
+export interface NhlPlayerInjury {
+  fetchedAt: string | null
+  sourceTimestamp: string | null
+  freshness: NhlContextFreshness
+  entry: NhlInjury | null
+}
+
+export interface NhlPlayerProps {
+  playerId: number
+  name: string
+  position: string | null
+  team: string | null
+  date: string
+  game: NhlPlayerGameRef | null
+  opponent: string | null
+  injury: NhlPlayerInjury
+  goalies: NhlGoalieContext | null
+  markets: NhlPlayerMarket[]
 }

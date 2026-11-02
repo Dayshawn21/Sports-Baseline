@@ -7,9 +7,10 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.core.nhl_context_snapshots import Freshness
 from app.core.nhl_odds import NhlBook
 from app.nhl.markets import NhlLineOnlyMarket
-from app.schemas.nhl_context import NhlGameContextSchema
+from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlInjurySchema
 
 
 class _CamelModel(BaseModel):
@@ -110,3 +111,53 @@ class NhlLineOnlyLineSchema(_CamelModel):
 class NhlLineOnlyPropsResponse(_CamelModel):
     game_id: int
     lines: list[NhlLineOnlyLineSchema]
+
+
+class NhlPlayerLineSchema(_CamelModel):
+    line: float
+    odds_type: Literal["standard", "demon", "goblin"]
+    fetched_at: AwareDatetime
+
+
+class NhlPlayerGameSchema(_CamelModel):
+    """One played game's value; null when the box score left the stat unloaded, never zero."""
+    game_date: dt.date
+    opponent: str | None
+    value: float | None
+
+
+class NhlPlayerMarketSchema(_CamelModel):
+    """Stored lines with recent results. Goalie markets count started games only."""
+    market: NhlLineOnlyMarket
+    lines: list[NhlPlayerLineSchema]
+    recent: list[NhlPlayerGameSchema]
+    opponent_games: list[NhlPlayerGameSchema]
+
+
+class NhlPlayerGameRefSchema(_CamelModel):
+    game_id: int
+    game_type: Literal["REG", "PST"]
+    away_team: str
+    home_team: str
+    start_utc: AwareDatetime | None
+    status: str
+
+
+class NhlPlayerInjurySchema(_CamelModel):
+    fetched_at: AwareDatetime | None = None
+    source_timestamp: AwareDatetime | None = None
+    freshness: Freshness = "unavailable"
+    entry: NhlInjurySchema | None = None
+
+
+class NhlPlayerPropsResponse(_CamelModel):
+    player_id: int
+    name: str
+    position: str | None
+    team: str | None
+    date: dt.date
+    game: NhlPlayerGameRefSchema | None
+    opponent: str | None
+    injury: NhlPlayerInjurySchema
+    goalies: NhlGoalieContext | None
+    markets: list[NhlPlayerMarketSchema]

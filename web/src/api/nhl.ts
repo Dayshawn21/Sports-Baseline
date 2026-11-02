@@ -1,5 +1,5 @@
 import client from './client'
-import type { NhlGameDetail, NhlLineOnlyProps, NhlSlateResponse } from '~/types/nhl'
+import type { NhlGameDetail, NhlLineOnlyProps, NhlPlayerProps, NhlSlateResponse } from '~/types/nhl'
 
 export async function fetchNhlSlate(date: string | null): Promise<NhlSlateResponse> {
   const { data } = await client.get<NhlSlateResponse>('/nhl/slate', { params: date === null ? {} : { date } })
@@ -13,5 +13,10 @@ export async function fetchNhlGame(gameId: number): Promise<NhlGameDetail> {
 
 export async function fetchNhlLineOnlyProps(gameId: number): Promise<NhlLineOnlyProps> {
   const { data } = await client.get<NhlLineOnlyProps>(`/nhl/games/${gameId}/line-only-props`)
+  return data
+}
+
+export async function fetchNhlPlayerProps(playerId: number, date: string | null): Promise<NhlPlayerProps> {
+  const { data } = await client.get<NhlPlayerProps>(`/nhl/players/${playerId}/props`, { params: date === null ? {} : { date } })
   return data
 }

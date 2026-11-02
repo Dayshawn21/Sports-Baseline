@@ -1,11 +1,12 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlSlate } from '~/api/nhl'
-import { nhlGameQuery, nhlLineOnlyPropsQuery, nhlSlateQuery } from '~/hooks/useNhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlSlate } from '~/api/nhl'
+import { nhlGameQuery, nhlLineOnlyPropsQuery, nhlPlayerPropsQuery, nhlSlateQuery } from '~/hooks/useNhl'
 
 vi.mock('~/api/nhl', () => ({
   fetchNhlGame: vi.fn(async (gameId: number) => ({ gameId })),
   fetchNhlLineOnlyProps: vi.fn(async (gameId: number) => ({ gameId, lines: [] })),
+  fetchNhlPlayerProps: vi.fn(async (playerId: number, date: string | null) => ({ playerId, date, markets: [] })),
   fetchNhlSlate: vi.fn(async (date: string | null) => ({ date, games: [] })),
 }))
 
@@ -68,4 +69,28 @@ it('normalizes malformed dates to the server default and separates explicit date
   vi.advanceTimersByTime(300_001)
   await cache.fetchQuery(nhlSlateQuery('2026-10-23'))
   expect(fetchNhlSlate).toHaveBeenCalledTimes(4)
+})
+
+it.each([null, 0, -1, NaN, Infinity, 1.5, Number.MAX_SAFE_INTEGER + 1])('invalid player id %s never starts player fetching', playerId => {
+  const observer = new QueryObserver(cache, nhlPlayerPropsQuery(playerId, null))
+  const unsubscribe = observer.subscribe(() => undefined)
+  expect(observer.getCurrentResult().fetchStatus).toBe('idle')
+  expect(fetchNhlPlayerProps).not.toHaveBeenCalled()
+  unsubscribe()
+})
+
+it('isolates player caches by player and date, drops malformed dates and keeps five-minute freshness', async () => {
+  await cache.fetchQuery(nhlPlayerPropsQuery(7, '2026-02-29'))
+  await cache.fetchQuery(nhlPlayerPropsQuery(7, null))
+  expect(fetchNhlPlayerProps).toHaveBeenCalledExactlyOnceWith(7, null)
+  await cache.fetchQuery(nhlPlayerPropsQuery(7, '2026-10-23'))
+  await cache.fetchQuery(nhlPlayerPropsQuery(8, '2026-10-23'))
+  expect(fetchNhlPlayerProps).toHaveBeenCalledTimes(3)
+  expect(cache.getQueryData(['nhl', 'player', 7, 'props', '2026-10-23'])).toEqual({ playerId: 7, date: '2026-10-23', markets: [] })
+  vi.advanceTimersByTime(299_999)
+  await cache.fetchQuery(nhlPlayerPropsQuery(7, '2026-10-23'))
+  expect(fetchNhlPlayerProps).toHaveBeenCalledTimes(3)
+  vi.advanceTimersByTime(2)
+  await cache.fetchQuery(nhlPlayerPropsQuery(7, '2026-10-23'))
+  expect(fetchNhlPlayerProps).toHaveBeenCalledTimes(4)
 })

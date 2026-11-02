@@ -12,6 +12,8 @@ export function validNhlGameId(value: number | null): value is number {
   return value !== null && Number.isSafeInteger(value) && value > 0
 }
 
+export const validNhlPlayerId = validNhlGameId
+
 export function parseNhlGameId(value: string | undefined): number | null {
   if (!value || !/^\d+$/.test(value)) return null
   const id = Number(value)

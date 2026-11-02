@@ -267,10 +267,11 @@ prerequisite for 19e rather than a parallel nice-to-have.
   - [x] 53a. **NBA player endpoint** - a read-only `GET /nba/players/{id}/props?date=` returning each modelled and line-only market the player has on a slate date with its rungs, the same reference projection, gap and P(over) the game page shows, the last 10 dated games, earlier games against that date's opponent and the injury and opponent context; the board and game endpoints unchanged
   - [ ] 53b. **NBA player page** - `/nba/player/:id` with every modelled and double-double market as tabs, the full-width form chart, window switch and game dates, and the injury and opponent evidence
   - [ ] 53c. **NBA rows open the page** - board and game page rows navigate to the page; the drawer and panel code is removed
-  - [ ] 53d. **NHL player endpoint and page** - the same for NHL, including its line-only markets and the goalie and injury context it already stores
-  - [ ] 53e. **NHL rows open the page** - NHL board and game rows navigate to the page; the inline panels are removed
-  - [x] 53f. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
-  - [ ] 53g. **Tennis rows open the page** - the tennis prop board and match page rows navigate to the player page; the evidence drawer is removed
+  - [x] 53d. **NHL player endpoint** - a read-only `GET /nhl/players/{id}/props?date=` returning each line-only market the player has on a slate date with its stored line and alternates, the last 10 dated games, earlier games against that date's opponent and the goalie and injury context it already stores; the game and slate endpoints unchanged
+  - [ ] 53e. **NHL player page** - `/nhl/player/:id` with a tab per market, the full-width form chart, window switch and game dates, and the injury and goalie evidence, display only
+  - [ ] 53f. **NHL rows open the page** - NHL game page prop rows navigate to the page; the inline panel is removed
+  - [x] 53g. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
+  - [ ] 53h. **Tennis rows open the page** - the tennis prop board and match page rows navigate to the player page; the evidence drawer is removed
 
 ## Content analysis
 
