@@ -178,6 +178,41 @@ export interface NflLineOnlyRecent {
   value: number | null
 }
 
+/** One game behind a line-only market on the player page; `value` is null when a stat was not loaded, never zero. */
+export interface NflOtherMarketGame {
+  season: number
+  week: number
+  gameDate: string | null
+  opponent: string | null
+  value: number | null
+}
+
+export interface NflOtherMarketRung {
+  line: number
+  oddsType: string | null
+  fetchedAt: string
+}
+
+export interface NflOtherMarket {
+  market: string
+  gameId: number
+  /** Ascending by line. */
+  lines: NflOtherMarketRung[]
+  /** Newest first, up to 10 games since 2024; the first 5 are the board's recent values. */
+  recent: NflOtherMarketGame[]
+  /** Newest first, every earlier game against `opponent` since 2024; empty when `opponent` is null. */
+  opponentGames: NflOtherMarketGame[]
+}
+
+/** `GET /nfl/players/{id}/other-markets` (item 52a): display only, never a projection, edge or rank. */
+export interface NflOtherMarkets {
+  playerId: number
+  season: number
+  week: number
+  opponent: string | null
+  markets: NflOtherMarket[]
+}
+
 export interface NflLineOnlyLine {
   playerId: number
   playerName: string

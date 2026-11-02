@@ -13,7 +13,7 @@ from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import (
     NflCurrentWeekResponse, NflGameContextResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
-    NflLineOnlyPropsResponse, NflLineOnlyBoardResponse,
+    NflLineOnlyPropsResponse, NflLineOnlyBoardResponse, NflOtherMarketsResponse,
     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
     NflRankingModelVersion, NflSlateResponse,
@@ -22,6 +22,7 @@ from app.services.nfl.game_detail import build_game_detail
 from app.services.nfl.game_notes import build_game_notes
 from app.services.nfl.line_only_props import build_line_only_props, build_week_line_only_props
 from app.services.nfl.matchup_context import build_game_context
+from app.services.nfl.other_markets import build_player_other_markets
 from app.services.nfl.player_detail import build_player_detail
 from app.services.nfl import prop_lines_snapshot, track_record
 from app.services.nfl.slate import anytime_td
@@ -85,6 +86,16 @@ async def get_player(player_id: int, db: AsyncSession = Depends(get_db)) -> NflP
     if detail is None:
         raise HTTPException(status_code=404, detail=f"NFL player {player_id} not found")
     return detail
+
+
+@router.get("/players/{player_id}/other-markets", response_model=NflOtherMarketsResponse)
+async def get_player_other_markets(
+    player_id: int, season: int, week: int, db: AsyncSession = Depends(get_db),
+) -> NflOtherMarketsResponse:
+    markets = await build_player_other_markets(db, player_id, season, week)
+    if markets is None:
+        raise HTTPException(status_code=404, detail=f"NFL player {player_id} not found")
+    return markets
 
 
 @router.get("/projections", response_model=NflProjectionsResponse)

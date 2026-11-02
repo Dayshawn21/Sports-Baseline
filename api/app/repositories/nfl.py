@@ -2289,6 +2289,56 @@ async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict]:
     ]
 
 
+async def player_exists(db: AsyncSession, player_id: int) -> bool:
+    row = await db.execute(text("SELECT 1 FROM sport_players WHERE sport = 'nfl' AND id = :player_id"), {"player_id": player_id})
+    return row.first() is not None
+
+
+async def get_player_week_line_only_lines(db: AsyncSession, player_id: int, season: int, week: int) -> list[dict]:
+    """One player's full-game line-only props for a week at their last pre-kickoff snapshot, with the game's team codes (item 52a)."""
+    rows = await db.execute(text(f"""
+        SELECT DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)
+               l.market, l.odds_type, l.line, l.fetched_at, l.game_id, l.raw_json ->> 'player_team',
+               home.team_code, away.team_code
+        FROM sport_prop_lines l
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
+        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
+        WHERE l.sport = 'nfl' AND l.player_id = :player_id AND g.season = :season AND g.week = :week
+          AND g.game_type = 'REG' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc AND {LINE_ONLY_MARKET_FILTER}
+        ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+    """), {"player_id": player_id, "season": season, "week": week})
+    return [
+        {"market": r[0], "odds_type": r[1], "line": float(r[2]), "fetched_at": r[3], "game_id": r[4],
+         "team": r[5], "home_team": r[6], "away_team": r[7]}
+        for r in rows.fetchall()
+    ]
+
+
+async def get_player_line_only_history(
+    db: AsyncSession, player_id: int, season: int, week: int, *, opponent: str | None = None, limit: int | None = None,
+) -> list[dict]:
+    """A player's regular-season stat rows strictly before (season, week), newest first, from PROJECTION_FIRST_HISTORY_SEASON on.
+
+    `opponent` keeps only games against that team code; `limit` caps the rows. Each row has the
+    line-only stat columns and the game date (item 52a).
+    """
+    stat_columns = ", ".join(f"s.{column}" for column in LINE_ONLY_COLUMNS)
+    rows = await db.execute(text(f"""
+        SELECT g.season, g.week, g.game_date, opp.team_code AS opponent, {stat_columns}
+        FROM nfl_player_weekly_stats s
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+        LEFT JOIN sport_teams opp ON opp.sport = 'nfl' AND opp.id = s.opponent_team_id
+        WHERE s.player_id = :player_id AND g.game_type = 'REG' AND g.season >= :first_season
+          AND (g.season < :season OR (g.season = :season AND g.week < :week))
+          AND (CAST(:opponent AS text) IS NULL OR opp.team_code = :opponent)
+        ORDER BY g.season DESC, g.week DESC, g.id DESC
+        LIMIT :limit
+    """), {"player_id": player_id, "season": season, "week": week, "opponent": opponent,
+           "first_season": PROJECTION_FIRST_HISTORY_SEASON, "limit": limit})
+    return [dict(row) for row in rows.mappings()]
+
+
 async def get_week_line_only_lines(db: AsyncSession, season: int, week: int) -> list[dict]:
     """Read the week's display-only props together, preserving each game's pre-kickoff cutoff."""
     rows = await db.execute(text(f"""
