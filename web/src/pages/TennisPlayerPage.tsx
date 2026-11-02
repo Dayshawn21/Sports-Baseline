@@ -5,6 +5,7 @@ import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import PlayerEloCard from '~/components/tennis/player/PlayerEloCard'
 import PlayerHeader from '~/components/tennis/player/PlayerHeader'
+import PlayerPropTabs from '~/components/tennis/player/PlayerPropTabs'
 import PlayerMatchLog from '~/components/tennis/player/PlayerMatchLog'
 import PlayerServeReturn from '~/components/tennis/player/PlayerServeReturn'
 import PlayerSidebar from '~/components/tennis/player/PlayerSidebar'
@@ -49,6 +50,7 @@ export default function TennisPlayerPage() {
     <div className="page-shell tennis-player"><div className="page-container is-wide">
       <BackLink />
       <PlayerHeader player={detail.data} now={new Date()} />
+      <PlayerPropTabs playerId={detail.data.playerId} playerName={detail.data.name} />
       <div className="tennis-player-layout">
         <section className="tennis-player-main">
           <PlayerEloCard player={detail.data} />

@@ -269,7 +269,7 @@ prerequisite for 19e rather than a parallel nice-to-have.
   - [ ] 53c. **NBA rows open the page** - board and game page rows navigate to the page; the drawer and panel code is removed
   - [ ] 53d. **NHL player endpoint and page** - the same for NHL, including its line-only markets and the goalie and injury context it already stores
   - [ ] 53e. **NHL rows open the page** - NHL board and game rows navigate to the page; the inline panels are removed
-  - [ ] 53f. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
+  - [x] 53f. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
   - [ ] 53g. **Tennis rows open the page** - the tennis prop board and match page rows navigate to the player page; the evidence drawer is removed
 
 ## Content analysis

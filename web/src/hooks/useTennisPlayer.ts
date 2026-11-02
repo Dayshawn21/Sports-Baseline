@@ -23,10 +23,10 @@ export function usePlayerServeReturn(playerId: number | null) {
   })
 }
 
-export function usePlayerMatches(playerId: number | null) {
+export function usePlayerMatches(playerId: number | null, limit?: number) {
   return useQuery({
-    queryKey: ['tennis', 'player', playerId, 'matches'],
-    queryFn: () => fetchPlayerMatches(playerId!),
+    queryKey: ['tennis', 'player', playerId, 'matches', limit ?? 'default'],
+    queryFn: () => fetchPlayerMatches(playerId!, limit),
     enabled: playerId != null,
     staleTime: PLAYER_STALE_MS,
   })

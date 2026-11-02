@@ -1,11 +1,11 @@
 import { Tag } from 'antd'
 import { Link } from 'react-router-dom'
-import type { CSSProperties, Ref } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
 import { useMatchRecentForm } from '~/hooks/useMatchRecentForm'
 import type { PlayerFormStats, PlayerRecentForm } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
 import { lineNumber, marketLabel, signalSummary, sourceLabel } from '~/utils/tennisPropBoard'
-import { propCard, recentStatBars } from '~/utils/tennisPropCards'
+import { propCard, recentStatBars, type RecentStatBar } from '~/utils/tennisPropCards'
 import { propMatchPath } from '~/utils/tennisMatchView'
 
 function percent(value: number | null | undefined): string {
@@ -55,24 +55,34 @@ function linePlayer(row: TennisBoardLine, players: PlayerRecentForm[]): PlayerRe
   return players.find(player => player.playerName.trim().toLowerCase() === name) ?? null
 }
 
+interface RecentBarsChartProps {
+  title: string
+  line: number
+  bars: RecentStatBar[]
+}
+
+export function TennisRecentBars({ title, line, bars }: RecentBarsChartProps) {
+  const scale = Math.max(line, ...bars.map(bar => bar.value ?? 0)) * 1.15 || 1
+  const columns: CSSProperties = { gridTemplateColumns: `repeat(${bars.length}, minmax(0, 1fr))` }
+  const summary = bars.map(bar => bar.value ?? 'no data').join(', ')
+  return <section className="tennis-prop-form tennis-prop-bars">
+    <span>{title}</span>
+    <div className="tennis-prop-bars__values" style={columns} aria-hidden="true">{bars.map((bar, index) => <em key={`${bar.matchDate}-${index}`}>{bar.value ?? '--'}</em>)}</div>
+    <div className="tennis-prop-bars__chart" role="img" aria-label={`Oldest to newest: ${summary}, against the ${line.toFixed(1)} line`} style={{ ...columns, '--line': `${(line / scale) * 100}%` } as CSSProperties}>
+      {bars.map((bar, index) => <i key={`${bar.matchDate}-${index}`} className={bar.vsLine ? `is-${bar.vsLine}` : 'is-missing'} style={{ '--h': `${((bar.value ?? 0) / scale) * 100}%` } as CSSProperties} />)}
+    </div>
+    <div className="tennis-prop-bars__dates" style={columns} aria-hidden="true">{bars.map((bar, index) => <small key={`${bar.matchDate}-${index}`} title={`vs ${bar.opponentName}`}>{dateLabel(bar.matchDate)}</small>)}</div>
+    <small className="tennis-prop-bars__line">Dashed line: today's {line.toFixed(1)} line</small>
+  </section>
+}
+
 /** The selected player's recent box-score values against today's line; no rate or count on purpose. */
 function RecentBars({ row, players }: { row: TennisBoardLine, players: PlayerRecentForm[] }) {
   const line = lineNumber(row)
   const player = linePlayer(row, players)
   const bars = player && line != null ? recentStatBars(player.matches, row.statType, line) : null
   if (!player || line == null || !bars?.some(bar => bar.value != null)) return null
-  const scale = Math.max(line, ...bars.map(bar => bar.value ?? 0)) * 1.15 || 1
-  const columns: CSSProperties = { gridTemplateColumns: `repeat(${bars.length}, minmax(0, 1fr))` }
-  const summary = bars.map(bar => bar.value ?? 'no data').join(', ')
-  return <section className="tennis-prop-form tennis-prop-bars">
-    <span>{marketLabel(row.statType)} · last {bars.length}</span>
-    <div className="tennis-prop-bars__values" style={columns} aria-hidden="true">{bars.map(bar => <em key={bar.matchDate}>{bar.value ?? '--'}</em>)}</div>
-    <div className="tennis-prop-bars__chart" role="img" aria-label={`Oldest to newest: ${summary}, against the ${line.toFixed(1)} line`} style={{ ...columns, '--line': `${(line / scale) * 100}%` } as CSSProperties}>
-      {bars.map(bar => <i key={bar.matchDate} className={bar.vsLine ? `is-${bar.vsLine}` : 'is-missing'} style={{ '--h': `${((bar.value ?? 0) / scale) * 100}%` } as CSSProperties} />)}
-    </div>
-    <div className="tennis-prop-bars__dates" style={columns} aria-hidden="true">{bars.map(bar => <small key={bar.matchDate} title={`vs ${bar.opponentName}`}>{dateLabel(bar.matchDate)}</small>)}</div>
-    <small className="tennis-prop-bars__line">Dashed line: today's {line.toFixed(1)} line</small>
-  </section>
+  return <TennisRecentBars title={`${marketLabel(row.statType)} · last ${bars.length}`} line={line} bars={bars} />
 }
 
 function LineSummary({ row }: { row: TennisBoardLine }) {
@@ -100,10 +110,17 @@ function ContextFacts({ row }: { row: TennisBoardLine }) {
   </div>
 }
 
-export default function TennisPropEvidencePanel({ row, ref, showMatchLink = true }: { row: TennisBoardLine, ref?: Ref<HTMLElement>, showMatchLink?: boolean }) {
+interface EvidenceBodyProps {
+  row: TennisBoardLine
+  ref?: Ref<HTMLElement>
+  showMatchLink?: boolean
+  /** Rendered between the projection inputs and the quality notes. */
+  children?: ReactNode
+}
+
+export function TennisPropEvidenceBody({ row, ref, showMatchLink = true, children }: EvidenceBodyProps) {
   const flags = row.dataQualityFlags ?? []
   const inputs = Object.entries(row.projectionInputs ?? {})
-  const recentForm = useMatchRecentForm(row.matchId)
   return <aside ref={ref} className="tennis-prop-evidence" aria-label={`Evidence for ${row.playerName ?? 'selected prop'}`}>
     <header>
       <h2>{row.playerName ?? 'Unknown player'}</h2>
@@ -114,9 +131,16 @@ export default function TennisPropEvidencePanel({ row, ref, showMatchLink = true
     <section className="tennis-prop-evidence__reason"><span>Why this signal</span><p>{signalSummary(row)}</p></section>
     <ContextFacts row={row} />
     {inputs.length > 0 && <section className="tennis-prop-evidence__inputs"><span>Projection inputs</span><div>{inputs.map(([key, value]) => <Tag key={key}>{key.replaceAll('_', ' ')}: {typeof value === 'number' ? value.toFixed(2) : value}</Tag>)}</div></section>}
+    {children}
+    {flags.length > 0 && <section className="tennis-prop-evidence__inputs"><span>Quality notes</span><div>{flags.map(flag => <Tag key={flag}>{flagLabel(flag)}</Tag>)}</div></section>}
+  </aside>
+}
+
+export default function TennisPropEvidencePanel({ row, ref, showMatchLink = true }: { row: TennisBoardLine, ref?: Ref<HTMLElement>, showMatchLink?: boolean }) {
+  const recentForm = useMatchRecentForm(row.matchId)
+  return <TennisPropEvidenceBody row={row} ref={ref} showMatchLink={showMatchLink}>
     {recentForm.isLoading && <section className="tennis-prop-form"><span>Player form</span><p>Loading last five matches...</p></section>}
     {recentForm.isError && <section className="tennis-prop-form"><span>Player form</span><p>Recent form is unavailable.</p></section>}
     {recentForm.data && <><RecentBars row={row} players={recentForm.data.players} /><FormStats players={recentForm.data.players} /><section className="tennis-prop-form tennis-prop-form--history"><span>Last 5 completed matches</span><div className="tennis-prop-form__histories">{recentForm.data.players.map(player => <FormHistory key={player.playerId} player={player} statType={row.statType} />)}</div></section></>}
-    {flags.length > 0 && <section className="tennis-prop-evidence__inputs"><span>Quality notes</span><div>{flags.map(flag => <Tag key={flag}>{flagLabel(flag)}</Tag>)}</div></section>}
-  </aside>
+  </TennisPropEvidenceBody>
 }
