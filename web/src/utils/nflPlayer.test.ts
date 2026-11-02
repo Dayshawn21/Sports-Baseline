@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflLineOnlyLine, NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
+import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerLineOnlyGroups, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -124,5 +124,46 @@ describe('specialist player pages', () => {
   it('carries the encoded market to the player game log', () => {
     expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
     expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
+  })
+})
+
+describe('propSectionIds', () => {
+  it('names a section per market and numbers a repeat', () => {
+    expect(propSectionIds(['receiving_yards', 'receptions', 'receiving_yards'])).toEqual(['prop-receiving_yards', 'prop-receptions', 'prop-receiving_yards-2'])
+  })
+
+  it('is empty for no markets', () => {
+    expect(propSectionIds([])).toEqual([])
+  })
+})
+
+describe('selectedPropMarket', () => {
+  const markets = ['receiving_yards', 'receptions']
+
+  it('returns a market that has a section', () => {
+    expect(selectedPropMarket(new URLSearchParams('market=receptions'), markets)).toBe('receptions')
+  })
+
+  it('ignores an absent, empty or unknown market', () => {
+    expect(selectedPropMarket(new URLSearchParams(''), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market='), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market=passing_yards'), markets)).toBeNull()
+  })
+})
+
+describe('playerLineOnlyGroups', () => {
+  const only = (playerId: number, market: string): NflLineOnlyLine => ({
+    playerId, playerName: `Player ${playerId}`, position: 'QB', team: 'BUF', market, oddsType: 'standard', line: 1.5,
+    fetchedAt: '2026-10-01T12:00:00Z', recent: [],
+  })
+
+  it('keeps only the player and orders markets as the board does', () => {
+    const groups = playerLineOnlyGroups([only(2, 'interceptions'), only(1, 'interceptions'), only(1, 'passing_touchdowns')], 1)
+    expect(groups.map(group => group.market)).toEqual(['passing_touchdowns', 'interceptions'])
+    expect(groups.every(group => group.rows.every(row => row.playerId === 1))).toBe(true)
+  })
+
+  it('is empty for a player with no line-only rows', () => {
+    expect(playerLineOnlyGroups([only(2, 'interceptions')], 1)).toEqual([])
   })
 })

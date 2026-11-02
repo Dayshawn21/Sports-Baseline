@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
+import { NflPlayerOtherMarkets } from '~/components/nfl/NflPlayerOtherMarkets'
+import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
 import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerRecord'
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
 import ErrorState from '~/components/shared/ErrorState'
@@ -88,7 +90,9 @@ export default function NflPlayerPage() {
       {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
       <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
     </div>
-    <NflPlayerGameLog player={player} />
+    {week && <NflPlayerProps week={week} showUsage={!isNflSpecialist(player.position)} />}
+    <NflPlayerOtherMarkets season={player.season} week={player.week} playerId={player.playerId} />
+    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} />
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
   </div></div>

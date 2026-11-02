@@ -94,3 +94,15 @@
 }
 
 .nfl-player-table th.is-selected-market { color: var(--text-primary); text-decoration: underline; text-underline-offset: 5px; }
+
+.nfl-player-prop { scroll-margin-top: calc(var(--nav-height) + 16px); }
+.nfl-player-prop.is-selected { border-color: var(--text-secondary); box-shadow: inset 4px 0 0 var(--text-secondary); }
+.nfl-player-prop__title { margin: 0; font: 700 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.nfl-player-prop__title small { margin-left: 8px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; }
+.nfl-player-prop__body { padding: 0 16px 4px; }
+.nfl-player-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.nfl-player-jump a { padding: 6px 12px; border: 1px solid var(--border-card); border-radius: 999px; color: var(--text-secondary); font-size: 12px; }
+.nfl-player-jump a:hover { color: var(--text-primary); }
+.nfl-player-prop + .nfl-player-prop { margin-top: 12px; }
+.nfl-player-jump a[aria-current] { border-color: var(--text-secondary); color: var(--text-primary); }
+.nfl-player-other { margin-bottom: 12px; overflow-x: auto; }

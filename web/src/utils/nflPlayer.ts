@@ -1,5 +1,6 @@
-import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflLineOnlyLine, NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { nflGameProps } from '~/utils/nflGameProps'
+import { lineOnlyGroups, type NflLineOnlyGroup } from '~/utils/nflLineOnly'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
@@ -9,6 +10,27 @@ export function isNflSpecialist(position: string | null): boolean {
 
 export function nflPlayerMarketLink(playerId: number, market: string): string {
   return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}#game-log`
+}
+
+/** One DOM id per prop section, in order; a market that repeats gets a numeric suffix so ids never collide. */
+export function propSectionIds(markets: string[]): string[] {
+  const seen = new Map<string, number>()
+  return markets.map(market => {
+    const count = (seen.get(market) ?? 0) + 1
+    seen.set(market, count)
+    return count === 1 ? `prop-${market}` : `prop-${market}-${count}`
+  })
+}
+
+/** The `market` param when it names a section on the page, else null. Plain `#` anchors cannot be used under HashRouter. */
+export function selectedPropMarket(params: URLSearchParams, markets: string[]): string | null {
+  const market = params.get('market')
+  return market !== null && markets.includes(market) ? market : null
+}
+
+/** This player's stored line-only markets, grouped and ordered as the prop board shows them. */
+export function playerLineOnlyGroups(lines: NflLineOnlyLine[], playerId: number): NflLineOnlyGroup[] {
+  return lineOnlyGroups(lines.filter(line => line.playerId === playerId), 'all')
 }
 
 export const SPECIALIST_COLUMNS = {

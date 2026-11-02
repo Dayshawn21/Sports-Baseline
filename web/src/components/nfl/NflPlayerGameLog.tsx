@@ -21,7 +21,8 @@ function optional(value: number | null, format: (value: number) => string = Stri
 }
 
 /** This season's games and the latest of last season, newest first, with the stored focus line per game. */
-export function NflPlayerGameLog({ player }: { player: NflPlayerDetail }) {
+/** `layoutSettled` is false while content above the log is still loading, so the market scroll waits for it. */
+export function NflPlayerGameLog({ player, layoutSettled }: { player: NflPlayerDetail, layoutSettled: boolean }) {
   const [params] = useSearchParams()
   const selectedMarket = params.get('market')
   const specialist = isNflSpecialist(player.position)
@@ -29,8 +30,8 @@ export function NflPlayerGameLog({ player }: { player: NflPlayerDetail }) {
   const log = useRef<HTMLElement>(null)
   const selectedColumn = columns.find(column => column.market !== null && column.market === selectedMarket)?.field
   useEffect(() => {
-    if (selectedColumn && player.gameLog.length > 0) log.current?.scrollIntoView({ block: 'start' })
-  }, [selectedColumn, player.playerId, player.gameLog.length])
+    if (layoutSettled && selectedColumn && player.gameLog.length > 0) log.current?.scrollIntoView({ block: 'start' })
+  }, [layoutSettled, selectedColumn, player.playerId, player.gameLog.length])
   const showPassing = player.position === 'QB' || player.gameLog.some(game => game.passingAttempts > 0)
   const lineLabel = player.focusMarket ? FOCUS_LABELS[player.focusMarket]?.line ?? null : null
   return <>
