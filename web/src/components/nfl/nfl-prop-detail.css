@@ -102,6 +102,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: 500 12px var(--font-body);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -137,7 +138,6 @@
    shares of the plot box, so the mark and the bars read off the same scale. */
 .nfl-prop-detail__chart {
   margin-top: var(--space-3);
-  padding-left: 40px;
 }
 
 .nfl-prop-detail__plot,
@@ -218,21 +218,37 @@
   position: absolute;
   right: 0;
   bottom: var(--line);
-  left: -40px;
+  left: 0;
   z-index: 1;
   border-top: 1px dashed var(--text-secondary);
   pointer-events: none;
 }
 
-.nfl-prop-detail__line-mark > span {
-  position: absolute;
-  top: -9px;
-  left: 0;
-  padding: 0 4px;
-  background: var(--nfl-surface);
+.nfl-prop-detail__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.nfl-prop-detail__toolbar .nfl-prop-detail__switch { margin-top: 0; }
+
+.nfl-prop-detail__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
+  white-space: nowrap;
+}
+
+.nfl-prop-detail__legend::before {
+  content: '';
+  width: 18px;
+  border-top: 1px dashed var(--text-secondary);
 }
 
 .nfl-prop-detail__context {

@@ -26,7 +26,7 @@ function GameLogBars({ row, sample }: { row: NflSlateLine, sample: NflHistorySam
   const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
   return <div className="nfl-prop-detail__chart" aria-label={`${bars.length} games against the line`}>
     <div className="nfl-prop-detail__plot" style={style}>
-      {linePct !== null && <span className="nfl-prop-detail__line-mark"><span>{row.line?.toFixed(1)}</span></span>}
+      {linePct !== null && <span className="nfl-prop-detail__line-mark" />}
       {bars.map((bar, index) => <div key={index} className={`nfl-prop-detail__col is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties}>
         <span className="nfl-prop-detail__val">{formBarLabel(bar.value)}</span>
         <span className="nfl-prop-detail__bar" />
@@ -63,7 +63,10 @@ export function DetailGameLog({ row }: { row: NflSlateLine }) {
       <h3>{form.title}</h3>
       <span>{sample.average === null ? formEmptyText(row, window) : note ? `${formatProjection(row.market, sample.average)} avg · ${note}` : form.value}</span>
     </div>
-    <FormSwitch row={row} window={window} />
+    <div className="nfl-prop-detail__toolbar">
+      <FormSwitch row={row} window={window} />
+      {bars && row.line !== null && row.segment === 'full_game' && <span className="nfl-prop-detail__legend">Line {row.line.toFixed(1)}</span>}
+    </div>
     <GameLogBars row={row} sample={sample} />
     {!bars && form.games.length > 0 && <ul className="nfl-prop-detail__list nfl-prop-detail__games" aria-label={form.title}>{form.games.map((game, index) => <li key={index}>{game}</li>)}</ul>}
   </section>
