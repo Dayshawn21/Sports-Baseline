@@ -1,0 +1,17 @@
+/* NBA player page (build-plan 53b): the NFL player page's classes, plus what NBA adds. */
+
+.nba-player .nfl-player-empty a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+
+.nba-player-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 12px 0 0; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+.nba-player-facts > div { padding: 10px 12px; }
+.nba-player-facts > div + div { border-left: 1px solid var(--border-subtle); }
+.nba-player-facts dt { color: var(--text-muted); font: 600 11px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.nba-player-facts dd { margin: 4px 0 0; color: var(--text-primary); font: 600 15px var(--font-mono); }
+.nba-player-sample { margin: 6px 0 0; color: var(--text-muted); font: 400 11px var(--font-mono); }
+.nba-player-table-wrap { overflow-x: auto; }
+.nba-player .nfl-prop-detail__table th,
+.nba-player .nfl-prop-detail__table td { padding-left: 10px; }
+.nba-player .nfl-prop-detail__table th:first-child,
+.nba-player .nfl-prop-detail__table td:first-child { padding-left: 0; }
+.nba-player .nba-player-flag-row td { padding: 0 0 8px; border-top: 0; color: var(--text-muted); font: 400 11px var(--font-body); text-align: left; }
+.nba-player .nba-prop-evidence__section { padding-bottom: 14px; }

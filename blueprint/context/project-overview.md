@@ -239,7 +239,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 49b | Line anchor fit | After 49a adopts at least one market; fitted on 2026 weeks 1-8 only, rule fixed before week 9 settles |
 | 49c | Serve and freeze | Only markets 49a adopts; own model and P(over) versions, gray |
 | 49d | Forward verdict | After 49c accrues; one-time verdict per slice under 49b's rule |
-| 53a-53g | NBA, NHL and tennis player pages | NBA (53a-53c), NHL (53d-53e) and tennis (53f-53g) are independent branches; NBA first, then NHL, then tennis; display only where a market has no model, with no projection, edge, rank or color for it; tennis form window settled in the 53e spec |
+| 53a-53g | NBA, NHL and tennis player pages | NBA (53a-53c, plus 53b2 for the form chart), NHL (53d-53e) and tennis (53f-53g) are independent branches; NBA first, then NHL, then tennis; display only where a market has no model, with no projection, edge, rank or color for it; tennis form window settled in the 53e spec |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
