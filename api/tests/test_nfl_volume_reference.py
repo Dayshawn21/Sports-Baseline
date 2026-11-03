@@ -110,12 +110,30 @@ def test_a_reference_has_no_reason() -> None:
     ({"market": "receiving_yards"}, AnchorRefused),
     ({"market": "passing_yards", "position": "QB"}, AnchorRefused),
     ({"segment": "first_half"}, ValueError),
-    ({"odds_type": "goblin"}, ValueError),
+    ({"odds_type": "alternate"}, ValueError),
+    ({"odds_type": None}, ValueError),
     ({"week": 19}, ValueError),
 ])
 def test_anything_the_model_was_not_adopted_for_is_refused(overrides: dict, error: type[Exception]) -> None:
     with pytest.raises(error):
         volume.volume_reference(_row(**overrides))
+
+
+@pytest.mark.parametrize("odds_type", ["goblin", "demon"])
+def test_a_rung_projects_exactly_as_a_standard_line_of_the_same_value_does(odds_type: str) -> None:
+    standard = volume.volume_reference(_row(line=4.5))
+    rung = volume.volume_reference(_row(odds_type=odds_type, line=4.5))
+
+    assert rung is not None and rung == standard
+
+
+def test_rungs_of_one_player_game_get_their_own_reference_at_their_own_line() -> None:
+    references = [volume.volume_reference(_row(odds_type=kind, line=line)) for kind, line in (("goblin", 3.5), ("standard", 5.5), ("demon", 7.5))]
+
+    assert all(reference is not None for reference in references)
+    overs = [reference.p_over for reference in references if reference is not None]
+    assert overs == sorted(overs, reverse=True) and len(set(overs)) == 3
+    assert [reference.line for reference in references if reference is not None] == [3.5, 5.5, 7.5]
 
 
 def test_the_input_history_is_not_mutated() -> None:

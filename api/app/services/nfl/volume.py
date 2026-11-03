@@ -20,7 +20,7 @@ from app.core.nfl_volume_projection import (
     prior_games,
     project_player,
 )
-from app.repositories.nfl_volume_serving import VOLUME_SERVING_POSITIONS, VolumeServingLine
+from app.repositories.nfl_volume_serving import VOLUME_SERVING_ODDS_TYPES, VOLUME_SERVING_POSITIONS, VolumeServingLine
 from app.schemas.nfl import NflVolumeReferenceSchema
 
 NO_GAME_LINES = "no spread or total for the game"
@@ -35,8 +35,8 @@ def _require_eligible(row: VolumeServingLine) -> None:
     require_anchorable(row.market, NFL_VOLUME_MODEL_VERSION)
     if row.position not in VOLUME_SERVING_POSITIONS:
         raise ValueError(f"{row.position} is not a position nfl-volume-v1 fits")
-    if row.segment != "full_game" or row.odds_type != "standard" or not 1 <= row.week <= 18:
-        raise ValueError("the volume reference requires a full-game standard line in REG weeks 1-18")
+    if row.segment != "full_game" or row.odds_type not in VOLUME_SERVING_ODDS_TYPES or not 1 <= row.week <= 18:
+        raise ValueError("the volume reference requires a full-game standard, goblin or demon line in REG weeks 1-18")
 
 
 def _assess(row: VolumeServingLine) -> NflVolumeReferenceSchema | str:

@@ -147,7 +147,7 @@ Build one step at a time, never the whole feature at once.
   verdict file differs from `b869a492` only in docstrings and the tuple. Merge it
   `--ff-only`, never squashed.
 
-- [ ] **Step 2 - Serve rungs (repository and assembler).** Widen
+- [x] **Step 2 - Serve rungs (repository and assembler).** Widen
   `repositories/nfl_volume_serving.py` so the latest line per provider prop is
   selected for standard, goblin and demon (a named tuple of odds types bound as
   a parameter, never an unbounded filter), and let
@@ -162,7 +162,7 @@ Build one step at a time, never the whole feature at once.
   gives distinct references per rung line, and that a market or payout outside
   the three still raises.
 
-- [ ] **Step 3 - Publish and freeze rungs (server).** `build_slate` already
+- [x] **Step 3 - Publish and freeze rungs (server).** `build_slate` already
   attaches a companion by line id and the freezer already emits a volume row
   for any line that has one, so this step proves it works for rungs and fixes
   anything that does not. No change to v4 assembly, ordering or counts.
@@ -175,7 +175,7 @@ Build one step at a time, never the whole feature at once.
   companion count and the `nfl_prop_predictions --dry-run` row count rising by
   about the rung total, with v4 lines byte-identical.
 
-- [ ] **Step 4 - Keep the display standard-only (web).** In `nflVolume.ts`,
+- [x] **Step 4 - Keep the display standard-only (web).** In `nflVolume.ts`,
   `volumeReferenceModel` and `volumeTableText` return nothing for a line whose
   `oddsType` is not `standard`.
   *Done when:* helper tests prove goblin and demon rows with a companion show

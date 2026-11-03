@@ -71,6 +71,21 @@ describe('volumeReferenceModel', () => {
   })
 })
 
+describe('goblin and demon rungs', () => {
+  it.each(['goblin', 'demon'])('show nothing for a %s rung even when it carries a companion', (oddsType) => {
+    const rung = row({ oddsType, volume: VOLUME })
+
+    expect(volumeReferenceModel(rung)).toBeNull()
+    expect(volumeTableText(rung)).toBeNull()
+  })
+
+  it('still shows the standard line and ignores a missing payout', () => {
+    expect(volumeReferenceModel(row({ oddsType: 'standard', volume: VOLUME }))).not.toBeNull()
+    expect(volumeTableText(row({ oddsType: 'standard', volume: VOLUME }))).toBe('Volume 5.4 · 46% over')
+    expect(volumeTableText(row({ oddsType: null, volume: VOLUME }))).toBeNull()
+  })
+})
+
 describe('volumeTableText', () => {
   it('is one short line under the model value', () => {
     expect(volumeTableText(row({ volume: VOLUME }))).toBe('Volume 5.4 · 46% over')

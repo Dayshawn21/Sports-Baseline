@@ -16,9 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.nfl_volume_anchor import ANCHOR_MARKET
 from app.core.nfl_volume_backtest import VOLUME_STATS
 from app.core.nfl_volume_projection import VOLUME_FIRST_HISTORY_SEASON, PlayerGame
-from app.repositories.nfl import _player_teams_cte
 
 VOLUME_SERVING_POSITIONS = ("RB", "WR", "TE")
+# The anchor was fitted on standard lines; goblin and demon rungs get it unchanged (49b), so they are served and frozen too.
+VOLUME_SERVING_ODDS_TYPES = ("standard", "goblin", "demon")
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ _LATEST_LINES_CTE = """
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
         WHERE l.sport = 'nfl' AND l.market = :market
           AND g.season = :season AND g.week = :week AND g.week BETWEEN 1 AND 18
-          AND g.game_type = 'REG' AND l.segment = 'full_game' AND l.odds_type = 'standard'
+          AND g.game_type = 'REG' AND l.segment = 'full_game' AND l.odds_type = ANY(CAST(:odds_types AS text[]))
           AND l.provider_prop_id IS NOT NULL AND l.player_id IS NOT NULL
           AND p.position = ANY(CAST(:positions AS text[]))
           AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc)
@@ -64,8 +65,32 @@ _LATEST_LINES_CTE = """
     )
 """
 
+# `nfl._player_teams_cte` resolves every player's team and joined per line it cost about 70 ms a line, which
+# a ladder of rungs (about 1,000 lines a week) turned into over a minute. The same rule, for this slate's players only.
+_PLAYER_TEAMS_CTE = """
+    line_players AS (SELECT DISTINCT player_id FROM latest_volume_lines),
+    roster_latest AS (
+        SELECT DISTINCT ON (r.player_id) r.player_id, r.team_id, r.status
+        FROM nfl_player_weekly_rosters r
+        WHERE r.player_id IN (SELECT player_id FROM line_players)
+          AND (r.season < :season OR (r.season = :season AND r.week <= :week))
+        ORDER BY r.player_id, r.season DESC, r.week DESC
+    ),
+    player_teams AS (
+        SELECT p.id AS player_id,
+               CASE
+                   WHEN rl.player_id IS NULL THEN p.team_id
+                   WHEN rl.status IN ('CUT', 'RET') THEN NULL
+                   ELSE rl.team_id
+               END AS team_id
+        FROM sport_players p
+        LEFT JOIN roster_latest rl ON rl.player_id = p.id
+        WHERE p.sport = 'nfl' AND p.id IN (SELECT player_id FROM line_players)
+    )
+"""
+
 _SERVING_SQL = f"""
-    WITH {_LATEST_LINES_CTE}, {_player_teams_cte()}
+    WITH {_LATEST_LINES_CTE}, {_PLAYER_TEAMS_CTE}
     SELECT l.*, pt.team_id AS player_team_id
     FROM latest_volume_lines l
     LEFT JOIN player_teams pt ON pt.player_id = l.player_id
@@ -152,6 +177,7 @@ async def get_volume_serving_lines(db: AsyncSession, season: int, week: int) -> 
     """Eligible stored receptions lines with batched pre-week history, independent of the game's outcome."""
     result = await db.execute(text(_SERVING_SQL), {
         "season": season, "week": week, "market": ANCHOR_MARKET, "positions": list(VOLUME_SERVING_POSITIONS),
+        "odds_types": list(VOLUME_SERVING_ODDS_TYPES),
     })
     rows = list(result.mappings())
     if not rows:

@@ -12,6 +12,7 @@ from sqlalchemy.sql.elements import TextClause
 from app.core.nfl_volume_backtest import VOLUME_STATS
 from app.core.nfl_volume_projection import NFL_VOLUME_V1_PARAMETERS, VOLUME_FIRST_HISTORY_SEASON
 from app.repositories.nfl_volume_serving import (
+    VOLUME_SERVING_ODDS_TYPES,
     VOLUME_SERVING_POSITIONS,
     VolumeServingLine,
     get_volume_serving_lines,
@@ -73,18 +74,33 @@ def test_every_shared_table_alias_is_filtered_to_nfl() -> None:
             assert f"{alias}.sport = 'nfl'" in sql
 
 
-def test_only_standard_full_game_receptions_lines_of_modelled_positions_before_kickoff() -> None:
+def test_only_full_game_receptions_lines_of_modelled_positions_before_kickoff() -> None:
     session = _Session([])
     _load(session)
     sql, params = session.calls[0]
 
-    assert "l.market = :market" in sql and "l.segment = 'full_game'" in sql and "l.odds_type = 'standard'" in sql
+    assert "l.market = :market" in sql and "l.segment = 'full_game'" in sql
+    assert "l.odds_type = ANY(CAST(:odds_types AS text[]))" in sql and "'standard'" not in sql
     assert "g.game_type = 'REG'" in sql and "g.week BETWEEN 1 AND 18" in sql
     assert "(g.start_utc IS NULL OR l.fetched_at < g.start_utc)" in sql
     assert "l.player_id IS NOT NULL" in sql
     assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
     assert params["market"] == "receptions" and params["positions"] == ["RB", "WR", "TE"]
+    assert params["odds_types"] == ["standard", "goblin", "demon"]
     assert (params["season"], params["week"]) == (2026, 10)
+
+
+def test_the_served_payouts_are_a_named_closed_set_and_the_rest_stay_out() -> None:
+    assert VOLUME_SERVING_ODDS_TYPES == ("standard", "goblin", "demon")
+    assert "alternate" not in VOLUME_SERVING_ODDS_TYPES and "flex" not in VOLUME_SERVING_ODDS_TYPES
+
+
+def test_goblin_and_demon_rungs_load_as_their_own_rows_with_their_payout() -> None:
+    rows = [_line_row(), _line_row(id=901, odds_type="goblin", line=Decimal("3.5")), _line_row(id=902, odds_type="demon", line=Decimal("7.5"))]
+    lines = _load(_Session(rows, []))
+
+    assert [(line.line_id, line.odds_type, line.line) for line in lines] == [(900, "standard", 5.5), (901, "goblin", 3.5), (902, "demon", 7.5)]
+    assert len({line.player_id for line in lines}) == 1
 
 
 def test_serving_positions_are_exactly_the_ones_nfl_volume_v1_fits() -> None:
@@ -166,3 +182,14 @@ def test_no_lines_means_no_history_query() -> None:
     session = _Session([])
     assert _load(session) == []
     assert len(session.calls) == 1
+
+
+def test_the_player_team_is_resolved_for_this_slates_players_only_with_the_shared_rule() -> None:
+    sql = _sql()[0]
+
+    assert "line_players AS (SELECT DISTINCT player_id FROM latest_volume_lines)" in sql
+    assert "r.player_id IN (SELECT player_id FROM line_players)" in sql
+    assert "p.sport = 'nfl' AND p.id IN (SELECT player_id FROM line_players)" in sql
+    assert "r.season < :season OR (r.season = :season AND r.week <= :week)" in sql
+    assert "ORDER BY r.player_id, r.season DESC, r.week DESC" in sql
+    assert "WHEN rl.player_id IS NULL THEN p.team_id" in sql and "WHEN rl.status IN ('CUT', 'RET') THEN NULL" in sql

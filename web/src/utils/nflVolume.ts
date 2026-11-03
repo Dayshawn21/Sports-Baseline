@@ -16,16 +16,21 @@ export interface NflVolumeModel {
   note: string
 }
 
-type VolumeLine = Pick<NflSlateLine, 'market' | 'volume'>
+type VolumeLine = Pick<NflSlateLine, 'market' | 'oddsType' | 'volume'>
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
-/** Only receptions lines carry the companion; an absent or null field means there is nothing to show. */
+/** Goblin and demon rungs are frozen with a companion too (49e) but not shown, so the pages keep their standard-line look. */
+function shownVolume(row: VolumeLine) {
+  return row.market === 'receptions' && row.oddsType === 'standard' && row.volume != null ? row.volume : null
+}
+
+/** Only standard receptions lines show the companion; an absent or null field means there is nothing to show. */
 export function volumeReferenceModel(row: VolumeLine): NflVolumeModel | null {
-  const volume = row.volume
-  if (row.market !== 'receptions' || volume == null) return null
+  const volume = shownVolume(row)
+  if (volume === null) return null
   return {
     title: 'Volume model',
     aside: 'reference',
@@ -42,7 +47,7 @@ export function volumeReferenceModel(row: VolumeLine): NflVolumeModel | null {
 
 /** One short gray line under the model value in a table row, or null. */
 export function volumeTableText(row: VolumeLine): string | null {
-  const volume = row.volume
-  if (row.market !== 'receptions' || volume == null) return null
+  const volume = shownVolume(row)
+  if (volume === null) return null
   return `Volume ${formatProjection(row.market, volume.projection)} · ${percent(volume.pOver)} over`
 }
