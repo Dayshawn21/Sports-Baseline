@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { marketCountLabel } from '~/utils/playerPage'
 
-const TABS_ID = 'prop-tabs'
+export const TABS_ID = 'prop-tabs'
 
 interface Props {
   heading: string

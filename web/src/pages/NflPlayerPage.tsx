@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { NflPlayerContext } from '~/components/nfl/NflPlayerContext'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
 import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
@@ -7,7 +8,7 @@ import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerReco
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import PageHead from '~/components/shared/PageHead'
+import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import StatChip from '~/components/shared/StatChip'
 import { useNflOtherMarkets, useNflPlayer, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
@@ -20,16 +21,10 @@ import './nfl-player.css'
 
 const MISSING = '--'
 
-function PlayerPageState({ children }: { children: ReactNode }) {
-  return <div className="page-shell nfl-slate nfl-player"><div className="page-container is-wide">
-    <Link className="nfl-player-crumb" to="/nfl">← NFL slate</Link>
-    <PageHead title="NFL player" />
-    {children}
-  </div></div>
-}
+const SLATE_CRUMB = <Link className="nfl-player-crumb" to="/nfl">← NFL slate</Link>
 
-function NotFound() {
-  return <PlayerPageState><div className="nfl-player-empty is-page">Player not found. The link may be wrong, or the player is not in the loaded NFL data.</div></PlayerPageState>
+function PlayerPageState({ children }: { children: ReactNode }) {
+  return <PlayerPageShell crumb={SLATE_CRUMB} title="NFL player">{children}</PlayerPageShell>
 }
 
 function injuryTag(player: NflPlayerDetail): { text: string, tone: string } {
@@ -79,29 +74,28 @@ export default function NflPlayerPage() {
   const slate = useNflSlate(season, weekNumber)
   const others = useNflOtherMarkets(playerId, season, weekNumber)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
-  if (playerId === null || isNotFound(detail.error)) return <NotFound />
+  if (playerId === null || isNotFound(detail.error)) return <PlayerNotFound crumb={SLATE_CRUMB} sport="NFL" />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
   const week = slate.data && playerId !== null ? playerWeekLines(slate.data.games, playerId) : null
-  return <div className="page-shell nfl-slate nfl-player"><div className="page-container is-wide">
-    {fromBoard
-      ? <Link className="nfl-player-crumb" to="/nfl/board" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
-      : week
-      ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
-      : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>}
-    <PageHead title={player.name}
-      meta={<>{[player.position, player.team].filter(Boolean).join(' · ') || 'NFL'} · {player.season} season · Week {player.week}</>}
-      stats={<Chips player={player} />} />
-    <Availability player={player} />
+  const crumb = fromBoard
+    ? <Link className="nfl-player-crumb" to="/nfl/board" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
+    : week
+    ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
+    : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>
+  return <PlayerPageShell crumb={crumb} title={player.name} stats={<Chips player={player} />} notice={<Availability player={player} />}
+    meta={<>{[player.position, player.team].filter(Boolean).join(' · ') || 'NFL'} · {player.season} season · Week {player.week}</>}>
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
+    <NflPlayerProps key={playerId} week={week} others={others} weekNumber={weekNumber ?? player.week} />
+    <h2 className="nfl-player-section-title">Supporting context</h2>
     <div className="nfl-player-grid">
       {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
       <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} otherMarkets={others.data?.markets.map(item => item.market) ?? []} />
     </div>
-    <NflPlayerProps key={playerId} week={week} others={others} showUsage={!isNflSpecialist(player.position)} />
+    <NflPlayerContext week={week} showUsage={!isNflSpecialist(player.position)} />
     <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={[...(week?.lines.map(item => item.row.market) ?? []), ...(others.data?.markets.map(item => item.market) ?? [])]} />
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
-  </div></div>
+  </PlayerPageShell>
 }
