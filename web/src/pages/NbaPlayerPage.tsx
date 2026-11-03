@@ -5,7 +5,7 @@ import { NbaPlayerPropTabs } from '~/components/nba/NbaPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import PageHead from '~/components/shared/PageHead'
+import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import { useNbaPlayerProps } from '~/hooks/useNba'
 import type { NbaPlayerProps } from '~/types/nba'
 import { isNotFound } from '~/utils/httpError'
@@ -19,16 +19,10 @@ import './nba-player.css'
 
 const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/
 
-function PlayerPageState({ children }: { children: ReactNode }) {
-  return <div className="page-shell nfl-slate nfl-player nba-player"><div className="page-container is-wide">
-    <Link className="nfl-player-crumb" to="/nba">← NBA slate</Link>
-    <PageHead title="NBA player" />
-    {children}
-  </div></div>
-}
+const SLATE_CRUMB = <Link className="nfl-player-crumb" to="/nba">← NBA slate</Link>
 
-function NotFound() {
-  return <PlayerPageState><div className="nfl-player-empty is-page">Player not found. The link may be wrong, or the player is not in the loaded NBA data.</div></PlayerPageState>
+function PlayerPageState({ children }: { children: ReactNode }) {
+  return <PlayerPageShell sportClass="nba-player" crumb={SLATE_CRUMB} title="NBA player">{children}</PlayerPageShell>
 }
 
 /** A board arrival goes back one step, so the board returns on its own date and market; otherwise the game page, or the board for a player with no game. */
@@ -58,17 +52,14 @@ export default function NbaPlayerPage() {
   const date = asked !== null && DATE_PARAM.test(asked) ? asked : null
   const detail = useNbaPlayerProps(playerId, date)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
-  if (playerId === null || isNotFound(detail.error)) return <NotFound />
+  if (playerId === null || isNotFound(detail.error)) return <PlayerNotFound sportClass="nba-player" crumb={SLATE_CRUMB} sport="NBA" />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
-  return <div className="page-shell nfl-slate nfl-player nba-player"><div className="page-container is-wide">
-    <Crumb player={player} />
-    <PageHead title={player.name} meta={nbaPlayerStatus(player)} />
-    <InjuryLine player={player} />
+  return <PlayerPageShell sportClass="nba-player" crumb={<Crumb player={player} />} title={player.name} meta={nbaPlayerStatus(player)} notice={<InjuryLine player={player} />}>
     <NbaPlayerPropTabs key={player.playerId} player={player} />
     {player.markets.length === 0 && <div className="nfl-player-empty">
       {player.name} has no prop lines on {player.date}. <Link to={`/nba/board?date=${player.date}`}>Open the NBA props board for that date</Link>.
     </div>}
-  </div></div>
+  </PlayerPageShell>
 }

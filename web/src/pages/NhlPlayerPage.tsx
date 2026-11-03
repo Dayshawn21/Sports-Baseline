@@ -4,7 +4,7 @@ import { NhlPlayerPropTabs } from '~/components/nhl/NhlPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import PageHead from '~/components/shared/PageHead'
+import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import { useNhlPlayerProps } from '~/hooks/useNhl'
 import type { NhlPlayerProps } from '~/types/nhl'
 import { isNotFound } from '~/utils/httpError'
@@ -18,16 +18,10 @@ import './nhl-player.css'
 
 const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/
 
-function PlayerPageState({ children }: { children: ReactNode }) {
-  return <div className="page-shell nfl-slate nfl-player nhl-player"><div className="page-container is-wide">
-    <Link className="nfl-player-crumb" to="/nhl">← NHL slate</Link>
-    <PageHead title="NHL player" />
-    {children}
-  </div></div>
-}
+const SLATE_CRUMB = <Link className="nfl-player-crumb" to="/nhl">← NHL slate</Link>
 
-function NotFound() {
-  return <PlayerPageState><div className="nfl-player-empty is-page">Player not found. The link may be wrong, or the player is not in the loaded NHL data.</div></PlayerPageState>
+function PlayerPageState({ children }: { children: ReactNode }) {
+  return <PlayerPageShell sportClass="nhl-player" crumb={SLATE_CRUMB} title="NHL player">{children}</PlayerPageShell>
 }
 
 function Crumb({ player }: { player: NhlPlayerProps }) {
@@ -52,17 +46,14 @@ export default function NhlPlayerPage() {
   const date = asked !== null && DATE_PARAM.test(asked) ? asked : null
   const detail = useNhlPlayerProps(playerId, date)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
-  if (playerId === null || isNotFound(detail.error)) return <NotFound />
+  if (playerId === null || isNotFound(detail.error)) return <PlayerNotFound sportClass="nhl-player" crumb={SLATE_CRUMB} sport="NHL" />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
-  return <div className="page-shell nfl-slate nfl-player nhl-player"><div className="page-container is-wide">
-    <Crumb player={player} />
-    <PageHead title={player.name} meta={nhlPlayerStatus(player)} />
-    <InjuryLine player={player} />
+  return <PlayerPageShell sportClass="nhl-player" crumb={<Crumb player={player} />} title={player.name} meta={nhlPlayerStatus(player)} notice={<InjuryLine player={player} />}>
     <NhlPlayerPropTabs key={player.playerId} player={player} />
     {player.markets.length === 0 && <div className="nfl-player-empty">
       {player.name} has no prop lines on {player.date}. <Link to={`/nhl?date=${player.date}`}>Open the NHL slate for that date</Link>.
     </div>}
-  </div></div>
+  </PlayerPageShell>
 }
