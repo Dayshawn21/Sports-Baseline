@@ -17,6 +17,7 @@ from app.core.nfl_line_grading import GradeableLine, settle_line
 from app.core.nfl_volume_anchor import ANCHOR_MARKET, NFL_VOLUME_ANCHOR_VERSION
 from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.prop_ranking_check import FrozenLine
+from app.repositories.nfl_volume_serving import VOLUME_SERVING_ODDS_TYPES
 
 Q_VOL_UNAVAILABLE = "q_vol_unavailable"
 PROBABILITY_UNAVAILABLE = "probability_unavailable"
@@ -38,7 +39,7 @@ _ELIGIBLE_LINES = """
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
         JOIN sport_players pl ON pl.sport = 'nfl' AND pl.id = l.player_id
         WHERE l.sport = 'nfl' AND l.market = :market
-          AND l.segment = 'full_game' AND l.odds_type = 'standard'
+          AND l.segment = 'full_game' AND l.odds_type = ANY(CAST(:odds_types AS text[]))
           AND l.provider_prop_id IS NOT NULL AND pl.position IN ('RB', 'WR', 'TE')
           AND g.season = :season AND g.week BETWEEN 1 AND 18
           AND g.game_type = 'REG' AND g.status = 'completed'
@@ -91,7 +92,7 @@ _COVERAGE_SQL = f"""
 
 _PARAMS = {
     "market": ANCHOR_MARKET, "model_version": NFL_VOLUME_MODEL_VERSION,
-    "over_probability_version": NFL_VOLUME_ANCHOR_VERSION,
+    "over_probability_version": NFL_VOLUME_ANCHOR_VERSION, "odds_types": list(VOLUME_SERVING_ODDS_TYPES),
 }
 
 
@@ -150,6 +151,6 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
 
 
 async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[int, int]]:
-    """Eligible full-game standard props and those frozen under the volume model and its probability version."""
+    """Eligible full-game standard, goblin and demon props and those frozen under the volume model and its probability version."""
     rows = await db.execute(text(_COVERAGE_SQL), {"season": season, **_PARAMS})
     return {row["week"]: (int(row["lines"]), int(row["frozen"])) for row in rows.mappings()}

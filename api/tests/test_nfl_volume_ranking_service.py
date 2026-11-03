@@ -158,6 +158,59 @@ def test_with_no_frozen_row_at_all_every_payout_reads_not_frozen(monkeypatch: py
     assert [item.state for item in record.states] == ["not_frozen"] * 4
 
 
+def _rungs(odds_type: str, base: int, p_over: float = 0.7, hit_share: float = 0.8, per_week: int = 50) -> list[VolumeFrozenLine]:
+    return [
+        _line(base + week * 1000 + i, week, "over" if i < hit_share * per_week else "under", p_over=p_over, p_under=1 - p_over, odds_type=odds_type)
+        for week in (9, 10, 11, 12) for i in range(per_week)
+    ]
+
+
+def test_each_rung_slice_is_judged_on_its_own_payouts_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    noise = [_line(900000 + i, 9 + i % 4, "over" if i % 2 else "under", p_over=0.6, p_under=0.4) for i in range(3000)]
+    record = _volume(monkeypatch, _passing_sample() + noise + _rungs("demon", 2_000_000))
+
+    slices = {(row.odds_type, row.side): row for row in record.record.slices}
+    assert slices[("standard", "over")].verdict == "reject"
+    assert slices[("demon", "over")].verdict == "adopt" and slices[("demon", "over")].n == 200
+    states = {(item.odds_type, item.side): item for item in record.states}
+    assert states[("demon", "over")].state == "evaluated" and states[("demon", "over")].log_loss is not None
+    assert states[("demon", "over")].log_loss.passed
+    assert states[("goblin", "over")].state == "not_frozen"
+
+
+def test_the_standard_progress_block_ignores_rung_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    record = _volume(monkeypatch, _passing_sample() + _rungs("demon", 2_000_000) + _rungs("goblin", 3_000_000))
+
+    assert record.log_loss_progress.n == 200
+
+
+def test_a_goblin_payout_with_rows_but_no_picks_reads_accruing_not_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    record = _volume(monkeypatch, _passing_sample() + _rungs("goblin", 3_000_000, p_over=0.55))
+
+    goblin = next(row for row in record.record.slices if row.odds_type == "goblin")
+    assert (goblin.verdict, goblin.n, goblin.weeks, goblin.signal) == ("insufficient", 0, 0, "neutral")
+    assert next(item for item in record.states if item.odds_type == "goblin").state == "evaluated"
+
+
+def test_rungs_of_one_player_game_collapse_to_one_pick_per_bet(monkeypatch: pytest.MonkeyPatch) -> None:
+    ladder = [
+        _line(4_000_000 + i, 9, "over", odds_type="demon", player_id=7, game_id=88, p_over=0.7 + i / 100, p_under=0.3 - i / 100)
+        for i in range(3)
+    ]
+    record = _volume(monkeypatch, ladder)
+
+    assert (record.record.funnel.picks, record.record.funnel.bets) == (3, 1)
+    demon = next(row for row in record.record.slices if row.odds_type == "demon")
+    assert demon.n == 1
+
+
+def test_rung_rows_are_not_mixed_into_a_payout_with_no_rows_of_its_own() -> None:
+    lines = _rungs("demon", 2_000_000)
+    rows = volume_ranking.log_loss_rows(lines, FINISHED)
+
+    assert set(rows) == {"demon"} and len(rows["demon"]) == 200
+
+
 def test_fewer_than_two_hundred_picks_is_insufficient_with_progress(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _volume(monkeypatch, [_line(i, 9) for i in range(30)])
 

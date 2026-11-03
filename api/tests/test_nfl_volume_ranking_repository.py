@@ -36,7 +36,8 @@ def _sqlite_query(sql: str) -> str:
 
     converted, count = re.subn(pattern, window, sql, flags=re.DOTALL)
     assert count == 1
-    return converted
+    # SQLite has no arrays: the bound payout list is the same three values inline.
+    return converted.replace("= ANY(CAST(:odds_types AS text[]))", "IN ('standard', 'goblin', 'demon')")
 
 
 class _SqliteSession:
@@ -118,12 +119,12 @@ def test_queries_bind_the_volume_identity_and_filter_before_latest_selection() -
         ((sql, params),) = recorded.calls
         assert params == {
             "season": 2026, "market": "receptions", "model_version": "nfl-volume-v1",
-            "over_probability_version": "nfl-volume-anchor-v1",
+            "over_probability_version": "nfl-volume-anchor-v1", "odds_types": ["standard", "goblin", "demon"],
         }
         eligible, remaining = re.split(r"\)\s*,", sql, maxsplit=1)
         for condition in (
             "g.sport = 'nfl'", "pl.sport = 'nfl'", "l.sport = 'nfl'", "l.market = :market",
-            "l.segment = 'full_game'", "l.odds_type = 'standard'", "pl.position IN ('RB', 'WR', 'TE')",
+            "l.segment = 'full_game'", "l.odds_type = ANY(CAST(:odds_types AS text[]))", "pl.position IN ('RB', 'WR', 'TE')",
             "g.season = :season", "g.week BETWEEN 1 AND 18", "g.game_type = 'REG'", "g.status = 'completed'",
             "l.fetched_at < g.start_utc",
         ):
@@ -219,7 +220,7 @@ def test_a_later_v4_row_on_the_same_line_does_not_replace_the_volume_row(session
 
 @pytest.mark.parametrize("change", [
     {"sport": "nba"}, {"market": "receiving_yards"}, {"market": "receiving_targets"}, {"segment": "first_half"},
-    {"odds_type": "goblin"}, {"odds_type": "demon"}, {"odds_type": None}, {"player_id": None},
+    {"odds_type": "alternate"}, {"odds_type": "flex"}, {"odds_type": None}, {"player_id": None},
     {"provider_prop_id": None}, {"fetched_at": KICKOFF}, {"fetched_at": "2026-11-08T19:00:00"},
 ])
 def test_ineligible_lines_are_absent_from_grading_and_coverage(session: _SqliteSession, change: dict[str, object]) -> None:
@@ -272,6 +273,42 @@ def test_provider_names_separate_equal_provider_prop_ids(session: _SqliteSession
     session.line(2, provider="other")
     session.prediction()
     assert _coverage(session) == {9: (2, 1)}
+
+
+def test_goblin_and_demon_rungs_load_as_their_own_frozen_rows_and_count_in_coverage(session: _SqliteSession) -> None:
+    for line_id, odds, prop in ((1, "standard", "p-std"), (2, "goblin", "p-gob"), (3, "demon", "p-dem")):
+        session.line(line_id, odds_type=odds, provider_prop_id=prop, line=4.5 if odds == "standard" else 2.5)
+        session.prediction(line_id, prop_line_id=line_id, p_over=0.5 + line_id / 20, p_under=0.5 - line_id / 20)
+
+    loaded = _volume(session)
+
+    assert sorted((item.frozen.line_id, item.frozen.odds_type, item.frozen.outcome) for item in loaded) == [
+        (1, "standard", "over"), (2, "goblin", "over"), (3, "demon", "over"),
+    ]
+    assert _coverage(session) == {9: (3, 3)}
+
+
+def test_a_v4_or_targets_row_on_a_rung_cannot_displace_or_cover_a_volume_rung_row(session: _SqliteSession) -> None:
+    session.line(1, odds_type="demon", provider_prop_id="p-dem", line=7.5)
+    session.prediction(1, model_version=V4, over_probability_version="nfl-pover-v1")
+    session.prediction(2, model_version="nfl-targets-v1", over_probability_version=None)
+    assert _volume(session) == [] and _coverage(session) == {9: (1, 0)}
+
+    session.prediction(3)
+    session.prediction(4, model_version=V4, over_probability_version="nfl-pover-v1", generated_at="2026-11-07T15:00:00")
+    ((item),) = _volume(session)
+    assert (item.frozen.odds_type, item.frozen.model_version) == ("demon", "nfl-volume-v1")
+    assert _coverage(session) == {9: (1, 1)}
+
+
+def test_one_player_games_rungs_are_separate_provider_props(session: _SqliteSession) -> None:
+    session.line(1, odds_type="goblin", provider_prop_id="p-gob-a", line=2.5)
+    session.line(2, odds_type="goblin", provider_prop_id="p-gob-b", line=3.5)
+    session.prediction(1, prop_line_id=1)
+    session.prediction(2, prop_line_id=2)
+
+    assert sorted(item.frozen.line_id for item in _volume(session)) == [1, 2]
+    assert _coverage(session) == {9: (2, 2)}
 
 
 def _row(**overrides: object) -> RowMapping:

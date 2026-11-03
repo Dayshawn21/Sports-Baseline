@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 import type { NflModelRanking } from '~/types/nfl'
 import { sliceProgress } from '~/utils/nflTrackRecord'
 import {
-  logLossRows, VOLUME_LOG_LOSS_NOTE, VOLUME_NOT_FROZEN_NOTE, VOLUME_NOTE, volumeSlices, type VolumeSliceView,
+  logLossRows, notFrozenNote, sliceLogLossText, VOLUME_COVERAGE_LABEL, VOLUME_LOG_LOSS_NOTE, VOLUME_NOTE, volumeSlices,
+  type VolumeSliceView,
 } from '~/utils/nflVolumeRecord'
 import { signalClass } from '~/utils/trackRecord'
 
@@ -10,6 +11,7 @@ const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 function SliceCard({ view, rule }: { view: VolumeSliceView, rule: NflModelRanking['rule'] }) {
   const { slice } = view
+  const logLoss = sliceLogLossText(view)
   const progress = { '--w': `${view.frozen ? sliceProgress(slice.n, slice.weeks, rule.minPicks, rule.minWeeks) * 100 : 0}%` } as CSSProperties
   return (
     <section className="nfl-model-card nfl-model-slice" aria-label={view.label}>
@@ -24,8 +26,9 @@ function SliceCard({ view, rule }: { view: VolumeSliceView, rule: NflModelRankin
           <div><dt>Weeks</dt><dd>{slice.weeks} of {rule.minWeeks}+</dd></div>
           <div><dt>Hit rate</dt><dd>{slice.hitRate === null ? 'No picks yet' : pct(slice.hitRate)}</dd></div>
           <div><dt>Break-even</dt><dd>{pct(slice.breakEven)}</dd></div>
+          {logLoss !== null && <div><dt>Log loss</dt><dd>{logLoss}</dd></div>}
         </dl>
-        : <p className="nfl-model-note">No frozen sample for this payout.</p>}
+        : <p className="nfl-model-note">No frozen sample for this payout yet.</p>}
     </section>
   )
 }
@@ -51,9 +54,9 @@ export default function NflVolumeRecord({ data }: { data: NflModelRanking }) {
     </section>
     <p className="nfl-model-note">
       {data.frozenRows.toLocaleString()} frozen rows on completed games
-      {weeks.length > 0 && <>, coverage: {weeks.map((week) => `week ${week.week} (${week.frozen.toLocaleString()} of ${week.lines.toLocaleString()} eligible props frozen)`).join(', ')}</>}.
+      {weeks.length > 0 && <>, {VOLUME_COVERAGE_LABEL}: {weeks.map((week) => `week ${week.week} (${week.frozen.toLocaleString()} of ${week.lines.toLocaleString()} eligible props frozen)`).join(', ')}</>}.
       {' '}{data.funnel.calls.toLocaleString()} settled calls, {data.funnel.picks} clear break-even by {Math.round(data.rule.minPickMargin * 100)} points.
     </p>
-    <p className="nfl-model-note">{VOLUME_LOG_LOSS_NOTE} {VOLUME_NOT_FROZEN_NOTE}</p>
+    <p className="nfl-model-note">{VOLUME_LOG_LOSS_NOTE} {notFrozenNote(views)}</p>
   </>
 }

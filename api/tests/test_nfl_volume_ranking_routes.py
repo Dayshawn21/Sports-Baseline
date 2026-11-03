@@ -12,7 +12,7 @@ from app.schemas.nfl import NflModelRankingResponse
 from app.services.nfl import track_record, volume_ranking
 from app.services.nfl.track_record import build_ranking_record
 from tests.test_nfl_track_record_service import GRADED_AT, _call, _inputs
-from tests.test_nfl_volume_ranking_service import FINISHED, _fresh_caches, _passing_sample, _volume  # noqa: F401
+from tests.test_nfl_volume_ranking_service import FINISHED, _fresh_caches, _passing_sample, _rungs, _volume  # noqa: F401
 
 
 @pytest.fixture(autouse=True)
@@ -87,6 +87,21 @@ def test_the_volume_selector_returns_its_identity_and_the_log_loss_block(monkeyp
         ("goblin", "over"): "not_frozen", ("demon", "over"): "not_frozen",
     }
     assert log_loss["slices"][0]["logLoss"]["passed"] is True and log_loss["slices"][2]["logLoss"] is None
+
+
+def test_a_rung_payout_with_frozen_rows_is_evaluated_and_the_rest_stay_not_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_volume(monkeypatch, _volume_record(monkeypatch, _passing_sample() + _rungs("demon", 2_000_000)))
+
+    body = _client().get("/nfl/model/ranking", params={"season": 2026, "model_version": "nfl-volume-v1"}).json()
+
+    states = {(item["oddsType"], item["side"]): item["state"] for item in body["logLoss"]["slices"]}
+    assert states == {
+        ("standard", "over"): "evaluated", ("standard", "under"): "evaluated",
+        ("goblin", "over"): "not_frozen", ("demon", "over"): "evaluated",
+    }
+    demon = next(row for row in body["slices"] if row["oddsType"] == "demon")
+    assert (demon["verdict"], demon["n"]) == ("adopt", 200)
+    assert next(item for item in body["logLoss"]["slices"] if item["oddsType"] == "demon")["logLoss"]["passed"] is True
 
 
 def test_an_empty_volume_sample_is_a_200(monkeypatch: pytest.MonkeyPatch) -> None:

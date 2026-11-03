@@ -78,7 +78,7 @@ def volume_report(volume: VolumeRankingRecord) -> str:
     text = ranking_report(
         "NFL", record.season, check, record.frozen_rows, record.excluded, coverage,
         record.model_version, record.over_probability_version or "not served",
-        coverage_label="eligible standard receptions props with a volume-version frozen row",
+        coverage_label="eligible standard, goblin and demon receptions props with a volume-version frozen row",
     )
     lines = [
         text, "",
@@ -87,7 +87,7 @@ def volume_report(volume: VolumeRankingRecord) -> str:
         f"A verdict needs {MIN_PICKS} picks over {MIN_PERIODS}+ weeks; until then a slice only shows progress,"
         " and log-loss progress below is not a verdict.",
         "log loss, standard lines of finished weeks:",
-        _log_loss_line("all lines so far", volume.log_loss_progress),
+        _log_loss_line("standard lines so far", volume.log_loss_progress),
     ]
     for key in evaluated:
         lines.append(_log_loss_line(f"{key[0]} {key[1]}, verdict sample", states[key].log_loss))

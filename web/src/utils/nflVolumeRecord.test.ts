@@ -4,7 +4,7 @@ import type { PropRankingSlice } from '~/types/propRanking'
 import {
   NFL_V4_RANKING_MODEL, NFL_VOLUME_RANKING_MODEL, rankingParams, rankingQueryKey, summaryCounts,
 } from '~/utils/nflTrackRecord'
-import { logLossRows, VOLUME_NOT_FROZEN_NOTE, volumeSlices } from '~/utils/nflVolumeRecord'
+import { logLossRows, notFrozenNote, sliceLogLossText, volumeSlices } from '~/utils/nflVolumeRecord'
 
 function slice(oddsType: PropRankingSlice['oddsType'], side: PropRankingSlice['side'], overrides: Partial<PropRankingSlice> = {}): PropRankingSlice {
   return {
@@ -71,8 +71,51 @@ describe('volumeSlices', () => {
     expect(view.status).toBe('No verdict yet')
   })
 
-  it('explains the not-frozen rows', () => {
-    expect(VOLUME_NOT_FROZEN_NOTE).toContain('goblin and demon')
+  it('names only the payouts that have no frozen row yet', () => {
+    expect(notFrozenNote(volumeSlices(record()))).toBe('Not frozen yet: Goblin over, Demon over (no frozen row for that payout).')
+  })
+
+  it('has nothing to say once every payout has a frozen row', () => {
+    const everyPayout = record({
+      logLoss: {
+        progress: RESULT,
+        slices: record().logLoss!.slices.map((item) => ({ ...item, state: 'evaluated' as const })),
+      },
+    })
+    const views = volumeSlices(everyPayout)
+
+    expect(views.every((view) => view.frozen)).toBe(true)
+    expect(notFrozenNote(views)).toBeNull()
+  })
+
+  it('names every payout before the first freeze', () => {
+    const none = record({
+      logLoss: { progress: RESULT, slices: record().logLoss!.slices.map((item) => ({ ...item, state: 'not_frozen' as const })) },
+    })
+    expect(notFrozenNote(volumeSlices(none))).toBe(
+      'Not frozen yet: Standard over, Standard under, Goblin over, Demon over (no frozen row for that payout).',
+    )
+  })
+
+  it('shows a rung slice as evaluated and its log-loss result once the API reports one', () => {
+    const demon = record({
+      logLoss: {
+        progress: RESULT,
+        slices: record().logLoss!.slices.map((item) => (item.oddsType === 'demon'
+          ? { ...item, state: 'evaluated' as const, logLoss: RESULT } : item)),
+      },
+    })
+    const view = volumeSlices(demon).find((item) => item.label === 'Demon over')!
+
+    expect(view.frozen).toBe(true)
+    expect(view.status).toBe('No verdict yet')
+    expect(sliceLogLossText(view)).toBe('3 of 4 weeks (need 3) · not passed')
+  })
+
+  it('shows no per-slice log-loss text before the sample is fixed or with no lines', () => {
+    const views = volumeSlices(record())
+    expect(views.every((view) => sliceLogLossText(view) === null)).toBe(true)
+    expect(sliceLogLossText({ ...views[0], logLoss: { ...RESULT, n: 0 } })).toBeNull()
   })
 })
 

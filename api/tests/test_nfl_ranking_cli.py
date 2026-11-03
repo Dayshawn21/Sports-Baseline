@@ -165,27 +165,43 @@ def test_the_volume_report_shows_progress_the_log_loss_and_the_not_frozen_slices
     text = asyncio.run(cli.run(2026, VOLUME))
 
     assert text.splitlines()[0] == f"NFL forward ranking check, 2026 (model {VOLUME}, P(over) nfl-volume-anchor-v1)"
-    assert "coverage, eligible standard receptions props with a volume-version frozen row: wk 9 50/115" in text
+    assert "coverage, eligible standard, goblin and demon receptions props with a volume-version frozen row: wk 9 50/115" in text
     assert "standard over" in text and "standard under" in text
     assert "goblin over" not in text.split("slice            picks")[1].split("Volume model")[0]
     assert "adopt" in text and "accruing" in text
     assert "second clause" in text and "log-loss progress below is not a verdict" in text
-    assert "all lines so far: 200 lines" in text and "weeks won 4 of 4 (need 3)" in text
+    assert "standard lines so far: 200 lines" in text and "weeks won 4 of 4 (need 3)" in text
     assert "Not frozen yet: goblin over, demon over (no frozen row for that payout)." in text
     assert "None" not in text
+
+
+def test_the_volume_report_lists_a_rung_payout_once_it_has_frozen_rows_and_only_names_the_unfrozen(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_loaders(monkeypatch)
+
+    async def with_demon(db: AsyncSession, season: int) -> volume_ranking.VolumeInputs:
+        base = _volume_inputs()
+        return volume_ranking.VolumeInputs(base.calls, base.log_rows, frozenset({"standard", "demon"}))
+
+    monkeypatch.setattr(volume_ranking, "load_volume_inputs", with_demon)
+    text = asyncio.run(cli.run(2026, VOLUME))
+
+    table = text.split("slice            picks")[1].split("Volume model")[0]
+    assert "standard over" in table and "demon over" in table and "goblin over" not in table
+    assert "Not frozen yet: goblin over (no frozen row for that payout)." in text
+    assert "demon over, verdict sample" in text
 
 
 def test_the_volume_report_for_an_empty_record_is_ordinary(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub_loaders(monkeypatch)
 
     async def empty(db: AsyncSession, season: int) -> volume_ranking.VolumeInputs:
-        return volume_ranking.VolumeInputs(RankingCalls([], Counter(), 0, {}, set()), [], frozenset())
+        return volume_ranking.VolumeInputs(RankingCalls([], Counter(), 0, {}, set()), {}, frozenset())
 
     monkeypatch.setattr(volume_ranking, "load_volume_inputs", empty)
     text = asyncio.run(cli.run(2026, VOLUME))
 
     assert "frozen rows on completed games 0; excluded: none" in text
-    assert "all lines so far: no settled lines yet" in text
+    assert "standard lines so far: no settled lines yet" in text
     assert "Not frozen yet: standard over, standard under, goblin over, demon over" in text
 
 

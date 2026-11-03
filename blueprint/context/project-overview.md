@@ -205,7 +205,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 35 | Line-only prop display | Complete |
 | 36 | NFL best line | Complete |
 | 39 | NFL Rec Targets projection | Complete: gray reference and separate reporting; P(over) hidden |
-| 49 | NFL market-anchored prop model | 49a-49d complete (receptions only: `nfl-volume-v1` with anchor `nfl-volume-anchor-v1`, gray, frozen, forward record reported, nothing graded yet); 49e (freeze goblin and demon rungs) added 2026-11-03, not started |
+| 49 | NFL market-anchored prop model | 49a-49d complete (receptions only: `nfl-volume-v1` with anchor `nfl-volume-anchor-v1`, gray, frozen, forward record reported, nothing graded yet); 49e complete 2026-11-03 (goblin and demon rungs freeze too, same versions; display stays standard-only) |
 | 37 | Public read-only demo | Complete |
 | 47 | Ask Lineform | Complete (47a-47e); production off unless `ASK_ENABLED` |
 | 20 | NBA support | Complete |
@@ -239,7 +239,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 49b | Line anchor fit | Complete 2026-11-03: blend fitted once on 2026 weeks 1-8 (698 pairs), frozen as `nfl-volume-anchor-v1`; rule pre-registered in commit `33c53e25` |
 | 49c | Serve and freeze | Complete 2026-11-03: gray companion on v4 receptions lines and a second frozen row per standard line; v4's frozen readers exclude `nfl-volume-v1`; first freeze run 2026-11-05 |
 | 49d | Forward verdict | Complete 2026-11-03: settled and reported through `/nfl/model`, the ranking API and CLI, and the weekly workflow; verdict code pre-registered in commit `b869a492`; pick slices expected to stay insufficient in 2026 |
-| 49e | Freeze goblin and demon rungs | Added 2026-11-03, not started: same model and anchor versions, no refit, no new rule; goblin over and demon over get their own forward sample from the first rung freeze |
+| 49e | Freeze goblin and demon rungs | Complete 2026-11-03: same model and anchor versions, no refit, no new rule; goblin over and demon over get their own forward sample from the first rung freeze; display stays standard-only |
 | 53a-53h | NBA, NHL and tennis player pages | NBA (53a-53c, plus 53b2 for the form chart), NHL (53d-53f) and tennis (53g-53h) are independent branches; the shared form chart helpers (53d2) come before 53b2 and 53e; display only where a market has no model, with no projection, edge, rank or color for it; 53a, 53b, 53d and 53g complete |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
@@ -1112,7 +1112,7 @@ price beats the market, not whether the model disagrees with it.
 - **Display:** the game page's "Best line" card and the slate card's
   "Best ..." spread row, gray only, "Reference, not a pick".
 
-**NFL market-anchored prop model (item 49, added 2026-10-29; 49a-49d complete, 49e planned)**
+**NFL market-anchored prop model (item 49, added 2026-10-29; 49a-49e complete)**
 
 49. **NFL market-anchored prop model** - a new projection version, judged only
     by a forward check pre-registered before its data is read. A code review on
@@ -1128,7 +1128,7 @@ price beats the market, not whether the model disagrees with it.
 | 49b | *Complete 2026-11-03.* Log-odds blend of 49a's P(over) with the standard line, fitted once on 2026 weeks 1-8 (a = -0.0136, b = 0.4341); the adoption rule was pre-registered before the fit |
 | 49c | *Complete 2026-11-03.* Serve and freeze receptions under new model and P(over) versions, gray, standard lines only; v4 and Rec Targets samples untouched |
 | 49d | *Complete 2026-11-03.* 27j and `/nfl/model` show the volume slices with their one-time verdicts; standard over and under evaluated, goblin and demon not frozen |
-| 49e | *Planned.* Extend 49c's companion and freeze to goblin and demon receptions rungs under the same versions (no refit, no new rule) and settle them in 49d's record; the sample starts at the first rung freeze, no back-fill |
+| 49e | *Complete 2026-11-03.* 49c's companion and freeze extended to goblin and demon receptions rungs under the same versions (no refit, no new rule) and settled in 49d's record; the sample starts at the first rung freeze, no back-fill |
 
 - **Data limits.** Stored PrizePicks NFL lines cover 2026 weeks 1-8 only
   (about 6,000 standard player-game-markets), and sportsbook player props

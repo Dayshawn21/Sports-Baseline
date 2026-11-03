@@ -60,7 +60,8 @@ class _LoadedSource(NflVolumeRankingSource):
 @dataclass(frozen=True)
 class VolumeInputs:
     calls: RankingCalls
-    log_rows: list[LogLossRow]
+    # Settled lines of finished weeks by payout: the log-loss clause is judged on a slice's own payout.
+    log_rows: dict[str, list[LogLossRow]]
     # Payouts with at least one frozen row, settled or not: the rest read not frozen.
     frozen_payouts: frozenset[str]
 
@@ -77,19 +78,21 @@ class VolumeSliceState:
 class VolumeRankingRecord:
     record: RankingRecord
     states: list[VolumeSliceState]
-    # Every settled standard line of the finished weeks so far: progress, never a verdict.
+    # Every settled standard line of the finished weeks so far: progress, never a verdict. Rungs are judged per slice.
     log_loss_progress: LogLossResult
 
 
-def log_loss_rows(lines: list[VolumeFrozenLine], finished_weeks: set[int]) -> list[LogLossRow]:
-    """Settled frozen lines of finished weeks; a half-played week never reaches the clause."""
-    rows: list[LogLossRow] = []
+def log_loss_rows(lines: list[VolumeFrozenLine], finished_weeks: set[int]) -> dict[str, list[LogLossRow]]:
+    """Settled frozen lines of finished weeks by payout; a half-played week never reaches the clause."""
+    rows: dict[str, list[LogLossRow]] = {}
     for item in lines:
         frozen = item.frozen
-        if frozen.period not in finished_weeks or item.q_vol is None or frozen.p_over is None or frozen.p_under is None:
+        if frozen.odds_type is None or frozen.period not in finished_weeks:
+            continue
+        if item.q_vol is None or frozen.p_over is None or frozen.p_under is None:
             continue
         if frozen.outcome == "over" or frozen.outcome == "under" or frozen.outcome == "push":
-            rows.append(LogLossRow(
+            rows.setdefault(frozen.odds_type, []).append(LogLossRow(
                 game_id=frozen.game_id, week=frozen.period, p_over=frozen.p_over, p_under=frozen.p_under,
                 q_vol=item.q_vol, outcome=frozen.outcome,
             ))
@@ -126,14 +129,16 @@ def build_volume_record(inputs: VolumeInputs, season: int, graded_at: datetime) 
     states: list[VolumeSliceState] = []
     for odds_type, side in EVALUATED_SLICES:
         if odds_type in inputs.frozen_payouts:
-            decided = volume_slice_verdict(odds_type, [pick for pick in picks if pick.slice == (odds_type, side)], inputs.log_rows)
+            payout_rows = inputs.log_rows.get(odds_type, [])
+            decided = volume_slice_verdict(odds_type, [pick for pick in picks if pick.slice == (odds_type, side)], payout_rows)
             rows.append(_row(odds_type, side, decided.verdict, decided.picks))
             states.append(VolumeSliceState(odds_type, side, "evaluated", decided.log_loss))
         else:
             empty = SliceResult("insufficient", 0, 0, 0, BREAK_EVEN_BY_ODDS_TYPE[odds_type])
             rows.append(_row(odds_type, side, "insufficient", empty))
             states.append(VolumeSliceState(odds_type, side, "not_frozen", None))
-    progress = log_loss_clause(inputs.log_rows, sorted({row.week for row in inputs.log_rows}))
+    standard_rows = inputs.log_rows.get("standard", [])
+    progress = log_loss_clause(standard_rows, sorted({row.week for row in standard_rows}))
     return VolumeRankingRecord(replace(base, slices=rows), states, progress)
 
 

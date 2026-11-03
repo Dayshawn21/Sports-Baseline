@@ -3,8 +3,8 @@ import type { PropRankingSlice } from '~/types/propRanking'
 import { sliceLabel, verdictLabel } from '~/utils/nflTrackRecord'
 
 export const VOLUME_NOTE = 'Volume model reference (receptions only). A slice needs 200 picks over 4+ weeks and a log-loss win before it can adopt; until then it only shows progress.'
-export const VOLUME_NOT_FROZEN_NOTE = 'Not frozen: only standard full-game lines are frozen for this model, so goblin and demon lines have no sample.'
-export const VOLUME_LOG_LOSS_NOTE = 'Log loss is a progress read on every settled standard line of the finished weeks. It is not a verdict.'
+export const VOLUME_COVERAGE_LABEL = 'coverage across standard, goblin and demon props'
+export const VOLUME_LOG_LOSS_NOTE = 'The log-loss card reads every settled standard line of the finished weeks; a goblin or demon slice shows its own log-loss result once its verdict sample is fixed. None of it is a verdict on its own.'
 
 export interface VolumeSliceView {
   key: string
@@ -22,6 +22,19 @@ function difference(value: number | null, standardError: number | null): string 
   if (value === null) return '--'
   const sign = value > 0 ? '+' : ''
   return `${sign}${value.toFixed(3)}${standardError === null ? '' : ` ± ${standardError.toFixed(3)}`}`
+}
+
+/** The sentence naming payouts with no frozen row yet, or null when every slice has a sample. */
+export function notFrozenNote(views: VolumeSliceView[]): string | null {
+  const missing = views.filter((view) => !view.frozen).map((view) => view.label)
+  return missing.length === 0 ? null : `Not frozen yet: ${missing.join(', ')} (no frozen row for that payout).`
+}
+
+/** One line for a slice's log-loss result once its sample is fixed; null before that. */
+export function sliceLogLossText(view: VolumeSliceView): string | null {
+  const result = view.logLoss
+  if (result === null || result.n === 0) return null
+  return `${result.weeksWon} of ${result.weeks} weeks (need ${result.weeksRequired}) · ${result.passed ? 'passed' : 'not passed'}`
 }
 
 /** The four canonical slices with their state; verdicts stay gray until the API reports one. */
