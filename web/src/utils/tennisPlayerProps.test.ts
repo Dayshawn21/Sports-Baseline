@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchPrediction, PlayerMatchLogRow } from '~/types/tennis'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { recentStatBars } from '~/utils/tennisPropCards'
-import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow } from '~/utils/tennisPlayerProps'
+import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisTabSearch } from '~/utils/tennisPlayerProps'
 
 function line(id: number, overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
   return { id, playerId: 7, playerName: 'Coco Gauff', matchId: 10, statType: 'aces', matchup: 'Coco Gauff vs Iga Swiatek', startTime: '2026-09-21T16:00:00Z', ...overrides } as TennisBoardLine
@@ -21,6 +21,19 @@ function logRow(day: number, overrides: Partial<PlayerMatchLogRow> = {}): Player
 }
 
 const twelve = Array.from({ length: 12 }, (_, index) => logRow(index + 1))
+
+describe('tennisTabSearch', () => {
+  const params = new URLSearchParams('market=aces&match=95842&form=10&prop=7')
+  it('drops the market for the first tab and keeps the other params', () => {
+    expect(tennisTabSearch(params, 'games_won', 'games_won')).toBe('?match=95842&form=10&prop=7')
+  })
+  it('sets the market for another tab and keeps the other params', () => {
+    expect(tennisTabSearch(params, 'double_faults', 'games_won')).toBe('?market=double_faults&match=95842&form=10&prop=7')
+  })
+  it('returns a bare ? when nothing else is set', () => {
+    expect(tennisTabSearch(new URLSearchParams('market=aces'), 'games_won', 'games_won')).toBe('?')
+  })
+})
 
 describe('isPlayerLine', () => {
   it('matches by id when the line has one, ignoring a same-name line for another id', () => {

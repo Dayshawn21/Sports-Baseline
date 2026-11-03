@@ -1,12 +1,13 @@
 import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { PlayerMarketTabs } from '~/components/shared/PlayerMarketTabs'
 import { TennisPropEvidenceBody, TennisRecentBars } from '~/components/tennis/TennisPropEvidenceBody'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import {
-  FORM_PARAM, MARKET_PARAM, MATCH_PARAM, PROP_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow,
+  FORM_PARAM, MARKET_PARAM, MATCH_PARAM, PROP_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow, tennisTabSearch,
   type FormWindowOption, type PlayerMatchOption, type TennisFormWindow,
 } from '~/utils/tennisPlayerProps'
 import { buildTennisPropBoard, lineNumber, marketLabel, marketTitle, moneylineBoardRows, winASetBoardRows, type TennisBoardLine } from '~/utils/tennisPropBoard'
@@ -80,7 +81,7 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
   const [params, setParams] = useSearchParams()
   const { tabs, predictions, loading, allFailed } = useBoardTabs(playerId, playerName)
   const log = usePlayerMatches(playerId, FORM_LOG_LIMIT)
-  const heading = <h2 className="tennis-match-section">Today's props</h2>
+  const heading = <h2 className="nfl-player-section-title">Today's props</h2>
   const propId = params.get(PROP_PARAM)
   const marketParam = params.get(MARKET_PARAM)
 
@@ -111,10 +112,8 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
   ].filter(section => section.lines.length > 0)
 
   return <section className="tennis-player-props" aria-label={`${playerName} props`}>
-    {heading}
-    <nav className="tennis-prop-pills" aria-label="Prop markets">
-      {tabs.map(item => <button key={item.market} type="button" className={item.market === tab.market ? 'is-selected' : ''} aria-pressed={item.market === tab.market} onClick={() => update(MARKET_PARAM, item === tabs[0] ? null : item.market)}>{marketTitle(item.market)}</button>)}
-    </nav>
+    <PlayerMarketTabs heading="Today's props" tabs={tabs.map(item => ({ key: item.market, label: marketTitle(item.market) }))}
+      selectedIndex={tabs.indexOf(tab)} hrefFor={key => tennisTabSearch(params, key, tabs[0].market)}>
     <div className="tennis-player-props__controls">
       {matches.length > 1 && <Segment label="Match" value={String(option?.matchId)} options={matches.map(item => ({ value: String(item.matchId), label: item.opponentName ? `vs ${item.opponentName}` : item.matchup ?? 'Match' }))} onChange={value => update(MATCH_PARAM, value === String(matches[0].matchId) ? null : value)} />}
       <Segment label="Form window" value={window} options={windowChoices(windowOptions)} onChange={value => update(FORM_PARAM, value === '5' ? null : value)} />
@@ -127,5 +126,6 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
         </TennisPropEvidenceBody>
       </div>)}
     </div>)}
+    </PlayerMarketTabs>
   </section>
 }
