@@ -123,3 +123,14 @@ def fit_anchor(pairs: Sequence[tuple[float, bool]]) -> AnchorFit:
         raise ValueError("the anchor fit did not converge")
     standard_errors = np.sqrt(np.diag(np.linalg.inv(information)))
     return AnchorFit(float(beta[0]), float(beta[1]), float(standard_errors[0]), float(standard_errors[1]), len(pairs))
+
+
+@dataclass(frozen=True)
+class AnchorParameters:
+    a: float
+    b: float
+
+
+# Fitted once on 2026 weeks 1-8 (698 pairs, run 2026-11-03). The CLI printed four
+# decimals and the run is not repeated, so these are the printed values.
+NFL_VOLUME_ANCHOR_PARAMETERS = AnchorParameters(a=-0.0136, b=0.4341)

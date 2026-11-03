@@ -226,7 +226,7 @@ extrapolation the log-loss clause is there to catch.
   null; the season floor is present in the history query; no coalesce
   of a missing stat to zero.
 
-- [ ] **Step 5 - CLI and one recorded run.** Add
+- [x] **Step 5 - CLI and one recorded run.** Add
   `app/backtest/nfl_volume_anchor.py`. It takes no season, window, market or
   tuning option. It projects each loaded player-game with
   `nfl-volume-v1`, joins settled outcomes (skipping unsettled games and
@@ -242,7 +242,7 @@ extrapolation the log-loss clause is there to catch.
   Results with command, date, elapsed time, coverage and exclusions. A
   transient DB failure may be retried identically; nothing else may be rerun.
 
-- [ ] **Step 6 - Freeze.** Record the fitted `a`, `b` as
+- [x] **Step 6 - Freeze.** Record the fitted `a`, `b` as
   `NFL_VOLUME_ANCHOR_PARAMETERS` in the anchor module, with a test pinning
   the values, and record whether the fit used weeks 1-8 or the weeks 1-7
   fallback. Commit before 2026-11-06 01:15 UTC. If the fit refuses or the
@@ -307,4 +307,70 @@ commit steps. The full Verify command
 
 ## Results
 
-(Filled in at Steps 5 and 6.)
+### Step 5 - the recorded run (2026-11-03)
+
+**Data.** Week 8 was not stored on 2026-11-03 16:09 UTC (13 of 14 games
+completed, no week 8 stat rows). With the owner's yes, `python -m
+app.ingest.nflverse --season 2026` was dry-run (8,420 player-weeks), then run
+for real: 14 of 14 week 8 games completed and 980 week 8 player-week rows.
+The fit therefore uses weeks 1-8, not the weeks 1-7 fallback.
+
+**Command:** `python -m app.backtest.nfl_volume_anchor` from `api/`, code at
+`1ffedc97`. Started 2026-11-03 16:28:22 UTC, ended 16:28:36 UTC, exit 0,
+elapsed 11 s. Run once; no retry or rerun.
+
+**Coverage:** 793 standard receptions lines loaded, 48,420 player-games of
+history (2018-2026). 698 fit pairs (minimum 400).
+
+| Week | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Fit pairs | 5 | 101 | 100 | 112 | 95 | 93 | 96 | 96 |
+| Unsettled | 0 | 6 | 3 | 8 | 4 | 4 | 3 | 10 |
+
+**Exclusions:** 55 pushes (receptions equal the line), 38 unsettled (no
+result, or did not play), 2 with no player-game with closing lines. None had
+no volume forecast.
+
+**Fit** (`logit(q) = a + b * logit(q_vol)`):
+
+| Constant | Value | SE |
+|---|---|---|
+| a | -0.0136 | 0.0796 |
+| b | +0.4341 | 0.1269 |
+
+**Diagnostics (in-sample, no verdict):**
+
+| Measure | Value |
+|---|---|
+| Log loss, blend | 0.6834 |
+| Log loss, raw `nfl-volume-v1` | 0.6973 |
+| Log loss, constant 0.5 | 0.6931 |
+| Observed over rate | 47.7% |
+| Picks clearing 57.7% + 3.0% | 57 picks, 43 hits (75.4%) |
+
+| Bin | Pairs | Mean blended P(over) | Over rate |
+|---|---|---|---|
+| 1 | 139 | 38.5% | 35.3% |
+| 2 | 140 | 44.7% | 50.7% |
+| 3 | 139 | 47.8% | 54.0% |
+| 4 | 140 | 50.9% | 42.9% |
+| 5 | 140 | 56.5% | 55.7% |
+
+- **Reading it.** `b` of 0.43 (SE 0.13) says the raw projection is overconfident
+  against these lines: it is shrunk more than half the way toward 50/50. Raw
+  volume is slightly worse than a constant 0.5 on log loss (0.6973 against
+  0.6931), and the blend is slightly better (0.6834). The picks hit rate is
+  fitted data, so it says nothing about the forward sample.
+- **Closing versus pre-kickoff lines.** Team volume here used the stored game
+  `spread_line` and `total_line`, the values on file now.
+
+### Step 6 - freeze (2026-11-03)
+
+`NFL_VOLUME_ANCHOR_PARAMETERS = AnchorParameters(a=-0.0136, b=0.4341)` in
+`app/core/nfl_volume_anchor.py`, pinned by `test_nfl_volume_anchor.py`. The fit
+used weeks 1-8 (not the weeks 1-7 fallback). The CLI prints four decimals and
+its one run is not repeated, so the frozen values are the printed ones.
+Checks: only the 49b anchor modules import the new code (no production
+caller), and `nfl_volume_projection.py`, `prop_ranking_rule.py`, v4 and Rec
+Targets are unchanged against `master`. The adoption rule in this spec is
+applied in 49d, to weeks 9 onward.

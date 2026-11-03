@@ -149,3 +149,14 @@ def test_constant_projection_raises_as_singular():
     pairs = [(0.5, i % 2 == 0) for i in range(500)]
     with pytest.raises(ValueError, match="singular"):
         anchor.fit_anchor(pairs)
+
+
+def test_frozen_parameters_match_the_recorded_run():
+    assert anchor.NFL_VOLUME_ANCHOR_PARAMETERS == anchor.AnchorParameters(a=-0.0136, b=0.4341)
+
+
+def test_frozen_parameters_shrink_toward_the_line():
+    params = anchor.NFL_VOLUME_ANCHOR_PARAMETERS
+    over, under = anchor.anchored_probability(0.8, 0.05, params.a, params.b)
+    assert 0.5 < over / (over + under) < 0.8
+    assert over + under + 0.05 == pytest.approx(1.0)
