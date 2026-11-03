@@ -65,6 +65,11 @@ describe('labels and states', () => {
     expect(formEmptyText(row({ opponentHistory: sample() }), 'opp')).toBe('No earlier games against MIA since 2024.')
     expect(formEmptyText(row(), '5')).toBe('No completed history')
   })
+
+  it('takes the history start year from the sport', () => {
+    expect(formEmptyText(row({ opponentHistory: sample() }), 'opp', 2023)).toBe('No earlier games against MIA since 2023.')
+    expect(formEmptyText(row(), '5', 2023)).toBe('No completed history')
+  })
 })
 
 describe('formHistoryDate', () => {
@@ -94,6 +99,29 @@ describe('formHistoryDate in January', () => {
 
 describe('formBarLabel', () => {
   it('drops the decimal from a whole count and keeps it for a fraction', () => {
-    expect([formBarLabel(271), formBarLabel(0), formBarLabel(13.5), formBarLabel(28.4)]).toEqual(['271', '0', '13.5', '28.4'])
+    expect([formBarLabel(271), formBarLabel(0), formBarLabel(13.5), formBarLabel(28.4), formBarLabel(-2), formBarLabel(-1.5)]).toEqual(['271', '0', '13.5', '28.4', '-2', '-1.5'])
+  })
+})
+
+describe('formHistoryDate with an August season start (NBA, NHL)', () => {
+  const AUGUST = 7
+  const text = (date: string, now: string) => formDateText(formHistoryDate(date, new Date(`${now}T12:00:00Z`), AUGUST))
+
+  it('shows the year on a game from the previous season, including its spring playoffs', () => {
+    expect(text('2026-04-18', '2026-11-02')).toBe("Apr 18 '26")
+    expect(text('2026-10-12', '2026-11-02')).toBe('Oct 12')
+    expect(text('2027-04-18', '2027-05-01')).toBe('Apr 18')
+    expect(text('2027-01-05', '2027-11-02')).toBe("Jan 5 '27")
+  })
+
+  it('treats a game before the August rollover as the earlier season', () => {
+    expect(text('2026-07-30', '2026-11-02')).toBe("Jul 30 '26")
+    expect(text('2026-08-01', '2026-11-02')).toBe('Aug 1')
+  })
+
+  it('leaves the NFL default untouched', () => {
+    const now = new Date('2026-11-02T12:00:00Z')
+    expect(formHistoryDate('2026-04-18', now)).toEqual(formHistoryDate('2026-04-18', now, 2))
+    expect(formDateText(formHistoryDate('2026-04-18', now))).toBe('Apr 18')
   })
 })

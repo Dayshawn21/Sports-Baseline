@@ -5,6 +5,10 @@ export type FormWindow = '5' | '10' | 'opp'
 export const FORM_PARAM = 'form'
 export const LONG_WINDOW_GAMES = 10
 
+/** NFL defaults for the sport options below; NBA and NHL pass their own (season start August, so month 7). */
+export const NFL_SEASON_START_MONTH = 2
+export const NFL_HISTORY_FROM_YEAR = 2024
+
 export type FormRow = Pick<NflSlateLine, 'recentForm' | 'recentFormLong' | 'opponentHistory' | 'opponentTeam'>
 
 export interface FormOption {
@@ -52,8 +56,8 @@ export function formShortNote(row: FormRow, window: FormWindow): string | null {
   return games > 0 && games < LONG_WINDOW_GAMES ? `${games} of ${LONG_WINDOW_GAMES} games` : null
 }
 
-export function formEmptyText(row: FormRow, window: FormWindow): string {
-  return resolveFormWindow(row, window) === 'opp' ? `No earlier games against ${row.opponentTeam} since 2024.` : 'No completed history'
+export function formEmptyText(row: FormRow, window: FormWindow, sinceYear: number = NFL_HISTORY_FROM_YEAR): string {
+  return resolveFormWindow(row, window) === 'opp' ? `No earlier games against ${row.opponentTeam} since ${sinceYear}.` : 'No completed history'
 }
 
 /** The label above a bar: a whole count without its ".0", so ten bars fit on a phone; a fraction keeps one decimal. */
@@ -71,12 +75,12 @@ export interface FormDate {
 }
 
 /** A game date as shown under a bar; null for a missing or malformed date. The string is read as written, so no timezone shifts it. */
-export function formHistoryDate(date: string | null | undefined, now: Date): FormDate | null {
+export function formHistoryDate(date: string | null | undefined, now: Date, seasonStartMonth: number = NFL_SEASON_START_MONTH): FormDate | null {
   const match = date ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(date) : null
   if (!match) return null
   const month = MONTHS[Number(match[2]) - 1]
   if (!month) return null
-  const season = (year: number, monthIndex: number) => (monthIndex < 2 ? year - 1 : year)
+  const season = (year: number, monthIndex: number) => (monthIndex < seasonStartMonth ? year - 1 : year)
   const sameSeason = season(Number(match[1]), Number(match[2]) - 1) === season(now.getFullYear(), now.getMonth())
   return { month, day: Number(match[3]), year: sameSeason ? null : `'${match[1].slice(2)}` }
 }

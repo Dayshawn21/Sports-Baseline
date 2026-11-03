@@ -161,7 +161,7 @@
 
 .nfl-prop-detail__bar {
   position: absolute;
-  bottom: 0;
+  bottom: var(--b, 0%);
   left: 50%;
   width: 100%;
   max-width: 40px;
@@ -181,7 +181,7 @@
 
 .nfl-prop-detail__val {
   position: absolute;
-  bottom: calc(max(var(--h), 2px) + 4px);
+  bottom: calc(var(--b, 0%) + max(var(--h), 2px) + 4px);
   left: 50%;
   z-index: 2;
   padding: 0 2px;
@@ -212,6 +212,16 @@
   font-size: 11px;
   letter-spacing: 0;
   line-height: 1.25;
+}
+
+/* Only in a plot that reaches below zero: the baseline the bars grow from and drop away from. */
+.nfl-prop-detail__zero {
+  position: absolute;
+  right: 0;
+  bottom: var(--zero);
+  left: 0;
+  border-top: 1px solid var(--border-subtle);
+  pointer-events: none;
 }
 
 .nfl-prop-detail__line-mark {

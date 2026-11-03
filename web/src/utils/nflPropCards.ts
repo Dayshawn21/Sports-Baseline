@@ -41,6 +41,8 @@ export interface NflRecentBar {
   opponentTeam: string | null
   gameDate?: string | null
   heightPct: number
+  /** Where the bar's bottom edge sits; present only when the plot reaches below zero, otherwise bars start at 0. */
+  bottomPct?: number
   vsLine: 'above' | 'below' | 'push' | null
 }
 
@@ -119,16 +121,20 @@ export function formBars(sample: NflHistorySample, row: Pick<NflBoardLine, 'mark
   if (row.market === TD_MARKET || !sample.values.length) return { bars: [], linePct: null }
   const values = [...sample.values].reverse()
   const line = row.segment === 'full_game' ? row.line : null
-  const scale = Math.max(line ?? 0, ...values.map(item => item.value))
-  const pct = (value: number) => (scale > 0 ? Math.min(100, Math.max(0, (value / scale) * 100)) : 0)
+  const amounts = values.map(item => item.value)
+  const low = Math.min(0, line ?? 0, ...amounts)
+  const span = Math.max(line ?? 0, ...amounts, 0) - low
+  const pct = (value: number) => (span > 0 ? Math.min(100, Math.max(0, (value / span) * 100)) : 0)
+  const signed = low < 0
   return {
     bars: values.map(item => ({
       value: item.value,
       opponentTeam: item.opponentTeam,
       gameDate: item.gameDate ?? null,
-      heightPct: pct(item.value),
+      heightPct: pct(Math.abs(item.value)),
+      ...(signed ? { bottomPct: pct(Math.min(item.value, 0) - low) } : {}),
       vsLine: line === null ? null : item.value > line ? 'above' : item.value < line ? 'below' : 'push',
     })),
-    linePct: line === null ? null : pct(line),
+    linePct: line === null ? null : pct(line - low),
   }
 }

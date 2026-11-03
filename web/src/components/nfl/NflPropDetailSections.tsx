@@ -5,7 +5,7 @@ import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
 import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormRow, type FormWindow } from '~/utils/nflFormWindow'
 import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
 import { formatProjection } from '~/utils/nflLabels'
-import { formBars } from '~/utils/nflPropCards'
+import { formBars, type NflRecentBar } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
 import { playerSearch } from '~/utils/nflPlayer'
 import './nfl-prop-detail.css'
@@ -19,21 +19,30 @@ export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
   </section>
 }
 
-export function GameLogBars({ row, sample }: { row: Parameters<typeof formBars>[1], sample: NflHistorySample }) {
+/** Where zero sits in a plot that reaches below it: a bar's bottom edge if it is not negative, else its top edge. */
+function zeroPct(bar: NflRecentBar): number {
+  return bar.value < 0 ? (bar.bottomPct ?? 0) + bar.heightPct : bar.bottomPct ?? 0
+}
+
+/** `seasonStartMonth` is the 0-based month a new season-year begins, for the year under an older game's date; NFL's by default. */
+export function GameLogBars({ row, sample, seasonStartMonth }: { row: Parameters<typeof formBars>[1], sample: NflHistorySample, seasonStartMonth?: number }) {
   const { bars, linePct } = formBars(sample, row)
   const now = new Date()
   if (!bars.length) return null
-  const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
+  const signed = bars[0].bottomPct !== undefined
+  const style = { ...(linePct === null ? {} : { '--line': `${linePct}%` }), ...(signed ? { '--zero': `${zeroPct(bars[0])}%` } : {}) } as CSSProperties
   return <div className="nfl-prop-detail__chart" aria-label={`${bars.length} games against the line`}>
     <div className="nfl-prop-detail__plot" style={style}>
+      {signed && <span className="nfl-prop-detail__zero" />}
       {linePct !== null && <span className="nfl-prop-detail__line-mark" />}
-      {bars.map((bar, index) => <div key={index} className={`nfl-prop-detail__col is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties}>
+      {bars.map((bar, index) => <div key={index} className={`nfl-prop-detail__col is-${bar.vsLine ?? 'none'}`}
+        style={{ '--h': `${bar.heightPct}%`, ...(bar.bottomPct === undefined ? {} : { '--b': `${bar.bottomPct}%` }) } as CSSProperties}>
         <span className="nfl-prop-detail__val">{formBarLabel(bar.value)}</span>
         <span className="nfl-prop-detail__bar" />
       </div>)}
     </div>
     <div className="nfl-prop-detail__opps">{bars.map((bar, index) => {
-      const date = formHistoryDate(bar.gameDate, now)
+      const date = formHistoryDate(bar.gameDate, now, seasonStartMonth)
       return <span key={index}>{bar.opponentTeam ?? '--'}
         {date && <small title={`${date.month} ${date.day}${date.year ? ` ${date.year}` : ''}`}>{date.month}<br />{date.day}{date.year && <><br />{date.year}</>}</small>}
       </span>
