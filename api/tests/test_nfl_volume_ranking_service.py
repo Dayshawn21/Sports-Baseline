@@ -141,6 +141,23 @@ def test_goblin_and_demon_read_not_frozen_never_insufficient_with_picks(monkeypa
         assert by_slice[key].log_loss is None
 
 
+def test_a_payout_reads_evaluated_once_any_row_of_it_is_frozen_even_if_unsettled(monkeypatch: pytest.MonkeyPatch) -> None:
+    lines = _passing_sample() + [_line(700001, 9, "void_dnp", odds_type="demon"), _line(700002, 9, "over", odds_type="goblin")]
+    record = _volume(monkeypatch, lines)
+
+    states = {(item.odds_type, item.side): item.state for item in record.states}
+    assert states == {
+        ("standard", "over"): "evaluated", ("standard", "under"): "evaluated",
+        ("goblin", "over"): "evaluated", ("demon", "over"): "evaluated",
+    }
+    assert len(record.record.slices) == 4
+
+
+def test_with_no_frozen_row_at_all_every_payout_reads_not_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
+    record = _volume(monkeypatch, [], finished=set(), coverage={})
+    assert [item.state for item in record.states] == ["not_frozen"] * 4
+
+
 def test_fewer_than_two_hundred_picks_is_insufficient_with_progress(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _volume(monkeypatch, [_line(i, 9) for i in range(30)])
 

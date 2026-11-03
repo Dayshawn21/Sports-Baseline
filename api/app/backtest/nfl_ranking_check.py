@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
 from app.core.nfl_targets_projection import NFL_TARGETS_MODEL_VERSION
 from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
-from app.core.nfl_volume_verdict import EVALUATED_SLICES, NOT_FROZEN_SLICES, LogLossResult
+from app.core.nfl_volume_verdict import LogLossResult
 from app.core.prop_ranking_check import RankingCheck, slice_results
 from app.core.prop_ranking_report import ranking_report
 from app.core.prop_ranking_rule import MIN_PERIODS, MIN_PICKS, SliceResult
@@ -66,7 +66,10 @@ def _log_loss_line(label: str, clause: LogLossResult | None) -> str:
 def volume_report(volume: VolumeRankingRecord) -> str:
     """The volume record in the shared layout, with verdicts that need both of 49b's clauses."""
     record = volume.record
-    evaluated = {(row.odds_type, row.side): row for row in record.slices if (row.odds_type, row.side) in EVALUATED_SLICES}
+    states = {(item.odds_type, item.side): item for item in volume.states}
+    evaluated = {
+        (row.odds_type, row.side): row for row in record.slices if states[(row.odds_type, row.side)].state == "evaluated"
+    }
     check = RankingCheck(
         {key: SliceResult(row.verdict, row.n, row.weeks, row.hits, row.break_even) for key, row in evaluated.items()},
         record.funnel,
@@ -77,7 +80,6 @@ def volume_report(volume: VolumeRankingRecord) -> str:
         record.model_version, record.over_probability_version or "not served",
         coverage_label="eligible standard receptions props with a volume-version frozen row",
     )
-    states = {(item.odds_type, item.side): item for item in volume.states}
     lines = [
         text, "",
         "Volume model (receptions only). 49b adds a second clause to 27i's rule: the blend's log loss must beat both"
@@ -87,10 +89,11 @@ def volume_report(volume: VolumeRankingRecord) -> str:
         "log loss, standard lines of finished weeks:",
         _log_loss_line("all lines so far", volume.log_loss_progress),
     ]
-    for key in EVALUATED_SLICES:
+    for key in evaluated:
         lines.append(_log_loss_line(f"{key[0]} {key[1]}, verdict sample", states[key].log_loss))
-    not_frozen = ", ".join(f"{odds_type} {side}" for odds_type, side in NOT_FROZEN_SLICES)
-    lines.append(f"Not frozen: {not_frozen} (49c froze standard full-game lines only).")
+    not_frozen = ", ".join(f"{odds_type} {side}" for (odds_type, side), item in states.items() if item.state == "not_frozen")
+    if not_frozen:
+        lines.append(f"Not frozen yet: {not_frozen} (no frozen row for that payout).")
     return "\n".join(lines)
 
 

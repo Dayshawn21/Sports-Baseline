@@ -2,7 +2,7 @@
 
 A slice reads `adopt` only if 27i's pick rule passes on its fixed verdict
 sample and the blend's log loss beats both the raw volume probability and a
-constant 0.5 on every standard line of those same weeks. This module adds no
+constant 0.5 on every line of the slice's payout in those same weeks. This module adds no
 threshold: every number is 49b's or 27i's, imported, so changing one starts a
 new version and a new sample.
 
@@ -30,14 +30,13 @@ from app.core.prop_ranking_rule import (
 Outcome = Literal["over", "under", "push"]
 Slice = tuple[str, Literal["over", "under"]]
 
-# 49c froze standard full-game receptions only, so the goblin and demon rungs have no frozen sample.
-EVALUATED_SLICES: tuple[Slice, ...] = (("standard", "over"), ("standard", "under"))
-NOT_FROZEN_SLICES: tuple[Slice, ...] = (("goblin", "over"), ("demon", "over"))
+# Whether a payout has a frozen sample yet is read from the data, not fixed here (49e).
+EVALUATED_SLICES: tuple[Slice, ...] = (("standard", "over"), ("standard", "under"), ("goblin", "over"), ("demon", "over"))
 
 
 @dataclass(frozen=True)
 class LogLossRow:
-    """One frozen standard line settled: the served probabilities, the raw projection chance and the result."""
+    """One frozen line settled: the served probabilities, the raw projection chance and the result."""
 
     game_id: int
     week: int

@@ -43,6 +43,7 @@ def _volume_inputs() -> volume_ranking.VolumeInputs:
     return volume_ranking.VolumeInputs(
         RankingCalls(calls, Counter(), len(lines), {9: (115, 50)}, finished),
         volume_ranking.log_loss_rows(lines, finished),
+        frozenset({"standard"}),
     )
 
 
@@ -170,7 +171,7 @@ def test_the_volume_report_shows_progress_the_log_loss_and_the_not_frozen_slices
     assert "adopt" in text and "accruing" in text
     assert "second clause" in text and "log-loss progress below is not a verdict" in text
     assert "all lines so far: 200 lines" in text and "weeks won 4 of 4 (need 3)" in text
-    assert "Not frozen: goblin over, demon over (49c froze standard full-game lines only)." in text
+    assert "Not frozen yet: goblin over, demon over (no frozen row for that payout)." in text
     assert "None" not in text
 
 
@@ -178,14 +179,14 @@ def test_the_volume_report_for_an_empty_record_is_ordinary(monkeypatch: pytest.M
     _stub_loaders(monkeypatch)
 
     async def empty(db: AsyncSession, season: int) -> volume_ranking.VolumeInputs:
-        return volume_ranking.VolumeInputs(RankingCalls([], Counter(), 0, {}, set()), [])
+        return volume_ranking.VolumeInputs(RankingCalls([], Counter(), 0, {}, set()), [], frozenset())
 
     monkeypatch.setattr(volume_ranking, "load_volume_inputs", empty)
     text = asyncio.run(cli.run(2026, VOLUME))
 
     assert "frozen rows on completed games 0; excluded: none" in text
     assert "all lines so far: no settled lines yet" in text
-    assert "accruing, 0 of 200 picks, 0 of 4 weeks" in text
+    assert "Not frozen yet: standard over, standard under, goblin over, demon over" in text
 
 
 @pytest.mark.parametrize("fail_model", [V4, TARGETS, VOLUME])

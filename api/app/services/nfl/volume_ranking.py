@@ -17,7 +17,7 @@ from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.nfl_volume_verdict import (
     EVALUATED_SLICES, LogLossResult, LogLossRow, log_loss_clause, volume_slice_verdict,
 )
-from app.core.prop_ranking_check import SLICES, FrozenLine
+from app.core.prop_ranking_check import FrozenLine
 from app.core.prop_ranking_rule import BREAK_EVEN_BY_ODDS_TYPE, Side, SliceResult, SliceVerdict, one_pick_per_bet, to_pick
 from app.core.track_record import verdict_signal
 from app.nfl.markets import NFL_PROPS
@@ -61,6 +61,8 @@ class _LoadedSource(NflVolumeRankingSource):
 class VolumeInputs:
     calls: RankingCalls
     log_rows: list[LogLossRow]
+    # Payouts with at least one frozen row, settled or not: the rest read not frozen.
+    frozen_payouts: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -97,7 +99,8 @@ def log_loss_rows(lines: list[VolumeFrozenLine], finished_weeks: set[int]) -> li
 async def load_volume_inputs(db: AsyncSession, season: int) -> VolumeInputs:
     lines = await nfl_volume_ranking.get_frozen_volume_lines(db, season)
     calls = await prop_ranking.load_ranking_calls(db, _LoadedSource([item.frozen for item in lines]), season)
-    return VolumeInputs(calls, log_loss_rows(lines, calls.finished_periods))
+    payouts = frozenset(item.frozen.odds_type for item in lines if item.frozen.odds_type is not None)
+    return VolumeInputs(calls, log_loss_rows(lines, calls.finished_periods), payouts)
 
 
 def _row(odds_type: str, side: Side, verdict: SliceVerdict, result: SliceResult) -> RankingSliceRow:
@@ -121,8 +124,8 @@ def build_volume_record(inputs: VolumeInputs, season: int, graded_at: datetime) 
     picks = one_pick_per_bet([pick for call in inputs.calls.calls if (pick := to_pick(call)) is not None])
     rows: list[RankingSliceRow] = []
     states: list[VolumeSliceState] = []
-    for odds_type, side in SLICES:
-        if (odds_type, side) in EVALUATED_SLICES:
+    for odds_type, side in EVALUATED_SLICES:
+        if odds_type in inputs.frozen_payouts:
             decided = volume_slice_verdict(odds_type, [pick for pick in picks if pick.slice == (odds_type, side)], inputs.log_rows)
             rows.append(_row(odds_type, side, decided.verdict, decided.picks))
             states.append(VolumeSliceState(odds_type, side, "evaluated", decided.log_loss))

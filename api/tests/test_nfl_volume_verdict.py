@@ -162,10 +162,11 @@ def test_a_single_game_cannot_produce_a_clustered_standard_error() -> None:
     assert clause.raw_standard_error is None and not clause.passed
 
 
-def test_only_the_standard_slices_are_evaluated_and_the_others_are_not_frozen() -> None:
-    assert set(verdict.EVALUATED_SLICES) | set(verdict.NOT_FROZEN_SLICES) == set(SLICES)
-    assert not set(verdict.EVALUATED_SLICES) & set(verdict.NOT_FROZEN_SLICES)
-    assert verdict.EVALUATED_SLICES == (("standard", "over"), ("standard", "under"))
+def test_all_four_slices_are_evaluated_and_nothing_is_fixed_as_not_frozen() -> None:
+    assert set(verdict.EVALUATED_SLICES) == set(SLICES)
+    assert len(verdict.EVALUATED_SLICES) == 4
+    assert verdict.EVALUATED_SLICES == (("standard", "over"), ("standard", "under"), ("goblin", "over"), ("demon", "over"))
+    assert not hasattr(verdict, "NOT_FROZEN_SLICES")
 
 
 def test_the_module_adds_no_threshold_of_its_own() -> None:
