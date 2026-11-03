@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, playerWeekParams, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -124,6 +124,24 @@ describe('specialist player pages', () => {
   it('carries the encoded market to the player page', () => {
     expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points')
     expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
+  })
+  it('carries the week the row was opened from', () => {
+    expect(nflPlayerMarketLink(40440, 'receptions', { season: 2025, week: 7 })).toBe('/nfl/player/40440?market=receptions&season=2025&week=7')
+  })
+})
+
+describe('playerWeekParams', () => {
+  const parse = (query: string) => playerWeekParams(new URLSearchParams(query))
+  it('reads a linked season and week', () => {
+    expect(parse('market=receptions&season=2025&week=7')).toEqual({ season: 2025, week: 7 })
+  })
+  it('is null unless both are whole numbers', () => {
+    expect(parse('market=receptions')).toBeNull()
+    expect(parse('season=2025')).toBeNull()
+    expect(parse('week=7')).toBeNull()
+    expect(parse('season=2025&week=abc')).toBeNull()
+    expect(parse('season=2025&week=')).toBeNull()
+    expect(parse('season=2025&week=7.5')).toBeNull()
   })
 })
 

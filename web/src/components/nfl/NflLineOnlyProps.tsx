@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import type { NflSeasonWeek } from '~/types/nfl'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { MiniBars } from '~/components/shared/MiniBars'
 import '~/components/shared/prop-table.css'
@@ -12,12 +13,12 @@ function rungLabel(line: number, oddsType: string | null): string {
   return oddsType && oddsType !== 'standard' ? `${line} ${oddsType}` : `${line}`
 }
 
-function Row({ row, market }: { row: NflLineOnlyRow, market: string }) {
+function Row({ row, market, week }: { row: NflLineOnlyRow, market: string, week: NflSeasonWeek | null }) {
   const main = mainRung(row)
   const others = row.rungs.filter(rung => rung !== main)
   return <tr>
     <td className="prop-table__player">
-      <Link className="prop-table__open" to={nflPlayerMarketLink(row.playerId, market)}>{row.playerName}</Link>
+      <Link className="prop-table__open" to={nflPlayerMarketLink(row.playerId, market, week)}>{row.playerName}</Link>
       <small>{row.position ?? '--'} · {marketLabel(market)}</small>
     </td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? ''}</small></td>
@@ -29,16 +30,16 @@ function Row({ row, market }: { row: NflLineOnlyRow, market: string }) {
   </tr>
 }
 
-export function NflLineOnlyTable({ group }: { group: NflLineOnlyGroup }) {
+export function NflLineOnlyTable({ group, week = null }: { group: NflLineOnlyGroup, week?: NflSeasonWeek | null }) {
   return <table className="prop-table nfl-line-only-table" aria-label={`${marketLabel(group.market)} lines`}>
     <colgroup><col className="is-player" /><col className="is-line" /><col className="is-also" /><col className="is-bars" /><col className="is-over" /></colgroup>
     <thead><tr><th>Player</th><th className="is-num">Line</th><th>Also</th><th>Last 5</th><th className="is-num">Record</th></tr></thead>
-    <tbody>{group.rows.map(row => <Row key={row.playerId} row={row} market={group.market} />)}</tbody>
+    <tbody>{group.rows.map(row => <Row key={row.playerId} row={row} market={group.market} week={week} />)}</tbody>
   </table>
 }
 
 /** Item 35: stored line-only markets with recent results. Display only: no projection, edge, rank, drawer or signal color. */
-export function NflLineOnlyProps({ gameId, position }: { gameId: number, position: NflPositionFilter }) {
+export function NflLineOnlyProps({ gameId, position, week }: { gameId: number, position: NflPositionFilter, week: NflSeasonWeek }) {
   const query = useNflLineOnlyProps(gameId)
   const groups = query.data ? lineOnlyGroups(query.data.lines, position) : []
   if (query.isSuccess && groups.length === 0) return null
@@ -49,7 +50,7 @@ export function NflLineOnlyProps({ gameId, position }: { gameId: number, positio
     {query.isError && <p className="nfl-line-only__status">Other lines could not load.</p>}
     {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{marketLabel(group.market)}</h4>
-      <NflLineOnlyTable group={group} />
+      <NflLineOnlyTable group={group} week={week} />
     </div>)}
     </div>
   </details>

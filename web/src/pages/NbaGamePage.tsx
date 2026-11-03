@@ -64,8 +64,8 @@ export default function NbaGamePage() {
           </div>
         </div> },
         { key: 'props', label: 'Player Props', children: <div className="nfl-game-main">
-          <NbaProps key={`props:${detail.data.gameId}`} game={detail.data} />
-          <NbaLineOnlyProps key={`other:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} />
+          <NbaProps key={`props:${detail.data.gameId}`} game={detail.data} gameDate={detail.data.gameDate} />
+          <NbaLineOnlyProps key={`other:${detail.data.gameId}`} gameId={detail.data.gameId} startUtc={detail.data.startUtc} gameDate={detail.data.gameDate} />
         </div> },
       ]} />
   </div></div>

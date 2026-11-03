@@ -1,5 +1,6 @@
 import type { NbaInjury, NbaInjuryReport } from '~/types/nba'
 import { nbaInjuryFreshness, nbaInjuryTime } from '~/utils/nbaInjuries'
+import './nba-evidence.css'
 import './nba-injury.css'
 
 interface TagProps {

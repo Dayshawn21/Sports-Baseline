@@ -27,7 +27,7 @@ export default function NbaPropBoardPage() {
   const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
   if (board.isLoading) return <LoadingState message="Loading NBA prop board..." />
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
-  const { date, previousDate, nextDate, games, modelVersion } = board.data
+  const { date, previousDate, nextDate, games } = board.data
   const selectMarket = (value: string) => {
     const next = new URLSearchParams(params)
     if (requested === null) next.delete('date')
@@ -51,6 +51,6 @@ export default function NbaPropBoardPage() {
     <p className="nba-prop-board__legend">Reference only, no picks. The strip above lists the day's largest gaps; rows below follow tip time, then player name, and are not ranked. Gaps are projection minus line; P(over) is served for eligible assists lines. Dates follow the Eastern game calendar; tip times are CT.</p>
     {games.length === 0 ? <div className="nfl-empty">No NBA games on this date.</div>
       : rowCount === 0 ? <div className="nfl-empty">NBA games are scheduled on this date, but no prop lines are available.</div>
-        : <NbaPropBoardMarket key={`${requested}:${date}:${market}`} group={group} modelVersion={modelVersion} />}
+        : <NbaPropBoardMarket key={`${requested}:${date}:${market}`} group={group} date={date} />}
   </div></div>
 }

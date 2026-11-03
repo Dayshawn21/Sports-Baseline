@@ -8,7 +8,6 @@ import { ODDS_TYPE_LABELS } from '~/utils/nflLabels'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaPercentText, nbaRungNotes } from '~/utils/nbaPlayer'
 import { signedGap } from '~/utils/nbaProps'
-import './nba-prop-table.css'
 
 function Facts({ market }: { market: NbaPlayerMarket }) {
   return <dl className="nba-player-facts">
