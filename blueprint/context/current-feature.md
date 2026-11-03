@@ -128,7 +128,7 @@ Build one step at a time, never the whole feature at once.
 
 ## Build steps
 
-- [ ] **Step 1 - Verdict shape tuples (pure, pre-registered file).** In
+- [x] **Step 1 - Verdict shape tuples (pure, pre-registered file).** In
   `app/core/nfl_volume_verdict.py`, set `EVALUATED_SLICES` to all four 27j
   slices and remove `NOT_FROZEN_SLICES`, updating the module docstring. Touch
   no threshold, clause, constant or function body.
@@ -139,6 +139,13 @@ Build one step at a time, never the whole feature at once.
   checkpoint with the owner's yes before any rung outcome exists (the first
   rung outcomes arrive with the Tuesday 2026-11-10 stats load), and record the
   hash here. It merges `--ff-only` if later work cites it.
+
+  **Checkpoint commit:** `05e421890676cb976b356aca3f945e4c41f2fcf8`
+  (2026-11-03), made before any rung outcome existed. Beyond the two tuples, it
+  adds `frozen_payouts` to `VolumeInputs` and derives each slice's state from it,
+  and adapts the CLI report to those states, so the app works between steps. The
+  verdict file differs from `b869a492` only in docstrings and the tuple. Merge it
+  `--ff-only`, never squashed.
 
 - [ ] **Step 2 - Serve rungs (repository and assembler).** Widen
   `repositories/nfl_volume_serving.py` so the latest line per provider prop is
