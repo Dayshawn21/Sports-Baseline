@@ -3,6 +3,7 @@ import NflGameLineClv from '~/components/nfl/model/NflGameLineClv'
 import NflLineGrading from '~/components/nfl/model/NflLineGrading'
 import { NflOverProbabilityFit, NflOverProbabilityForward } from '~/components/nfl/model/NflOverProbability'
 import NflRankingSlices from '~/components/nfl/model/NflRankingSlices'
+import NflVolumeRecord from '~/components/nfl/model/NflVolumeRecord'
 import LoadingState from '~/components/shared/LoadingState'
 import ModelSection from '~/components/shared/ModelSection'
 import PageHead from '~/components/shared/PageHead'
@@ -11,7 +12,7 @@ import { useNflCurrentWeek } from '~/hooks/useNfl'
 import { useNflModelClv, useNflModelFit, useNflModelPropLines, useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import type { NflModelClv, NflModelRanking } from '~/types/nfl'
 import { fmtDateCT, fmtTimeCT } from '~/utils/format'
-import { NFL_TARGETS_RANKING_MODEL, summaryCounts } from '~/utils/nflTrackRecord'
+import { NFL_TARGETS_RANKING_MODEL, NFL_VOLUME_RANKING_MODEL, summaryCounts } from '~/utils/nflTrackRecord'
 import './nfl-model.css'
 
 function Summary({ ranking, clv }: { ranking: NflModelRanking | undefined, clv: NflModelClv | undefined }) {
@@ -34,6 +35,7 @@ export default function NflModelPage() {
   const season = currentWeek.data?.season ?? null
   const ranking = useNflModelRanking(season)
   const targets = useNflModelRanking(season, NFL_TARGETS_RANKING_MODEL)
+  const volume = useNflModelRanking(season, NFL_VOLUME_RANKING_MODEL)
   const clv = useNflModelClv(season)
   const lines = useNflModelPropLines(season)
   const fit = useNflModelFit()
@@ -59,6 +61,12 @@ export default function NflModelPage() {
           <Heading title="Rec Targets forward check">nfl-targets-v1 · reference only</Heading>
           <ModelSection query={targets} loading="Grading frozen Rec Targets predictions...">
             {(data) => <NflRankingSlices data={data} referenceOnly />}
+          </ModelSection>
+        </section>
+        <section aria-label="Volume model forward check">
+          <Heading title="Volume model forward check">nfl-volume-v1 · receptions · reference only</Heading>
+          <ModelSection query={volume} loading="Grading frozen volume predictions...">
+            {(data) => <NflVolumeRecord data={data} />}
           </ModelSection>
         </section>
         <Heading title="PrizePicks line grading">27a · standard lines · replays today's code</Heading>

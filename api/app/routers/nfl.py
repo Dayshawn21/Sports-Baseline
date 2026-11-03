@@ -14,17 +14,18 @@ from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import (
     NflCurrentWeekResponse, NflGameContextResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
     NflLineOnlyPropsResponse, NflLineOnlyBoardResponse, NflOtherMarketsResponse,
-    NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
+    NflLogLossSchema, NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
     NflRankingModelVersion, NflSlateResponse,
 )
+from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.services.nfl.game_detail import build_game_detail
 from app.services.nfl.game_notes import build_game_notes
 from app.services.nfl.line_only_props import build_line_only_props, build_week_line_only_props
 from app.services.nfl.matchup_context import build_game_context
 from app.services.nfl.other_markets import build_player_other_markets
 from app.services.nfl.player_detail import build_player_detail
-from app.services.nfl import prop_lines_snapshot, track_record
+from app.services.nfl import prop_lines_snapshot, track_record, volume_ranking
 from app.services.nfl.slate import anytime_td
 from app.services.nfl.slate_cache import cached_slate_json
 
@@ -159,6 +160,13 @@ async def get_model_ranking(
     model_version: NflRankingModelVersion = NFL_PROJECTION_MODEL_VERSION,
     db: AsyncSession = Depends(get_db),
 ) -> NflModelRankingResponse:
+    if model_version == NFL_VOLUME_MODEL_VERSION:
+        volume = await volume_ranking.get_volume_record(db, season)
+        if volume is None:
+            raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
+        response = NflModelRankingResponse.model_validate(volume.record)
+        response.log_loss = NflLogLossSchema.model_validate({"progress": volume.log_loss_progress, "slices": volume.states})
+        return response
     record = await track_record.get_ranking_record(db, season, model_version)
     if record is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")

@@ -594,9 +594,38 @@ export interface NflGameNotesResponse {
 /** Model track record (33d). Signals come from the API's 2 SE rules, never from a raw number here. */
 export type NflRankingSlice = PropRankingSlice
 
-export type NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4' | 'nfl-targets-v1'
+export type NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4' | 'nfl-targets-v1' | 'nfl-volume-v1'
 
-export type NflModelRanking = PropRankingRecord<string | null>
+/** 49b's log-loss clause over a set of weeks; blend minus a reference is negative when the blend is better. */
+export interface NflLogLossResult {
+  n: number
+  weeks: number
+  weeksWon: number
+  weeksRequired: number
+  blend: number | null
+  raw: number | null
+  half: number | null
+  rawDifference: number | null
+  rawStandardError: number | null
+  halfDifference: number | null
+  halfStandardError: number | null
+  passed: boolean
+}
+
+export interface NflVolumeSliceState {
+  oddsType: 'standard' | 'goblin' | 'demon'
+  side: 'over' | 'under'
+  state: 'evaluated' | 'not_frozen'
+  logLoss: NflLogLossResult | null
+}
+
+/** Only the `nfl-volume-v1` record carries it; `progress` is progress, never a verdict. */
+export interface NflLogLoss {
+  progress: NflLogLossResult
+  slices: NflVolumeSliceState[]
+}
+
+export type NflModelRanking = PropRankingRecord<string | null> & { logLoss?: NflLogLoss | null }
 
 export interface NflHitRow {
   calls: number

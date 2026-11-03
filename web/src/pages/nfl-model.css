@@ -94,3 +94,5 @@
   .nfl-model .nfl-model__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .nfl-model__stats .stat-chip:last-child { grid-column: 1 / -1; }
 }
+
+.nfl-model-volume-loss { margin-top: var(--space-3); }

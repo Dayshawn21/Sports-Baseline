@@ -668,13 +668,45 @@ class _NflTrackRecordModel(_CamelModel):
 
 
 Signal = Literal["positive", "neutral", "negative"]
-NflRankingModelVersion = Literal["opponent-dvp-tg-blend-usage-snap-v4", "nfl-targets-v1"]
+NflRankingModelVersion = Literal["opponent-dvp-tg-blend-usage-snap-v4", "nfl-targets-v1", "nfl-volume-v1"]
+
+
+class NflLogLossResultSchema(_NflTrackRecordModel):
+    """49b's log-loss clause over a set of weeks: the blend against the raw projection and a coin flip."""
+
+    n: int
+    weeks: int
+    weeks_won: int
+    weeks_required: int
+    blend: float | None
+    raw: float | None
+    half: float | None
+    raw_difference: float | None
+    raw_standard_error: float | None
+    half_difference: float | None
+    half_standard_error: float | None
+    passed: bool
+
+
+class NflVolumeSliceStateSchema(_NflTrackRecordModel):
+    odds_type: str
+    side: Literal["over", "under"]
+    state: Literal["evaluated", "not_frozen"]
+    log_loss: NflLogLossResultSchema | None
+
+
+class NflLogLossSchema(_NflTrackRecordModel):
+    """Only the `nfl-volume-v1` record carries it; `progress` is never a verdict."""
+
+    progress: NflLogLossResultSchema
+    slices: list[NflVolumeSliceStateSchema]
 
 
 class NflModelRankingResponse(PropRankingResponse):
     """27j's record, in the shape every sport's ranking check shares (20g4)."""
 
     over_probability_version: str | None
+    log_loss: NflLogLossSchema | None = None
 
 
 class NflClvRuleSchema(_NflTrackRecordModel):
