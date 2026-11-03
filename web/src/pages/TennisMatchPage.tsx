@@ -23,7 +23,7 @@ import type { MatchDetail } from '~/types/tennis'
 import './tennis-match.css'
 
 function BackLink() {
-  return <Link className="tennis-match-crumb" to="/">← Tennis slate</Link>
+  return <Link className="tennis-match-crumb" to="/tennis">← Tennis slate</Link>
 }
 
 function MatchPageState({ children }: { children: ReactNode }) {

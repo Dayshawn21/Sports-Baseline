@@ -15,7 +15,7 @@ interface SportDefinition {
 
 /** The sport registry: one entry per sport drives the top bar, the phone drawer and (with `SPORT_PAGES`) the routes. */
 export const SPORTS = [
-  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/', props: '/tennis/board', model: '/tennis/model' } },
+  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/tennis', props: '/tennis/board', model: '/tennis/model' } },
   { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/board', model: '/nfl/model' } },
   { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/board', model: '/nba/model' } },
   { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl' } },
@@ -39,6 +39,7 @@ function viewsOf(definition: SportDefinition): { view: SportView, path: string }
   })
 }
 
+export const HOME_PATH = '/'
 const ADMIN_PATH = '/admin'
 const APP_NAME = 'Lineform'
 
@@ -74,13 +75,15 @@ function activeSport(pathname: string): SportDefinition | null {
 export interface ShellSportTab { code: Sport, label: string, path: string, active: boolean }
 export interface ShellViewTab { view: SportView, label: string, path: string, active: boolean }
 export interface ShellLink { key: string, label: string, active: boolean }
-export interface ShellNav { sports: ShellSportTab[], views: ShellViewTab[], links: ShellLink[] }
+export interface ShellHomeTab { label: string, path: string, active: boolean }
+export interface ShellNav { home: ShellHomeTab, sports: ShellSportTab[], views: ShellViewTab[], links: ShellLink[] }
 
 /** Everything the top bar shows for a path: sport tabs, the active sport's views, and the other links. */
 export function shellNav(pathname: string, adminVisible: boolean): ShellNav {
   const sport = activeSport(pathname)
   const view = sportViewForPath(pathname)
   return {
+    home: { label: 'Home', path: HOME_PATH, active: pathname === HOME_PATH },
     sports: SPORTS.map(entry => ({ code: entry.code, label: entry.label, path: entry.views.slate, active: entry.code === sport?.code })),
     views: sport
       ? viewsOf(sport).map(entry => ({ ...entry, label: VIEW_LABELS[entry.view], active: entry.view === view }))
@@ -91,9 +94,10 @@ export function shellNav(pathname: string, adminVisible: boolean): ShellNav {
 
 export interface MenuSection { label: string | null, items: { key: string, label: string }[] }
 
-/** The phone drawer: every sport with its views nested under it, then the other links in an unlabeled section. */
+/** The phone drawer: Home, then every sport with its views nested under it, then the other links; Home and the links are unlabeled sections. */
 export function menuSections(adminVisible: boolean): MenuSection[] {
   return [
+    { label: null, items: [{ key: HOME_PATH, label: 'Home' }] },
     ...SPORTS.map(sport => ({ label: sport.label, items: viewsOf(sport).map(entry => ({ key: entry.path, label: VIEW_LABELS[entry.view] })) })),
     { label: null, items: visibleNavItems(EXTRA_LINKS, adminVisible) },
   ]

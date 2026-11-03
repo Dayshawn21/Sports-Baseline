@@ -32,7 +32,8 @@ describe('resolveDocumentTitle', () => {
     ['/nba/game/21320', 'NBA game · Lineform'],
     ['/nfl/player/40399', 'NFL player · Lineform'],
     ['/nba', 'NBA slate · Lineform'],
-    ['/', 'Tennis slate · Lineform'],
+    ['/tennis', 'Tennis slate · Lineform'],
+    ['/', 'Lineform'],
   ])('ignores the old game label after navigating to %s', (pathname, expected) => {
     expect(resolveDocumentTitle(pathname, registration())).toBe(expected)
   })

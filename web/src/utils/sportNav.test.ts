@@ -3,7 +3,7 @@ import { SPORTS, documentTitle, menuSections, shellNav, sportViewForPath, sportV
 
 describe('sportViewForPath', () => {
   it('maps each sport route to its view', () => {
-    expect(sportViewForPath('/')).toBe('slate')
+    expect(sportViewForPath('/tennis')).toBe('slate')
     expect(sportViewForPath('/tennis/board')).toBe('props')
     expect(sportViewForPath('/tennis/model')).toBe('model')
     expect(sportViewForPath('/nfl')).toBe('slate')
@@ -14,7 +14,8 @@ describe('sportViewForPath', () => {
     expect(sportViewForPath('/nba/model')).toBe('model')
   })
 
-  it('returns null off the sport routes', () => {
+  it('returns null off the sport routes, home included', () => {
+    expect(sportViewForPath('/')).toBeNull()
     expect(sportViewForPath('/admin')).toBeNull()
   })
 })
@@ -22,7 +23,7 @@ describe('sportViewForPath', () => {
 describe('sportViews', () => {
   it('gives both sports slate, props and model views', () => {
     expect(sportViews('tennis')).toEqual([
-      { view: 'slate', path: '/' },
+      { view: 'slate', path: '/tennis' },
       { view: 'props', path: '/tennis/board' },
       { view: 'model', path: '/tennis/model' },
     ])
@@ -40,10 +41,10 @@ describe('SPORTS registry', () => {
     expect(new Set(paths).size).toBe(paths.length)
   })
 
-  it('keeps every view except the root slate under its sport prefix', () => {
+  it('keeps every view under its sport prefix, so none claims the home path', () => {
     for (const sport of SPORTS) {
       for (const { path } of sportViews(sport.code)) {
-        if (path !== '/') expect(`${path}/`.startsWith(sport.prefix)).toBe(true)
+        expect(`${path}/`.startsWith(sport.prefix)).toBe(true)
       }
     }
   })
@@ -100,15 +101,23 @@ describe('shellNav', () => {
   it('marks the sport and view of each sport route', () => {
     const nfl = shellNav('/nfl/board', false)
     expect(nfl.sports.map(sport => [sport.label, sport.path, sport.active])).toEqual([
-      ['Tennis', '/', false], ['NFL', '/nfl', true], ['NBA', '/nba', false], ['NHL', '/nhl', false],
+      ['Tennis', '/tennis', false], ['NFL', '/nfl', true], ['NBA', '/nba', false], ['NHL', '/nhl', false],
     ])
     expect(nfl.views).toEqual([
       { view: 'slate', label: 'Slate', path: '/nfl', active: false },
       { view: 'props', label: 'Props', path: '/nfl/board', active: true },
       { view: 'model', label: 'Model', path: '/nfl/model', active: false },
     ])
-    expect(active(shellNav('/', false).sports).map(sport => sport.code)).toEqual(['tennis'])
-    expect(active(shellNav('/', false).views).map(view => view.view)).toEqual(['slate'])
+    expect(active(shellNav('/tennis', false).sports).map(sport => sport.code)).toEqual(['tennis'])
+    expect(active(shellNav('/tennis', false).views).map(view => view.view)).toEqual(['slate'])
+  })
+
+  it('highlights Home alone on the home path and never on another page', () => {
+    const home = shellNav('/', false)
+    expect(home.home).toEqual({ label: 'Home', path: '/', active: true })
+    expect(active(home.sports)).toEqual([])
+    expect(home.views).toEqual([])
+    for (const path of ['/tennis', '/nfl/game/52', '/how-it-works']) expect(shellNav(path, false).home.active).toBe(false)
   })
 
   it('lists only the views a sport has', () => {
@@ -141,7 +150,8 @@ describe('shellNav', () => {
 
 describe('documentTitle', () => {
   it('names each sport view', () => {
-    expect(documentTitle('/')).toBe('Tennis slate · Lineform')
+    expect(documentTitle('/')).toBe('Lineform')
+    expect(documentTitle('/tennis')).toBe('Tennis slate · Lineform')
     expect(documentTitle('/tennis/board')).toBe('Tennis props · Lineform')
     expect(documentTitle('/nfl')).toBe('NFL slate · Lineform')
     expect(documentTitle('/nfl/model')).toBe('NFL model · Lineform')
@@ -166,7 +176,8 @@ describe('documentTitle', () => {
 describe('menuSections', () => {
   it('nests each sport\'s views under it, then the other links', () => {
     expect(menuSections(false)).toEqual([
-      { label: 'Tennis', items: [{ key: '/', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
+      { label: null, items: [{ key: '/', label: 'Home' }] },
+      { label: 'Tennis', items: [{ key: '/tennis', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
       { label: 'NFL', items: [{ key: '/nfl', label: 'Slate' }, { key: '/nfl/board', label: 'Props' }, { key: '/nfl/model', label: 'Model' }] },
       { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/board', label: 'Props' }, { key: '/nba/model', label: 'Model' }] },
       { label: 'NHL', items: [{ key: '/nhl', label: 'Slate' }] },

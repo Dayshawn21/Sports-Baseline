@@ -12,7 +12,7 @@ AskSport = Literal["nba", "nfl", "tennis"]
 PlayerSport = Literal["nfl", "tennis"]
 BoardSport = Literal["nba", "tennis"]
 
-_SLATE: dict[AskSport, str] = {"nba": "/nba", "nfl": "/nfl", "tennis": "/"}
+_SLATE: dict[AskSport, str] = {"nba": "/nba", "nfl": "/nfl", "tennis": "/tennis"}
 
 
 def slate_path(

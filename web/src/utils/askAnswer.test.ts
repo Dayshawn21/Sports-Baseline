@@ -3,7 +3,7 @@ import { answerBlocks, isInternalPath } from '~/utils/askAnswer'
 
 describe('isInternalPath', () => {
   it.each([
-    '/',
+    '/tennis',
     '/nba',
     '/nba?date=2026-10-28',
     '/nfl',
@@ -29,6 +29,7 @@ describe('isInternalPath', () => {
     '//evil.example/nba',
     'javascript:alert(1)',
     'nba/game/1',
+    '/',
     '/admin',
     '/nhl',
     '/nba/game/abc',

@@ -5,7 +5,7 @@ const DATE = String.raw`\d{4}-\d{2}-\d{2}`
 // The paths api/app/core/ask_links.py builds, and nothing else. A link the
 // model writes to any other place renders as plain text.
 const INTERNAL_PATHS: readonly RegExp[] = [
-  /^\/$/,
+  /^\/tennis$/,
   new RegExp(`^/nba(\\?date=${DATE})?$`),
   /^\/nfl(\?season=\d{4}&week=\d{1,2})?$/,
   /^\/(nba|nfl)\/game\/\d+$/,

@@ -5,6 +5,7 @@ import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } f
 import ParlaysPage from '~/pages/ParlaysPage'
 import AdminPage from '~/pages/AdminPage'
 import HowItWorksPage from '~/pages/HowItWorksPage'
+import HomePage from '~/pages/HomePage'
 import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
 import { APP_ANTD_THEME } from '~/theme/antdTheme'
@@ -52,11 +53,11 @@ function ViewTabs({ nav, className = '' }: { nav: ShellNav, className?: string }
   )
 }
 
-/** Each sport is a labeled group of its views; a divider sets the unlabeled section's links apart from the last sport. */
+/** Home leads, each sport is a labeled group of its views, and a divider sets the closing links apart from the last sport. */
 function drawerItems(adminVisible: boolean): MenuProps['items'] {
-  return menuSections(adminVisible).flatMap(section => section.label
+  return menuSections(adminVisible).flatMap((section, index) => section.label
     ? [{ type: 'group' as const, key: section.label, label: section.label, children: section.items }]
-    : [{ type: 'divider' as const, key: 'links-divider' }, ...section.items])
+    : [...(index > 0 ? [{ type: 'divider' as const, key: 'links-divider' }] : []), ...section.items])
 }
 
 function TopBar({ nav }: { nav: ShellNav }) {
@@ -64,6 +65,9 @@ function TopBar({ nav }: { nav: ShellNav }) {
     <Header style={{ ...HEADER_STYLE, padding: '0 clamp(20px, 3.2vw, 56px)', gap: 24 }}>
       <Wordmark />
       <nav className="shell-tabs" aria-label="Sports">
+        <Link to={nav.home.path} className={nav.home.active ? 'is-active' : ''} aria-current={nav.home.active ? 'page' : undefined}>
+          {nav.home.label}
+        </Link>
         {nav.sports.map(sport => (
           <Link key={sport.code} to={sport.path} className={sport.active ? 'is-active' : ''} aria-current={sport.active ? 'true' : undefined}>
             {sport.label}
@@ -161,6 +165,7 @@ export default function App() {
               <Nav />
               <Content style={{ background: 'transparent' }}>
                 <Routes>
+                  <Route path="/" element={<HomePage />} />
                   {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
                   <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
                   <Route path="/props" element={<Navigate to="/" replace />} />

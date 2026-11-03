@@ -19,7 +19,7 @@ import './tennis-player.css'
 
 function BackLink() {
   const origin = playerPageOrigin(useLocation().state)
-  return <Link className="tennis-match-crumb" to={origin?.path ?? '/'}>← {origin?.label ?? 'Tennis slate'}</Link>
+  return <Link className="tennis-match-crumb" to={origin?.path ?? '/tennis'}>← {origin?.label ?? 'Tennis slate'}</Link>
 }
 
 function PlayerPageState({ children }: { children: ReactNode }) {

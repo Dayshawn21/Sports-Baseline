@@ -38,7 +38,7 @@ def test_slate_paths_carry_the_parameters_each_page_reads():
     assert slate_path("nba", date=date) == "/nba?date=2026-10-27"
     assert slate_path("nfl", season=2026, week=8) == "/nfl?season=2026&week=8"
     assert slate_path("nfl", season=2026) == "/nfl"
-    assert slate_path("tennis", date=date) == "/"
+    assert slate_path("tennis", date=date) == "/tennis"
 
 
 def test_tennis_games_are_match_pages():
