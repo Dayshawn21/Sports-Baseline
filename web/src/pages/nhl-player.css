@@ -1,0 +1,14 @@
+/* NHL player page (build-plan 53e): the NFL player page's classes, plus what NHL adds. */
+
+.nhl-player .nfl-player-empty a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.nhl-player-table-wrap { overflow-x: auto; }
+.nhl-player .nfl-prop-detail__table th,
+.nhl-player .nfl-prop-detail__table td { padding-left: 10px; }
+.nhl-player .nfl-prop-detail__table th:first-child,
+.nhl-player .nfl-prop-detail__table td:first-child { padding-left: 0; }
+.nhl-player-evidence__section { padding: 14px 0; border-top: 1px solid var(--border-subtle); }
+.nhl-player-evidence__section h4 { margin: 0 0 8px; color: var(--text-muted); font: 600 11px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.nhl-player-evidence .nhl-game-context-teams > * { padding: 4px 16px 4px 0; }
+.nhl-player-evidence .nhl-game-context-teams > * + * { padding-left: 16px; }
+.nhl-player-evidence .nhl-game-context-source { padding: 8px 0 0; }
+.nhl-player-injury-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-secondary); font: 600 11px var(--font-body); }

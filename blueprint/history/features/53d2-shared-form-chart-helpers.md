@@ -1,7 +1,7 @@
 # Feature: Shared form chart helpers (53d2)
 
 **From build-plan:** feature 53d2 (added to item 53 on 2026-11-02 so NBA 53b2 and NHL 53e share one chart)
-**Status:** not started
+**Status:** complete (2026-11-02), squash-merged to master as `22d186bb` and pushed. Verified on merged master: web typecheck, 1,089 web tests and build passed; the API suite passed 5,269 tests on a second run (the first run had one `test_nfl_volume_harness.py` failure that passed alone and did not repeat).
 **Branch:** `feature/shared-form-chart-helpers`, in worktree `.claude/worktrees/53d2-shared-form-chart`, cut from `master` at `b2298ae3`
 
 ## Goal
