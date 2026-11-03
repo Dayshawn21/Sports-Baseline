@@ -147,12 +147,18 @@ Build one step at a time, never the whole feature at once.
   are excluded; SEs are clustered by game; an empty sample is ordinary
   (`insufficient`, n=0); and no constant in the module differs from 49b's.
 
-- [ ] **Step 2 - Pre-registration checkpoint.** With the owner's yes in chat,
+- [x] **Step 2 - Pre-registration checkpoint.** With the owner's yes in chat,
   commit Step 1 before any volume outcome is joined to a prediction. Record
   its hash here. Target: before Tuesday 2026-11-10 15:00 UTC. It merges
   `--ff-only` if later work cites it.
   *Done when:* the commit exists, precedes all later steps, and its hash is
   recorded in this file.
+
+  **Pre-registration commit:** `b869a492f82557ab3d16bb0139ec7a215b2e695c`
+  (2026-11-03), made before any volume outcome was joined to a prediction. The
+  weeks-won requirement scales as `ceil(weeks * 3 / 4)` (3 of 4 at four
+  weeks), an interpretation of 49b's "3 of 4 sample weeks" fixed here. Merge
+  it `--ff-only`, never squashed, so this hash stays on `master`.
 
 - [ ] **Step 3 - Load volume frozen rows and coverage (repository).** Add
   batched read-only queries in a sibling of `nfl_targets_ranking.py`. Require
