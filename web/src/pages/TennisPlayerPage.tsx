@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import PageHead from '~/components/shared/PageHead'
+import { PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import PlayerEloCard from '~/components/tennis/player/PlayerEloCard'
-import PlayerHeader from '~/components/tennis/player/PlayerHeader'
+import { playerHead } from '~/components/tennis/player/PlayerHeader'
 import PlayerPropTabs from '~/components/tennis/player/PlayerPropTabs'
 import PlayerMatchLog from '~/components/tennis/player/PlayerMatchLog'
 import PlayerServeReturn from '~/components/tennis/player/PlayerServeReturn'
@@ -23,13 +23,7 @@ function BackLink() {
 }
 
 function PlayerPageState({ children }: { children: ReactNode }) {
-  return (
-    <div className="page-shell tennis-player"><div className="page-container is-wide">
-      <BackLink />
-      <PageHead title="Tennis player" />
-      {children}
-    </div></div>
-  )
+  return <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title="Tennis player">{children}</PlayerPageShell>
 }
 
 function NotFound() {
@@ -48,11 +42,11 @@ export default function TennisPlayerPage() {
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
 
+  const head = playerHead(detail.data, new Date())
   return (
-    <div className="page-shell tennis-player"><div className="page-container is-wide">
-      <BackLink />
-      <PlayerHeader player={detail.data} now={new Date()} />
+    <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title={head.title} meta={head.meta} actions={head.actions}>
       <PlayerPropTabs playerId={detail.data.playerId} playerName={detail.data.name} />
+      <h2 className="nfl-player-section-title">Supporting context</h2>
       <div className="tennis-player-layout">
         <section className="tennis-player-main">
           <PlayerEloCard player={detail.data} />
@@ -61,6 +55,6 @@ export default function TennisPlayerPage() {
         </section>
         <PlayerSidebar player={detail.data} matches={matches} />
       </div>
-    </div></div>
+    </PlayerPageShell>
   )
 }

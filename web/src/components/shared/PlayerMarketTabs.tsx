@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { marketCountLabel } from '~/utils/playerPage'
+import '~/pages/nfl-player.css'
 
 export const TABS_ID = 'prop-tabs'
 

@@ -1,4 +1,5 @@
 import type { MatchPrediction, PlayerMatchLogRow, RecentMatchResult } from '~/types/tennis'
+import { playerSearch } from '~/utils/nflPlayer'
 import { marketKey, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
 
 export type TennisFormWindow = '5' | '10' | 'opp'
@@ -8,6 +9,11 @@ export const LONG_WINDOW_MATCHES = 10
 export const MARKET_PARAM = 'market'
 export const MATCH_PARAM = 'match'
 export const PROP_PARAM = 'prop'
+
+/** The first tab is the default, so choosing it drops `?market=`; every other param (match, form, prop) is kept. */
+export function tennisTabSearch(params: URLSearchParams, market: string, firstMarket: string): string {
+  return playerSearch(params, { [MARKET_PARAM]: market === firstMarket ? null : market })
+}
 
 export interface PlayerMarketTab {
   market: string

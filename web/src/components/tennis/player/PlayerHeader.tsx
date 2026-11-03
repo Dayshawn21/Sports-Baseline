@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import PageHead from '~/components/shared/PageHead'
 import type { PlayerDetail } from '~/types/tennis'
 import { fmtStartCT } from '~/utils/format'
 import { ageOn } from '~/utils/tennisPlayer'
@@ -20,7 +19,8 @@ function NextMatch({ next }: { next: PlayerDetail['nextMatch'] }) {
   )
 }
 
-export default function PlayerHeader({ player, now }: { player: PlayerDetail, now: Date }) {
+/** The title, status line and Next match block the page shell renders. */
+export function playerHead(player: PlayerDetail, now: Date) {
   const tone = tourTone(player.tour)
   const age = ageOn(player.birthDate, now)
   const meta = [
@@ -29,10 +29,10 @@ export default function PlayerHeader({ player, now }: { player: PlayerDetail, no
     player.country,
     age != null ? `age ${age}` : null,
   ].filter(Boolean)
-  return (
-    <PageHead title={player.name}
-      meta={<><span className={`tennis-tour-tag${tone ? ` is-${tone}` : ''}`}>{player.tour}</span>
-        {meta.length > 0 && <> · {meta.join(' · ')}</>}</>}
-      actions={<NextMatch next={player.nextMatch} />} />
-  )
+  return {
+    title: player.name,
+    meta: <><span className={`tennis-tour-tag${tone ? ` is-${tone}` : ''}`}>{player.tour}</span>
+      {meta.length > 0 && <> · {meta.join(' · ')}</>}</>,
+    actions: <NextMatch next={player.nextMatch} />,
+  }
 }
