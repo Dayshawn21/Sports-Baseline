@@ -1,4 +1,5 @@
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerProps, NbaPlayerRung } from '~/types/nba'
+import type { FormRow } from '~/utils/nflFormWindow'
 import { nbaPropFlagText } from '~/utils/nbaProps'
 
 export type NbaFormWindow = '5' | '10' | 'opp'
@@ -9,6 +10,12 @@ export interface NbaFormSample {
 }
 
 const SHORT_WINDOW_GAMES = 5
+const OPPONENT_BARS = 10
+
+/** 0-based month a new season-year begins: NBA games run October to June, so January to June belong to the season that began the year before. */
+export const NBA_SEASON_START_MONTH = 7
+/** The first stored NBA season, for the "no earlier games" text. */
+export const NBA_HISTORY_FROM_YEAR = 2023
 
 interface PlayerPathOptions {
   date?: string | null
@@ -43,7 +50,7 @@ export function nbaFormSample(games: NbaPlayerGame[]): NbaFormSample {
 }
 
 function windowGames(market: NbaPlayerMarket, window: NbaFormWindow): NbaPlayerGame[] {
-  if (window === 'opp') return market.opponentGames
+  if (window === 'opp') return market.opponentGames.slice(0, OPPONENT_BARS)
   return window === '10' ? market.recent : market.recent.slice(0, SHORT_WINDOW_GAMES)
 }
 
@@ -80,4 +87,19 @@ export function nbaRungNotes(rungs: NbaPlayerRung[]): NbaRungNotes {
   const first = texts[0] ?? null
   if (first !== null && texts.every(text => text === first)) return { shared: first, perRung: texts.map(() => null) }
   return { shared: null, perRung: texts }
+}
+
+/** The rows the shared form helpers take: Last 5, Last 10, and the 10 most recent games against the opponent. */
+export function nbaFormRow(market: NbaPlayerMarket, opponent: string | null): FormRow {
+  return {
+    recentForm: nbaFormSample(market.recent.slice(0, SHORT_WINDOW_GAMES)),
+    recentFormLong: nbaFormSample(market.recent),
+    opponentHistory: nbaFormSample(market.opponentGames.slice(0, OPPONENT_BARS)),
+    opponentTeam: opponent,
+  }
+}
+
+/** The line the chart draws: the standard rung, never one for double-double, which is a yes or no. */
+export function nbaChartLine(market: NbaPlayerMarket): number | null {
+  return market.market === 'double_double' ? null : nbaStandardLine(market)
 }

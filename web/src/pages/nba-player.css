@@ -15,3 +15,7 @@
 .nba-player .nfl-prop-detail__table td:first-child { padding-left: 0; }
 .nba-player .nba-player-flag-row td { padding: 0 0 8px; border-top: 0; color: var(--text-muted); font: 400 11px var(--font-body); text-align: left; }
 .nba-player .nba-prop-evidence__section { padding-bottom: 14px; }
+
+.nba-player-yesno { margin: 0; padding: 0; list-style: none; }
+.nba-player-yesno li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font: 400 12px var(--font-mono); }
+.nba-player-yesno b { color: var(--text-primary); font-weight: 600; }

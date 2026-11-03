@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerRung } from '~/types/nba'
-import { nbaFormSample, nbaNotLoadedCount, nbaPercentText, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaRungNotes, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
+import { formEmptyText, formOptions, formSample, formShortNote } from '~/utils/nflFormWindow'
+import { nbaChartLine, nbaFormRow, nbaFormSample, nbaNotLoadedCount, nbaPercentText, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'TOR'): NbaPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
 const rung = (line: number, oddsType: string | null): NbaPlayerRung => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, overProbabilityVersion: null, flags: [] })
@@ -111,5 +112,50 @@ describe('nbaRungNotes', () => {
   it('has no notes when no rung is flagged', () => {
     expect(nbaRungNotes([flagged(4.5, [])])).toEqual({ shared: null, perRung: [null] })
     expect(nbaRungNotes([])).toEqual({ shared: null, perRung: [] })
+  })
+})
+
+describe('nbaFormRow', () => {
+  const recent = (count: number) => Array.from({ length: count }, (_, index) => game(30 - index, index + 1))
+
+  it('takes Last 5 from the first five games and Last 10 from all of them', () => {
+    const row = nbaFormRow(market({ recent: recent(10) }), 'TOR')
+    expect(row.recentForm.values.map(item => item.value)).toEqual([1, 2, 3, 4, 5])
+    expect(row.recentFormLong?.values).toHaveLength(10)
+    expect(row.opponentTeam).toBe('TOR')
+  })
+
+  it('drops a game whose stat was not loaded from every window', () => {
+    const row = nbaFormRow(market({ recent: [game(9, null), game(8, 2)], opponentGames: [game(3, null), game(2, 4)] }), 'TOR')
+    expect(row.recentForm.values.map(item => item.value)).toEqual([2])
+    expect(row.opponentHistory.values.map(item => item.value)).toEqual([4])
+  })
+
+  it('shows at most the ten most recent games against the opponent', () => {
+    const opponentGames = Array.from({ length: 20 }, (_, index) => game(30 - index, index))
+    const row = nbaFormRow(market({ opponentGames }), 'TOR')
+    expect(row.opponentHistory.values).toHaveLength(10)
+    expect(row.opponentHistory.values[0].value).toBe(0)
+  })
+
+  it('has no opponent window label when there is no opponent', () => {
+    const row = nbaFormRow(market(), null)
+    expect(row.opponentTeam).toBeNull()
+    expect(formOptions(row)[2].disabledReason).not.toBeNull()
+  })
+
+  it('feeds the shared helpers: a short Last 10 and the since-2023 empty text', () => {
+    const row = nbaFormRow(market({ recent: recent(6), opponentGames: [] }), 'TOR')
+    expect(formShortNote(row, '10')).toBe('6 of 10 games')
+    expect(formSample(row, '10').values).toHaveLength(6)
+    expect(formEmptyText(row, 'opp', NBA_HISTORY_FROM_YEAR)).toBe('No earlier games against TOR since 2023.')
+  })
+})
+
+describe('nbaChartLine', () => {
+  it('is the standard rung, and none for double-double or a market without one', () => {
+    expect(nbaChartLine(market())).toBe(4.5)
+    expect(nbaChartLine(market({ market: 'double_double', lines: [rung(0.5, 'standard')] }))).toBeNull()
+    expect(nbaChartLine(market({ lines: [rung(3.5, 'goblin')] }))).toBeNull()
   })
 })

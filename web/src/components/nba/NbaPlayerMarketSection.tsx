@@ -2,6 +2,7 @@ import { Tag } from 'antd'
 import { Fragment } from 'react'
 import { NbaInjuryEvidence } from '~/components/nba/NbaInjury'
 import { NbaOpponentEvidence } from '~/components/nba/NbaOpponentEvidence'
+import { NbaPlayerFormSection } from '~/components/nba/NbaPlayerFormSection'
 import type { NbaPlayerMarket, NbaPlayerProps } from '~/types/nba'
 import { ODDS_TYPE_LABELS } from '~/utils/nflLabels'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
@@ -61,6 +62,7 @@ export function NbaPlayerMarketSection({ id, player, market }: { id: string, pla
         <Facts market={market} />
         <p className="nba-player-sample">Model {player.modelVersion}</p>
       </>}
+      <NbaPlayerFormSection market={market} opponent={player.opponent} />
       <Rungs market={market} />
       <NbaInjuryEvidence injury={player.injury} report={player.injuryReport} startUtc={player.game?.startUtc ?? null} now={new Date()} />
       <NbaOpponentEvidence context={player.teamStats} team={player.team} market={market.market} />
