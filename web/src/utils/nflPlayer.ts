@@ -1,4 +1,4 @@
-import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflPlayerUsage, NflSeasonWeek, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { nflGameProps } from '~/utils/nflGameProps'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
@@ -14,8 +14,17 @@ export function arrivedFromBoard(state: unknown): boolean {
   return typeof state === 'object' && state !== null && (state as { from?: unknown }).from === 'board'
 }
 
-export function nflPlayerMarketLink(playerId: number, market: string): string {
-  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}`
+/** `week` is the week the row was opened from; without it the player page shows the current week. */
+export function nflPlayerMarketLink(playerId: number, market: string, week: NflSeasonWeek | null = null): string {
+  const weekQuery = week ? `&season=${week.season}&week=${week.week}` : ''
+  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}${weekQuery}`
+}
+
+/** The linked week, or null unless both `season` and `week` are positive whole numbers. */
+export function playerWeekParams(params: URLSearchParams): NflSeasonWeek | null {
+  const season = params.get('season') ?? ''
+  const week = params.get('week') ?? ''
+  return /^\d+$/.test(season) && /^\d+$/.test(week) ? { season: Number(season), week: Number(week) } : null
 }
 
 /** The query string with `updates` applied; a null value removes the key, so other params (market, form) survive a change to one. */

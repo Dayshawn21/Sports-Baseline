@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
 import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
@@ -14,7 +14,7 @@ import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvide
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nflGame'
-import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -71,8 +71,13 @@ export default function NflPlayerPage() {
   const navigate = useNavigate()
   const fromBoard = arrivedFromBoard(useLocation().state)
   const detail = useNflPlayer(playerId)
-  const slate = useNflSlate(detail.data?.season ?? null, detail.data?.week ?? null)
-  const others = useNflOtherMarkets(playerId, detail.data?.season ?? null, detail.data?.week ?? null)
+  const [params] = useSearchParams()
+  // The linked week wins; the profile and game log below stay as of the current week.
+  const linked = playerWeekParams(params)
+  const season = linked?.season ?? detail.data?.season ?? null
+  const weekNumber = linked?.week ?? detail.data?.week ?? null
+  const slate = useNflSlate(season, weekNumber)
+  const others = useNflOtherMarkets(playerId, season, weekNumber)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
   if (playerId === null || isNotFound(detail.error)) return <NotFound />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>

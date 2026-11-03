@@ -72,7 +72,7 @@ export default function NflGamePage() {
         { key: 'props', label: 'Player Props', children: <div className="nfl-game-main">
           {slate.isLoading && <LoadingState message="Loading player props..." />}
           {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
-          {game && slate.data && <NflGameProps games={slate.data.games} game={game} />}
+          {game && slate.data && <NflGameProps games={slate.data.games} game={game} week={{ season: detail.data.season, week: detail.data.week }} />}
           {slate.isSuccess && !game && <p className="nfl-game-empty">No player props stored for this game.</p>}
           <NflGameContext game={detail.data} section="usage" />
         </div> },

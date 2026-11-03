@@ -60,13 +60,13 @@ export default function NflPropBoardPage() {
       <p className="nfl-prop-table-empty">Recent results only. No model projection, edge, or ranking. Standard and alternate lines are shown together.</p>
       {otherCategory.games.map(({ game, group }) => <section key={game.gameId} className="prop-table-panel" aria-label={`${game.awayTeam} at ${game.homeTeam}`}>
         <h3 className="nfl-game-label"><Link to={`/nfl/game/${game.gameId}`}>{game.awayTeam} @ {game.homeTeam}</Link> · {formatKickoffTime(game.startUtc)}</h3>
-        <NflLineOnlyTable group={group} />
+        <NflLineOnlyTable group={group} week={{ season: activeSeason, week: activeWeek }} />
       </section>)}
     </section>}
     {category && <>
       <section className="prop-table-panel" aria-label="Prop lines">
         {category.rateable.length === 0 && <p className="nfl-prop-table-empty">{isTargetsReference(category.market) ? 'No standard full-game Rec Targets references available.' : `No rateable ${marketLabel(category.market).toLowerCase()} lines this week.`}</p>}
-        <NflPropTable category={category} now={Date.now()}
+        <NflPropTable category={category} now={Date.now()} week={{ season: activeSeason, week: activeWeek }}
           rateable={category.rateable.map((row, index) => ({ row, rank: isTargetsReference(row.market) ? null : index + 1 }))}
           other={showAll ? category.other.map(row => ({ row, rank: null })) : []} />
       </section>

@@ -5,7 +5,7 @@ import { NflLineOnlyProps } from '~/components/nfl/NflLineOnlyProps'
 import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import { useRestoreOpenedRow } from '~/hooks/useRestoreOpenedRow'
-import type { NflSlateGame } from '~/types/nfl'
+import type { NflSeasonWeek, NflSlateGame } from '~/types/nfl'
 import { hasKickedOff } from '~/utils/nflGame'
 import { nflGameProps } from '~/utils/nflGameProps'
 import { marketLabel } from '~/utils/nflLabels'
@@ -25,11 +25,13 @@ function Segment<T extends string>({ label, options, value, onChange }: { label:
 interface Props {
   games: NflSlateGame[]
   game: NflSlateGame
+  /** The game's own week, carried into every player link. */
+  week: NflSeasonWeek
   now?: Date
 }
 
 /** The game's props as prop-board rows, ranked and scored by the week-wide board. */
-export function NflGameProps({ games, game, now }: Props) {
+export function NflGameProps({ games, game, week, now }: Props) {
   // One clock per visit, so the memoized board is not rebuilt on every render.
   const [mountedAt] = useState(() => new Date())
   const at = now ?? mountedAt
@@ -47,7 +49,7 @@ export function NflGameProps({ games, game, now }: Props) {
   const visible = categories.filter(item => item.rateable.length > 0 || (showAll && item.other.length > 0))
   const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
   return <section className="nfl-game-props" aria-label="Props for this game">
-    <NflSlateDigest items={digest} scope="this game" linkFor={item => nflPlayerMarketLink(item.playerId, item.marketKey)} />
+    <NflSlateDigest items={digest} scope="this game" linkFor={item => nflPlayerMarketLink(item.playerId, item.marketKey, week)} />
     <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines · ranks from this week's prop board</small></h2>
     <p className="nfl-game-props__intro">Compare projections with full-game lines. Gray gaps are research comparisons, not recommendations.</p>
     <details className="nfl-game-props__help">
@@ -64,9 +66,9 @@ export function NflGameProps({ games, game, now }: Props) {
     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">No comparable full-game lines for this position. {!showAll ? 'Include alternate and thin-sample lines, or choose another position.' : 'Choose another position or check the other markets below.'}</div>}
     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market prop-table-panel" aria-label={`${marketLabel(item.category.market)} lines`}>
       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
-      <NflPropTable category={item.category} now={at.getTime()} inGame
+      <NflPropTable category={item.category} now={at.getTime()} inGame week={week}
         rateable={item.rateable} other={showAll ? item.other.map(row => ({ row, rank: null })) : []} />
     </section>)}
-    <NflLineOnlyProps gameId={game.gameId} position={position} />
+    <NflLineOnlyProps gameId={game.gameId} position={position} week={week} />
   </section>
 }

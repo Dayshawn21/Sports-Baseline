@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
 import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { FLAG_LABELS, formatHistoryValue, marketLabel } from '~/utils/nflLabels'
+import type { NflSeasonWeek } from '~/types/nfl'
 import type { NflBoardCategory, NflBoardLine } from '~/utils/nflPropBoard'
 import { openedRowKey } from '~/utils/nflOpenedRow'
 import { FROM_BOARD, nflPlayerMarketLink } from '~/utils/nflPlayer'
@@ -65,11 +66,12 @@ interface RowProps {
   category: NflBoardCategory
   inGame: boolean
   now: number
+  week: NflSeasonWeek | null
 }
 
-function PropRow({ item: { row, rank }, category, inGame, now }: RowProps) {
+function PropRow({ item: { row, rank }, category, inGame, now, week }: RowProps) {
   const navigate = useNavigate()
-  const to = nflPlayerMarketLink(row.playerId, row.market)
+  const to = nflPlayerMarketLink(row.playerId, row.market, week)
   const card = nflPropCard(row, rank, category.referenceLine, now)
   const classes = ['is-row', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
   // Links and the mini bars handle their own clicks; a modified click keeps the browser's new-tab behavior.
@@ -111,14 +113,16 @@ interface Props {
   now: number
   /** On a game page the rows drop the matchup and kickoff the page already shows. */
   inGame?: boolean
+  /** The week these rows belong to, so a row opens the player page on that week. */
+  week?: NflSeasonWeek | null
 }
 
 /** One market's lines, one row each, ranked as the board ranks them; a row opens the player page. Gray until 27h. */
-export function NflPropTable({ category, rateable, other, now, inGame = false }: Props) {
+export function NflPropTable({ category, rateable, other, now, inGame = false, week = null }: Props) {
   const td = category.market === 'anytime_touchdown'
   const reference = isTargetsReference(category.market)
   const columns = td ? TD_COLUMNS : STAT_COLUMNS.map(([key, label]): [string, ReactNode] => [key, reference && key === 'model' ? 'Reference' : label])
-  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} inGame={inGame} now={now} />
+  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} inGame={inGame} now={now} week={week} />
   return <table className={`prop-table nfl-prop-table${td ? ' is-td' : ''}`} aria-label={`${marketLabel(category.market)} lines`}>
     {reference && <caption className="nfl-prop-table__reference-note">{TARGETS_REFERENCE_NOTE} Rows are unranked.</caption>}
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
