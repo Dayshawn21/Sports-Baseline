@@ -274,6 +274,10 @@ prerequisite for 19e rather than a parallel nice-to-have.
   - [x] 53f. **NHL rows open the page** - NHL game page prop rows navigate to the page; the inline panel is removed
   - [x] 53g. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
   - [x] 53h. **Tennis rows open the page** - the tennis prop board and match page rows navigate to the player page; the evidence drawer is removed
+- [ ] 54. **Shared player-page shell** - the NFL, NBA, NHL and tennis player pages share one shell: the same Back crumb, header with a status line, injury or availability line, a Props section title with the market tab strip (`?market=`), and the same section order below it; each sport keeps its own evidence inside a market tab. Display only: no change to projections, ranks, edges, versions or gray colors, and no new endpoints
+  - [x] 54a. **Shell and NBA/NHL** - extract the shared shell (page container, crumb, head, injury line, empty state) and the market tab strip from the near-duplicate NBA and NHL pages and move both onto it; their output is unchanged Completed 2026-11-03: `PlayerMarketTabs` and `PlayerPageShell` in `components/shared/` carry the tab strip, container, crumb, head, injury and not-found frame for NBA and NHL; their pages match the old ones on six live checks (archive `blueprint/history/features/54a-player-page-shell-nba-nhl.md`)
+  - [ ] 54b. **NFL onto the shell** - the NFL page uses the shell with the Props tabs at the top, as on NBA and NHL; its usage block, this-week lines card and game context move into a supporting section below the tabs, and the game log, record splits and footer keep the shared section order
+  - [ ] 54c. **Tennis onto the shell** - the tennis page uses the shell; its Elo, serve and return, match log and sidebar sit in the same below-tabs order
 
 ## Content analysis
 
