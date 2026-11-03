@@ -1,5 +1,6 @@
 import {
   DetailBreakdown, DetailContext, DetailFlags, DetailGameLog, DetailLines, DetailProjection, DetailSportsbook, DetailStatus,
+  DetailVolume,
 } from '~/components/nfl/NflPropDetailSections'
 import { NflOpponentAllowed } from '~/components/nfl/NflEvidenceContext'
 import type { NflSlateGame } from '~/types/nfl'
@@ -34,6 +35,7 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
       <NflOpponentAllowed row={row} game={game} />
       <DetailContext detail={detail} />
       <DetailBreakdown detail={detail} />
+      <DetailVolume row={row} />
       <DetailLines detail={detail} />
       <DetailSportsbook detail={detail} />
       <DetailStatus detail={detail} />

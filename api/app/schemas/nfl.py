@@ -256,6 +256,27 @@ class NflProspectsResponse(_CamelModel):
     lines: list[NflPropLineSchema]
 
 
+class NflVolumeReferenceSchema(_CamelModel):
+    """The gray `nfl-volume-v1` receptions reference beside v4 on the same line (49c).
+
+    P(over) is the anchored value from `nfl-volume-anchor-v1`; it is a reference
+    until 49d reads `adopt`, never a pick.
+    """
+
+    projection: float
+    median: float
+    line: float
+    gap: float
+    games_in_sample: int
+    q_vol: float
+    p_over: float
+    p_under: float
+    p_push: float
+    model_version: str
+    over_probability_version: str
+    quality_flags: list[str]
+
+
 class NflSlateLineSchema(_CamelModel):
     """One market for one player: our baseline beside the market's line."""
 
@@ -323,6 +344,8 @@ class NflSlateLineSchema(_CamelModel):
     p_over: float | None = None
     p_under: float | None = None
     over_probability_version: str | None = None
+    # The gray `nfl-volume-v1` companion on receptions lines (49c); never a pick.
+    volume: NflVolumeReferenceSchema | None = None
 
 
 class NflHistorySampleSchema(_CamelModel):

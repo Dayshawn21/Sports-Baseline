@@ -41,3 +41,4 @@
 .nfl-line-only-table col.is-over { width: 112px; }
 .nfl-line-only-table td.nfl-line-only-table__also { color: var(--text-secondary); white-space: normal; }
 a.prop-table__open:hover { text-decoration: underline; }
+.nfl-prop-table__volume { display: block; color: var(--text-secondary); font: 400 11px var(--font-mono); white-space: nowrap; }

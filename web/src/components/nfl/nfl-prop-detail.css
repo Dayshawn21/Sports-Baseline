@@ -441,3 +441,7 @@
   cursor: help;
 }
 
+
+.nfl-prop-detail__volume .nfl-prop-detail__note {
+  color: var(--text-secondary);
+}

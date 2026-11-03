@@ -18,6 +18,7 @@ from app.core.nfl_qb_change import Qb, QbGame, QbInjury
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_environment import NflEnvironmentGame
 from app.core.nfl_projection_backtest import REPLAY_MARKETS_BY_POSITION, ReplayRow
+from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.nfl_prop_market import SettledPropRow
 from app.core.nfl_prop_odds import consensus
 from app.core.nfl_td_backtest import NflSnapRow, NflWeeklyTdRow
@@ -1364,6 +1365,11 @@ MODELLED_MARKET_FILTER = "l.market IN ({})".format(", ".join(f"'{market.value}'"
 V4_MARKET_FILTER = "l.market IN ({})".format(
     ", ".join(f"'{market.value}'" for market in NflPropMarket if market in NFL_V4_PROP_MARKETS)
 )
+# Receptions is both a v4 market and the volume model's, so a line can carry a
+# frozen row from each. v4's readers must drop the other model's rows before
+# they pick the newest per line, or the later row would replace v4's in 27j.
+NON_V4_MODEL_VERSIONS = [NFL_VOLUME_MODEL_VERSION]
+NOT_OTHER_MODEL = "NOT (p.model_version = ANY(CAST(:non_v4_model_versions AS text[])))"
 
 _LATEST_LINES_CTE = f"""
     latest_lines AS (
@@ -2552,7 +2558,7 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
                 WHERE p.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
                   AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
-                  AND {V4_MARKET_FILTER}
+                  AND {V4_MARKET_FILTER} AND {NOT_OTHER_MODEL}
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
             )
             SELECT frozen.id, g.season, g.week, frozen.game_id, frozen.player_id, frozen.market,
@@ -2566,7 +2572,7 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
             LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = frozen.player_id AND sc.game_id = frozen.game_id
             ORDER BY g.week, frozen.id
         """),
-        {"season": season},
+        {"season": season, "non_v4_model_versions": NON_V4_MODEL_VERSIONS},
     )
     return [_frozen_line(row) for row in rows.mappings()]
 
@@ -2620,10 +2626,11 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
                    WHERE fl.sport = 'nfl' AND fl.provider = latest.provider AND fl.provider_prop_id = latest.provider_prop_id
                      AND fl.market = latest.market
                      AND fl.fetched_at < g.start_utc AND p.generated_at < g.start_utc
+                     AND {NOT_OTHER_MODEL}
                ))
         FROM latest
         GROUP BY latest.week ORDER BY latest.week
-    """), {"season": season})
+    """), {"season": season, "non_v4_model_versions": NON_V4_MODEL_VERSIONS})
     return {week: (int(lines), int(frozen)) for week, lines, frozen in rows.fetchall()}
 
 

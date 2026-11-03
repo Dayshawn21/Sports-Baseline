@@ -36,7 +36,9 @@ from app.nfl.markets import NflPropMarket
 from app.nfl.weather import stadium_for_home_team
 from app.repositories import nfl as nfl_repo
 from app.repositories import nfl_targets as targets_repo
+from app.repositories import nfl_volume_serving as volume_repo
 from app.services.nfl.targets import targets_slate_line
+from app.services.nfl.volume import volume_reference
 from app.schemas.nfl import (
     NflGameModelSchema, NflHistoryResultSchema, NflHistorySampleSchema, NflSlateGameSchema, NflSlateLineSchema,
     NflSlateResponse, NflUnmatchedLineSchema, NflWeatherSchema,
@@ -304,6 +306,7 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
     elo_games = await nfl_repo.get_elo_games(db)
     targets_rows = await targets_repo.get_targets_serving_lines(db, season, week)
     unmatched_targets = await targets_repo.get_unmatched_targets_lines(db, season, week)
+    volume_rows = await volume_repo.get_volume_serving_lines(db, season, week)
 
     # Everything below is CPU only. Run in a worker thread so the event loop keeps
     # answering /health and other visitors: inline, a cold week stalled the loop for
@@ -325,6 +328,7 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
             for game_id, players in devigged_by_game.items()
         }
 
+        volume_by_line = {row.line_id: volume_reference(row) for row in volume_rows}
         lines_by_game: dict[int, list[NflSlateLineSchema]] = {}
         for row in line_rows:
             row = apply_season_blend(apply_team_game_dvp(
@@ -332,15 +336,17 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
             ), season)
             home_market_prob, market_fetched_at = market_probabilities.get(row["game_id"], (None, None))
             book_odds = slate_book_odds(row["market"], row["segment"], prop_odds.get((row["game_id"], row["player_id"]), []))
-            lines_by_game.setdefault(row["game_id"], []).append(
-                _slate_line(
-                    row, season, home_market_prob,
-                    history_by_player.get(row["player_id"], []), book_odds,
-                    devigged_by_game.get(row["game_id"], {}).get(row["player_id"]),
-                    opponent_allowed_history.get((row.get("opponent_team_id"), row["position"]), []),
-                    market_is_stale=moneyline_is_stale(market_fetched_at, kickoffs.get(row["game_id"]), now),
-                )
+            line = _slate_line(
+                row, season, home_market_prob,
+                history_by_player.get(row["player_id"], []), book_odds,
+                devigged_by_game.get(row["game_id"], {}).get(row["player_id"]),
+                opponent_allowed_history.get((row.get("opponent_team_id"), row["position"]), []),
+                market_is_stale=moneyline_is_stale(market_fetched_at, kickoffs.get(row["game_id"]), now),
             )
+            volume = volume_by_line.get(line.line_id)
+            if volume is not None:
+                line = line.model_copy(update={"volume": volume})
+            lines_by_game.setdefault(row["game_id"], []).append(line)
         for row in targets_rows:
             lines_by_game.setdefault(row.game_id, []).append(targets_slate_line(row))
         for game_lines in lines_by_game.values():

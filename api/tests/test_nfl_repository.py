@@ -18,6 +18,7 @@ from app.ingest.nflverse_team_efficiency import NflverseTeamEfficiency
 from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_elo import NflEloGame, NflTeamEloRow
 from app.core.nfl_line_grading import settle_line
+from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
 from app.core.nfl_game_line_clv import ClvGame, OddsCandidate
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_lines import NflGameLineGame
@@ -1033,7 +1034,7 @@ def test_frozen_lines_take_the_latest_pre_kickoff_frozen_row_of_each_provider_pr
     [frozen] = asyncio.run(nfl_repository.get_frozen_gradeable_lines(cast(AsyncSession, session), 2026))
 
     [(sql, params)] = session.calls
-    assert params == {"season": 2026}
+    assert params == {"season": 2026, "non_v4_model_versions": ["nfl-volume-v1"]}
     assert "FROM sport_prop_predictions p JOIN sport_prop_lines l ON l.sport = 'nfl' AND l.id = p.prop_line_id" in sql
     assert "DISTINCT ON (l.provider, l.provider_prop_id)" in sql
     assert "l.fetched_at < g.start_utc AND p.generated_at < g.start_utc" in sql
@@ -1074,6 +1075,28 @@ def test_frozen_coverage_counts_27a_full_game_lines_with_any_frozen_row_per_week
     assert "fl.provider = latest.provider AND fl.provider_prop_id = latest.provider_prop_id" in sql
     assert "GROUP BY latest.week" in sql
     assert coverage == {2: (6021, 0), 3: (120, 95)}
+
+
+def test_v4_readers_exclude_the_volume_model_before_picking_the_newest_frozen_row() -> None:
+    assert nfl_repository.NON_V4_MODEL_VERSIONS == ["nfl-volume-v1"]
+    assert NFL_PROJECTION_MODEL_VERSION not in nfl_repository.NON_V4_MODEL_VERSIONS
+
+    session = _MappingSession([])
+    asyncio.run(nfl_repository.get_frozen_gradeable_lines(cast(AsyncSession, session), 2026))
+    [(sql, params)] = session.calls
+    assert params["non_v4_model_versions"] == ["nfl-volume-v1"]
+    where, order = sql.index(nfl_repository.NOT_OTHER_MODEL), sql.index("ORDER BY l.provider, l.provider_prop_id")
+    assert sql.index("WHERE p.sport = 'nfl'") < where < order
+
+
+def test_frozen_coverage_counts_only_v4_rows_as_frozen() -> None:
+    session = _ScriptedSession([])
+    asyncio.run(nfl_repository.get_frozen_coverage(cast(AsyncSession, session), 2026))
+    [(raw_sql, params)] = session.calls
+    sql = " ".join(raw_sql.split())
+    assert params == {"season": 2026, "non_v4_model_versions": ["nfl-volume-v1"]}
+    exists = sql[sql.index("EXISTS ( SELECT 1 FROM sport_prop_lines fl"):]
+    assert nfl_repository.NOT_OTHER_MODEL in exists
 
 
 def test_the_modelled_market_filter_lists_exactly_the_projected_markets() -> None:

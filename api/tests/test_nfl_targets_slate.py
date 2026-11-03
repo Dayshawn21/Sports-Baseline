@@ -43,6 +43,7 @@ def _inputs(
         monkeypatch.setattr(slate.nfl_repo, name, AsyncMock(return_value=value))
     monkeypatch.setattr(slate.targets_repo, "get_targets_serving_lines", AsyncMock(return_value=targets))
     monkeypatch.setattr(slate.targets_repo, "get_unmatched_targets_lines", AsyncMock(return_value=unmatched or []))
+    monkeypatch.setattr(slate.volume_repo, "get_volume_serving_lines", AsyncMock(return_value=[]))
 
 
 def test_promotion_widens_serving_and_removes_only_targets_from_line_only() -> None:

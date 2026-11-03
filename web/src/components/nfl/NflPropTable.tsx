@@ -9,6 +9,7 @@ import { openedRowKey } from '~/utils/nflOpenedRow'
 import { FROM_BOARD, nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nflPropCard, recentBars, type NflPropCardModel } from '~/utils/nflPropCards'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
+import { VOLUME_NOTE, volumeTableText } from '~/utils/nflVolume'
 import '~/components/shared/prop-table.css'
 import './nfl-prop-table.css'
 
@@ -71,6 +72,7 @@ function PropRow({ item: { row, rank }, category, inGame, now }: RowProps) {
   const navigate = useNavigate()
   const to = nflPlayerMarketLink(row.playerId, row.market)
   const card = nflPropCard(row, rank, category.referenceLine, now)
+  const volumeText = volumeTableText(row)
   const classes = ['is-row', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
   // Links and the mini bars handle their own clicks; a modified click keeps the browser's new-tab behavior.
   const open = (event: MouseEvent) => {
@@ -93,7 +95,7 @@ function PropRow({ item: { row, rank }, category, inGame, now }: RowProps) {
   return <tr className={classes} title={card.why} onClick={open}>
     {rankCell}{player}
     <td className="is-num" data-label="line">{card.lineText}</td>
-    <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}</td>
+    <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}{volumeText && <small className="nfl-prop-table__volume" title={VOLUME_NOTE}>{volumeText}</small>}</td>
     <td className="prop-table__end is-num nfl-prop-table__gap"><Gap card={card} note={edgeNote(category)} /></td>
     <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" valueLabel={bar => String(bar.value)} lineLabel={card.lineText} showOpponents title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
     <td><Sample card={card} /></td>

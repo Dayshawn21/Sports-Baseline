@@ -8,6 +8,7 @@ import { formatProjection } from '~/utils/nflLabels'
 import { formBars, type NflRecentBar } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
 import { playerSearch } from '~/utils/nflPlayer'
+import { volumeReferenceModel } from '~/utils/nflVolume'
 import './nfl-prop-detail.css'
 
 export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
@@ -110,6 +111,16 @@ export function DetailBreakdown({ detail }: { detail: NflPropDetailModel }) {
         <dd>{item.value}</dd>
       </div>)}
     </dl>
+  </section>
+}
+
+export function DetailVolume({ row }: { row: NflSlateLine }) {
+  const volume = volumeReferenceModel(row)
+  if (volume === null) return null
+  return <section className="nfl-prop-detail__section nfl-prop-detail__volume">
+    <SectionHead title={volume.title} aside={volume.aside} />
+    <dl className="nfl-prop-detail__kv">{volume.rows.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+    <p className="nfl-prop-detail__note">{volume.note}</p>
   </section>
 }
 

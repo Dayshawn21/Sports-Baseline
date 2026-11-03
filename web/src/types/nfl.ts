@@ -1,6 +1,22 @@
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import type { TrackSignal } from '~/types/tennis'
 
+/** The gray nfl-volume-v1 receptions reference beside v4 on the same line (49c); never a pick. */
+export interface NflVolumeReference {
+  projection: number
+  median: number
+  line: number
+  gap: number
+  gamesInSample: number
+  qVol: number
+  pOver: number
+  pUnder: number
+  pPush: number
+  modelVersion: string
+  overProbabilityVersion: string
+  qualityFlags: string[]
+}
+
 export interface NflSlateLine {
   lineId: number
   playerId: number
@@ -65,6 +81,8 @@ export interface NflSlateLine {
   pOver: number | null
   pUnder: number | null
   overProbabilityVersion: string | null
+  /** Receptions lines only; absent on older stored slates. */
+  volume?: NflVolumeReference | null
 }
 
 export interface NflHistorySample {
