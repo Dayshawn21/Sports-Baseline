@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -121,8 +121,53 @@ describe('specialist player pages', () => {
     ])
     expect(SPECIALIST_COLUMNS.P).toEqual([{ field: 'punts', label: 'Punts', market: 'punts' }])
   })
-  it('carries the encoded market to the player game log', () => {
-    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
+  it('carries the encoded market to the player page', () => {
+    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points')
     expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
+  })
+})
+
+describe('propSectionIds', () => {
+  it('names a section per market and numbers a repeat', () => {
+    expect(propSectionIds(['receiving_yards', 'receptions', 'receiving_yards'])).toEqual(['prop-receiving_yards', 'prop-receptions', 'prop-receiving_yards-2'])
+  })
+
+  it('is empty for no markets', () => {
+    expect(propSectionIds([])).toEqual([])
+  })
+})
+
+describe('selectedPropMarket', () => {
+  const markets = ['receiving_yards', 'receptions']
+
+  it('returns a market that has a section', () => {
+    expect(selectedPropMarket(new URLSearchParams('market=receptions'), markets)).toBe('receptions')
+  })
+
+  it('ignores an absent, empty or unknown market', () => {
+    expect(selectedPropMarket(new URLSearchParams(''), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market='), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market=passing_yards'), markets)).toBeNull()
+  })
+})
+
+describe('playerSearch', () => {
+  it('changes one param and keeps the rest', () => {
+    const params = new URLSearchParams('market=receptions&form=opp')
+    expect(playerSearch(params, { market: 'receiving_yards' })).toBe('?market=receiving_yards&form=opp')
+    expect(playerSearch(params, { form: '10' })).toBe('?market=receptions&form=10')
+  })
+
+  it('removes a param set to null and encodes values', () => {
+    expect(playerSearch(new URLSearchParams('market=receptions&form=opp'), { form: null })).toBe('?market=receptions')
+    expect(playerSearch(new URLSearchParams(''), { market: 'a b' })).toBe('?market=a+b')
+    expect(playerSearch(new URLSearchParams('form=10'), { form: null })).toBe('?')
+  })
+})
+
+describe('arrivedFromBoard', () => {
+  it('is true only for the state a board row sets', () => {
+    expect(arrivedFromBoard(FROM_BOARD)).toBe(true)
+    expect([arrivedFromBoard(null), arrivedFromBoard(undefined), arrivedFromBoard({}), arrivedFromBoard({ from: 'game' }), arrivedFromBoard('board')]).toEqual([false, false, false, false, false])
   })
 })

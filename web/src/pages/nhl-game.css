@@ -24,15 +24,18 @@
 .nhl-prop-group h3 small { color: var(--text-muted); font: 400 11px var(--font-mono); }
 .nhl-prop-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: left; color: var(--text-secondary); font-size: 12px; }
 .nhl-prop-table th { padding: 8px 8px; color: var(--text-muted); font-size: 11px; font-weight: 500; }
-.nhl-prop-table th:first-child { width: 40%; }
-.nhl-prop-table th:nth-child(2), .nhl-prop-table th:nth-child(3) { width: 15%; }
-.nhl-prop-table th:last-child { width: 30%; }
+.nhl-prop-table th:first-child { width: 34%; }
+.nhl-prop-table th:nth-child(2) { width: 14%; }
+.nhl-prop-table th:nth-child(3) { width: 28%; }
+.nhl-prop-table th:last-child { width: 24%; }
 .nhl-prop-table td { padding: 10px 8px; border-top: 1px solid var(--border-subtle); overflow-wrap: anywhere; vertical-align: top; }
 .nhl-prop-table td strong { display: block; color: var(--text-primary); font: 600 13px/1.4 var(--font-body); }
 .nhl-prop-table td small, .nhl-prop-table time { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 .nhl-prop-table td small { display: block; margin-top: 2px; }
 .nhl-prop-table td.nhl-prop-line { color: var(--text-primary); font: 500 14px/1.4 var(--font-mono); }
 .nhl-prop-table .nhl-prop-updated-mobile { display: none; }
+.nhl-prop-link { color: inherit; text-decoration: underline; text-decoration-color: var(--border-card); text-underline-offset: 3px; }
+.nhl-prop-link:hover, .nhl-prop-link:focus-visible { text-decoration-color: currentColor; }
 
 .nhl-game-context-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .nhl-game-context-teams > * { min-width: 0; padding: 14px 16px; }
@@ -59,8 +62,9 @@
   .nhl-game-context-teams { grid-template-columns: minmax(0, 1fr); }
   .nhl-game-context-teams > * + * { border-left: 0; border-top: 1px solid var(--border-subtle); }
   .nhl-prop-group { padding-right: 8px; padding-left: 8px; }
-  .nhl-prop-table th:first-child { width: 52%; }
-  .nhl-prop-table th:nth-child(2), .nhl-prop-table th:nth-child(3) { width: 24%; }
+  .nhl-prop-table th:first-child { width: 40%; }
+  .nhl-prop-table th:nth-child(2) { width: 22%; }
+  .nhl-prop-table th:nth-child(3) { width: 38%; }
   .nhl-prop-table .nhl-prop-updated { display: none; }
   .nhl-prop-table .nhl-prop-updated-mobile { display: block; margin-top: 4px; }
   .nhl-prop-table td, .nhl-prop-table th { padding-right: 4px; padding-left: 4px; }

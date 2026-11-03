@@ -1,7 +1,7 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlSlate } from '~/api/nhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlSlate } from '~/api/nhl'
 import { retryUnlessNotFound } from '~/utils/httpError'
-import { validNhlGameId } from '~/utils/nhlGame'
+import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
 
 const STALE_TIME = 5 * 60 * 1000
@@ -35,6 +35,17 @@ export function nhlLineOnlyPropsQuery(gameId: number | null) {
   })
 }
 
+export function nhlPlayerPropsQuery(playerId: number | null, date: string | null) {
+  const id = validNhlPlayerId(playerId) ? playerId : null
+  const requested = parseSlateDate(date)
+  return queryOptions({
+    queryKey: ['nhl', 'player', id, 'props', requested],
+    queryFn: id === null ? skipToken : () => fetchNhlPlayerProps(id, requested),
+    staleTime: STALE_TIME,
+    retry: retryUnlessNotFound,
+  })
+}
+
 export function useNhlSlate(date: string | null) {
   return useQuery(nhlSlateQuery(date))
 }
@@ -45,4 +56,8 @@ export function useNhlGame(gameId: number | null) {
 
 export function useNhlLineOnlyProps(gameId: number | null) {
   return useQuery(nhlLineOnlyPropsQuery(gameId))
+}
+
+export function useNhlPlayerProps(playerId: number | null, date: string | null) {
+  return useQuery(nhlPlayerPropsQuery(playerId, date))
 }

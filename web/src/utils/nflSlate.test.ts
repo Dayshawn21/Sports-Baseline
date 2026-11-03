@@ -171,8 +171,16 @@ describe('slateDigest', () => {
   it('carries display strings for a box', () => {
     const [first, second] = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(first).toEqual({ lineId: 21, gameId: 2, playerName: 'Player 21', market: 'Receiving yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%' })
+    expect(first).toEqual({ lineId: 21, gameId: 2, playerId: 21, playerName: 'Player 21', market: 'Receiving yards', marketKey: 'receiving_yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%' })
     expect([second.matchup, second.market, second.gap]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%'])
+  })
+
+  it('keeps the raw market for a Rec Targets reference box while the label says reference', () => {
+    const targets = game(1, '2026-10-04T17:00:00Z', { lines: [line(41, { market: 'receiving_targets', line: 6, projection: 9, edge: 3 })] })
+    const [item] = slateDigest(buildNflPropBoard([targets], 'all', NOW))
+
+    expect(item.marketKey).toBe('receiving_targets')
+    expect(item.market).toBe('Rec targets reference')
   })
 
   it('is empty when nothing upcoming is rateable', () => {

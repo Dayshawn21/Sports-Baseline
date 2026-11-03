@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflPlayerDetail, NflPlayerGame } from '~/types/nfl'
-import { FOCUS_LABELS, isNflSpecialist, SPECIALIST_COLUMNS } from '~/utils/nflPlayer'
+import { FOCUS_LABELS, isNflSpecialist, selectedPropMarket, SPECIALIST_COLUMNS } from '~/utils/nflPlayer'
 
 const MISSING = '--'
 
@@ -21,16 +21,18 @@ function optional(value: number | null, format: (value: number) => string = Stri
 }
 
 /** This season's games and the latest of last season, newest first, with the stored focus line per game. */
-export function NflPlayerGameLog({ player }: { player: NflPlayerDetail }) {
+/** `layoutSettled` is false while content above the log is still loading, so the market scroll waits for it. `propMarkets` are the page's prop sections; a market with its own section scrolls there instead. */
+export function NflPlayerGameLog({ player, layoutSettled, propMarkets }: { player: NflPlayerDetail, layoutSettled: boolean, propMarkets: string[] }) {
   const [params] = useSearchParams()
   const selectedMarket = params.get('market')
   const specialist = isNflSpecialist(player.position)
   const columns = player.position === 'K' ? SPECIALIST_COLUMNS.K : player.position === 'P' ? SPECIALIST_COLUMNS.P : []
   const log = useRef<HTMLElement>(null)
-  const selectedColumn = columns.find(column => column.market !== null && column.market === selectedMarket)?.field
+  const hasSection = selectedPropMarket(params, propMarkets) !== null
+  const selectedColumn = hasSection ? undefined : columns.find(column => column.market !== null && column.market === selectedMarket)?.field
   useEffect(() => {
-    if (selectedColumn && player.gameLog.length > 0) log.current?.scrollIntoView({ block: 'start' })
-  }, [selectedColumn, player.playerId, player.gameLog.length])
+    if (layoutSettled && selectedColumn && player.gameLog.length > 0) log.current?.scrollIntoView({ block: 'start' })
+  }, [layoutSettled, selectedColumn, player.playerId, player.gameLog.length])
   const showPassing = player.position === 'QB' || player.gameLog.some(game => game.passingAttempts > 0)
   const lineLabel = player.focusMarket ? FOCUS_LABELS[player.focusMarket]?.line ?? null : null
   return <>

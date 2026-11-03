@@ -181,6 +181,9 @@ class NbaLineOnlyPropsResponse(_CamelModel):
     team_stats: NbaTeamStatsContextSchema | None = None
 
 
+NbaPropFlagName = Literal["few_prior_games", "low_minutes", "no_over_probability", "integer_line"]
+
+
 class NbaPropLineSchema(NbaLineOnlyLineSchema):
     # Null means not served (the flags say why), never zero.
     projection: float | None
@@ -191,7 +194,7 @@ class NbaPropLineSchema(NbaLineOnlyLineSchema):
     p_over: float | None
     p_under: float | None
     over_probability_version: str | None
-    flags: list[Literal["few_prior_games", "low_minutes", "no_over_probability", "integer_line"]]
+    flags: list[NbaPropFlagName]
 
 
 class NbaPropsResponse(_CamelModel):
@@ -201,6 +204,60 @@ class NbaPropsResponse(_CamelModel):
     lines: list[NbaPropLineSchema]
     injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
     team_stats: NbaTeamStatsContextSchema | None = None
+
+
+class NbaPlayerGameRefSchema(_CamelModel):
+    game_id: int
+    away_team: str
+    home_team: str
+    start_utc: dt.datetime | None
+    status: str
+
+
+class NbaPlayerGameSchema(_CamelModel):
+    game_date: dt.date
+    opponent: str | None
+    # NULL when a stat the market needs was not loaded for that game, never zero.
+    value: float | None
+
+
+class NbaPlayerRungSchema(_CamelModel):
+    line: float
+    odds_type: str | None
+    fetched_at: dt.datetime
+    # Model fields are null on a line-only market and where the projection is not served.
+    gap: float | None = None
+    p_over: float | None = None
+    p_under: float | None = None
+    over_probability_version: str | None = None
+    flags: list[NbaPropFlagName] = Field(default_factory=list)
+
+
+class NbaPlayerMarketSchema(_CamelModel):
+    market: str
+    kind: Literal["modelled", "line-only"]
+    projection: float | None = None
+    games_in_sample: int | None = None
+    prior_minutes: float | None = None
+    lines: list[NbaPlayerRungSchema]
+    recent: list[NbaPlayerGameSchema]
+    opponent_games: list[NbaPlayerGameSchema]
+
+
+class NbaPlayerPropsResponse(_CamelModel):
+    """One player's props on a slate date: display only, never a pick, rank or signal color (53a)."""
+    player_id: int
+    name: str
+    position: str | None
+    team: str | None
+    date: dt.date
+    game: NbaPlayerGameRefSchema | None
+    opponent: str | None
+    model_version: str
+    injury: NbaInjurySchema | None = None
+    injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
+    team_stats: NbaTeamStatsContextSchema | None = None
+    markets: list[NbaPlayerMarketSchema]
 
 
 class NbaPropBoardGameSchema(_CamelModel):

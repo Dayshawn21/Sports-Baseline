@@ -1,0 +1,9 @@
+.tennis-player-props { margin-top: var(--space-5); }
+.tennis-player-props__controls { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0; }
+.tennis-player-props__group { display: grid; gap: var(--space-3); }
+.tennis-player-props__label { margin: var(--space-3) 0 0; color: var(--text-muted); font: 500 12px var(--font-body); }
+.tennis-player-props .tennis-prop-seg button:disabled { cursor: not-allowed; opacity: 0.5; }
+.tennis-player-props .tennis-prop-bars__dates { gap: var(--space-1); }
+.tennis-player-props .tennis-prop-bars__dates small { overflow: visible; font-size: 11px; line-height: 1.25; text-overflow: clip; white-space: normal; }
+.tennis-player-props__line { scroll-margin-top: calc(var(--nav-height) + 16px); }
+.tennis-player-props__line.is-selected > .tennis-prop-evidence { border-color: var(--text-secondary); }

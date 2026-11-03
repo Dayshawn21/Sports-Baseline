@@ -2,7 +2,7 @@ import client from './client'
 import type {
   NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
   NflModelRanking, NflRankingModelVersion,
-  NflPlayerDetail, NflSlateResponse, NflLineOnlyBoard,
+  NflOtherMarkets, NflPlayerDetail, NflSlateResponse, NflLineOnlyBoard,
 } from '~/types/nfl'
 import { rankingParams } from '~/utils/nflTrackRecord'
 
@@ -45,6 +45,11 @@ export async function fetchNflLineOnlyProps(gameId: number): Promise<NflLineOnly
 
 export async function fetchNflWeekLineOnlyProps(season: number, week: number): Promise<NflLineOnlyBoard> {
   const { data } = await client.get<NflLineOnlyBoard>('/nfl/line-only-props', { params: { season, week } })
+  return data
+}
+
+export async function fetchNflOtherMarkets(playerId: number, season: number, week: number): Promise<NflOtherMarkets> {
+  const { data } = await client.get<NflOtherMarkets>(`/nfl/players/${playerId}/other-markets`, { params: { season, week } })
   return data
 }
 

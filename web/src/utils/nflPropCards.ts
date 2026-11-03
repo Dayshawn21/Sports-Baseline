@@ -1,3 +1,4 @@
+import type { NflHistorySample } from '~/types/nfl'
 import { depthLabel, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence } from '~/utils/nflBookOdds'
 import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '~/utils/nflLabels'
@@ -38,7 +39,10 @@ export interface NflPropCardModel {
 export interface NflRecentBar {
   value: number
   opponentTeam: string | null
+  gameDate?: string | null
   heightPct: number
+  /** Where the bar's bottom edge sits; present only when the plot reaches below zero, otherwise bars start at 0. */
+  bottomPct?: number
   vsLine: 'above' | 'below' | 'push' | null
 }
 
@@ -109,18 +113,28 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
  * so TD gets none. History is whole-game, so a partial-segment line is not drawn against it.
  */
 export function recentBars(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'segment'>): NflRecentBars {
-  if (row.market === TD_MARKET || !row.recentForm.values.length) return { bars: [], linePct: null }
-  const values = [...row.recentForm.values].reverse()
+  return formBars(row.recentForm, row)
+}
+
+/** The same bars for any newest-first sample of the row's market. */
+export function formBars(sample: NflHistorySample, row: Pick<NflBoardLine, 'market' | 'line' | 'segment'>): NflRecentBars {
+  if (row.market === TD_MARKET || !sample.values.length) return { bars: [], linePct: null }
+  const values = [...sample.values].reverse()
   const line = row.segment === 'full_game' ? row.line : null
-  const scale = Math.max(line ?? 0, ...values.map(item => item.value))
-  const pct = (value: number) => (scale > 0 ? Math.min(100, Math.max(0, (value / scale) * 100)) : 0)
+  const amounts = values.map(item => item.value)
+  const low = Math.min(0, line ?? 0, ...amounts)
+  const span = Math.max(line ?? 0, ...amounts, 0) - low
+  const pct = (value: number) => (span > 0 ? Math.min(100, Math.max(0, (value / span) * 100)) : 0)
+  const signed = low < 0
   return {
     bars: values.map(item => ({
       value: item.value,
       opponentTeam: item.opponentTeam,
-      heightPct: pct(item.value),
+      gameDate: item.gameDate ?? null,
+      heightPct: pct(Math.abs(item.value)),
+      ...(signed ? { bottomPct: pct(Math.min(item.value, 0) - low) } : {}),
       vsLine: line === null ? null : item.value > line ? 'above' : item.value < line ? 'below' : 'push',
     })),
-    linePct: line === null ? null : pct(line),
+    linePct: line === null ? null : pct(line - low),
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflHistoryResult } from '~/types/nfl'
 import type { NflBoardLine } from '~/utils/nflPropBoard'
-import { nflPropCard, pickLabel, recentBars } from '~/utils/nflPropCards'
+import { formBars, nflPropCard, pickLabel, recentBars } from '~/utils/nflPropCards'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -158,5 +158,49 @@ describe('recentBars', () => {
   it('does not draw whole-game history against a partial-segment line', () => {
     const half = recentBars(row({ segment: 'first_half', line: 0.5, recentForm: games(30, 15) }))
     expect([half.bars.map(bar => [bar.heightPct, bar.vsLine]), half.linePct]).toEqual([[[50, null], [100, null]], null])
+  })
+})
+
+describe('formBars', () => {
+  it('draws any sample the way recentBars draws the five-game form', () => {
+    const sample = games(60, 50, 20)
+    expect(formBars(sample, row({ line: 50 }))).toEqual(recentBars(row({ line: 50, recentForm: sample })))
+    expect(formBars(games(1, 0), row({ market: 'anytime_touchdown' }))).toEqual({ bars: [], linePct: null })
+  })
+})
+
+describe('formBars below zero', () => {
+  const heights = (sample: ReturnType<typeof games>, line: number | null) => {
+    const drawn = formBars(sample, row({ line }))
+    return { bars: drawn.bars.map(bar => [bar.heightPct, bar.bottomPct]), linePct: drawn.linePct }
+  }
+
+  it('adds no bottom offset when nothing is below zero, so NFL bars are unchanged', () => {
+    const drawn = formBars(games(60, 50, 20), row({ line: 50 }))
+    expect(drawn.bars.every(bar => !('bottomPct' in bar))).toBe(true)
+    expect(drawn.bars.map(bar => bar.heightPct)).toEqual([(20 / 60) * 100, (50 / 60) * 100, 100])
+    expect(drawn.linePct).toBe((50 / 60) * 100)
+    expect(formBars(games(0, 0), row({ line: 0.5 })).bars.every(bar => !('bottomPct' in bar))).toBe(true)
+  })
+
+  it('places a mixed sample on one signed range with the zero line inside the plot', () => {
+    expect(heights(games(3, 0, -2), 1)).toEqual({ bars: [[40, 0], [0, 40], [60, 40]], linePct: 60 })
+  })
+
+  it('draws an all-negative sample down from the zero line at the top', () => {
+    expect(heights(games(-1, -4), null)).toEqual({ bars: [[100, 0], [25, 75]], linePct: null })
+  })
+
+  it('puts a line below zero on the same scale', () => {
+    expect(heights(games(2, -2), -1)).toEqual({ bars: [[50, 0], [50, 50]], linePct: 25 })
+  })
+
+  it('draws a single negative value to the full height', () => {
+    expect(heights(games(-3), null)).toEqual({ bars: [[100, 0]], linePct: null })
+  })
+
+  it('still marks above, below and push against a negative line', () => {
+    const drawn = formBars(games(1, -1, -3), row({ line: -1 }))
+    expect(drawn.bars.map(bar => bar.vsLine)).toEqual(['below', 'push', 'above'])
   })
 })

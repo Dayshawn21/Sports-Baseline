@@ -11,6 +11,8 @@ export interface NflSlateLine {
   recentForm: NflHistorySample
   opponentHistory: NflHistorySample
   opponentAllowedHistory: NflHistorySample
+  /** Up to 10 games, newest first, starting with `recentForm`. Absent in a slate snapshot stored before item 51. */
+  recentFormLong?: NflHistorySample
   market: string
   segment: string
   oddsType: string | null
@@ -73,6 +75,8 @@ export interface NflHistorySample {
 export interface NflHistoryResult {
   value: number
   opponentTeam: string | null
+  /** Local game date, YYYY-MM-DD; absent in a slate snapshot stored before dates were served. */
+  gameDate?: string | null
 }
 
 export interface NflUnmatchedLine {
@@ -172,6 +176,41 @@ export interface NflLineOnlyRecent {
   opponent: string | null
   /** Null when a stat the market needs was not loaded for that game, never zero. */
   value: number | null
+}
+
+/** One game behind a line-only market on the player page; `value` is null when a stat was not loaded, never zero. */
+export interface NflOtherMarketGame {
+  season: number
+  week: number
+  gameDate: string | null
+  opponent: string | null
+  value: number | null
+}
+
+export interface NflOtherMarketRung {
+  line: number
+  oddsType: string | null
+  fetchedAt: string
+}
+
+export interface NflOtherMarket {
+  market: string
+  gameId: number
+  /** Ascending by line. */
+  lines: NflOtherMarketRung[]
+  /** Newest first, up to 10 games since 2024; the first 5 are the board's recent values. */
+  recent: NflOtherMarketGame[]
+  /** Newest first, every earlier game against `opponent` since 2024; empty when `opponent` is null. */
+  opponentGames: NflOtherMarketGame[]
+}
+
+/** `GET /nfl/players/{id}/other-markets` (item 52a): display only, never a projection, edge or rank. */
+export interface NflOtherMarkets {
+  playerId: number
+  season: number
+  week: number
+  opponent: string | null
+  markets: NflOtherMarket[]
 }
 
 export interface NflLineOnlyLine {

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -18,9 +18,9 @@ KICKOFF = datetime(2026, 10, 25, 17, tzinfo=UTC)
 QUANTILES = tuple(index / 20 for index in range(41))
 
 
-def _game(game_id: int, value: float | None, *, season: int = 2026, week: int | None = None) -> TargetsHistoryGame:
+def _game(game_id: int, value: float | None, *, season: int = 2026, week: int | None = None, game_date: date | None = None) -> TargetsHistoryGame:
     return TargetsHistoryGame(
-        TargetsObservation(game_id, season, week if week is not None else game_id, None, value),
+        TargetsObservation(game_id, season, week if week is not None else game_id, None, value, game_date),
         opponent_team_id=3, opponent_team="BUF",
     )
 
@@ -72,6 +72,15 @@ def test_previous_season_baseline_counts_valid_observations_and_ignores_moneylin
     assert result.quality_flags == ["historical_baseline", "stale_baseline_season"]
 
 
+def test_form_samples_carry_each_games_date() -> None:
+    history = (_game(1, 4, game_date=date(2026, 9, 14)), _game(2, 6, game_date=date(2026, 9, 21)), _game(3, 8))
+
+    result = targets_slate_line(_source(history))
+
+    assert [item.game_date for item in result.recent_form.values] == [None, date(2026, 9, 21), date(2026, 9, 14)]
+    assert [item.game_date for item in result.recent_form_long.values] == [None, date(2026, 9, 21), date(2026, 9, 14)]
+
+
 def test_history_uses_valid_pre_week_targets_newest_first_and_separates_opponent_games() -> None:
     history = (
         _game(1, 0), _game(2, 2), replace(_game(3, 4), opponent_team_id=4, opponent_team="DET"),
@@ -85,6 +94,8 @@ def test_history_uses_valid_pre_week_targets_newest_first_and_separates_opponent
     assert result.projection == 5.0 and result.games_in_sample == 6
     assert [item.value for item in result.recent_form.values] == [10, 8, 6, 4, 2]
     assert result.recent_form.average == 6.0
+    assert [item.value for item in result.recent_form_long.values] == [10, 8, 6, 4, 2, 0]
+    assert result.recent_form_long.values[:5] == result.recent_form.values
     assert [item.opponent_team for item in result.recent_form.values] == ["BUF", "BUF", "BUF", "DET", "BUF"]
     assert [item.value for item in result.opponent_history.values] == [10, 8, 6, 2, 0]
     assert result.opponent_history.average == 5.2

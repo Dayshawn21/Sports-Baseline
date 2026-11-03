@@ -5,7 +5,7 @@ import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal, TypeVar
+from typing import Literal, TypeVar, cast
 
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -335,7 +335,8 @@ async def get_game_line_history(db: AsyncSession, game_id: int) -> list[dict[str
     """)
 
 
-_LATEST_PROPS = """
+def _latest_props(scope: str) -> str:
+    return f"""
     WITH ranked AS (
         SELECT l.game_id, l.provider, l.provider_prop_id, l.player_id, p.name AS player_name,
                p.position, l.raw_json ->> 'player_team' AS team, l.market, l.odds_type,
@@ -347,11 +348,14 @@ _LATEST_PROPS = """
         JOIN sport_games g ON g.sport = 'nhl' AND g.id = l.game_id
         JOIN sport_players p ON p.sport = 'nhl' AND p.id = l.player_id
         WHERE l.sport = 'nhl' AND l.provider = 'prizepicks' AND l.segment = 'full_game'
-          AND l.provider_prop_id IS NOT NULL AND l.game_id IN :game_ids
+          AND l.provider_prop_id IS NOT NULL AND {scope}
           AND g.game_type IN ('REG', 'PST') AND l.market IN :markets
           AND (g.start_utc IS NULL OR l.fetched_at < g.start_utc)
     ), latest AS (SELECT * FROM ranked WHERE recency = 1)
 """
+
+
+_LATEST_PROPS = _latest_props("l.game_id IN :game_ids")
 
 
 async def _prop_read(db: AsyncSession, game_ids: Sequence[int], suffix: str) -> list[dict[str, object]]:
@@ -375,3 +379,67 @@ async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict[str, 
                market, odds_type, line, fetched_at
         FROM latest ORDER BY player_name, player_id, market, odds_type, line, provider_prop_id
     """)
+
+
+_PLAYER_PROPS = _latest_props("l.player_id = :player_id AND g.game_date = :game_date")
+_PLAYER_PROP_DATES = _latest_props("l.player_id = :player_id")
+
+
+async def get_player(db: AsyncSession, player_id: int) -> dict[str, object] | None:
+    row = await db.execute(text("""
+        SELECT id AS player_id, name, position FROM sport_players WHERE sport = 'nhl' AND id = :player_id
+    """), {"player_id": player_id})
+    found = row.mappings().first()
+    return dict(found) if found else None
+
+
+async def _player_prop_read(db: AsyncSession, scoped: str, suffix: str, params: dict[str, object]) -> list[dict[str, object]]:
+    statement = text(scoped + suffix).bindparams(bindparam("markets", expanding=True))
+    markets = [market.value for market in NhlLineOnlyMarket]
+    rows = await db.execute(statement, {**params, "markets": markets})
+    return [dict(row) for row in rows.mappings()]
+
+
+async def get_player_line_dates(db: AsyncSession, player_id: int) -> list[date]:
+    rows = await _player_prop_read(db, _PLAYER_PROP_DATES, """
+        SELECT DISTINCT g.game_date FROM latest JOIN sport_games g ON g.id = latest.game_id ORDER BY g.game_date
+    """, {"player_id": player_id})
+    return [cast(date, row["game_date"]) for row in rows]
+
+
+async def get_player_lines(db: AsyncSession, player_id: int, game_date: date) -> list[dict[str, object]]:
+    return await _player_prop_read(db, _PLAYER_PROPS, """
+        SELECT game_id, provider, provider_prop_id, player_id, player_name, position, team,
+               market, odds_type, line, fetched_at
+        FROM latest ORDER BY market, line, odds_type, provider_prop_id
+    """, {"player_id": player_id, "game_date": game_date})
+
+
+_SKATER_VALUE_COLUMNS = (
+    "shots", "points", "assists", "goals", "power_play_points", "blocked_shots", "plus_minus",
+    "hits", "faceoffs_won", "time_on_ice_seconds",
+)
+_GOALIE_VALUE_COLUMNS = ("saves", "goals_against")
+
+
+async def get_player_played_games(
+    db: AsyncSession, player_id: int, *, goalie: bool, before: date, first_season: int,
+    opponent: str | None = None, limit: int | None = None,
+) -> list[dict[str, object]]:
+    """Newest-first games the player has a box-score row for, strictly before a date; goalies only when they started."""
+    table = "nhl_goalie_game_stats" if goalie else "nhl_skater_game_stats"
+    columns = _GOALIE_VALUE_COLUMNS if goalie else _SKATER_VALUE_COLUMNS
+    rows = await db.execute(text(f"""
+        SELECT g.game_date, opp.team_code AS opponent, {", ".join(f"s.{column}" for column in columns)}
+        FROM {table} s
+        JOIN sport_games g ON g.sport = 'nhl' AND g.id = s.game_id
+        JOIN sport_teams opp ON opp.sport = 'nhl' AND opp.id = s.opponent_team_id
+        WHERE s.player_id = :player_id AND g.game_type IN ('REG', 'PST') AND s.season >= :first_season
+          AND g.game_date < :before {"AND s.started" if goalie else ""}
+          AND (CAST(:opponent AS text) IS NULL OR opp.team_code = :opponent)
+        ORDER BY g.game_date DESC, g.id DESC LIMIT :limit
+    """), {
+        "player_id": player_id, "first_season": first_season, "before": before,
+        "opponent": opponent, "limit": limit,
+    })
+    return [dict(row) for row in rows.mappings()]

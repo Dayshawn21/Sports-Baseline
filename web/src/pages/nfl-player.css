@@ -42,7 +42,7 @@
 .nfl-player-line {
   display: grid; grid-template-columns: minmax(0, 1fr) 60px 64px 76px 12px; align-items: center; gap: 10px;
   width: 100%; padding: 9px 0; border: 0; border-bottom: 1px solid var(--border-subtle); background: none;
-  color: var(--text-primary); font: 400 12px var(--font-body); text-align: left; cursor: pointer;
+  color: var(--text-primary); font: 400 12px var(--font-body); text-align: left; text-decoration: none; cursor: pointer;
 }
 .nfl-player-line:hover, .nfl-player-line.is-selected { background: var(--bg-card-hover); }
 .nfl-player-line:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
@@ -52,7 +52,12 @@
 .nfl-player-line small { margin-left: 6px; color: var(--text-muted); font: 400 11px var(--font-mono); }
 .nfl-player-num { text-align: right; font: 400 12px var(--font-mono); white-space: nowrap; }
 .nfl-player-num.is-dim { color: var(--text-secondary); font-size: 11px; }
-.nfl-player-line__arrow { color: var(--text-muted); }
+.nfl-player-line__arrow { display: grid; place-items: center; color: var(--text-muted); }
+.nfl-player-line:hover .nfl-player-line__arrow, .nfl-player-line.is-selected .nfl-player-line__arrow { color: var(--text-primary); }
+@media (max-width: 480px) {
+  .nfl-player-line { grid-template-columns: minmax(0, 1fr) 48px 52px 66px 12px; gap: 8px; }
+  .nfl-player-line small { margin-left: 4px; white-space: nowrap; }
+}
 .nfl-player-section-title {
   display: flex; align-items: center; gap: 10px; margin: 26px 0 12px;
   color: var(--text-secondary); font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;
@@ -84,7 +89,6 @@
 .nfl-player-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--v); border-radius: 3px; background: var(--chart-mid); }
 .nfl-player-meter b { position: absolute; top: -3px; bottom: -3px; left: var(--be); width: 2px; background: var(--text-primary); }
 .nfl-player-footer { margin-top: 18px; }
-.nfl-player-drawer .ant-drawer-body { padding: 0; background: var(--bg-app); }
 
 @media (max-width: 1000px) { .nfl-player-grid, .nfl-player-grid.is-record { grid-template-columns: 1fr; } }
 
@@ -94,3 +98,20 @@
 }
 
 .nfl-player-table th.is-selected-market { color: var(--text-primary); text-decoration: underline; text-underline-offset: 5px; }
+
+.nfl-player-prop { scroll-margin-top: calc(var(--nav-height) + 16px); }
+.nfl-player-prop__title { margin: 0; font: 700 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.nfl-player-prop__title small { margin-left: 8px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; }
+.nfl-player-prop__body { padding: 0 16px 4px; }
+.nfl-player-jump {
+  display: flex; gap: var(--space-5); margin: 14px 0 16px; overflow-x: auto; scrollbar-width: none;
+  border-bottom: 1px solid var(--border-card); scroll-margin-top: calc(var(--nav-height) + 16px);
+}
+.nfl-player-jump::-webkit-scrollbar { display: none; }
+.nfl-player-jump a {
+  flex: none; margin-bottom: -1px; padding: 11px 0; border-bottom: 2px solid transparent;
+  color: var(--text-secondary); font: 500 13px var(--font-body); white-space: nowrap; transition: color 0.15s, border-color 0.15s;
+}
+.nfl-player-jump a:hover { color: var(--text-primary); }
+.nfl-player-jump a:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
+.nfl-player-jump a[aria-current] { border-bottom-color: var(--text-primary); color: var(--text-primary); }

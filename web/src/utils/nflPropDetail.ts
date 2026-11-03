@@ -8,6 +8,7 @@ import {
   formatProjection, marketLabel, matchupAllowedLabel, segmentLabel,
 } from '~/utils/nflLabels'
 import { teamBadge } from '~/utils/nflPropCards'
+import { formDateText, formHistoryDate } from '~/utils/nflFormWindow'
 import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
@@ -22,6 +23,8 @@ export interface NflDetailHistory {
   title: string
   value: string
   detail: string | null
+  /** The games behind `detail`, one entry each, for a layout that puts one per line. */
+  games: string[]
 }
 
 export interface NflDetailLine {
@@ -74,12 +77,17 @@ function typeLabel(oddsType: string | null, fallback: string): string {
   return oddsType ? ODDS_TYPE_LABELS[oddsType] ?? oddsType : fallback
 }
 
-function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
-  if (sample.average === null) return { title, value: 'No completed history', detail: null }
+export function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
+  if (sample.average === null) return { title, value: 'No completed history', detail: null, games: [] }
+  const games = sample.values.map(item => {
+    const date = formDateText(formHistoryDate(item.gameDate, new Date()))
+    return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
+  })
   return {
     title,
     value: `${formatProjection(market, sample.average)} avg · ${sample.values.length} games`,
-    detail: sample.values.map(item => `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}`).join(' · '),
+    detail: games.join(' · '),
+    games,
   }
 }
 

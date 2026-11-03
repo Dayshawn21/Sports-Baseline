@@ -1,19 +1,20 @@
 import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
+import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
 import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerRecord'
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
-import { useNflPlayer, useNflSlate } from '~/hooks/useNfl'
+import { useNflOtherMarkets, useNflPlayer, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nflGame'
-import { FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines } from '~/utils/nflPlayer'
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -67,8 +68,11 @@ function Chips({ player }: { player: NflPlayerDetail }) {
 
 export default function NflPlayerPage() {
   const playerId = parseGameId(useParams().playerId)
+  const navigate = useNavigate()
+  const fromBoard = arrivedFromBoard(useLocation().state)
   const detail = useNflPlayer(playerId)
   const slate = useNflSlate(detail.data?.season ?? null, detail.data?.week ?? null)
+  const others = useNflOtherMarkets(playerId, detail.data?.season ?? null, detail.data?.week ?? null)
   useRegisterDetailTitle(detail.isSuccess && playerId !== null ? detail.data.name : null)
   if (playerId === null || isNotFound(detail.error)) return <NotFound />
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
@@ -76,7 +80,9 @@ export default function NflPlayerPage() {
   const player = detail.data
   const week = slate.data && playerId !== null ? playerWeekLines(slate.data.games, playerId) : null
   return <div className="page-shell nfl-slate nfl-player"><div className="page-container is-wide">
-    {week
+    {fromBoard
+      ? <Link className="nfl-player-crumb" to="/nfl/board" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
+      : week
       ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
       : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>}
     <PageHead title={player.name}
@@ -86,9 +92,10 @@ export default function NflPlayerPage() {
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
     <div className="nfl-player-grid">
       {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
-      <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} />
+      <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} otherMarkets={others.data?.markets.map(item => item.market) ?? []} />
     </div>
-    <NflPlayerGameLog player={player} />
+    <NflPlayerProps key={playerId} week={week} others={others} showUsage={!isNflSpecialist(player.position)} />
+    <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={[...(week?.lines.map(item => item.row.market) ?? []), ...(others.data?.markets.map(item => item.market) ?? [])]} />
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
   </div></div>

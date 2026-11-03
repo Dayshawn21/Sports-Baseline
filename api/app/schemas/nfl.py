@@ -68,6 +68,38 @@ class NflLineOnlyPropsResponse(_CamelModel):
     lines: list[NflLineOnlyLineSchema]
 
 
+class NflOtherMarketLineSchema(_CamelModel):
+    line: float
+    odds_type: str | None
+    fetched_at: datetime
+
+
+class NflOtherMarketGameSchema(_CamelModel):
+    season: int
+    week: int
+    game_date: date | None
+    opponent: str | None
+    # NULL when a stat the market needs was not loaded for that game, never zero.
+    value: float | None
+
+
+class NflOtherMarketSchema(_CamelModel):
+    market: str
+    game_id: int
+    lines: list[NflOtherMarketLineSchema]
+    recent: list[NflOtherMarketGameSchema]
+    opponent_games: list[NflOtherMarketGameSchema]
+
+
+class NflOtherMarketsResponse(_CamelModel):
+    """Item 52a: one player's line-only markets for a week with longer history; never a projection, edge or rank."""
+    player_id: int
+    season: int
+    week: int
+    opponent: str | None
+    markets: list[NflOtherMarketSchema]
+
+
 class NflLineOnlyBoardGame(NflGameSchema):
     lines: list[NflLineOnlyLineSchema]
 
@@ -236,6 +268,8 @@ class NflSlateLineSchema(_CamelModel):
     recent_form: "NflHistorySampleSchema"
     opponent_history: "NflHistorySampleSchema"
     opponent_allowed_history: "NflHistorySampleSchema"
+    # Up to ten games for the player page window; `recent_form` stays five and is its prefix.
+    recent_form_long: "NflHistorySampleSchema | None" = None
     market: str
     segment: str
     odds_type: str | None
@@ -299,6 +333,8 @@ class NflHistorySampleSchema(_CamelModel):
 class NflHistoryResultSchema(_CamelModel):
     value: float
     opponent_team: str | None
+    # The local game date; `start_utc` would read a day late for a night game.
+    game_date: date | None = None
 
 
 class NflUnmatchedLineSchema(_CamelModel):

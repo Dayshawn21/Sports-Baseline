@@ -1,14 +1,12 @@
-import { Drawer } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { MarketPills, PropBoardFilters, PropBoardHead } from '~/components/tennis/TennisPropBoardControls'
-import TennisPropEvidencePanel from '~/components/tennis/TennisPropEvidencePanel'
 import { TennisPropTable } from '~/components/tennis/TennisPropTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import { useIsMobile } from '~/hooks/useIsMobile'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { propPlayerPath } from '~/utils/tennisPlayerProps'
 import { buildTennisPropBoard, moneylineBoardRows, winASetBoardRows, type TennisPropSource, type TennisTourFilter } from '~/utils/tennisPropBoard'
 import './tennis-prop-board.css'
 import './tennis-prop-board-filters.css'
@@ -18,8 +16,6 @@ export default function TennisPropBoardPage() {
   const [tour, setTour] = useState<TennisTourFilter>('all')
   const [market, setMarket] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const isMobile = useIsMobile()
   const predictions = useTennisToday()
   const bestPicks = useBestPicks()
   const prizePicks = usePrizePicksProps()
@@ -34,13 +30,10 @@ export default function TennisPropBoardPage() {
   const visibleLineCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length + category.other.length, 0), [categories])
   const rateableCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length, 0), [categories])
   const category = categories.find(item => item.market === market) ?? categories.find(item => item.rateable.length > 0) ?? categories[0] ?? null
-  const rows = category ? [...category.rateable, ...(showAll ? category.other : [])] : []
-  const selected = rows.find(row => row.id === selectedId) ?? null
   const loading = prizePicks.isLoading || draftKings.isLoading || predictions.isLoading || bestPicks.isLoading
   const allFailed = prizePicks.isError && draftKings.isError
 
   useEffect(() => { setMarket(null) }, [source, tour])
-  useEffect(() => { setSelectedId(null) }, [source, tour, market, showAll])
   if (loading) return <LoadingState message="Loading current tennis prop board..." />
   if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch() }} />
 
@@ -54,13 +47,10 @@ export default function TennisPropBoardPage() {
         <p role="status">Rated lines: {category.rateable.length}. Lines for review: {category.other.length}{category.other.length > 0 ? showAll ? ' (shown).' : ' (hidden).' : '.'}</p>
         {category.other.length > 0 && <button type="button" className="tennis-prop-text-action" aria-expanded={showAll} aria-controls="tennis-prop-lines" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide lines for review' : 'Show lines for review'} ({category.other.length})</button>}
       </div>
-      <p className="tennis-prop-evidence-hint">View evidence for recent matches, projection inputs, and quality notes.</p>
-      <TennisPropTable category={category} selectedId={selected?.id ?? null} onOpen={row => setSelectedId(row.id)}
+      <p className="tennis-prop-evidence-hint">Open a row for the player's recent matches, projection inputs, and quality notes.</p>
+      <TennisPropTable category={category} pathFor={row => propPlayerPath(row, predictions.data?.matches ?? [])} from="/tennis/board"
         rateable={category.rateable.map(row => ({ row, rated: true }))}
         other={showAll ? category.other.map(row => ({ row, rated: false })) : []} />
     </section> : <div className="tennis-prop-empty-state">No tennis prop lines are available for these filters. Try a different source or tour.</div>}
-    <Drawer open={selected !== null} onClose={() => setSelectedId(null)} width={isMobile ? '100%' : 460} title={null} aria-label={`Prop evidence for ${selected?.playerName ?? 'selected player'}`} className="tennis-prop-drawer" destroyOnHidden>
-      {selected && <TennisPropEvidencePanel row={selected} />}
-    </Drawer>
   </div></div>
 }

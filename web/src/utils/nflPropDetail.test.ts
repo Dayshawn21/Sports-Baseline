@@ -136,14 +136,20 @@ describe('nflPropDetail history', () => {
     const detail = nflPropDetail(row({
       recentForm: { average: 21.8, values: [{ value: 0, opponentTeam: 'TB' }, { value: 26, opponentTeam: null }] },
     }), game(), [], NOW)
-    expect(detail.recentForm).toEqual({ title: 'Recent form', value: '21.8 avg · 2 games', detail: '0.0 vs TB · 26.0 vs --' })
+    expect(detail.recentForm).toEqual({ title: 'Recent form', value: '21.8 avg · 2 games', detail: '0.0 vs TB · 26.0 vs --', games: ['0.0 vs TB', '26.0 vs --'] })
     expect(detail.context.map(item => item.title)).toEqual(['Vs PIT', 'PIT allowed to all WRs, per game · last 5'])
-    expect(detail.context[0]).toEqual({ title: 'Vs PIT', value: 'No completed history', detail: null })
+    expect(detail.context[0]).toEqual({ title: 'Vs PIT', value: 'No completed history', detail: null, games: [] })
   })
 
   it('reads TD history as TD or No TD', () => {
     const detail = nflPropDetail(row({ market: 'anytime_touchdown', recentForm: { average: 0.2, values: [{ value: 1, opponentTeam: 'TB' }, { value: 0, opponentTeam: 'JAX' }] } }), game(), [], NOW)
     expect(detail.recentForm.detail).toBe('TD vs TB · No TD vs JAX')
+    expect(detail.recentForm.games).toEqual(['TD vs TB', 'No TD vs JAX'])
+  })
+
+  it('lists each game once with its date when the sample has one', () => {
+    const detail = nflPropDetail(row({ market: 'anytime_touchdown', recentForm: { average: 0.5, values: [{ value: 1, opponentTeam: 'TB', gameDate: '2020-10-04' }, { value: 0, opponentTeam: 'JAX' }] } }), game(), [], NOW)
+    expect(detail.recentForm.games).toEqual(["TD vs TB (Oct 4 '20)", 'No TD vs JAX'])
   })
 })
 

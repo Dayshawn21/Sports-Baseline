@@ -6,7 +6,6 @@ export interface MatchView {
   source: 'prizepicks' | 'dk'
   player: number | 'all'
   market: string
-  prop: number | null
 }
 
 export function readMatchView(params: URLSearchParams, detail: {
@@ -21,13 +20,12 @@ export function readMatchView(params: URLSearchParams, detail: {
     source,
     player: player === detail.p1.playerId || player === detail.p2.playerId ? player : 'all',
     market: /^[a-z0-9_]{1,100}$/.test(market) ? market : 'all',
-    prop: requestedSource === source ? parseMatchId(params.get('prop') ?? undefined) : null,
   }
 }
 
 export function updateMatchView(params: URLSearchParams, patch: Partial<MatchView>): URLSearchParams {
   const next = new URLSearchParams(params)
-  const defaults: MatchView = { tab: 'analysis', source: 'prizepicks', player: 'all', market: 'all', prop: null }
+  const defaults: MatchView = { tab: 'analysis', source: 'prizepicks', player: 'all', market: 'all' }
   for (const key of Object.keys(patch) as Array<keyof MatchView>) {
     const value = patch[key]
     if (value == null || value === defaults[key]) next.delete(key)
@@ -45,7 +43,15 @@ export function propMatchPath(line: PropLine): string | null {
     query.set('source', knownSource)
     query.set('market', line.statType.trim().toLowerCase().replace(/[\s-]+/g, '_'))
     if (line.playerId != null) query.set('player', String(line.playerId))
-    if (Number.isSafeInteger(line.id) && line.id > 0) query.set('prop', String(line.id))
   }
   return `/tennis/match/${line.matchId}?${query}`
+}
+
+/** The match page's props tab as the viewer has it filtered, for a link back from the player page. */
+export function matchPropsPath(matchId: number, view: Pick<MatchView, 'source' | 'player' | 'market'>): string {
+  const query = new URLSearchParams({ tab: 'props' })
+  if (view.source !== 'prizepicks') query.set('source', view.source)
+  if (view.player !== 'all') query.set('player', String(view.player))
+  if (view.market !== 'all') query.set('market', view.market)
+  return `/tennis/match/${matchId}?${query}`
 }

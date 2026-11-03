@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
-from app.schemas.nhl import NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlSlateResponse
+from app.schemas.nhl import NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlPlayerPropsResponse, NhlSlateResponse
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
+from app.services.nhl.player_props import build_player_props
 from app.services.nhl.slate import build_slate
 
 router = APIRouter()
@@ -35,4 +36,15 @@ async def get_game_line_only_props(game_id: int, db: AsyncSession = Depends(get_
     props = await build_line_only_props(db, game_id)
     if props is None:
         raise HTTPException(status_code=404, detail=f"NHL game {game_id} not found")
+    return props
+
+
+@router.get("/players/{player_id}/props", response_model=NhlPlayerPropsResponse)
+async def get_player_props(
+    player_id: int, date: dt.date | None = None, db: AsyncSession = Depends(get_db),
+) -> NhlPlayerPropsResponse:
+    clock = dt.datetime.now(dt.timezone.utc)
+    props = await build_player_props(db, player_id, date, clock.astimezone(EASTERN).date(), as_of=clock)
+    if props is None:
+        raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
     return props

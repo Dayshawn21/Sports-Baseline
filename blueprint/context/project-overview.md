@@ -217,8 +217,12 @@ Checked items record completed work, including explicitly retired surfaces.
 | 23 | Soccer support | Planned |
 | 38 | Structural redesign | Complete |
 | 46 | Analysis workspace (Numbers Behind the Game) | Complete (46a-46d) |
+| 50 | NFL props as player pages | Complete (50a-50b), 2026-11-02 |
+| 51 | NFL recent form window | Complete 2026-11-02 |
+| 52 | NFL other markets in the prop tabs | Complete 2026-11-02 |
+| 53 | NBA, NHL and tennis player pages | In progress; 53a, 53b, 53d and 53g complete; 53b2, 53c, 53d2, 53e, 53f and 53h open |
 
-18 leaf items remain, with these gates:
+23 leaf items remain, with these gates:
 
 | Item | Outcome | Gate |
 |---|---|---|
@@ -235,6 +239,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 49b | Line anchor fit | After 49a adopts at least one market; fitted on 2026 weeks 1-8 only, rule fixed before week 9 settles |
 | 49c | Serve and freeze | Only markets 49a adopts; own model and P(over) versions, gray |
 | 49d | Forward verdict | After 49c accrues; one-time verdict per slice under 49b's rule |
+| 53a-53h | NBA, NHL and tennis player pages | NBA (53a-53c, plus 53b2 for the form chart), NHL (53d-53f) and tennis (53g-53h) are independent branches; the shared form chart helpers (53d2) come before 53b2 and 53e; display only where a market has no model, with no projection, edge, rank or color for it; 53a, 53b, 53d and 53g complete |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |

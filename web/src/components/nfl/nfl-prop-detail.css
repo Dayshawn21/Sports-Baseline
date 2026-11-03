@@ -20,47 +20,6 @@
   }
 }
 
-.nfl-prop-detail__player {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) 0;
-}
-
-.nfl-prop-detail__badge {
-  display: grid;
-  flex: 0 0 44px;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.nfl-prop-detail__player-link { color: inherit; }
-.nfl-prop-detail__player-link:hover { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
-.nfl-prop-detail .nfl-prop-detail__player h2 {
-  margin: 0;
-  color: var(--text-primary);
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.05;
-}
-
-.nfl-prop-detail .nfl-prop-detail__player p {
-  margin: 2px 0 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .nfl-prop-detail__projection {
   display: grid;
   gap: var(--space-1);
@@ -127,6 +86,32 @@
   font-size: 12px;
 }
 
+.nfl-prop-detail__switch {
+  display: inline-flex;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nfl-prop-detail__switch button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nfl-prop-detail__switch button:last-child { border-right: 0; }
+.nfl-prop-detail__switch button:hover:not(:disabled) { color: var(--text-primary); }
+.nfl-prop-detail__switch button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.nfl-prop-detail__switch button[aria-pressed='true'] { background: var(--chart-low); color: var(--text-primary); }
+.nfl-prop-detail__switch button:disabled { color: var(--text-muted); cursor: not-allowed; }
+
 .nfl-prop-detail__list {
   margin: var(--space-2) 0 0;
   color: var(--text-secondary);
@@ -135,11 +120,24 @@
   line-height: 1.5;
 }
 
+.nfl-prop-detail__games {
+  padding: 0;
+  list-style: none;
+}
+
+.nfl-prop-detail__games li { display: inline; }
+.nfl-prop-detail__games li + li::before { content: ' \00b7  '; }
+
+/* One game per line where the list would wrap into a block of text. */
+@media (max-width: 600px) {
+  .nfl-prop-detail__games li { display: block; }
+  .nfl-prop-detail__games li + li::before { content: none; }
+}
+
 /* Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Heights are
    shares of the plot box, so the mark and the bars read off the same scale. */
 .nfl-prop-detail__chart {
   margin-top: var(--space-3);
-  padding-left: 40px;
 }
 
 .nfl-prop-detail__plot,
@@ -163,7 +161,7 @@
 
 .nfl-prop-detail__bar {
   position: absolute;
-  bottom: 0;
+  bottom: var(--b, 0%);
   left: 50%;
   width: 100%;
   max-width: 40px;
@@ -183,7 +181,7 @@
 
 .nfl-prop-detail__val {
   position: absolute;
-  bottom: calc(max(var(--h), 2px) + 4px);
+  bottom: calc(var(--b, 0%) + max(var(--h), 2px) + 4px);
   left: 50%;
   z-index: 2;
   padding: 0 2px;
@@ -206,25 +204,61 @@
   text-align: center;
 }
 
+.nfl-prop-detail__opps > span > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+/* Only in a plot that reaches below zero: the baseline the bars grow from and drop away from. */
+.nfl-prop-detail__zero {
+  position: absolute;
+  right: 0;
+  bottom: var(--zero);
+  left: 0;
+  border-top: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+
 .nfl-prop-detail__line-mark {
   position: absolute;
   right: 0;
   bottom: var(--line);
-  left: -40px;
+  left: 0;
   z-index: 1;
   border-top: 1px dashed var(--text-secondary);
   pointer-events: none;
 }
 
-.nfl-prop-detail__line-mark > span {
-  position: absolute;
-  top: -9px;
-  left: 0;
-  padding: 0 4px;
-  background: var(--nfl-surface);
+.nfl-prop-detail__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.nfl-prop-detail__toolbar .nfl-prop-detail__switch { margin-top: 0; }
+
+.nfl-prop-detail__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 11px;
+  white-space: nowrap;
+}
+
+.nfl-prop-detail__legend::before {
+  content: '';
+  width: 18px;
+  border-top: 1px dashed var(--text-secondary);
 }
 
 .nfl-prop-detail__context {
@@ -407,5 +441,3 @@
   cursor: help;
 }
 
-.nfl-prop-detail__game-link { display: inline-block; margin-top: 10px; color: var(--text-secondary); font-size: 12px; }
-.nfl-prop-detail__game-link:hover { color: var(--text-primary); }

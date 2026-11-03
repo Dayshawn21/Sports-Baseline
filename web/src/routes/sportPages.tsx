@@ -11,10 +11,12 @@ import NflModelPage from '~/pages/NflModelPage'
 import NflPlayerPage from '~/pages/NflPlayerPage'
 import NbaSlatePage from '~/pages/NbaSlatePage'
 import NbaGamePage from '~/pages/NbaGamePage'
+import NbaPlayerPage from '~/pages/NbaPlayerPage'
 import NbaModelPage from '~/pages/NbaModelPage'
 import NbaPropBoardPage from '~/pages/NbaPropBoardPage'
 import NhlSlatePage from '~/pages/NhlSlatePage'
 import NhlGamePage from '~/pages/NhlGamePage'
+import NhlPlayerPage from '~/pages/NhlPlayerPage'
 import { SPORTS, sportViews, type Sport, type SportViewPaths } from '~/utils/sportNav'
 
 /** A detail page path sits under its sport's prefix, so the nav highlights the sport. */
@@ -62,11 +64,17 @@ export const SPORT_PAGES: { [S in Sport]: SportPages<S> } = {
     slate: NbaSlatePage,
     props: NbaPropBoardPage,
     model: NbaModelPage,
-    details: [{ path: '/nba/game/:gameId', element: <NbaGamePage /> }],
+    details: [
+      { path: '/nba/game/:gameId', element: <NbaGamePage /> },
+      { path: '/nba/player/:playerId', element: <NbaPlayerPage /> },
+    ],
   },
   nhl: {
     slate: NhlSlatePage,
-    details: [{ path: '/nhl/game/:gameId', element: <NhlGamePage /> }],
+    details: [
+      { path: '/nhl/game/:gameId', element: <NhlGamePage /> },
+      { path: '/nhl/player/:playerId', element: <NhlPlayerPage /> },
+    ],
   },
 }
 

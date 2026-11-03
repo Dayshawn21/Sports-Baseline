@@ -509,6 +509,58 @@ async def _game_prop_lines(
     return [{**dict(zip(keys, row)), "line": float(row[6])} for row in rows.fetchall()]
 
 
+async def get_player(db: AsyncSession, player_id: int) -> dict[str, object] | None:
+    """One NBA player with the team of their latest loaded game, or None for an unknown or other-sport id."""
+    row = (await db.execute(text("""
+        SELECT p.id, p.name, p.position, t.team_code
+        FROM sport_players p
+        LEFT JOIN sport_teams t ON t.sport = 'nba' AND t.id = p.team_id
+        WHERE p.sport = 'nba' AND p.id = :player_id
+    """), {"player_id": player_id})).first()
+    return None if row is None else {"player_id": row[0], "name": row[1], "position": row[2], "team": row[3]}
+
+
+async def get_player_date_modelled_lines(
+    db: AsyncSession, player_id: int, game_date: dt.date,
+) -> list[dict[str, object]]:
+    """One player's modelled lines on a date, each with its game_id, at the board's snapshot rule (53a)."""
+    return await _game_prop_lines(
+        db, "l.player_id = :player_id AND g.game_date = :game_date",
+        {"player_id": player_id, "game_date": game_date}, NBA_MODELLED_MARKET_FILTER,
+    )
+
+
+async def get_player_date_line_only_lines(
+    db: AsyncSession, player_id: int, game_date: dt.date,
+) -> list[dict[str, object]]:
+    """One player's line-only props on a date, each with its game_id (53a)."""
+    return await _game_prop_lines(
+        db, "l.player_id = :player_id AND g.game_date = :game_date",
+        {"player_id": player_id, "game_date": game_date}, _LINE_ONLY_MARKET_FILTER,
+    )
+
+
+async def get_player_games_against(
+    db: AsyncSession, player_id: int, opponent: str, before: dt.date, limit: int,
+) -> list[dict[str, object]]:
+    """The player's last `limit` played served games against one team dated before `before`, newest first (53a).
+
+    Every stored season counts. DNP rows are skipped and preseason never counts (20b).
+    """
+    columns = ", ".join(f"s.{column}" for column in LINE_ONLY_COLUMNS)
+    rows = await db.execute(text(f"""
+        SELECT s.player_id, g.game_date, opp.team_code AS opponent, s.did_not_play, {columns}
+        FROM nba_player_game_stats s
+        JOIN sport_games g ON g.sport = 'nba' AND g.id = s.game_id
+        JOIN sport_teams opp ON opp.sport = 'nba' AND opp.id = s.opponent_team_id
+        WHERE s.player_id = :player_id AND opp.team_code = :opponent AND {_SERVED_GAME_TYPES}
+          AND g.game_date < :before AND NOT s.did_not_play
+        ORDER BY g.game_date DESC, g.start_utc DESC NULLS LAST, g.id DESC
+        LIMIT :limit
+    """), {"player_id": player_id, "opponent": opponent, "before": before, "limit": limit})
+    return [dict(row) for row in rows.mappings()]
+
+
 async def get_current_week(db: AsyncSession, now: dt.datetime) -> tuple[int, int] | None:
     """(season, week) of the next regular-season game not yet tipped, else the latest loaded week (20g3).
 

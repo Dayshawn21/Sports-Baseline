@@ -70,6 +70,11 @@ function normalized(value: string | null | undefined): string {
   return (value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
 }
 
+/** The category key a stat type has on the board, and so in `?market=` on the match and player pages. */
+export function marketKey(statType: string): string {
+  return normalized(statType)
+}
+
 function sourceMatches(line: PropLine, source: TennisPropSource): boolean {
   return source === 'all' || sourceKey(line.source) === source
 }
