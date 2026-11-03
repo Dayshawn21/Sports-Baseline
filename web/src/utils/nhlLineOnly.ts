@@ -22,18 +22,6 @@ export function nhlPropLineLabel(market: NhlLineOnlyMarket, line: number): strin
   return `${market === 'plus_minus' && line > 0 ? '+' : ''}${line}`
 }
 
-export interface NhlLineOnlyRow extends NhlLineOnlyLine {
-  key: string
-  lineLabel: string
-  oddsTypeLabel: string
-}
-
-export interface NhlLineOnlyGroup {
-  market: NhlLineOnlyMarket
-  label: string
-  rows: NhlLineOnlyRow[]
-}
-
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0
 }
@@ -51,23 +39,72 @@ export function nhlOddsTypeCounts(lines: readonly NhlLineOnlyLine[]): NhlOddsTyp
   }))
 }
 
-/** One row per offering; repeated players/prices never collapse alternate provider ids. */
-export function nhlLineOnlyGroups(lines: readonly NhlLineOnlyLine[]): NhlLineOnlyGroup[] {
-  const groups = new Map<NhlLineOnlyMarket, NhlLineOnlyRow[]>()
-  for (const line of lines) {
-    const rows = groups.get(line.market) ?? []
-    rows.push({
-      ...line, key: `${line.provider}:${line.providerPropId}`,
-      lineLabel: nhlPropLineLabel(line.market, line.line), oddsTypeLabel: ODDS_TYPE_LABELS[line.oddsType],
-    })
-    groups.set(line.market, rows)
+const ODDS_TYPE_ORDER: Record<NhlLineOnlyLine['oddsType'], number> = { standard: 0, goblin: 1, demon: 2 }
+
+export interface NhlPropRung {
+  line: number
+  label: string
+  oddsType: NhlLineOnlyLine['oddsType']
+  oddsTypeLabel: string
+}
+
+export interface NhlPropListRow {
+  key: string
+  playerId: number
+  playerName: string
+  team: string | null
+  position: string | null
+  market: NhlLineOnlyMarket
+  /** By line, then standard, goblin, demon; an offering repeated under another provider id shows once. */
+  rungs: NhlPropRung[]
+  /** The standard rung's label, or null when the player has none; alternates are never promoted to it. */
+  standard: string | null
+  /** The newest fetch across the player's offerings. */
+  fetchedAt: string
+}
+
+export interface NhlPropListGroup {
+  market: NhlLineOnlyMarket
+  label: string
+  rows: NhlPropListRow[]
+}
+
+function rungsFor(lines: readonly NhlLineOnlyLine[]): NhlPropRung[] {
+  const seen = new Set<string>()
+  return lines
+    .filter(entry => !seen.has(`${entry.oddsType}:${entry.line}`) && seen.add(`${entry.oddsType}:${entry.line}`))
+    .sort((a, b) => a.line - b.line || ODDS_TYPE_ORDER[a.oddsType] - ODDS_TYPE_ORDER[b.oddsType])
+    .map(entry => ({
+      line: entry.line, label: nhlPropLineLabel(entry.market, entry.line),
+      oddsType: entry.oddsType, oddsTypeLabel: ODDS_TYPE_LABELS[entry.oddsType],
+    }))
+}
+
+function newestFetch(lines: readonly NhlLineOnlyLine[]): string {
+  return lines.reduce((newest, entry) => Date.parse(entry.fetchedAt) > Date.parse(newest) ? entry.fetchedAt : newest, lines[0].fetchedAt)
+}
+
+/** One row per player per market for the game page list, keyed by player id so two players with one name stay apart. */
+export function nhlPropListGroups(lines: readonly NhlLineOnlyLine[]): NhlPropListGroup[] {
+  const byMarket = new Map<NhlLineOnlyMarket, Map<number, NhlLineOnlyLine[]>>()
+  for (const entry of lines) {
+    const players = byMarket.get(entry.market) ?? new Map<number, NhlLineOnlyLine[]>()
+    players.set(entry.playerId, [...(players.get(entry.playerId) ?? []), entry])
+    byMarket.set(entry.market, players)
   }
   return NHL_LINE_ONLY_MARKETS.flatMap(market => {
-    const rows = groups.get(market)
-    return rows ? [{
-      market, label: nhlMarketLabel(market),
-      rows: rows.sort((a, b) => compareText(a.playerName, b.playerName) || a.playerId - b.playerId
-        || compareText(a.oddsType, b.oddsType) || a.line - b.line || compareText(a.providerPropId, b.providerPropId)),
-    }] : []
+    const players = byMarket.get(market)
+    if (!players) return []
+    const rows = [...players.values()].map((offerings): NhlPropListRow => {
+      const rungs = rungsFor(offerings)
+      const [first] = offerings
+      return {
+        key: `${market}:${first.playerId}`, playerId: first.playerId, playerName: first.playerName,
+        team: first.team, position: first.position, market, rungs,
+        standard: rungs.find(rung => rung.oddsType === 'standard')?.label ?? null,
+        fetchedAt: newestFetch(offerings),
+      }
+    }).sort((a, b) => compareText(a.playerName, b.playerName) || a.playerId - b.playerId)
+    return [{ market, label: nhlMarketLabel(market), rows }]
   })
 }

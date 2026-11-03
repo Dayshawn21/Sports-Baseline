@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NhlGameHero, NhlGameMarket } from '~/components/nhl/NhlGameHero'
 import { NhlGameContext } from '~/components/nhl/NhlGameContext'
-import { NhlLineOnlyProps } from '~/components/nhl/NhlLineOnlyProps'
+import { NhlGameProps } from '~/components/nhl/NhlGameProps'
 import { NflLineMovementChart as LineMovementChart } from '~/components/nfl/NflLineMovementChart'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
@@ -51,7 +51,7 @@ export default function NhlGamePage() {
             emptyMessage="No pre-puck-drop puck-line or total history is stored for this game." />
           <NhlGameContext game={game} now={now} />
         </div> },
-        { key: 'props', label: 'Player Props', children: <NhlLineOnlyProps key={game.gameId} gameId={game.gameId} /> },
+        { key: 'props', label: 'Player Props', children: <NhlGameProps key={game.gameId} gameId={game.gameId} gameDate={game.gameDate} /> },
       ]} />
   </div></div>
 }

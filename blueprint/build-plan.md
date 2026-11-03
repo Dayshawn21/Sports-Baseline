@@ -271,7 +271,7 @@ prerequisite for 19e rather than a parallel nice-to-have.
   - [x] 53d. **NHL player endpoint** - a read-only `GET /nhl/players/{id}/props?date=` returning each line-only market the player has on a slate date with its stored line and alternates, the last 10 dated games, earlier games against that date's opponent and the goalie and injury context it already stores; the game and slate endpoints unchanged
   - [x] 53d2. **Shared form chart helpers** - move the NFL-specific parts of the recent form chart behind sport options so NBA and NHL can reuse it: the game date label takes the sport's season boundary, the empty-window text takes the sport's history start year, and the bars draw negative values (NHL plus/minus); NFL output is unchanged and its existing tests pass untouched
   - [x] 53e. **NHL player page** - `/nhl/player/:id` with a tab per market, the full-width form chart, window switch and game dates, and the injury and goalie evidence, display only
-  - [ ] 53f. **NHL rows open the page** - NHL game page prop rows navigate to the page; the inline panel is removed
+  - [x] 53f. **NHL rows open the page** - NHL game page prop rows navigate to the page; the inline panel is removed
   - [x] 53g. **Tennis props on the player page** - today's props for the player's matches as tabs on `/tennis/player/:id`, with the evidence panel's content, the form chart and its dates, display only where there is no model
   - [x] 53h. **Tennis rows open the page** - the tennis prop board and match page rows navigate to the player page; the evidence drawer is removed
 
