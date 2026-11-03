@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { TennisPropEvidenceBody, TennisRecentBars } from '~/components/tennis/TennisPropEvidencePanel'
+import { TennisPropEvidenceBody, TennisRecentBars } from '~/components/tennis/TennisPropEvidenceBody'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import {
-  FORM_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow,
+  FORM_PARAM, MARKET_PARAM, MATCH_PARAM, PROP_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow,
   type FormWindowOption, type PlayerMatchOption, type TennisFormWindow,
 } from '~/utils/tennisPlayerProps'
 import { buildTennisPropBoard, lineNumber, marketLabel, marketTitle, moneylineBoardRows, winASetBoardRows, type TennisBoardLine } from '~/utils/tennisPropBoard'
@@ -15,8 +15,6 @@ import '~/pages/tennis-prop-board.css'
 import './tennis-player-props.css'
 
 const FORM_LOG_LIMIT = 50
-const MARKET_PARAM = 'market'
-const MATCH_PARAM = 'match'
 
 interface FormChartProps {
   row: TennisBoardLine
@@ -83,6 +81,12 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
   const { tabs, predictions, loading, allFailed } = useBoardTabs(playerId, playerName)
   const log = usePlayerMatches(playerId, FORM_LOG_LIMIT)
   const heading = <h2 className="tennis-match-section">Today's props</h2>
+  const propId = params.get(PROP_PARAM)
+  const marketParam = params.get(MARKET_PARAM)
+
+  useEffect(() => {
+    if (!loading && propId) document.querySelector(`[data-prop-id="${CSS.escape(propId)}"]`)?.scrollIntoView({ block: 'center' })
+  }, [loading, propId, marketParam])
 
   const update = (key: string, value: string | null) => setParams(previous => {
     const next = new URLSearchParams(previous)
@@ -117,9 +121,11 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
     </div>
     {sections.map(section => <div key={section.key} className="tennis-player-props__group">
       {section.label && <h3 className="tennis-player-props__label">{section.label}</h3>}
-      {section.lines.map(row => <TennisPropEvidenceBody key={row.id} row={row}>
-        <FormChart row={row} log={log} window={window} option={option} />
-      </TennisPropEvidenceBody>)}
+      {section.lines.map(row => <div key={`${row.source}-${row.id}`} data-prop-id={row.id} className={`tennis-player-props__line${String(row.id) === propId ? ' is-selected' : ''}`}>
+        <TennisPropEvidenceBody row={row}>
+          <FormChart row={row} log={log} window={window} option={option} />
+        </TennisPropEvidenceBody>
+      </div>)}
     </div>)}
   </section>
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchPrediction, PlayerMatchLogRow } from '~/types/tennis'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { recentStatBars } from '~/utils/tennisPropCards'
-import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow } from '~/utils/tennisPlayerProps'
+import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow } from '~/utils/tennisPlayerProps'
 
 function line(id: number, overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
   return { id, playerId: 7, playerName: 'Coco Gauff', matchId: 10, statType: 'aces', matchup: 'Coco Gauff vs Iga Swiatek', startTime: '2026-09-21T16:00:00Z', ...overrides } as TennisBoardLine
@@ -125,4 +125,51 @@ describe('logRowToRecent', () => {
     const recent = [logRowToRecent(logRow(1, { score: '6-3 2-0 RET' }))]
     expect(recentStatBars(recent, 'total_games', 20.5)?.[0].value).toBeNull()
   })
+})
+
+describe('propPlayerPath', () => {
+  const matches = [
+    { matchId: 10, p1Id: 7, p2Id: 9, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' },
+    { matchId: 11, p1Id: null, p2Id: 12, p1Name: 'Jessica Pegula', p2Name: 'Madison Keys' },
+  ]
+
+  it('opens the player on the line market, match and line', () => {
+    expect(propPlayerPath(line(41, { statType: '1st Set Total Games' }), matches)).toBe('/tennis/player/7?market=1st_set_total_games&match=10&prop=41')
+  })
+
+  it('resolves a moneyline row with no id from the match by name, on either side', () => {
+    const moneyline = (name: string, matchId = 10) => line(-3, { playerId: null, playerName: name, statType: 'moneyline', matchId })
+    expect(propPlayerPath(moneyline(' iga SWIATEK '), matches)).toBe('/tennis/player/9?market=moneyline&match=10')
+    expect(propPlayerId(moneyline('Coco Gauff'), matches)).toBe(7)
+  })
+
+  it('gives null for a name on neither side, a side without an id, an unknown match or no name', () => {
+    const noId = (overrides: object) => line(5, { playerId: null, ...overrides })
+    expect(propPlayerPath(noId({ playerName: 'Someone Else' }), matches)).toBeNull()
+    expect(propPlayerPath(noId({ playerName: 'Jessica Pegula', matchId: 11 }), matches)).toBeNull()
+    expect(propPlayerPath(noId({ matchId: 99 }), matches)).toBeNull()
+    expect(propPlayerPath(noId({ playerName: null }), matches)).toBeNull()
+    expect(propPlayerPath(noId({ matchId: null }), matches)).toBeNull()
+  })
+
+  it('leaves out a missing match id and a synthetic negative line id', () => {
+    expect(propPlayerPath(line(-2, { matchId: null }), matches)).toBe('/tennis/player/7?market=aces')
+  })
+})
+
+describe('playerPageOrigin', () => {
+  it('accepts the board and a match props tab and labels them', () => {
+    expect(playerPageOrigin({ from: '/tennis/board' })).toEqual({ path: '/tennis/board', label: 'Tennis props' })
+    expect(playerPageOrigin({ from: '/tennis/match/91823?tab=props&source=prizepicks&market=aces' })).toEqual({ path: '/tennis/match/91823?tab=props&source=prizepicks&market=aces', label: 'Match props' })
+  })
+
+  it.each([
+    ['no state', null],
+    ['a non-object', 'x'],
+    ['a non-string from', { from: 5 }],
+    ['an off-site address', { from: 'https://example.com/tennis/board' }],
+    ['a protocol-relative address', { from: '//example.com' }],
+    ['another page', { from: '/tennis/model' }],
+    ['a script in the query', { from: '/tennis/match/1?tab=props&x=<script>' }],
+  ])('ignores %s', (_label, state) => expect(playerPageOrigin(state)).toBeNull())
 })

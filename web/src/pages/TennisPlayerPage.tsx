@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
@@ -13,11 +13,13 @@ import { usePlayerDetail, usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import { isNotFound } from '~/utils/httpError'
 import { parsePlayerId } from '~/utils/tennisPlayer'
+import { playerPageOrigin } from '~/utils/tennisPlayerProps'
 import './tennis-match.css'
 import './tennis-player.css'
 
 function BackLink() {
-  return <Link className="tennis-match-crumb" to="/">← Tennis slate</Link>
+  const origin = playerPageOrigin(useLocation().state)
+  return <Link className="tennis-match-crumb" to={origin?.path ?? '/'}>← {origin?.label ?? 'Tennis slate'}</Link>
 }
 
 function PlayerPageState({ children }: { children: ReactNode }) {

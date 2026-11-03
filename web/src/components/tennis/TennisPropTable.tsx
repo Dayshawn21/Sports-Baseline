@@ -1,15 +1,14 @@
 import { Tooltip } from 'antd'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard, type TennisPropCardModel } from '~/utils/tennisPropCards'
 import { tourTone } from '~/utils/tennisSlate'
-import { propMatchPath } from '~/utils/tennisMatchView'
 import '~/components/shared/prop-table.css'
 import '~/components/tennis/tennis-slate.css'
 import './tennis-prop-table.css'
 
-const OTHER_LINES_NOTE = 'Not rated. These are unpriced, ungraded, or have missing, stale, unsupported or thin-sample data. View evidence for each line\'s context.'
+const OTHER_LINES_NOTE = "Not rated. These are unpriced, ungraded, or have missing, stale, unsupported or thin-sample data. Open the player for each line's context."
 
 /** Tennis lines are gray and unranked unless adopted (48f, 48g): a row is rated or for review, never numbered. */
 export interface TennisPropTableRow {
@@ -17,12 +16,12 @@ export interface TennisPropTableRow {
   rated: boolean
 }
 
-function Player({ card, selected, onOpen, matchPath }: { card: TennisPropCardModel, selected: boolean, onOpen: () => void, matchPath: string | null }) {
+function Player({ card, path, from }: { card: TennisPropCardModel, path: string | null, from: string }) {
   const tone = tourTone(card.tour, card.tour)
   return <>
     <span className="prop-table__player-name">
-      {matchPath ? <Link className="prop-table__open" to={matchPath} aria-label={`Open picks and props for ${card.playerName}`}>{card.playerName}</Link>
-        : <button type="button" className="prop-table__open" aria-pressed={selected} aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}`} onClick={onOpen}>{card.playerName}</button>}
+      {path ? <Link className="prop-table__open" to={path} state={{ from }} aria-label={`Open ${card.playerName}'s page`}>{card.playerName}</Link>
+        : <span className="prop-table__open">{card.playerName}</span>}
       {tone && <span className={`tennis-tour-tag is-${tone}`}>{card.tour}</span>}
     </span>
     <small title={card.meta}>{card.meta || 'Match unavailable'}</small>
@@ -66,18 +65,33 @@ function Trust({ card }: { card: TennisPropCardModel }) {
   </>
 }
 
-function PropRow({ item: { row, rated }, selected, onOpen, showMatchLinks }: { item: TennisPropTableRow, selected: boolean, onOpen: (row: TennisBoardLine) => void, showMatchLinks: boolean }) {
+interface PropRowProps {
+  item: TennisPropTableRow
+  path: string | null
+  from: string
+}
+
+function PropRow({ item: { row, rated }, path, from }: PropRowProps) {
+  const navigate = useNavigate()
   const card = propCard(row)
-  const classes = ['is-row', selected && 'is-selected', !rated && 'is-dim'].filter(Boolean).join(' ')
-  const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button, a'))) onOpen(row) }
-  return <tr className={classes} onClick={open}>
-    <td className="prop-table__player"><Player card={card} selected={selected} onOpen={() => onOpen(row)} matchPath={showMatchLinks ? propMatchPath(row) : null} /></td>
+  const classes = [path && 'is-row', !rated && 'is-dim'].filter(Boolean).join(' ')
+  // Links keep their native behavior, including modified clicks.
+  const onRowClick = (event: MouseEvent) => {
+    if (!path || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+    if (event.target instanceof Element && event.target.closest('a')) return
+    navigate(path, { state: { from } })
+  }
+  const market = row.statType.replaceAll('_', ' ')
+  return <tr className={classes} onClick={onRowClick}>
+    <td className="prop-table__player"><Player card={card} path={path} from={from} /></td>
     <td className="tennis-prop-table__line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionText}</td>
     <td className="is-num tennis-prop-table__gap" data-label="gap">{card.gapText ?? '--'}</td>
     <td className="tennis-prop-table__hit" data-label="P(over)"><HitAgainstBreakEven card={card} /></td>
     <td className={`prop-table__end is-num tennis-prop-table__ev${card.evTone ? ` is-${card.evTone}` : ''}`} data-label="EV">{card.evText}</td>
-    <td><Trust card={card} /><button type="button" className="tennis-prop-text-action tennis-prop-table__evidence" aria-haspopup="dialog" aria-label={`View evidence for ${card.playerName}, ${row.statType.replaceAll('_', ' ')}, ${card.valueText}`} onClick={() => onOpen(row)}>View evidence</button></td>
+    <td><Trust card={card} />
+      {path && <Link to={path} state={{ from }} className="tennis-prop-text-action tennis-prop-table__evidence" aria-label={`Open ${card.playerName}'s page, ${market}, ${card.valueText}`}>Open player</Link>}
+    </td>
   </tr>
 }
 
@@ -88,18 +102,19 @@ const COLUMNS: Array<[string, ReactNode]> = [
 const NUMERIC = new Set(['model', 'gap', 'ev'])
 
 interface Props {
-  showMatchLinks?: boolean
   tableId?: string
   category: TennisBoardCategory
   rateable: TennisPropTableRow[]
   other: TennisPropTableRow[]
-  selectedId: number | null
-  onOpen: (row: TennisBoardLine) => void
+  /** Where a row opens; null leaves it unlinked. */
+  pathFor: (row: TennisBoardLine) => string | null
+  /** The page the rows are on, so the player page can link back. */
+  from: string
 }
 
 /** One market's tennis lines in board order: rated lines, then lines for review. */
-export function TennisPropTable({ category, rateable, other, selectedId, onOpen, tableId = 'tennis-prop-lines', showMatchLinks = true }: Props) {
-  const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} selected={item.row.id === selectedId} onOpen={onOpen} showMatchLinks={showMatchLinks} />
+export function TennisPropTable({ category, rateable, other, pathFor, from, tableId = 'tennis-prop-lines' }: Props) {
+  const renderRow = (item: TennisPropTableRow) => <PropRow key={`${item.row.source}-${item.row.id}`} item={item} path={pathFor(item.row)} from={from} />
   return <table id={tableId} className="prop-table tennis-prop-table" aria-label={`${category.label} lines`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
