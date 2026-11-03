@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
 import { NbaInjuryTag } from '~/components/nba/NbaInjury'
 import type { NbaInjury, NbaInjuryReport } from '~/types/nba'
@@ -16,17 +16,17 @@ interface PlayerProps {
   position: string | null
   team: string | null
   market: string
-  selected: boolean
-  onOpen: () => void
+  to: string
+  linkState: unknown
   injury: NbaInjury | null
   freshness: NbaInjuryReport['freshness']
 }
 
-function Player({ playerName, position, team, market, selected, onOpen, injury, freshness }: PlayerProps) {
+function Player({ playerName, position, team, market, to, linkState, injury, freshness }: PlayerProps) {
   return <span className="nba-prop-table__player">
     <span className="nba-prop-table__team" aria-hidden="true">{team ?? '--'}</span>
     <span>
-      <button type="button" className="prop-table__open" aria-pressed={selected} onClick={onOpen}>{playerName}</button>
+      <Link className="prop-table__open" to={to} state={linkState}>{playerName}</Link>
       <small>{position ? `${position} · ` : ''}{nbaMarketLabel(market)}</small>
       <NbaInjuryTag injury={injury} freshness={freshness} />
     </span>
@@ -49,17 +49,17 @@ function Sample({ card }: { card: NbaPropCard }) {
   </>
 }
 
-function openFromRow(event: MouseEvent, open: () => void) {
-  if (!(event.target instanceof Element && event.target.closest('button, a'))) open()
+function followFromRow(event: MouseEvent, follow: () => void) {
+  if (!(event.target instanceof Element && event.target.closest('button, a'))) follow()
 }
 
 interface RowContextProps {
   market: string
-  selected: boolean
-  onOpen: () => void
+  /** The player page for this row's player; the name links to it and a plain click on the row follows it. */
+  pathFor: (playerId: number) => string
+  linkState?: unknown
   game?: NbaBoardGameContext
   now?: Date
-  rowKey?: string
   injuryReport?: NbaInjuryReport
   startUtc?: string | null
 }
@@ -72,10 +72,12 @@ function GameCells({ game, now }: { game: NbaBoardGameContext, now: Date }) {
   </>
 }
 
-function PropRow({ card, market, selected, onOpen, game, now, rowKey, injuryReport, startUtc }: RowContextProps & { card: NbaPropCard }) {
+function PropRow({ card, market, pathFor, linkState, game, now, injuryReport, startUtc }: RowContextProps & { card: NbaPropCard }) {
+  const navigate = useNavigate()
+  const to = pathFor(card.playerId)
   const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
-  return <tr data-row-key={rowKey} className={`is-row${selected ? ' is-selected' : ''}`} onClick={event => openFromRow(event, onOpen)}>
-    <td className="prop-table__lead"><Player playerName={card.playerName} position={card.position} team={card.team} market={market} selected={selected} onOpen={onOpen} injury={card.injury} freshness={freshness} /></td>
+  return <tr className="is-row" onClick={event => followFromRow(event, () => navigate(to, { state: linkState }))}>
+    <td className="prop-table__lead"><Player playerName={card.playerName} position={card.position} team={card.team} market={market} to={to} linkState={linkState} injury={card.injury} freshness={freshness} /></td>
     <td className="nba-prop-table__line" data-label="line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionRow?.projection ?? '--'}</td>
     <td className="prop-table__end is-num" data-label="gap">{card.projectionRow?.gap ?? '--'}</td>
@@ -96,18 +98,17 @@ const NUMERIC = new Set(['model', 'gap', 'probability'])
 interface ModelledTableProps {
   market: string
   cards: NbaPropCard[]
-  selectedPlayerId: number | null
-  onOpen: (card: NbaPropCard) => void
+  pathFor: (playerId: number) => string
   injuryReport: NbaInjuryReport
   startUtc: string | null
   now: Date
 }
 
-export function NbaPropTable({ market, cards, selectedPlayerId, onOpen, injuryReport, startUtc, now }: ModelledTableProps) {
+export function NbaPropTable({ market, cards, pathFor, injuryReport, startUtc, now }: ModelledTableProps) {
   return <table className="prop-table nba-prop-table" aria-label={`${nbaMarketLabel(market)} props`}>
     <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{cards.map(card => <PropRow key={card.playerId} rowKey={`${market}:${card.playerId}`} card={card} market={market} selected={card.playerId === selectedPlayerId} onOpen={() => onOpen(card)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
+    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} pathFor={pathFor} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 
@@ -115,13 +116,15 @@ function rungText(line: number, oddsType: string | null): string {
   return oddsType && oddsType !== 'standard' ? `${line} ${oddsType}` : `${line}`
 }
 
-function LineOnlyRow({ row, market, selected, onOpen, game, now, rowKey, injuryReport, startUtc }: RowContextProps & { row: NbaLineOnlyRow }) {
+function LineOnlyRow({ row, market, pathFor, linkState, game, now, injuryReport, startUtc }: RowContextProps & { row: NbaLineOnlyRow }) {
+  const navigate = useNavigate()
+  const to = pathFor(row.playerId)
   const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
   const main = mainRung(row)
   const also = row.rungs.filter(rung => rung !== main).map(rung => rungText(rung.line, rung.oddsType)).join(' · ')
   const count = row.count === null ? '--' : row.count > 0 ? `over ${row.overCount} of ${row.count}` : 'No earlier games'
-  return <tr data-row-key={rowKey} className={`is-row${selected ? ' is-selected' : ''}`} onClick={event => openFromRow(event, onOpen)}>
-    <td className="prop-table__lead"><Player playerName={row.playerName} position={row.position} team={row.team} market={market} selected={selected} onOpen={onOpen} injury={row.injury} freshness={freshness} /></td>
+  return <tr className="is-row" onClick={event => followFromRow(event, () => navigate(to, { state: linkState }))}>
+    <td className="prop-table__lead"><Player playerName={row.playerName} position={row.position} team={row.team} market={market} to={to} linkState={linkState} injury={row.injury} freshness={freshness} /></td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? 'standard'}</small></td>
     <td className="nba-line-only-table__also" data-label="also">{also || '--'}</td>
     <td><MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
@@ -137,25 +140,24 @@ const LINE_ONLY_COLUMNS: Array<[string, ReactNode]> = [
 interface LineOnlyTableProps {
   market: string
   rows: NbaLineOnlyRow[]
-  selectedPlayerId: number | null
-  onOpen: (row: NbaLineOnlyRow) => void
+  pathFor: (playerId: number) => string
   injuryReport: NbaInjuryReport
   startUtc: string | null
   now: Date
 }
 
-export function NbaLineOnlyTable({ market, rows, selectedPlayerId, onOpen, injuryReport, startUtc, now }: LineOnlyTableProps) {
+export function NbaLineOnlyTable({ market, rows, pathFor, injuryReport, startUtc, now }: LineOnlyTableProps) {
   return <table className="prop-table nba-line-only-table" aria-label={`${nbaMarketLabel(market)} other lines`}>
     <colgroup>{LINE_ONLY_COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{LINE_ONLY_COLUMNS.map(([key, label]) => <th key={key} className={key === 'line' ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} rowKey={`${market}:${row.playerId}`} row={row} market={market} selected={row.playerId === selectedPlayerId} onOpen={() => onOpen(row)} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
+    <tbody>{rows.map(row => <LineOnlyRow key={row.playerId} row={row} market={market} pathFor={pathFor} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
   </table>
 }
 
 type BoardTableProps = {
   market: string
-  selectedKey: string | null
-  onOpen: (row: NbaBoardRow) => void
+  pathFor: (playerId: number) => string
+  linkState?: unknown
   now: Date
 } & (
   { kind: 'modelled', rows: Extract<NbaBoardRow, { kind: 'modelled' }>[] } |
@@ -163,7 +165,7 @@ type BoardTableProps = {
 )
 
 export function NbaBoardTable(props: BoardTableProps) {
-  const { market, selectedKey, onOpen, now } = props
+  const { market, pathFor, linkState, now } = props
   const modelled = props.kind === 'modelled'
   const columns: Array<[string, ReactNode]> = [
     ...(modelled ? COLUMNS : LINE_ONLY_COLUMNS), ['game', 'Game'], ['tip', 'Tip / status'],
@@ -172,8 +174,8 @@ export function NbaBoardTable(props: BoardTableProps) {
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) || (!modelled && key === 'line') ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>{props.kind === 'modelled'
-      ? props.rows.map(item => <PropRow key={item.key} rowKey={item.key} card={item.row} market={market} game={item.game} now={now} selected={item.key === selectedKey} onOpen={() => onOpen(item)} />)
-      : props.rows.map(item => <LineOnlyRow key={item.key} rowKey={item.key} row={item.row} market={market} game={item.game} now={now} selected={item.key === selectedKey} onOpen={() => onOpen(item)} />)
+      ? props.rows.map(item => <PropRow key={item.key} card={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
+      : props.rows.map(item => <LineOnlyRow key={item.key} row={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
     }</tbody>
   </table>
 }

@@ -1,0 +1,6 @@
+/* The injury and opponent evidence sections, shared by the NBA player page and the prop evidence panel. */
+
+.nba-prop-evidence__section { margin-top: var(--space-5); }
+.nba-prop-evidence__section h4 { margin: 0 0 8px; font: 700 13px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.nba-prop-evidence__section h4 small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+.nba-prop-evidence__section p { margin: 3px 0 0; color: var(--text-secondary); font-size: 12px; }
