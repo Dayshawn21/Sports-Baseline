@@ -221,7 +221,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 51 | NFL recent form window | Complete 2026-11-02 |
 | 52 | NFL other markets in the prop tabs | Complete 2026-11-02 |
 | 53 | NBA, NHL and tennis player pages | In progress; 53a, 53b, 53d and 53g complete; 53b2, 53c, 53d2, 53e, 53f and 53h open |
-| 56 | NHL prop board and model | 56a complete 2026-11-04 (`/nhl/board`, line-only, not deployed); 56b-56d not yet specced |
+| 56 | NHL prop board and model | 56a complete 2026-11-04 (`/nhl/board`, line-only, not deployed); 56b complete 2026-11-04 (backtest harness, rule pre-registered in `237c2bcc`, 2025-26 holdout unread); 56c-56d not yet specced |
 
 23 leaf items remain, with these gates:
 

@@ -11,6 +11,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
+from app.core.nhl_projection_backtest import SERVED_GAME_TYPES, NhlHistoryRow
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -459,3 +460,46 @@ async def get_player_played_games(
         "opponent": opponent, "limit": limit,
     })
     return [dict(row) for row in rows.mappings()]
+
+
+_HISTORY_SKATER_COLUMNS = (
+    "goals", "assists", "points", "shots", "power_play_points", "blocked_shots", "plus_minus", "hits",
+    "faceoffs_won", "time_on_ice_seconds",
+)
+_HISTORY_GOALIE_COLUMNS = ("saves", "goals_against", "time_on_ice_seconds")
+_HISTORY_GAME_TYPES = "g.game_type IN (" + ", ".join(f"'{game_type}'" for game_type in SERVED_GAME_TYPES) + ")"
+
+
+async def _history_rows(
+    db: AsyncSession, table: str, columns: Sequence[str], goalie: bool, seasons: Sequence[int],
+) -> list[NhlHistoryRow]:
+    started = "s.started" if goalie else "TRUE"
+    rows = await db.execute(text(f"""
+        SELECT s.player_id, s.game_id, g.season, g.game_date, g.game_type, p.position, {started} AS started,
+               {", ".join(f"s.{column}" for column in columns)}
+        FROM {table} s
+        JOIN sport_games g ON g.sport = 'nhl' AND g.id = s.game_id
+        JOIN sport_players p ON p.sport = 'nhl' AND p.id = s.player_id
+        WHERE g.season = ANY(:seasons) AND {_HISTORY_GAME_TYPES}
+        ORDER BY g.game_date, g.id, s.player_id
+    """), {"seasons": list(seasons)})
+    return [
+        NhlHistoryRow(
+            player_id=int(row["player_id"]), game_id=int(row["game_id"]), season=int(row["season"]),
+            game_date=row["game_date"], game_type=str(row["game_type"]), position=row["position"],
+            is_goalie=goalie, started=bool(row["started"]),
+            stats={column: None if row[column] is None else int(row[column]) for column in columns},
+        )
+        for row in rows.mappings()
+    ]
+
+
+async def get_projection_history(db: AsyncSession, seasons: Sequence[int]) -> list[NhlHistoryRow]:
+    """Every served skater and goalie box-score row of the seasons, oldest first, for the projection backtest.
+
+    The seasons are always named by the caller: a default could read the 2025-26 holdout by accident.
+    A row exists only if the player dressed or played, so no row means did not play.
+    """
+    skaters = await _history_rows(db, "nhl_skater_game_stats", _HISTORY_SKATER_COLUMNS, False, seasons)
+    goalies = await _history_rows(db, "nhl_goalie_game_stats", _HISTORY_GOALIE_COLUMNS, True, seasons)
+    return sorted(skaters + goalies, key=lambda row: (row.game_date, row.game_id, row.is_goalie, row.player_id))

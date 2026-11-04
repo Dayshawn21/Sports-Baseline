@@ -155,6 +155,14 @@ per command; read this file before running, scheduling or changing one.
   PostgreSQL read acceptance, GitHub registration/runner acceptance and
   deployment remain pending. Display is gray context only; no model or picks
   change. See `docs/nhl-context.md` for activation order and verification limits.
+- NHL projection backtest (56b):
+  `python -m app.backtest.nhl_projections [--season 2024] [--arms reference,last_10]`.
+  Read-only replay of box scores game by game under the rule pre-registered in
+  commit `237c2bcc01caf68495c88982eedd4cdbf57da2a0`; the default is the 2024-25
+  development season (about 17 s). Only 2024-25 runs without `--holdout`; the CLI
+  refuses every other season (2025-26 is the holdout and 2026-27's window reads it)
+  and `--holdout` needs a separate yes in chat. Backtest only: nothing
+  is served or stored.
 
 ## Ask Lineform (`api/`, 47)
 

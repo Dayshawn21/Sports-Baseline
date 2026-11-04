@@ -9,11 +9,15 @@ Pure: no DB, no I/O.
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import groupby
+from statistics import fmean
 from typing import Literal
 
 from app.core.nfl_projection_backtest import PairedDiff
+from app.core.nhl_player_values import GOALIE_MARKETS, nhl_stat_value
 from app.nhl.markets import NhlLineOnlyMarket
 
 # Every priced NHL market, goalie markets included. The two combos and Fantasy Score are not stored (45a).
@@ -101,3 +105,82 @@ def nhl_adoption_verdict(diff: PairedDiff) -> NhlVerdict:
     improves_enough = diff.relative_mae_change <= -MIN_RELATIVE_MAE_IMPROVEMENT
     beyond_noise = diff.mean_diff < -STANDARD_ERRORS_REQUIRED * diff.standard_error
     return "adopt" if improves_enough and beyond_noise else "reject"
+
+
+# An arm projects one market from a player's prior played games, oldest first.
+Arm = Callable[[Sequence[NhlHistoryRow], NhlLineOnlyMarket], float | None]
+
+
+def window_mean(games: int) -> Arm:
+    """The mean settled value over the last `games` prior games, skipping games where the stat is NULL."""
+    def arm(prior: Sequence[NhlHistoryRow], market: NhlLineOnlyMarket) -> float | None:
+        values = [value for row in prior[-games:] if (value := nhl_stat_value(market, row.stats)) is not None]
+        return fmean(values) if values else None
+    return arm
+
+
+ARMS: dict[str, Arm] = {
+    REFERENCE_ARM: window_mean(REFERENCE_GAMES),
+    LAST_10_ARM: window_mean(LAST_10_GAMES),
+}
+
+
+def prior_toi_minutes(prior: Sequence[NhlHistoryRow]) -> float | None:
+    """Mean time on ice over the last 10 prior games with TOI stored; NULL games are ignored."""
+    seconds = [row.stats["time_on_ice_seconds"] for row in prior[-TOI_WINDOW:] if row.stats.get("time_on_ice_seconds") is not None]
+    return fmean(seconds) / 60 if seconds else None
+
+
+def eligible_case(row: NhlHistoryRow, prior: Sequence[NhlHistoryRow]) -> bool:
+    """Whether the game is scored. Eligibility belongs to the harness, so every arm scores the same cases."""
+    if row.is_goalie:
+        return row.started and len(prior) >= MIN_PRIOR_GOALIE_STARTS
+    if len(prior) < MIN_PRIOR_GAMES:
+        return False
+    minutes = prior_toi_minutes(prior)
+    return minutes is not None and minutes >= MIN_PRIOR_TOI_MINUTES
+
+
+def _markets_for(row: NhlHistoryRow) -> list[NhlLineOnlyMarket]:
+    if row.is_goalie:
+        return [market for market in BACKTEST_MARKETS if market in GOALIE_MARKETS]
+    return [
+        market for market in BACKTEST_MARKETS
+        if market not in GOALIE_MARKETS and (market not in CENTER_ONLY_MARKETS or row.position == CENTER_POSITION)
+    ]
+
+
+def _cases_for(row: NhlHistoryRow, prior: Sequence[NhlHistoryRow], arm: Arm) -> list[NhlReplayCase]:
+    minutes = None if row.is_goalie else prior_toi_minutes(prior)
+    cases = []
+    for market in _markets_for(row):
+        actual = nhl_stat_value(market, row.stats)
+        projection = arm(prior, market) if actual is not None else None
+        if actual is None or projection is None:
+            continue
+        cases.append(NhlReplayCase(
+            player_id=row.player_id, game_id=row.game_id, game_date=row.game_date, game_type=row.game_type,
+            market=market.value, prior_toi_minutes=minutes, projection=projection, actual=actual,
+        ))
+    return cases
+
+
+def replay_cases(history: Iterable[NhlHistoryRow], season: int, arm: Arm) -> list[NhlReplayCase]:
+    """Score every eligible player-game of `season`, each from games dated strictly before it.
+
+    Box scores load the morning after a game, so even an earlier game on the same Eastern
+    date is not an input. A goalie's inputs are his starts only, matching how the market
+    settles. `history` must be in date order.
+    """
+    played: dict[int, list[NhlHistoryRow]] = defaultdict(list)
+    cases: list[NhlReplayCase] = []
+    for _, same_day in groupby(history, key=lambda row: row.game_date):
+        rows = list(same_day)
+        for row in rows:
+            prior = played[row.player_id]
+            if row.season == season and eligible_case(row, prior):
+                cases.extend(_cases_for(row, prior, arm))
+        for row in rows:
+            if row.started:
+                played[row.player_id].append(row)
+    return cases

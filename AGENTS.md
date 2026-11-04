@@ -145,6 +145,9 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   (dry run still spends hourly Odds-API.io requests)
 - NHL injuries and goalies: `python -m app.ingest.nhl_context [--dry-run] [--date YYYY-MM-DD]`
   (migration `0050` must be applied before real writes and nonempty NHL reads)
+- NHL projection backtest (56b): `python -m app.backtest.nhl_projections [--season 2024] [--arms reference,last_10]`
+  (read-only; development is 2024-25; any run that reads the 2025-26 holdout
+  needs `--holdout` and a separate yes in chat)
 
 ### Ask Lineform (`api/`, 47)
 
