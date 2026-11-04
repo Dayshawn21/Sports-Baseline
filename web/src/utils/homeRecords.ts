@@ -1,13 +1,12 @@
 import type { ModelPredictionsResponse } from '~/types/tennis'
 import type { HomeStatus } from '~/utils/home'
-import { ensembleVerdictText } from '~/utils/trackRecord'
 
 export type RecordSport = 'tennis' | 'nfl' | 'nba'
 
 export interface HomeRecord {
   sport: RecordSport
   status: HomeStatus
-  /** The published headline: an adopted-slice count, "Accruing", or tennis's ensemble-versus-market read. */
+  /** The published headline: the adopted-slice count, or tennis's ensemble-versus-market read. */
   label: string
   detail: string
 }
@@ -22,21 +21,41 @@ function placeholder(sport: RecordSport, status: HomeStatus): HomeRecord {
   return { sport, status, label: status === 'error' ? 'Unavailable' : '--', detail: DETAIL[sport] }
 }
 
-/** NFL and NBA: the 27j-style slices; "Accruing" until a rule has adopted one, never a pick signal. */
+const NO_DATA = 'No data'
+
+function countOf(slices: readonly { verdict: string }[], ...verdicts: string[]): number {
+  return slices.filter(slice => verdicts.includes(slice.verdict)).length
+}
+
+/** NFL and NBA slices: the label counts adopted ones, and the detail names the rest so a rejected slice never reads as still accruing. */
 export function rankingRecord(
   sport: 'nfl' | 'nba',
   ranking: { slices: readonly { verdict: string }[] } | undefined,
   status: HomeStatus,
 ): HomeRecord {
   if (!ranking) return placeholder(sport, status)
-  const adopted = ranking.slices.filter(slice => slice.verdict === 'adopt').length
-  const label = adopted === 0 ? 'Accruing' : `${adopted} of ${ranking.slices.length} adopted`
-  return { sport, status: 'ready', label, detail: DETAIL[sport] }
+  const { slices } = ranking
+  const counted: [number, string][] = [
+    [countOf(slices, 'reject'), 'rejected'],
+    [countOf(slices, 'pass'), 'passed'],
+    [countOf(slices, 'insufficient', 'accruing'), 'accruing'],
+  ]
+  const rest = counted.filter(([count]) => count > 0).map(([count, word]) => `${count} ${word}`)
+  return {
+    sport,
+    status: 'ready',
+    label: `${countOf(slices, 'adopt')} of ${slices.length} adopted`,
+    detail: [DETAIL[sport], ...rest].join(' · '),
+  }
 }
 
-/** Tennis has no adoption rule on its model page; its headline is the pooled ensemble-versus-market read. */
+const TENNIS_READ = { positive: 'Ahead of market', neutral: 'Level with market', negative: 'Behind market' } as const
+
+/** Tennis has no adoption rule on its model page; its headline is the pooled ensemble-versus-market read, with a tie called a tie. */
 export function tennisRecord(data: ModelPredictionsResponse | undefined, status: HomeStatus): HomeRecord {
   if (!data) return placeholder('tennis', status)
   const pooled = data.groups.find(group => group.group === 'ATP+WTA')
-  return { sport: 'tennis', status: 'ready', label: ensembleVerdictText(pooled), detail: DETAIL.tennis }
+  const signal = pooled?.components.find(component => component.name === 'ensemble')?.vsMarket?.signal
+  const label = pooled && pooled.n > 0 && signal ? TENNIS_READ[signal] : NO_DATA
+  return { sport: 'tennis', status: 'ready', label, detail: DETAIL.tennis }
 }
