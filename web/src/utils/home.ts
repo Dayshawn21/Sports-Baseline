@@ -1,4 +1,5 @@
-import { SPORTS, type Sport } from '~/utils/sportNav'
+import { SPORTS, VIEW_LABELS, sportViews, type Sport, type SportView } from '~/utils/sportNav'
+import type { HomeSource } from '~/utils/homeSources'
 
 export type HomeStatus = 'loading' | 'error' | 'ready'
 
@@ -10,12 +11,6 @@ export interface HomeSportData {
   /** Start times in epoch ms of the games still to come; the caller drops finished ones. */
   startsMs: number[]
 }
-
-/** Starts this close to the earliest one count as tied. */
-export const LEAD_TIE_WINDOW_MS = 3 * 60 * 60 * 1000
-
-/** A tie goes to a team sport first: tennis plays around the clock and would otherwise lead every day. */
-const TIE_PRIORITY: readonly Sport[] = ['nfl', 'nba', 'nhl', 'tennis']
 
 const CENTRAL = 'America/Chicago'
 const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
@@ -29,30 +24,12 @@ export function nextStart(data: HomeSportData, now: number): number | null {
   return upcoming.length === 0 ? null : Math.min(...upcoming)
 }
 
-function readyStarts(data: HomeSportData[], now: number) {
-  return data.flatMap(entry => {
-    const start = entry.status === 'ready' ? nextStart(entry, now) : null
-    return start === null ? [] : [{ sport: entry.sport, start }]
-  })
+export function centralDay(startMs: number): string {
+  return DAY_KEY.format(startMs)
 }
 
-/** The sport that leads the home, or null when no sport that loaded has a game still to come. */
-export function chooseLead(data: HomeSportData[], now: number): Sport | null {
-  const eligible = readyStarts(data, now)
-  if (eligible.length === 0) return null
-  const earliest = Math.min(...eligible.map(entry => entry.start))
-  const tied = eligible.filter(entry => entry.start - earliest <= LEAD_TIE_WINDOW_MS)
-  return tied.sort((a, b) => TIE_PRIORITY.indexOf(a.sport) - TIE_PRIORITY.indexOf(b.sport))[0].sport
-}
-
-/** The strip: every sport except the lead, soonest start first; sports with none to come go last in registry order. */
-export function stripOrder(data: HomeSportData[], lead: Sport | null, now: number): HomeSportData[] {
-  const registry = (entry: HomeSportData) => SPORTS.findIndex(sport => sport.code === entry.sport)
-  return data
-    .filter(entry => entry.sport !== lead)
-    .map(entry => ({ entry, start: nextStart(entry, now) }))
-    .sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity) || registry(a.entry) - registry(b.entry))
-    .map(({ entry }) => entry)
+export function weekdayLabel(startMs: number): string {
+  return WEEKDAY.format(startMs)
 }
 
 /** Central time of day, with the weekday when the start is not today. */
@@ -61,45 +38,87 @@ export function startLabel(startMs: number, now: number): string {
   return DAY_KEY.format(startMs) === DAY_KEY.format(now) ? clock : `${WEEKDAY.format(startMs)} ${clock}`
 }
 
-const NOUN: Record<Sport, { one: string, many: string, first: string }> = {
-  nfl: { one: 'game', many: 'games', first: 'kickoff' },
-  nba: { one: 'game', many: 'games', first: 'tip' },
-  nhl: { one: 'game', many: 'games', first: 'puck' },
-  tennis: { one: 'match', many: 'matches', first: 'match' },
+const NOUN: Record<Sport, { one: string, many: string }> = {
+  nfl: { one: 'game', many: 'games' },
+  nba: { one: 'game', many: 'games' },
+  nhl: { one: 'game', many: 'games' },
+  tennis: { one: 'match', many: 'matches' },
 }
-
-export type StripTone = 'normal' | 'quiet' | 'error'
-export interface StripRow { sport: Sport, text: string, tone: StripTone }
 
 function emptyText(sport: Sport): string {
   if (sport === 'tennis') return 'No priced matches'
   return sport === 'nhl' ? 'No games today' : 'No games scheduled'
 }
 
-/** One "Also today" row; a sport that failed or is empty never blocks the others. */
-export function stripRow(data: HomeSportData, now: number): StripRow {
-  const { sport } = data
-  if (data.status === 'loading') return { sport, text: 'Loading', tone: 'quiet' }
-  if (data.status === 'error') return { sport, text: 'Could not load', tone: 'error' }
-  if (data.gameCount === 0) return { sport, text: emptyText(sport), tone: 'quiet' }
-  const noun = NOUN[sport]
-  const start = nextStart(data, now)
-  if (start === null) return { sport, text: `No upcoming ${noun.many}`, tone: 'quiet' }
-  const count = `${data.gameCount} ${data.gameCount === 1 ? noun.one : noun.many}`
-  return { sport, text: `${count} · first ${noun.first} ${startLabel(start, now)}`, tone: 'normal' }
-}
-
-/** The hero's subtitle: when the lead's next game starts. */
-export function heroNext(sport: Sport, startMs: number, now: number): string {
-  return `Next ${NOUN[sport].first} ${startLabel(startMs, now)} CT`
-}
-
 export function sportNoun(sport: Sport, count: number): string {
   return count === 1 ? NOUN[sport].one : NOUN[sport].many
 }
 
-/** The page head's status line: today's date and time in Central, then who has the next start. */
-export function todayStatus(lead: string | null, now: number): string {
+/** The page head's status line: today's date and time in Central, then when the newest slate loaded. */
+export function todayStatus(now: number, refreshedMs: number | null): string {
   const when = `${WEEKDAY.format(now)} ${MONTH_DAY.format(now)} · ${CLOCK.format(now)} CT`
-  return lead === null ? when : `${when} · ${lead} has the next start`
+  return refreshedMs === null ? when : `${when} · slates refreshed ${CLOCK.format(refreshedMs)}`
+}
+
+/** The newest load time among the slate queries; react-query reports 0 for one that has not loaded. */
+export function newestUpdate(times: number[]): number | null {
+  const loaded = times.filter(time => time > 0)
+  return loaded.length === 0 ? null : Math.max(...loaded)
+}
+
+const START_WORD: Record<Sport, string> = { nfl: 'Next kickoff', nba: 'First tip', nhl: 'First puck', tennis: 'First match' }
+
+export type CardTone = 'normal' | 'quiet' | 'error' | 'loading'
+
+export interface HomeCardLink { view: SportView, label: string, path: string }
+
+/** Everything one sport card shows; the component only lays it out. */
+export interface HomeCard {
+  sport: Sport
+  label: string
+  /** The prototype's small caps tag: the NFL week, or TODAY for day-based sports. */
+  period: string
+  /** The start line, or the quiet text when there is nothing to start. */
+  when: string
+  count: string
+  noun: string
+  next: string
+  tone: CardTone
+  links: HomeCardLink[]
+}
+
+function cardWhen(data: HomeSportData, now: number): { text: string, tone: CardTone } {
+  const { sport } = data
+  if (data.status === 'loading') return { text: 'Loading', tone: 'loading' }
+  if (data.status === 'error') return { text: 'Could not load', tone: 'error' }
+  if (data.gameCount === 0) return { text: emptyText(sport), tone: 'quiet' }
+  const start = nextStart(data, now)
+  if (start === null) return { text: `No upcoming ${NOUN[sport].many}`, tone: 'quiet' }
+  return { text: `${START_WORD[sport]} ${startLabel(start, now)} CT`, tone: 'normal' }
+}
+
+/** The NFL names a day's game when it has one and counts the rest; other sports list their next games. */
+function nextLine(sport: Sport, source: HomeSource): string {
+  if (sport === 'nfl') {
+    return source.days.map(day => day.count === 1 ? `${day.label}: ${day.title}` : `${day.label}: ${day.count} games`).join(' · ')
+  }
+  return source.nextGames.length === 0 ? '' : `Next: ${source.nextGames.map(game => game.title).join(', ')}`
+}
+
+export function homeCard(data: HomeSportData, source: HomeSource, now: number): HomeCard {
+  const { sport } = data
+  const when = cardWhen(data, now)
+  const ready = data.status === 'ready'
+  const priced = sport === 'tennis' ? ' priced' : ''
+  return {
+    sport,
+    label: SPORTS.find(entry => entry.code === sport)!.label,
+    period: source.period?.toUpperCase() ?? 'TODAY',
+    when: when.text,
+    count: ready ? String(data.gameCount) : '--',
+    noun: `${sportNoun(sport, data.gameCount)}${priced}`,
+    next: ready ? nextLine(sport, source) : '',
+    tone: when.tone,
+    links: sportViews(sport).map(({ view, path }) => ({ view, label: VIEW_LABELS[view], path })),
+  }
 }

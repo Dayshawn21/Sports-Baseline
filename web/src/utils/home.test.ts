@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LEAD_TIE_WINDOW_MS, chooseLead, heroNext, nextStart, sportNoun, todayStatus, startLabel, stripOrder, stripRow, type HomeSportData } from '~/utils/home'
+import type { HomeSource } from '~/utils/homeSources'
+import { homeCard, newestUpdate, nextStart, sportNoun, startLabel, todayStatus, type HomeSportData } from '~/utils/home'
 
 const HOUR = 60 * 60 * 1000
 // Tue 2026-11-03 17:00 UTC = 11:00 CT.
@@ -20,100 +21,83 @@ describe('nextStart', () => {
   })
 })
 
-describe('chooseLead', () => {
-  it('picks the sport with the nearest upcoming start', () => {
-    const data = [sportData('nfl', [30]), sportData('nba', [8]), sportData('nhl', [20])]
-    expect(chooseLead(data, NOW)).toBe('nba')
-  })
-
-  it('lets a team sport win a tie against a tennis start up to 3 hours earlier', () => {
-    expect(chooseLead([sportData('tennis', [2]), sportData('nfl', [4])], NOW)).toBe('nfl')
-    expect(LEAD_TIE_WINDOW_MS).toBe(3 * HOUR)
-  })
-
-  it('lets tennis lead when it starts more than 3 hours before every team sport', () => {
-    expect(chooseLead([sportData('tennis', [1]), sportData('nfl', [5])], NOW)).toBe('tennis')
-  })
-
-  it('breaks ties between team sports in NFL, NBA, NHL order', () => {
-    const data = [sportData('nhl', [4]), sportData('nba', [4]), sportData('nfl', [5])]
-    expect(chooseLead(data, NOW)).toBe('nfl')
-  })
-
-  it('is null when no sport has a game to come', () => {
-    const data = [sportData('nfl', [-3]), sportData('nba', []), sportData('tennis', [-1])]
-    expect(chooseLead(data, NOW)).toBeNull()
-  })
-
-  it('skips a sport that is loading or errored, even with the nearest start', () => {
-    const data = [sportData('nba', [1], { status: 'error' }), sportData('nhl', [2], { status: 'loading' }), sportData('nfl', [9])]
-    expect(chooseLead(data, NOW)).toBe('nfl')
-  })
-})
-
-describe('stripOrder', () => {
-  it('drops the lead and orders the rest by first start', () => {
-    const data = [sportData('tennis', [9]), sportData('nfl', [1]), sportData('nba', [3]), sportData('nhl', [2])]
-    expect(stripOrder(data, 'nfl', NOW).map(entry => entry.sport)).toEqual(['nhl', 'nba', 'tennis'])
-  })
-
-  it('puts sports with nothing to come last, in registry order', () => {
-    const data = [
-      sportData('nhl', []), sportData('nba', [4]), sportData('tennis', [-2]), sportData('nfl', [], { status: 'error' }),
-    ]
-    expect(stripOrder(data, null, NOW).map(entry => entry.sport)).toEqual(['nba', 'tennis', 'nfl', 'nhl'])
-  })
-})
-
-describe('stripRow', () => {
-  it('describes a sport with games to come', () => {
-    expect(stripRow(sportData('nba', [7, 9]), NOW)).toEqual({ sport: 'nba', text: '2 games · first tip 6:00 PM', tone: 'normal' })
-    expect(stripRow(sportData('nhl', [7]), NOW).text).toBe('1 game · first puck 6:00 PM')
-    expect(stripRow(sportData('tennis', [3]), NOW).text).toBe('1 match · first match 2:00 PM')
-  })
-
-  it('names the weekday when the start is not today', () => {
-    expect(stripRow(sportData('nfl', [56]), NOW).text).toBe('1 game · first kickoff Thu 7:00 PM')
-  })
-
-  it('reads quiet for an empty slate, per sport', () => {
-    expect(stripRow(sportData('nhl', []), NOW)).toEqual({ sport: 'nhl', text: 'No games today', tone: 'quiet' })
-    expect(stripRow(sportData('tennis', []), NOW)).toEqual({ sport: 'tennis', text: 'No priced matches', tone: 'quiet' })
-    expect(stripRow(sportData('nfl', []), NOW).text).toBe('No games scheduled')
-    expect(stripRow(sportData('nba', []), NOW).text).toBe('No games scheduled')
-  })
-
-  it('says nothing is left when every game has started', () => {
-    expect(stripRow(sportData('nba', [-3, -1]), NOW)).toEqual({ sport: 'nba', text: 'No upcoming games', tone: 'quiet' })
-    expect(stripRow(sportData('tennis', [-1]), NOW).text).toBe('No upcoming matches')
-  })
-
-  it('flags a failed sport and marks a loading one', () => {
-    expect(stripRow(sportData('nba', [], { status: 'error' }), NOW)).toEqual({ sport: 'nba', text: 'Could not load', tone: 'error' })
-    expect(stripRow(sportData('nba', [], { status: 'loading' }), NOW)).toEqual({ sport: 'nba', text: 'Loading', tone: 'quiet' })
-  })
-})
-
-describe('startLabel and heroNext', () => {
+describe('startLabel', () => {
   it('uses Central time and adds the weekday only off today', () => {
     expect(startLabel(NOW + 7 * HOUR, NOW)).toBe('6:00 PM')
     expect(startLabel(NOW + 56 * HOUR, NOW)).toBe('Thu 7:00 PM')
   })
 
-  it('words the hero line per sport', () => {
-    expect(heroNext('nfl', NOW + 56 * HOUR, NOW)).toBe('Next kickoff Thu 7:00 PM CT')
-    expect(heroNext('nba', NOW + 7 * HOUR, NOW)).toBe('Next tip 6:00 PM CT')
-  })
 })
 
 describe('todayStatus and sportNoun', () => {
-  it('leads with the Central date and time, then the lead sport', () => {
-    expect(todayStatus('NFL', NOW)).toBe('Tue Nov 3 · 11:00 AM CT · NFL has the next start')
-    expect(todayStatus(null, NOW)).toBe('Tue Nov 3 · 11:00 AM CT')
+  it('leads with the Central date and time, then when the newest slate loaded', () => {
+    expect(todayStatus(NOW, NOW - 30 * 60 * 1000)).toBe('Tue Nov 3 · 11:00 AM CT · slates refreshed 10:30 AM')
+    expect(todayStatus(NOW, null)).toBe('Tue Nov 3 · 11:00 AM CT')
+  })
+
+  it('takes the newest load time and ignores slates that have not loaded', () => {
+    expect(newestUpdate([0, 5, 9, 0])).toBe(9)
+    expect(newestUpdate([0, 0])).toBeNull()
+    expect(newestUpdate([])).toBeNull()
   })
 
   it('counts games or matches', () => {
     expect(sportNoun('nba', 1)).toBe('game')
     expect(sportNoun('tennis', 92)).toBe('matches')
+  })
+})
+
+const source = (overrides: Partial<HomeSource> = {}): HomeSource => ({
+  gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], period: null, days: [], ...overrides,
+})
+const game = (key: string, title: string) => ({ key, title, when: '' })
+
+describe('homeCard', () => {
+  it('describes the NFL week with its days', () => {
+    const days = [
+      { key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL' },
+      { key: 'b', label: 'Sun', count: 12, title: 'x' },
+      { key: 'c', label: 'Mon', count: 1, title: 'DEN @ CAR' },
+    ]
+    const card = homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW)
+    expect(card).toMatchObject({
+      sport: 'nfl', label: 'NFL', period: 'WEEK 9', when: 'Next kickoff Thu 7:00 PM CT', count: '2', noun: 'games', tone: 'normal',
+      next: 'Thu: JAX @ BAL · Sun: 12 games · Mon: DEN @ CAR',
+    })
+    expect(card.links.map(link => [link.label, link.path])).toEqual([['Slate', '/nfl'], ['Props', '/nfl/board'], ['Model', '/nfl/model']])
+  })
+
+  it('lists the next games for a day-based sport and tags it TODAY', () => {
+    const next = [game('1', 'ORL @ CHA'), game('2', 'DET @ TOR'), game('3', 'LAL @ GSW')]
+    const card = homeCard(sportData('nba', [7, 9]), source({ nextGames: next }), NOW)
+    expect(card).toMatchObject({ period: 'TODAY', when: 'First tip 6:00 PM CT', count: '2', next: 'Next: ORL @ CHA, DET @ TOR, LAL @ GSW' })
+    expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ when: 'First puck 6:00 PM CT', next: '' })
+  })
+
+  it('gives NHL only a Slate link and tennis all three', () => {
+    expect(homeCard(sportData('nhl', [7]), source(), NOW).links.map(link => link.label)).toEqual(['Slate'])
+    expect(homeCard(sportData('tennis', [3]), source(), NOW).links.map(link => link.label)).toEqual(['Slate', 'Props', 'Model'])
+  })
+
+  it('counts priced matches for tennis and singular nouns', () => {
+    expect(homeCard(sportData('tennis', [3, 4]), source(), NOW)).toMatchObject({ when: 'First match 2:00 PM CT', noun: 'matches priced' })
+    expect(homeCard(sportData('nba', [3]), source(), NOW).noun).toBe('game')
+  })
+
+  it('goes quiet with its own text when the slate is empty', () => {
+    expect(homeCard(sportData('nhl', []), source(), NOW)).toMatchObject({ when: 'No games today', count: '0', tone: 'quiet', next: '' })
+    expect(homeCard(sportData('nfl', []), source(), NOW).when).toBe('No games scheduled')
+    expect(homeCard(sportData('nba', []), source(), NOW).when).toBe('No games scheduled')
+    expect(homeCard(sportData('tennis', []), source(), NOW)).toMatchObject({ when: 'No priced matches', tone: 'quiet' })
+  })
+
+  it('says nothing is left when every game has started', () => {
+    expect(homeCard(sportData('nba', [-3, -1]), source(), NOW)).toMatchObject({ when: 'No upcoming games', count: '2', tone: 'quiet' })
+    expect(homeCard(sportData('tennis', [-1]), source(), NOW).when).toBe('No upcoming matches')
+  })
+
+  it('marks a loading or failed sport without a made-up count', () => {
+    expect(homeCard(sportData('nba', [], { status: 'loading' }), source(), NOW)).toMatchObject({ when: 'Loading', count: '--', tone: 'loading', next: '' })
+    expect(homeCard(sportData('nba', [], { status: 'error' }), source(), NOW)).toMatchObject({ when: 'Could not load', count: '--', tone: 'error' })
   })
 })

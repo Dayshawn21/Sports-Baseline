@@ -1,30 +1,31 @@
-import { HomeHero } from '~/components/home/HomeHero'
+import { HomeGaps } from '~/components/home/HomeGaps'
 import { HomeRecords } from '~/components/home/HomeRecords'
-import { HomeStrip } from '~/components/home/HomeStrip'
+import { HomeSportCard } from '~/components/home/HomeSportCard'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import { useHomeData } from '~/hooks/useHomeData'
 import { todayStatus } from '~/utils/home'
-import { SPORTS } from '~/utils/sportNav'
 import '~/components/home/home.css'
+
+function Heading({ title, note }: { title: string, note: string }) {
+  return <h2 className="home-section-title">{title} <small>{note}</small></h2>
+}
 
 export default function HomePage() {
   const home = useHomeData()
-  const lead = home.sports.find(sport => sport.data.sport === home.lead)
-  const leadLabel = SPORTS.find(sport => sport.code === home.lead)?.label ?? null
 
   if (home.loading) return <LoadingState message="Loading today..." />
   if (home.failed) return <ErrorState error={new Error('No sport could be loaded.')} onRetry={() => home.sports.forEach(sport => sport.retry())} />
   return <div className="page-shell"><div className="page-container is-wide">
-    <PageHead title="Today" meta={todayStatus(leadLabel, home.now)} />
-    <h2 className="home-section-title">Next up</h2>
-    {lead
-      ? <HomeHero sport={lead} record={home.records.find(record => record.sport === home.lead)} now={home.now} />
-      : <div className="home-empty">Nothing scheduled on any slate right now.</div>}
-    <h2 className="home-section-title">{lead ? 'Also today' : 'Slates'}</h2>
-    <HomeStrip rows={home.strip} />
-    <h2 className="home-section-title">Model records</h2>
+    <PageHead title="Today" meta={todayStatus(home.now, home.refreshedAt)} />
+    <h2 className="home-section-title">Slates</h2>
+    <div className="home-cards">
+      {home.cards.map(card => <HomeSportCard key={card.sport} card={card} onRetry={card.retry} />)}
+    </div>
+    <Heading title="Largest gaps across sports" note="reference only, not picks" />
+    <HomeGaps gaps={home.gaps} />
+    <Heading title="Model records" note="published track records, per sport" />
     <HomeRecords records={home.records} />
   </div></div>
 }

@@ -42,5 +42,6 @@ export function useTennisToday(params?: { date?: string; tour?: string }) {
     error,
     refetch: () => results.forEach(q => q.refetch()),
     isSuccess: results.every(q => q.isSuccess),
+    dataUpdatedAt: Math.max(0, ...results.map(q => q.dataUpdatedAt)),
   }
 }
