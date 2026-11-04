@@ -236,7 +236,7 @@ function propsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
   const intro = GAMES_INTRO[sport]
   if (intro !== undefined) {
     const empty = data.gameCount === 0 ? emptyText(sport) : `No upcoming ${NOUN[sport].many}`
-    return { kind: 'games', intro, games: source.schedule, empty, footer: footerFor(sport, 'slate') }
+    return { kind: 'games', intro, games: source.schedule, empty, footer: footerFor(sport, 'props') }
   }
   const empty = source.gapsFailed ? 'Gap lines could not load.' : data.gameCount === 0 ? emptyText(sport) : 'No gap lines yet.'
   return { kind: 'rows', rows: source.gaps, empty, footer: footerFor(sport, 'props') }

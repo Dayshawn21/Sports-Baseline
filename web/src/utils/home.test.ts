@@ -157,9 +157,9 @@ describe('gaps tabs', () => {
     expect(gapsBody('nba', failed)).toMatchObject({ rows: [], empty: 'Gap lines could not load.' })
   })
 
-  it('lists next games for NHL, and says why, with a slate link', () => {
+  it('lists next games for NHL, and says why, with a link to its props board', () => {
     expect(gapsBody('nhl', sports())).toMatchObject({
-      kind: 'games', games: [{ key: '1' }], footer: { label: 'Open the NHL slate', path: '/nhl' },
+      kind: 'games', games: [{ key: '1' }], footer: { label: 'View all NHL props', path: '/nhl/board' },
       intro: expect.stringContaining('no gaps to show'),
     })
   })
