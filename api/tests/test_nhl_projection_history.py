@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.nhl_player_values import nhl_stat_value
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.nhl.markets import NhlLineOnlyMarket
-from app.repositories.nhl import get_projection_history
+from app.repositories.nhl import get_prior_history, get_projection_history
 
 
 class _Result:
@@ -99,3 +99,31 @@ def test_skaters_and_goalies_are_merged_oldest_first() -> None:
 
     assert [(row.game_date.day, row.is_goalie, row.player_id) for row in rows] == [(9, True, 30), (10, False, 7), (10, True, 31)]
     assert rows[2].started is False
+
+
+def test_prior_history_scopes_the_window_to_the_floor_and_the_date() -> None:
+    session = _RecordingSession(
+        [_skater(player_id=8, game_id=2), _skater(player_id=7, game_id=3), _skater(player_id=7, game_id=1)], [_goalie()],
+    )
+
+    by_player = asyncio.run(get_prior_history(cast(AsyncSession, session), [7, 8, 30], date(2026, 10, 24)))
+
+    skater_sql, goalie_sql = session.statements
+    assert "FROM nhl_skater_game_stats s" in skater_sql and "FROM nhl_goalie_game_stats s" in goalie_sql
+    for statement in session.statements:
+        assert "g.sport = 'nhl'" in statement and "p.sport = 'nhl'" in statement
+        assert "g.game_type IN ('REG', 'PST')" in statement and "PRE" not in statement
+        assert "g.season >= :first_season" in statement and "g.game_date < :before" in statement
+        assert "s.player_id = ANY(:player_ids)" in statement and "recency <= :limit" in statement
+    assert "AND s.started" not in skater_sql and "AND s.started" in goalie_sql
+    assert session.params == [
+        {"player_ids": [7, 8, 30], "first_season": 2023, "before": date(2026, 10, 24), "limit": 20},
+    ] * 2
+    assert sorted(by_player) == [7, 8, 30]
+    assert [row.game_id for row in by_player[7]] == [3, 1]
+
+
+def test_prior_history_for_no_players_reads_nothing() -> None:
+    session = _RecordingSession([], [])
+    assert asyncio.run(get_prior_history(cast(AsyncSession, session), [], date(2026, 10, 24))) == {}
+    assert session.statements == []

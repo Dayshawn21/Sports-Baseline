@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_names import nhl_team_code
 from app.core.nhl_player_values import GOALIE_MARKETS, NHL_FIRST_HISTORY_SEASON, nhl_stat_value, player_props_date
+from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.core.slate_dates import slate_date
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
@@ -17,6 +18,7 @@ from app.schemas.nhl import (
     NhlPlayerMarketSchema, NhlPlayerPropsResponse,
 )
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext
+from app.services.nhl.projections import ProjectionInputs, line_projection
 from app.services.nhl.slate import assemble_games
 
 RECENT_GAMES = 10
@@ -45,24 +47,40 @@ def _games(market: NhlLineOnlyMarket, rows: Sequence[Mapping[str, object]], limi
     ]
 
 
+def _market(
+    market: NhlLineOnlyMarket, rows: Sequence[Mapping[str, object]], recent: Sequence[Mapping[str, object]],
+    against: Sequence[Mapping[str, object]], player: Mapping[str, object], team: str | None, inputs: ProjectionInputs,
+) -> NhlPlayerMarketSchema:
+    rungs = sorted(rows, key=lambda row: (float(str(row["line"])), _ODDS_ORDER[str(row["odds_type"])]))
+    # The value does not depend on the line, so any rung gives the market's one projection.
+    projection = line_projection(
+        market, int(str(player["player_id"])), float(str(rungs[0]["line"])), cast("str | None", player["position"]),
+        team, inputs,
+    )
+    return NhlPlayerMarketSchema(
+        market=market,
+        lines=[
+            NhlPlayerLineSchema.model_validate({
+                "line": row["line"], "odds_type": row["odds_type"], "fetched_at": row["fetched_at"],
+                "gap": None if projection.value is None else round(projection.value - float(str(row["line"])), 2),
+            })
+            for row in rungs
+        ],
+        projection=projection.model_copy(update={"gap": None}),
+        recent=_games(market, recent, RECENT_GAMES), opponent_games=_games(market, against, None),
+    )
+
+
 def _markets(
     lines: Sequence[Mapping[str, object]], recent: Sequence[Mapping[str, object]],
-    against: Sequence[Mapping[str, object]],
+    against: Sequence[Mapping[str, object]], player: Mapping[str, object], team: str | None, inputs: ProjectionInputs,
 ) -> list[NhlPlayerMarketSchema]:
-    by_market: dict[NhlLineOnlyMarket, list[NhlPlayerLineSchema]] = {}
+    by_market: dict[NhlLineOnlyMarket, list[Mapping[str, object]]] = {}
     for line in lines:
-        by_market.setdefault(NhlLineOnlyMarket(str(line["market"])), []).append(
-            NhlPlayerLineSchema.model_validate({
-                "line": line["line"], "odds_type": line["odds_type"], "fetched_at": line["fetched_at"],
-            }),
-        )
+        by_market.setdefault(NhlLineOnlyMarket(str(line["market"])), []).append(line)
     return [
-        NhlPlayerMarketSchema(
-            market=market,
-            lines=sorted(rungs, key=lambda rung: (rung.line, _ODDS_ORDER[rung.odds_type])),
-            recent=_games(market, recent, RECENT_GAMES), opponent_games=_games(market, against, None),
-        )
-        for market, rungs in sorted(by_market.items(), key=lambda item: _MARKET_ORDER[item[0]])
+        _market(market, rows, recent, against, player, team, inputs)
+        for market, rows in sorted(by_market.items(), key=lambda item: _MARKET_ORDER[item[0]])
     ]
 
 
@@ -81,6 +99,7 @@ def player_props_response(
     player: Mapping[str, object], date: dt.date, game: Mapping[str, object] | None,
     lines: Sequence[Mapping[str, object]], recent: Sequence[Mapping[str, object]],
     against: Sequence[Mapping[str, object]], context: NhlGameContextSchema | None,
+    history: Sequence[NhlHistoryRow],
 ) -> NhlPlayerPropsResponse:
     player_id = int(str(player["player_id"]))
     identity = {
@@ -95,7 +114,11 @@ def player_props_response(
     injury, goalies = _context(player_id, context)
     return NhlPlayerPropsResponse(
         **identity, team=team, game=NhlPlayerGameRefSchema.model_validate(game), opponent=opponent,
-        injury=injury, goalies=goalies, markets=_markets(lines, recent, against if opponent is not None else []),
+        injury=injury, goalies=goalies,
+        markets=_markets(
+            lines, recent, against if opponent is not None else [], player, team,
+            ProjectionInputs({player_id: history}, context),
+        ),
     )
 
 
@@ -111,11 +134,12 @@ async def build_player_props(
     lines = await nhl.get_player_lines(db, player_id, date)
     game = await nhl.get_game(db, int(str(lines[0]["game_id"]))) if lines else None
     if game is None:
-        return player_props_response(player, date, None, [], [], [], None)
+        return player_props_response(player, date, None, [], [], [], None, [])
     (assembled,) = await assemble_games(db, [game], as_of=clock)
     goalie = any(NhlLineOnlyMarket(str(line["market"])) in GOALIE_MARKETS for line in lines)
     history = {"goalie": goalie, "before": date, "first_season": NHL_FIRST_HISTORY_SEASON}
     recent = await nhl.get_player_played_games(db, player_id, limit=RECENT_GAMES, **history)
     _, opponent = game_sides(game, lines)
     against = [] if opponent is None else await nhl.get_player_played_games(db, player_id, opponent=opponent, **history)
-    return player_props_response(player, date, game, lines, recent, against, assembled.context)
+    prior = (await nhl.get_prior_history(db, [player_id], date)).get(player_id, [])
+    return player_props_response(player, date, game, lines, recent, against, assembled.context, prior)

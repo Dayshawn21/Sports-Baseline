@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.repositories import nhl
 from app.repositories import nhl_context as context_repo
 from app.schemas.nhl_context import (
@@ -49,7 +50,7 @@ def test_markets_and_rungs_come_in_market_then_line_order() -> None:
         line("points", 1.5, "demon"), line("shots_on_goal", 3.5), line("points", 0.5, "goblin"),
         line("points", 1.5), line("goals", 0.5),
     ]
-    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([]))
+    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([]), [])
     assert [m.market for m in response.markets] == ["shots_on_goal", "points", "goals"]
     points = response.markets[1]
     assert [(r.line, r.odds_type) for r in points.lines] == [(0.5, "goblin"), (1.5, "standard"), (1.5, "demon")]
@@ -58,7 +59,7 @@ def test_markets_and_rungs_come_in_market_then_line_order() -> None:
 def test_goalie_markets_read_goalie_columns() -> None:
     lines = [line("goalie_saves", 25.5), line("goals_allowed", 2.5)]
     rows = [row(30, saves=31, goals_against=2), row(28, saves=22, goals_against=4)]
-    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, rows, [], None)
+    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, rows, [], None, [])
     saves, allowed = response.markets
     assert [g.value for g in saves.recent] == [31.0, 22.0]
     assert [g.value for g in allowed.recent] == [2.0, 4.0]
@@ -67,14 +68,14 @@ def test_goalie_markets_read_goalie_columns() -> None:
 def test_a_null_stat_is_null_not_zero_and_time_is_minutes() -> None:
     lines = [line("hits", 1.5), line("time_on_ice", 18.5)]
     rows = [row(30, hits=None, time_on_ice_seconds=1200), row(28, hits=0, time_on_ice_seconds=None)]
-    hits, toi = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, rows, [], None).markets
+    hits, toi = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, rows, [], None, []).markets
     assert [g.value for g in hits.recent] == [None, 0.0]
     assert [g.value for g in toi.recent] == [20.0, None]
 
 
 def test_recent_is_capped_at_ten_newest_first_and_last_five_is_a_prefix() -> None:
     rows = [row(day, points=day % 3) for day in range(1, 16)]
-    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5)], rows, [], None).markets[0]
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5)], rows, [], None, []).markets[0]
     dates = [g.game_date for g in market.recent]
     assert len(dates) == 10
     assert dates == sorted(dates, reverse=True) and dates[0] == D(2026, 10, 15)
@@ -83,21 +84,21 @@ def test_recent_is_capped_at_ten_newest_first_and_last_five_is_a_prefix() -> Non
 
 def test_opponent_comes_from_the_other_side_and_carries_games() -> None:
     against = [row(3, points=1), row(1, points=2)]
-    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5)], [], against, None)
+    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5)], [], against, None, [])
     assert (response.team, response.opponent) == ("TBL", "BOS")
     assert [g.game_date for g in response.markets[0].opponent_games] == [D(2026, 10, 3), D(2026, 10, 1)]
 
 
 def test_a_team_matching_neither_side_has_no_opponent_and_no_opponent_games() -> None:
     against = [row(3, points=1)]
-    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5, team="NYR")], [], against, None)
+    response = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5, team="NYR")], [], against, None, [])
     assert (response.team, response.opponent) == (None, None)
     assert response.markets[0].opponent_games == []
 
 
 def test_no_game_or_no_lines_is_an_empty_page() -> None:
     for game, lines in ((None, [line("points", 0.5)]), (GAME, [])):
-        response = player_props_response(PLAYER, D(2026, 11, 2), game, lines, [], [], context([injury(7)]))
+        response = player_props_response(PLAYER, D(2026, 11, 2), game, lines, [], [], context([injury(7)]), [])
         assert response.game is None and response.markets == [] and response.goalies is None
         assert response.injury.entry is None
 
@@ -105,11 +106,40 @@ def test_no_game_or_no_lines_is_an_empty_page() -> None:
 def test_the_players_injury_is_found_by_player_id_only() -> None:
     lines = [line("points", 0.5)]
     mine, other = injury(7), injury(8)
-    found = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([other, mine]))
+    found = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([other, mine]), [])
     assert found.injury.entry == mine and found.injury.freshness == "fresh"
-    absent = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([other]))
+    absent = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([other]), [])
     assert absent.injury.entry is None and absent.injury.freshness == "fresh"
     assert absent.goalies is not None and absent.goalies.home.team == "TBL"
+
+
+def history(count: int) -> list[NhlHistoryRow]:
+    stats = {"points": 1, "shots": 4, "time_on_ice_seconds": 1200}
+    return [
+        NhlHistoryRow(7, i, 2026, D(2026, 10, 1) + dt.timedelta(days=i), "REG", "C", False, True, stats)
+        for i in range(count)
+    ]
+
+
+def test_a_market_has_one_projection_and_each_rung_its_own_gap() -> None:
+    lines = [line("points", 1.5, "demon"), line("points", 0.5, "goblin"), line("points", 1.5)]
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([]), history(12)).markets[0]
+    assert (market.projection.value, market.projection.gap, market.projection.flags) == (1.0, None, [])
+    assert [(r.line, r.gap) for r in market.lines] == [(0.5, 0.5), (1.5, -0.5), (1.5, -0.5)]
+
+
+def test_an_out_player_has_no_number_and_no_rung_gaps() -> None:
+    lines = [line("points", 0.5), line("points", 1.5, "demon")]
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([injury(7)]), history(12)).markets[0]
+    assert (market.projection.value, market.projection.flags) == (None, ["injured_out"])
+    assert [r.gap for r in market.lines] == [None, None]
+
+
+def test_too_little_history_has_no_number_and_reports_the_sample() -> None:
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 0.5)], [], [], None, history(4)).markets[0]
+    assert (market.projection.value, market.projection.games_in_sample, market.projection.flags) == (
+        None, 4, ["few_prior_games"],
+    )
 
 
 TODAY = D(2026, 11, 2)
@@ -127,6 +157,7 @@ def _mock_repository(monkeypatch: pytest.MonkeyPatch, *, lines: list[dict[str, o
         "get_player": PLAYER, "get_game_dates": [TODAY], "get_player_line_dates": dates,
         "get_player_lines": lines, "get_game": full_game, "get_latest_market_rows": [], "get_line_movement": [],
         "get_prop_line_counts": {90: 1}, "get_player_played_games": [row(30, points=1)],
+        "get_prior_history": {},
     }.items():
         monkeypatch.setattr(nhl, name, AsyncMock(return_value=result))
 
@@ -140,6 +171,14 @@ def test_service_composes_reads_and_asks_for_the_opponent_sample(monkeypatch: py
     assert [call.kwargs.get("opponent") for call in calls] == [None, "BOS"]
     assert calls[0].kwargs["limit"] == 10 and calls[0].kwargs["goalie"] is False
     assert calls[0].kwargs["before"] == TODAY and calls[0].kwargs["first_season"] == 2023
+
+
+def test_service_reads_the_players_prior_history_once_before_the_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_repository(monkeypatch, lines=[{**line("points", 0.5), "game_id": 90}], dates=[TODAY])
+    nhl.get_prior_history.return_value = {7: history(12)}
+    response = asyncio.run(build_player_props(DB, 7, None, TODAY))
+    nhl.get_prior_history.assert_awaited_once_with(DB, [7], TODAY)
+    assert response is not None and response.markets[0].projection.value == 1.0
 
 
 def test_service_reads_goalie_games_for_goalie_markets(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -60,7 +60,7 @@ rule from this read. If pursued, add a reporting-only frozen-row calibration
 to the model page (no new verdict). Any refit or method change is a new
 `nfl-pover-v2` under a rule fixed before reading its outcomes, validated
 forward, never on the 2025 holdout again.
-**Resolution:**
+**Resolution:** `load_projection_inputs` now raises `ValueError` when the games span more than one date and reads the history with the real date (no type ignore); its docstring records why history is read before the context. Two tests cover the guard and the degraded context read. Closed 2026-11-04 by /audit (scope: current; lens: all): re-read the repaired `load_projection_inputs`; the guard fires before any read, the date is a real `dt.date`, and the repair introduced no new defect.
 
 ## Tennis audit evidence, 2026-10-18
 
@@ -319,3 +319,19 @@ the standard-under and demon-over samples. Then F-11's ingest guard and
 reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
+
+### F-14 [P2] open - The NHL board repeats one projection on every rung and is uncached
+
+**File:** api/app/services/nhl/line_only_props.py:36
+**Found:** 2026-11-04 by /audit (scope: current; lenses: all)
+**Why it matters:** The board for 2026-10-24 grew from 764 KB to 1,119 KB of
+JSON (46 KB gzipped, up from 32 KB) because the identical value, flags and
+sample are attached to each of 3,416 lines although there are 1,781
+player-market rows. Each request also builds it live in about 0.3 s warm and
+1.05 s cold, where the NBA board is served through `prop_board_cache`. No gzip
+middleware appears in `app/main.py`, so whether the host compresses is not
+verified. The deployed size and latency impact is unmeasured.
+**Suggested fix:** Measure first on the hosted API. If it matters, carry the
+projection once per player-market (as the player endpoint already does) with a
+per-line gap, and consider the NBA board's cache pattern.
+**Resolution:**

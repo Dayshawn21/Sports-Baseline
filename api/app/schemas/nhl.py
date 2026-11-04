@@ -9,6 +9,7 @@ from pydantic.alias_generators import to_camel
 
 from app.core.nhl_context_snapshots import Freshness
 from app.core.nhl_odds import NhlBook
+from app.core.nhl_projection import NhlProjectionFlag
 from app.nhl.markets import NhlLineOnlyMarket
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlInjurySchema
 
@@ -95,6 +96,16 @@ class NhlGameDetailResponse(NhlSlateGameSchema):
     line_history: list[NhlLineHistorySchema] = Field(default_factory=list)
 
 
+class NhlProjectionSchema(_CamelModel):
+    """The served reference projection: value and gap are null, never zero, when no number is shown."""
+
+    model_version: str
+    value: float | None
+    games_in_sample: int
+    gap: float | None
+    flags: list[NhlProjectionFlag]
+
+
 class NhlLineOnlyLineSchema(_CamelModel):
     provider: Literal["prizepicks"]
     provider_prop_id: str
@@ -106,6 +117,7 @@ class NhlLineOnlyLineSchema(_CamelModel):
     odds_type: Literal["standard", "demon", "goblin"]
     line: float
     fetched_at: AwareDatetime
+    projection: NhlProjectionSchema
 
 
 class NhlLineOnlyPropsResponse(_CamelModel):
@@ -133,6 +145,8 @@ class NhlPlayerLineSchema(_CamelModel):
     line: float
     odds_type: Literal["standard", "demon", "goblin"]
     fetched_at: AwareDatetime
+    # Projection minus this rung's line; null when the market shows no projection.
+    gap: float | None
 
 
 class NhlPlayerGameSchema(_CamelModel):
@@ -146,6 +160,8 @@ class NhlPlayerMarketSchema(_CamelModel):
     """Stored lines with recent results. Goalie markets count started games only."""
     market: NhlLineOnlyMarket
     lines: list[NhlPlayerLineSchema]
+    # One projection per market; its own gap is null because each rung carries one.
+    projection: NhlProjectionSchema
     recent: list[NhlPlayerGameSchema]
     opponent_games: list[NhlPlayerGameSchema]
 

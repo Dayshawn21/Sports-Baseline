@@ -7,11 +7,12 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, TypeVar, cast
 
-from sqlalchemy import bindparam, text
+from sqlalchemy import RowMapping, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
-from app.core.nhl_projection_backtest import SERVED_GAME_TYPES, NhlHistoryRow
+from app.core.nhl_player_values import NHL_FIRST_HISTORY_SEASON
+from app.core.nhl_projection_backtest import REFERENCE_GAMES, SERVED_GAME_TYPES, NhlHistoryRow
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -483,15 +484,16 @@ async def _history_rows(
         WHERE g.season = ANY(:seasons) AND {_HISTORY_GAME_TYPES}
         ORDER BY g.game_date, g.id, s.player_id
     """), {"seasons": list(seasons)})
-    return [
-        NhlHistoryRow(
-            player_id=int(row["player_id"]), game_id=int(row["game_id"]), season=int(row["season"]),
-            game_date=row["game_date"], game_type=str(row["game_type"]), position=row["position"],
-            is_goalie=goalie, started=bool(row["started"]),
-            stats={column: None if row[column] is None else int(row[column]) for column in columns},
-        )
-        for row in rows.mappings()
-    ]
+    return [_history_row(row, columns, goalie) for row in rows.mappings()]
+
+
+def _history_row(row: RowMapping, columns: Sequence[str], goalie: bool) -> NhlHistoryRow:
+    return NhlHistoryRow(
+        player_id=int(row["player_id"]), game_id=int(row["game_id"]), season=int(row["season"]),
+        game_date=row["game_date"], game_type=str(row["game_type"]), position=row["position"],
+        is_goalie=goalie, started=bool(row["started"]),
+        stats={column: None if row[column] is None else int(row[column]) for column in columns},
+    )
 
 
 async def get_projection_history(db: AsyncSession, seasons: Sequence[int]) -> list[NhlHistoryRow]:
@@ -503,3 +505,39 @@ async def get_projection_history(db: AsyncSession, seasons: Sequence[int]) -> li
     skaters = await _history_rows(db, "nhl_skater_game_stats", _HISTORY_SKATER_COLUMNS, False, seasons)
     goalies = await _history_rows(db, "nhl_goalie_game_stats", _HISTORY_GOALIE_COLUMNS, True, seasons)
     return sorted(skaters + goalies, key=lambda row: (row.game_date, row.game_id, row.is_goalie, row.player_id))
+
+
+async def _prior_rows(
+    db: AsyncSession, table: str, columns: Sequence[str], goalie: bool, player_ids: Sequence[int], before: date,
+) -> list[NhlHistoryRow]:
+    started = "s.started" if goalie else "TRUE"
+    rows = await db.execute(text(f"""
+        SELECT * FROM (
+            SELECT s.player_id, s.game_id, g.season, g.game_date, g.game_type, p.position, {started} AS started,
+                   {", ".join(f"s.{column}" for column in columns)},
+                   ROW_NUMBER() OVER (PARTITION BY s.player_id ORDER BY g.game_date DESC, g.id DESC) AS recency
+            FROM {table} s
+            JOIN sport_games g ON g.sport = 'nhl' AND g.id = s.game_id
+            JOIN sport_players p ON p.sport = 'nhl' AND p.id = s.player_id
+            WHERE s.player_id = ANY(:player_ids) AND {_HISTORY_GAME_TYPES}
+              AND g.season >= :first_season AND g.game_date < :before {"AND s.started" if goalie else ""}
+        ) recent WHERE recency <= :limit
+        ORDER BY player_id, game_date, game_id
+    """), {"player_ids": list(player_ids), "first_season": NHL_FIRST_HISTORY_SEASON, "before": before, "limit": REFERENCE_GAMES})
+    return [_history_row(row, columns, goalie) for row in rows.mappings()]
+
+
+async def get_prior_history(db: AsyncSession, player_ids: Sequence[int], before: date) -> dict[int, list[NhlHistoryRow]]:
+    """Each player's last 20 played games strictly before a date, oldest first, for the served projection.
+
+    A goalie's rows are his starts only. The season floor is the same named bound the player page uses,
+    so a later backfill cannot change what a projection covers.
+    """
+    if not player_ids:
+        return {}
+    skaters = await _prior_rows(db, "nhl_skater_game_stats", _HISTORY_SKATER_COLUMNS, False, player_ids, before)
+    goalies = await _prior_rows(db, "nhl_goalie_game_stats", _HISTORY_GOALIE_COLUMNS, True, player_ids, before)
+    by_player: dict[int, list[NhlHistoryRow]] = {}
+    for row in skaters + goalies:
+        by_player.setdefault(row.player_id, []).append(row)
+    return by_player

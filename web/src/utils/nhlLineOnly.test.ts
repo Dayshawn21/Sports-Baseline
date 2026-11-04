@@ -5,7 +5,8 @@ import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel, nhlOddsTypeCounts, nhlPropLineLa
 function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
     provider: 'prizepicks', providerPropId: 'a', playerId: 7, playerName: 'Player', position: null, team: null,
-    market: 'time_on_ice', oddsType: 'standard', line: 20.5, fetchedAt: '2026-10-23T12:00:00Z', ...overrides,
+    market: 'time_on_ice', oddsType: 'standard', line: 20.5, fetchedAt: '2026-10-23T12:00:00Z',
+    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, flags: ['few_prior_games'] }, ...overrides,
   }
 }
 
@@ -94,4 +95,21 @@ it('uses the newest fetch time and shows a repeated offering once', () => {
 it('does not change its input', () => {
   const source = Object.freeze([Object.freeze(line()), Object.freeze(line({ providerPropId: 'b', oddsType: 'demon', line: 22.5 }))])
   expect(() => nhlPropListGroups(source)).not.toThrow()
+})
+
+it('carries the projection and the standard line gap onto each row and rung', () => {
+  const projection = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: null, flags: [] as never[] }
+  const [group] = nhlPropListGroups([
+    line({ providerPropId: 'a', market: 'hits', line: 2.5, projection: { ...projection, gap: 0.5 } }),
+    line({ providerPropId: 'b', market: 'hits', line: 3.5, oddsType: 'demon', projection: { ...projection, gap: -0.5 } }),
+  ])
+  const [row] = group.rows
+  expect(row.standardGap).toBe(0.5)
+  expect(row.projection.value).toBe(3)
+  expect(row.rungs.map(rung => rung.gap)).toEqual([0.5, -0.5])
+})
+
+it('has no standard gap when the player has no standard line', () => {
+  const [group] = nhlPropListGroups([line({ oddsType: 'goblin' })])
+  expect(group.rows[0].standardGap).toBeNull()
 })

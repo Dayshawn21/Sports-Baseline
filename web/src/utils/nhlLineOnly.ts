@@ -1,4 +1,4 @@
-import type { NhlLineOnlyLine, NhlLineOnlyMarket } from '~/types/nhl'
+import type { NhlLineOnlyLine, NhlLineOnlyMarket, NhlProjection } from '~/types/nhl'
 
 export const NHL_LINE_ONLY_MARKETS = [
   'shots_on_goal', 'points', 'assists', 'goals', 'power_play_points', 'blocked_shots',
@@ -46,6 +46,8 @@ export interface NhlPropRung {
   label: string
   oddsType: NhlLineOnlyLine['oddsType']
   oddsTypeLabel: string
+  /** Projection minus this line; null when no projection is shown. */
+  gap: number | null
 }
 
 export interface NhlPropListRow {
@@ -59,6 +61,10 @@ export interface NhlPropListRow {
   rungs: NhlPropRung[]
   /** The standard rung's label, or null when the player has none; alternates are never promoted to it. */
   standard: string | null
+  /** The gap to the standard line, or null when there is no standard line or no projection. */
+  standardGap: number | null
+  /** One per player and market: the value does not depend on the line. */
+  projection: NhlProjection
   /** The newest fetch across the player's offerings. */
   fetchedAt: string
 }
@@ -76,7 +82,7 @@ function rungsFor(lines: readonly NhlLineOnlyLine[]): NhlPropRung[] {
     .sort((a, b) => a.line - b.line || ODDS_TYPE_ORDER[a.oddsType] - ODDS_TYPE_ORDER[b.oddsType])
     .map(entry => ({
       line: entry.line, label: nhlPropLineLabel(entry.market, entry.line),
-      oddsType: entry.oddsType, oddsTypeLabel: ODDS_TYPE_LABELS[entry.oddsType],
+      oddsType: entry.oddsType, oddsTypeLabel: ODDS_TYPE_LABELS[entry.oddsType], gap: entry.projection.gap,
     }))
 }
 
@@ -102,6 +108,8 @@ export function nhlPropListGroups(lines: readonly NhlLineOnlyLine[]): NhlPropLis
         key: `${market}:${first.playerId}`, playerId: first.playerId, playerName: first.playerName,
         team: first.team, position: first.position, market, rungs,
         standard: rungs.find(rung => rung.oddsType === 'standard')?.label ?? null,
+        standardGap: rungs.find(rung => rung.oddsType === 'standard')?.gap ?? null,
+        projection: first.projection,
         fetchedAt: newestFetch(offerings),
       }
     }).sort((a, b) => compareText(a.playerName, b.playerName) || a.playerId - b.playerId)

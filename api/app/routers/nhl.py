@@ -28,7 +28,8 @@ async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_
 
 @router.get("/props", response_model=NhlPropBoardResponse)
 async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlPropBoardResponse:
-    return await build_prop_board(db, date, dt.datetime.now(dt.timezone.utc).astimezone(EASTERN).date())
+    clock = dt.datetime.now(dt.timezone.utc)
+    return await build_prop_board(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
 
 
 @router.get("/games/{game_id}", response_model=NhlGameDetailResponse)
@@ -41,7 +42,7 @@ async def get_game(game_id: int, db: AsyncSession = Depends(get_db)) -> NhlGameD
 
 @router.get("/games/{game_id}/line-only-props", response_model=NhlLineOnlyPropsResponse)
 async def get_game_line_only_props(game_id: int, db: AsyncSession = Depends(get_db)) -> NhlLineOnlyPropsResponse:
-    props = await build_line_only_props(db, game_id)
+    props = await build_line_only_props(db, game_id, as_of=dt.datetime.now(dt.timezone.utc))
     if props is None:
         raise HTTPException(status_code=404, detail=f"NHL game {game_id} not found")
     return props

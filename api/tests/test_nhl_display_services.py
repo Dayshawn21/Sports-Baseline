@@ -13,6 +13,7 @@ from app.repositories import nhl
 from app.repositories import nhl_context as context_repo
 from app.services.nhl.game_detail import build_game_detail, game_detail
 from app.services.nhl.line_only_props import build_line_only_props, line_only_props
+from app.services.nhl.projections import NO_INPUTS
 from app.services.nhl.slate import assemble_games, build_slate, slate_games
 
 DAY = date(2026, 10, 23)
@@ -122,19 +123,19 @@ def test_detail_preserves_slate_fields_and_reduces_only_consecutive_repeats() ->
 @pytest.mark.parametrize(("team", "expected"), [(" tb ", "TBL"), ("CHI", "CHI"), (None, None),
                                                  ("???", None), ("BOS", None), ("", None)])
 def test_provider_team_is_normalized_or_left_unknown(team: str | None, expected: str | None) -> None:
-    result = line_only_props(_game(), [_line(team=team)])
+    result = line_only_props(_game(), [_line(team=team)], NO_INPUTS)
     assert result.lines[0].team == expected
 
 
 def test_all_markets_sort_by_enum_order_and_keep_negative_zero_and_minutes() -> None:
     rows = [_line(market=m.value, line=Decimal("-0.5") if m == NhlLineOnlyMarket.PLUS_MINUS else 0)
             for m in reversed(list(NhlLineOnlyMarket))]
-    result = line_only_props(_game(), rows)
+    result = line_only_props(_game(), rows, NO_INPUTS)
     assert [line.market for line in result.lines] == list(NhlLineOnlyMarket)
     assert result.lines[6].line == -0.5
     assert result.lines[9].line == 0
-    assert line_only_props(_game(), [_line()]).lines[0].line == 20.5
-    assert line_only_props(_game(), []).lines == []
+    assert line_only_props(_game(), [_line()], NO_INPUTS).lines[0].line == 20.5
+    assert line_only_props(_game(), [], NO_INPUTS).lines == []
 
 
 def test_offer_sort_keeps_duplicate_prices_and_all_provider_offerings() -> None:
@@ -145,7 +146,7 @@ def test_offer_sort_keeps_duplicate_prices_and_all_provider_offerings() -> None:
         _line(provider_prop_id="a", player_name="Aaron"),
         _line(provider_prop_id="f", line=19.5),
     ]
-    result = line_only_props(_game(), rows)
+    result = line_only_props(_game(), rows, NO_INPUTS)
     assert [line.provider_prop_id for line in result.lines] == ["a", "d", "f", "b", "z", "c"]
 
 
@@ -155,7 +156,7 @@ def _mock_repository(monkeypatch: pytest.MonkeyPatch) -> None:
     for name, result in {
         "get_game_dates": [DAY], "get_games_on": [_game()], "get_game": _game(),
         "get_latest_market_rows": [_market()], "get_line_movement": [], "get_prop_line_counts": {1: 1},
-        "get_game_line_history": [], "get_line_only_lines": [_line()],
+        "get_game_line_history": [], "get_line_only_lines": [_line()], "get_prior_history": {},
     }.items():
         monkeypatch.setattr(nhl, name, AsyncMock(return_value=result))
 

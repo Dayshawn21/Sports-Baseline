@@ -7,7 +7,8 @@ const NOW = new Date('2026-10-24T20:00:00Z')
 function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
     provider: 'prizepicks', providerPropId: 'a', playerId: 1, playerName: 'Amy', position: 'C', team: 'TBL',
-    market: 'shots_on_goal', oddsType: 'standard', line: 2.5, fetchedAt: '2026-10-24T12:00:00Z', ...overrides,
+    market: 'shots_on_goal', oddsType: 'standard', line: 2.5, fetchedAt: '2026-10-24T12:00:00Z',
+    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, flags: ['few_prior_games'] }, ...overrides,
   }
 }
 

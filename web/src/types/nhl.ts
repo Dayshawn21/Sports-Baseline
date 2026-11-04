@@ -80,6 +80,19 @@ export type NhlLineOnlyMarket =
   | 'shots_on_goal' | 'points' | 'assists' | 'goals' | 'power_play_points' | 'blocked_shots'
   | 'plus_minus' | 'goalie_saves' | 'hits' | 'time_on_ice' | 'goals_allowed' | 'faceoffs_won'
 
+export type NhlProjectionFlag =
+  | 'few_prior_games' | 'low_toi' | 'not_center' | 'no_goalie_report' | 'starter_unconfirmed'
+  | 'other_starter_expected' | 'context_stale' | 'injured_out' | 'injury_listed' | 'injury_context_stale'
+
+/** `value` and `gap` are null, never zero, when no number is shown; `flags` says why or what to qualify. */
+export interface NhlProjection {
+  modelVersion: string
+  value: number | null
+  gamesInSample: number
+  gap: number | null
+  flags: NhlProjectionFlag[]
+}
+
 export interface NhlLineOnlyLine {
   provider: 'prizepicks'
   providerPropId: string
@@ -91,6 +104,7 @@ export interface NhlLineOnlyLine {
   oddsType: 'standard' | 'demon' | 'goblin'
   line: number
   fetchedAt: string
+  projection: NhlProjection
 }
 
 export interface NhlLineOnlyProps {
@@ -118,6 +132,8 @@ export interface NhlPlayerLine {
   line: number
   oddsType: 'standard' | 'demon' | 'goblin'
   fetchedAt: string
+  /** Projection minus this rung's line; null when the market shows no projection. */
+  gap: number | null
 }
 
 /** `value` is null when the box score left the stat unloaded, never zero; time on ice is minutes. Goalie markets count started games only. */
@@ -130,6 +146,8 @@ export interface NhlPlayerGame {
 export interface NhlPlayerMarket {
   market: NhlLineOnlyMarket
   lines: NhlPlayerLine[]
+  /** One per market; its own `gap` is null because each rung carries one. */
+  projection: NhlProjection
   /** Newest first, up to 10; Last 5 is the first five. */
   recent: NhlPlayerGame[]
   /** Newest first, season 2023 onward; empty when the opponent is unknown. */

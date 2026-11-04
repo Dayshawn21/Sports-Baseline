@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from app.nhl.markets import NhlLineOnlyMarket
 from app.schemas.nhl import (
-    NhlGameDetailResponse, NhlLineOnlyLineSchema, NhlLineOnlyPropsResponse,
+    NhlGameDetailResponse, NhlLineOnlyLineSchema, NhlLineOnlyPropsResponse, NhlProjectionSchema,
     NhlMoneylineSchema, NhlSlateResponse,
 )
 
@@ -39,12 +39,15 @@ def test_all_line_only_markets_preserve_units_and_offering_identity(market: NhlL
     line = NhlLineOnlyLineSchema(
         provider="prizepicks", provider_prop_id="offer-2", player_id=7, player_name="Player",
         position=None, team=None, market=market, odds_type="demon", line=20.5, fetched_at=NOW,
+        projection=NhlProjectionSchema(model_version="nhl-reference-v1", value=None, games_in_sample=0, gap=None, flags=["few_prior_games"]),
     )
     wire = line.model_dump(mode="json", by_alias=True)
     assert wire["line"] == 20.5 and wire["providerPropId"] == "offer-2"
     assert wire["market"] == market.value and wire["fetchedAt"] == "2026-10-23T12:00:00Z"
     assert set(wire) == {"provider", "providerPropId", "playerId", "playerName", "position",
-                         "team", "market", "oddsType", "line", "fetchedAt"}
+                         "team", "market", "oddsType", "line", "fetchedAt", "projection"}
+    assert wire["projection"] == {"modelVersion": "nhl-reference-v1", "value": None, "gamesInSample": 0,
+                                  "gap": None, "flags": ["few_prior_games"]}
 
 
 @pytest.mark.parametrize("overrides", [{"game_type": "PRE"}, {"game_type": "PIN"},
