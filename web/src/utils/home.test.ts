@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { HomeGap, HomeSource } from '~/utils/homeSources'
+import type { HomeGap, HomeMoneyline, HomeSource } from '~/utils/homeSources'
 import {
-  allGapRows, gapTabs, gapsBody, homeCard, newestUpdate, nextStart, parseGapTab, sportNoun, startLabel, todayStatus,
+  allGapRows, gapTabs, gapsBody, homeCard, newestUpdate, nextStart, parseGapKind, parseGapTab, sportNoun, startLabel, todayStatus,
   type HomeSportData, type HomeSportView,
 } from '~/utils/home'
 
@@ -51,7 +51,7 @@ describe('todayStatus and sportNoun', () => {
 })
 
 const source = (overrides: Partial<HomeSource> = {}): HomeSource => ({
-  gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], schedule: [], period: null, days: [], ...overrides,
+  gameCount: 0, startsMs: [], propLines: null, gaps: [], moneyline: [], nextGames: [], schedule: [], period: null, days: [], ...overrides,
 })
 const game = (key: string, title: string) => ({ key, title, when: '' })
 
@@ -157,9 +157,9 @@ describe('gaps tabs', () => {
     expect(gapsBody('nba', failed)).toMatchObject({ rows: [], empty: 'Gap lines could not load.' })
   })
 
-  it('lists next games for NHL, and says why, with a slate link', () => {
+  it('lists next games for NHL, and says why, with a link to its props board', () => {
     expect(gapsBody('nhl', sports())).toMatchObject({
-      kind: 'games', games: [{ key: '1' }], footer: { label: 'Open the NHL slate', path: '/nhl' },
+      kind: 'games', games: [{ key: '1' }], footer: { label: 'View all NHL props', path: '/nhl/board' },
       intro: expect.stringContaining('no gaps to show'),
     })
   })
@@ -169,5 +169,48 @@ describe('gaps tabs', () => {
     const list = sports()
     list[0] = view('nfl', [], {}, { status: 'error' })
     expect(gapsBody('nfl', list)).toEqual({ kind: 'error', text: 'Could not load' })
+  })
+
+  describe('moneyline view', () => {
+    const ml = (sport: HomeMoneyline['sport'], key: string): HomeMoneyline => ({
+      key, sport, side: 'S', matchup: 'A @ B', when: 'w', market: '50.0%', model: '55.0%', gap: '+5.0 pp', path: `/m/${key}`,
+    })
+    const mlSports = (): HomeSportView[] => {
+      const list = sports()
+      list[0] = view('nfl', [56], { moneyline: [ml('nfl', 'f1')] })
+      list[1] = view('nba', [7], { schedule: [{ key: '9', title: 'X @ Y', when: '7:00 PM' }] })
+      list[3] = view('tennis', [3], { moneyline: [ml('tennis', 't1')] })
+      return list
+    }
+
+    it('reads junk as the props view', () => {
+      expect(parseGapKind('ml')).toBe('ml')
+      expect(parseGapKind(null)).toBe('props')
+      expect(parseGapKind('x')).toBe('props')
+    })
+
+    it('groups NFL then tennis under All and says the caveats once', () => {
+      const body = gapsBody('all', mlSports(), 'ml')
+      expect(body).toMatchObject({ kind: 'moneyline', footer: null, note: expect.stringContaining('did not beat closing lines') })
+      expect(body.kind === 'moneyline' && body.rows.map(row => row.key)).toEqual(['f1', 't1'])
+    })
+
+    it('gives NFL and tennis their rows, caveat and slate link', () => {
+      expect(gapsBody('tennis', mlSports(), 'ml')).toMatchObject({
+        kind: 'moneyline', rows: [{ key: 't1' }], note: expect.stringContaining('not ahead of the market'), footer: { path: '/tennis' },
+      })
+      expect(gapsBody('nfl', [view('nfl', [], {}), ...mlSports().slice(1)], 'ml')).toMatchObject({ rows: [], empty: 'No games scheduled' })
+    })
+
+    it('says plainly that NBA and NHL have no win model and lists their next games', () => {
+      expect(gapsBody('nba', mlSports(), 'ml')).toMatchObject({
+        kind: 'games', intro: expect.stringContaining('NBA has no win-probability model'), games: [{ key: '9' }], footer: { path: '/nba' },
+      })
+      expect(gapsBody('nhl', mlSports(), 'ml')).toMatchObject({ kind: 'games', intro: expect.stringContaining('NHL has no win-probability model') })
+    })
+
+    it('shows a loading or failed sport as such', () => {
+      expect(gapsBody('tennis', [...mlSports().slice(0, 3), view('tennis', [], {}, { status: 'loading' })], 'ml')).toEqual({ kind: 'loading' })
+    })
   })
 })
