@@ -1,11 +1,14 @@
 name: NHL PrizePicks Prop Lines
 
-# September through June. Times are offset from the other sports' PrizePicks
-# pulls; GitHub scheduling delays can still overlap provider windows.
+# September through June. Secondary markets post on game day and GitHub delays
+# or drops scheduled runs, so three pulls leave the board filled after one miss.
+# The last slot sits about 2.5 hours before a 00:00 UTC puck drop. Minutes are
+# off the other sports' PrizePicks pulls and the nhl-odds.yml :40 slot.
 on:
   schedule:
-    - cron: "15 17 * 1-6,9-12 *"
-    - cron: "45 22 * 1-6,9-12 *"
+    - cron: "37 14 * 1-6,9-12 *"
+    - cron: "22 18 * 1-6,9-12 *"
+    - cron: "27 21 * 1-6,9-12 *"
   workflow_dispatch:
 
 permissions:

@@ -123,7 +123,7 @@ per command; read this file before running, scheduling or changing one.
   PrizePicks lines, every market line-only; add `--relink` to repair stored
   player/game links without a provider request). Time On Ice lines stay in
   provider minutes; NHL box scores store seconds. `nhl-prop-lines.yml` is
-  configured for 17:15 and 22:45 UTC daily, September-June, with manual
+  configured for 14:37, 18:22 and 21:27 UTC daily, September-June, with manual
   dispatch; rate-limit exhaustion exits 75. `nhl-ingest.yml` relinks after
   the daily schedule/box-score load. A local snapshot stored 941 lines with
   all player/game links resolved; both subsequent relinks changed zero rows.
