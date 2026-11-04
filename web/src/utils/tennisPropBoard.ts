@@ -152,6 +152,14 @@ function americanImpliedProbability(odds: number): number {
   return odds > 0 ? 100 / (odds + 100) : Math.abs(odds) / (Math.abs(odds) + 100)
 }
 
+/** The two sides' win probabilities with the book's margin removed, from their American prices. */
+export function marketWinProbabilities(p1Odds: number, p2Odds: number): [number, number] {
+  const p1Raw = americanImpliedProbability(p1Odds)
+  const p2Raw = americanImpliedProbability(p2Odds)
+  const denominator = p1Raw + p2Raw
+  return [p1Raw / denominator, p2Raw / denominator]
+}
+
 /**
  * Turns existing match predictions into side-specific board rows without adding a new API.
  * Reference only: tennis moneyline picks are off since 26d (MONEYLINE_PICKS_ENABLED in
@@ -160,12 +168,10 @@ function americanImpliedProbability(odds: number): number {
 export function moneylineBoardRows(predictions: MatchPrediction[]): PropLine[] {
   return predictions.flatMap(match => {
     if (match.p1WinProb == null || match.p2WinProb == null || match.p1OddsAmerican == null || match.p2OddsAmerican == null) return []
-    const p1Raw = americanImpliedProbability(match.p1OddsAmerican)
-    const p2Raw = americanImpliedProbability(match.p2OddsAmerican)
-    const denominator = p1Raw + p2Raw
+    const [p1Market, p2Market] = marketWinProbabilities(match.p1OddsAmerican, match.p2OddsAmerican)
     const sides = [
-      { playerName: match.p1Name, modelProb: match.p1WinProb, odds: match.p1OddsAmerican, marketProb: p1Raw / denominator, id: -(match.matchId * 2 + 1) },
-      { playerName: match.p2Name, modelProb: match.p2WinProb, odds: match.p2OddsAmerican, marketProb: p2Raw / denominator, id: -(match.matchId * 2 + 2) },
+      { playerName: match.p1Name, modelProb: match.p1WinProb, odds: match.p1OddsAmerican, marketProb: p1Market, id: -(match.matchId * 2 + 1) },
+      { playerName: match.p2Name, modelProb: match.p2WinProb, odds: match.p2OddsAmerican, marketProb: p2Market, id: -(match.matchId * 2 + 2) },
     ]
     return sides.map(side => ({
       id: side.id,

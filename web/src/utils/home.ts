@@ -1,5 +1,5 @@
 import { SPORTS, VIEW_LABELS, sportViews, type Sport, type SportView } from '~/utils/sportNav'
-import type { HomeGap, HomeNextGame, HomeSource } from '~/utils/homeSources'
+import type { HomeGap, HomeMoneyline, HomeNextGame, HomeSource } from '~/utils/homeSources'
 
 export type HomeStatus = 'loading' | 'error' | 'ready'
 
@@ -139,11 +139,18 @@ export interface HomeGapTab {
 
 export interface GapsFooter { label: string, path: string }
 
+export type GapKind = 'props' | 'ml'
+
 export type GapsBody =
   | { kind: 'loading' }
   | { kind: 'error', text: string }
   | { kind: 'rows', rows: HomeGap[], empty: string, footer: GapsFooter | null }
+  | { kind: 'moneyline', rows: HomeMoneyline[], empty: string, note: string, footer: GapsFooter | null }
   | { kind: 'games', intro: string, games: HomeNextGame[], empty: string, footer: GapsFooter }
+
+export function parseGapKind(param: string | null): GapKind {
+  return param === 'ml' ? 'ml' : 'props'
+}
 
 export function parseGapTab(param: string | null): GapTabKey {
   return SPORT_TAB_ORDER.find(sport => sport === param) ?? 'all'
@@ -167,7 +174,6 @@ export function gapTabs(sports: HomeSportView[], now: number): HomeGapTab[] {
 
 const GAMES_INTRO: Partial<Record<Sport, string>> = {
   nhl: 'NHL props are line-only with no model projection, so there are no gaps to show. Next games:',
-  tennis: 'Tennis has no reference gaps. Next priced matches:',
 }
 
 function footerFor(sport: Sport, view: SportView): GapsFooter {
@@ -181,7 +187,47 @@ export function allGapRows(sports: HomeSportView[]): HomeGap[] {
   return SPORT_TAB_ORDER.flatMap(sport => sports.find(entry => entry.data.sport === sport)!.source.gaps)
 }
 
-export function gapsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
+const NO_WIN_MODEL_INTRO: Partial<Record<Sport, string>> = {
+  nba: 'NBA has no win-probability model, so there is no moneyline gap to show. Next games:',
+  nhl: 'NHL has no win-probability model, so there is no moneyline gap to show. Next games:',
+}
+
+const MONEYLINE_NOTE: Partial<Record<Sport, string>> = {
+  nfl: 'NFL win probability did not beat closing lines; reference only.',
+  tennis: 'The tennis ensemble is not ahead of the market; reference only.',
+}
+
+const MONEYLINE_SPORTS: Sport[] = ['nfl', 'tennis']
+
+function moneylineBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
+  if (tab === 'all') {
+    const rows = MONEYLINE_SPORTS.flatMap(sport => sports.find(entry => entry.data.sport === sport)!.source.moneyline)
+    return { kind: 'moneyline', rows, empty: 'No moneyline gaps yet.', note: MONEYLINE_SPORTS.map(sport => MONEYLINE_NOTE[sport]).join(' '), footer: null }
+  }
+  const { data, source } = sports.find(entry => entry.data.sport === tab)!
+  const sport = data.sport
+  const intro = NO_WIN_MODEL_INTRO[sport]
+  if (intro !== undefined) {
+    const empty = data.gameCount === 0 ? emptyText(sport) : `No upcoming ${NOUN[sport].many}`
+    return { kind: 'games', intro, games: source.schedule, empty, footer: footerFor(sport, 'slate') }
+  }
+  const empty = data.gameCount === 0 ? emptyText(sport) : 'No moneyline gaps yet.'
+  return { kind: 'moneyline', rows: source.moneyline, empty, note: MONEYLINE_NOTE[sport] ?? '', footer: footerFor(sport, 'slate') }
+}
+
+export function gapsBody(tab: GapTabKey, sports: HomeSportView[], kind: GapKind = 'props'): GapsBody {
+  if (kind === 'ml') {
+    if (tab !== 'all') {
+      const { status } = sports.find(entry => entry.data.sport === tab)!.data
+      if (status === 'loading') return { kind: 'loading' }
+      if (status === 'error') return { kind: 'error', text: 'Could not load' }
+    }
+    return moneylineBody(tab, sports)
+  }
+  return propsBody(tab, sports)
+}
+
+function propsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
   if (tab === 'all') return { kind: 'rows', rows: allGapRows(sports), empty: 'No gap lines yet.', footer: null }
   const { data, source } = sports.find(entry => entry.data.sport === tab)!
   if (data.status === 'loading') return { kind: 'loading' }

@@ -1,14 +1,17 @@
 import { Link } from 'react-router-dom'
-import type { GapTabKey, GapsBody, GapsFooter, HomeGapTab } from '~/utils/home'
-import type { HomeGap, HomeNextGame } from '~/utils/homeSources'
+import type { GapKind, GapTabKey, GapsBody, GapsFooter, HomeGapTab } from '~/utils/home'
+import type { HomeGap, HomeMoneyline, HomeNextGame } from '~/utils/homeSources'
 import './home.css'
 
-const SPORT_TAG: Record<HomeGap['sport'], string> = { nfl: 'NFL', nba: 'NBA' }
+const SPORT_TAG: Record<HomeGap['sport'], string> = { nfl: 'NFL', nba: 'NBA', tennis: 'Tennis' }
+const KINDS: { key: GapKind, label: string }[] = [{ key: 'props', label: 'Props' }, { key: 'ml', label: 'Moneyline' }]
 
 interface Props {
   tabs: HomeGapTab[]
   selected: GapTabKey
-  hrefFor: (key: GapTabKey) => string
+  kind: GapKind
+  tabHref: (key: GapTabKey) => string
+  kindHref: (kind: GapKind) => string
   body: GapsBody
 }
 
@@ -28,6 +31,27 @@ function GapRows({ rows, showSport }: { rows: HomeGap[], showSport: boolean }) {
         <td className="is-num is-mono col-line">{gap.line}</td>
         <td className="is-num is-mono col-model">{gap.model}</td>
         <td className="is-num is-mono is-gray">{gap.gap}</td>
+      </tr>)}
+    </tbody>
+  </table>
+}
+
+function MoneylineRows({ rows, showSport }: { rows: HomeMoneyline[], showSport: boolean }) {
+  return <table>
+    <thead><tr>
+      <th>Side</th><th className="col-game">Game</th>
+      {showSport && <th>Sport</th>}
+      <th>Time</th><th className="is-num col-market">Market</th><th className="is-num col-model">Model</th><th className="is-num">Gap</th>
+    </tr></thead>
+    <tbody>
+      {rows.map(row => <tr key={`${row.sport}-${row.key}`}>
+        <td><Link to={row.path}>{row.side}</Link></td>
+        <td className="is-gray col-game">{row.matchup}</td>
+        {showSport && <td><span className="home-tag">{SPORT_TAG[row.sport]}</span></td>}
+        <td className="is-gray is-nowrap">{row.when}</td>
+        <td className="is-num is-mono col-market">{row.market}</td>
+        <td className="is-num is-mono col-model">{row.model}</td>
+        <td className="is-num is-mono is-gray">{row.gap}</td>
       </tr>)}
     </tbody>
   </table>
@@ -59,22 +83,32 @@ function Body({ body, selected }: { body: GapsBody, selected: GapTabKey }) {
       <Footer footer={body.footer} />
     </>
   }
+  if (body.kind === 'moneyline') {
+    return <>
+      {body.rows.length === 0 ? <p className="home-gaps__empty">{body.empty}</p> : <MoneylineRows rows={body.rows} showSport={selected === 'all'} />}
+      <p className="home-gaps__footer">{body.note}</p>
+      {body.footer && <Footer footer={body.footer} />}
+    </>
+  }
   return <>
     {body.rows.length === 0 ? <p className="home-gaps__empty">{body.empty}</p> : <GapRows rows={body.rows} showSport={selected === 'all'} />}
-    {selected === 'all' && <p className="home-gaps__footer">NHL and Tennis have no gap rows; see their tabs for next games.</p>}
+    {selected === 'all' && <p className="home-gaps__footer">NHL props have no projection, so it has no gap rows; see its tab for next games.</p>}
     {body.footer && <Footer footer={body.footer} />}
   </>
 }
 
 /** Gray reference rows, each sport in its own order; the player link covers its row. */
-export function HomeGaps({ tabs, selected, hrefFor, body }: Props) {
+export function HomeGaps({ tabs, selected, kind, tabHref, kindHref, body }: Props) {
   return <div className="home-panel home-gaps">
+    <nav className="home-gaps__kinds" aria-label="Choose props or moneyline">
+      {KINDS.map(entry => <Link key={entry.key} to={kindHref(entry.key)} replace aria-current={entry.key === kind ? 'true' : undefined}>{entry.label}</Link>)}
+    </nav>
     <nav className="home-gaps__tabs" aria-label="Choose a sport">
-      {tabs.map(tab => <Link key={tab.key} to={hrefFor(tab.key)} replace aria-current={tab.key === selected ? 'true' : undefined}>{tab.text}</Link>)}
+      {tabs.map(tab => <Link key={tab.key} to={tabHref(tab.key)} replace aria-current={tab.key === selected ? 'true' : undefined}>{tab.text}</Link>)}
     </nav>
     <Body body={body} selected={selected} />
     <p className="home-panel__note">
-      Gray means unvalidated reference. A row turns green only where that sport&apos;s own rule has validated the signal. Rows open that player&apos;s page.
+      Gray means unvalidated reference. A row turns green only where that sport&apos;s own rule has validated the signal. Rows open the player or game page.
     </p>
   </div>
 }

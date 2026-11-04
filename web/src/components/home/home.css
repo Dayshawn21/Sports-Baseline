@@ -179,6 +179,34 @@
   color: var(--text-secondary);
 }
 
+.home-gaps__kinds {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 0;
+}
+
+.home-gaps__kinds a {
+  padding: 3px 12px;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+}
+
+.home-gaps__kinds a:hover {
+  color: var(--text-primary);
+}
+
+.home-gaps__kinds a:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.home-gaps__kinds a[aria-current] {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
 .home-gaps__tabs {
   display: flex;
   gap: var(--space-5);
@@ -314,6 +342,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .home-gaps .col-game,
   .home-gaps .col-market,
   .home-gaps .col-line,
   .home-gaps .col-model {
@@ -322,17 +351,26 @@
 
   .home-gaps th,
   .home-gaps td {
-    padding: 10px 8px;
+    padding: 10px 5px;
+  }
+
+  .home-gaps table {
+    font-size: 13px;
+  }
+
+  .home-gaps .home-tag {
+    padding: 1px 6px;
+    font-size: 10px;
   }
 
   .home-gaps th:first-child,
   .home-gaps td:first-child {
-    padding-left: 12px;
+    padding-left: 10px;
   }
 
   .home-gaps th:last-child,
   .home-gaps td:last-child {
-    padding-right: 12px;
+    padding-right: 10px;
   }
 
 }

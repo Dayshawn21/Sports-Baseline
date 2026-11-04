@@ -4,6 +4,7 @@ import { useNbaModelRanking, useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba
 import { useNflCurrentWeek, useNflSlate } from '~/hooks/useNfl'
 import { useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import { useNhlSlate } from '~/hooks/useNhl'
+import { usePrizePicksProps } from '~/hooks/useProps'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { homeCard, newestUpdate, type HomeCard, type HomeSportData, type HomeStatus } from '~/utils/home'
 import { rankingRecord, tennisRecord, type HomeRecord } from '~/utils/homeRecords'
@@ -36,7 +37,7 @@ export interface HomeView {
   failed: boolean
 }
 
-const EMPTY_SOURCE: HomeSource = { gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], schedule: [], period: null, days: [] }
+const EMPTY_SOURCE: HomeSource = { gameCount: 0, startsMs: [], propLines: null, gaps: [], moneyline: [], nextGames: [], schedule: [], period: null, days: [] }
 
 function statusOf(query: { isError: boolean, isPending: boolean }): HomeStatus {
   if (query.isError) return 'error'
@@ -65,6 +66,7 @@ export function useHomeData(): HomeView {
   const nbaGaps = useNbaSlateGaps(nba.data?.date ?? null, GAPS_PER_SPORT)
   const nhl = useNhlSlate(null)
   const tennis = useTennisToday()
+  const tennisProps = usePrizePicksProps()
   const tennisModel = useModelPredictions()
   const nflRanking = useNflModelRanking(week.data?.season ?? null)
   const nbaRanking = useNbaModelRanking()
@@ -81,8 +83,10 @@ export function useHomeData(): HomeView {
     : EMPTY_SOURCE, [nba.data, nbaGaps.data, nbaGaps.isError, now])
   const nhlSourceValue = useMemo<HomeSource>(() => nhl.data ? nhlSource(nhl.data.games, now) : EMPTY_SOURCE, [nhl.data, now])
   const tennisSourceValue = useMemo<HomeSource>(
-    () => tennis.data ? tennisSource(tennis.data.matches, now) : EMPTY_SOURCE,
-    [tennis.data, now],
+    () => tennis.data
+      ? { ...tennisSource(tennis.data.matches, now, tennisProps.data?.props ?? []), gapsFailed: tennisProps.isError }
+      : EMPTY_SOURCE,
+    [tennis.data, tennisProps.data, tennisProps.isError, now],
   )
 
   const nflStatus: HomeStatus = week.isError ? 'error' : week.isPending ? 'loading' : statusOf(nflSlate)

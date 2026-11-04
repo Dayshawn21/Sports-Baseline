@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
-import type { MatchPrediction } from '~/types/tennis'
+import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
-import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
 import type { NbaSlateDigestItem } from '~/utils/nbaSlate'
 
 const HOUR = 60 * 60 * 1000
@@ -146,5 +146,92 @@ describe('gap rows across sports', () => {
     const slate = { season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse
     const source = nflSource(slate, Array.from({ length: 11 }, (_, n) => digestItem(n + 1, '+1.0%')), NOW)
     expect(source.gaps.map(gap => gap.key)).toEqual(Array.from({ length: 10 }, (_, n) => String(101 + n)))
+  })
+})
+
+describe('tennisGapRows', () => {
+  const matches = [match(1, 3), match(2, 5)].map((entry, index) => ({ ...entry, p1Id: 10 + index * 2, p2Id: 11 + index * 2 }))
+  const prop = (id: number, overrides: Partial<PropLine> = {}): PropLine => ({
+    id, playerId: 10, playerName: 'P1', matchId: 1, source: 'prizepicks', statType: 'Aces', line: '4.5', oddsType: 'standard',
+    fetchedAt: at(-1), startTime: at(3), pOver: 0.6, pUnder: 0.4, confidence: null, recommendation: 'OVER', statAvg: 6.0, edgePct: 33.3,
+    projectionStatus: 'ok', dataQualityFlags: [], ...overrides,
+  })
+
+  it('ranks by the share of the line, one row per player, with the board link and a Central time', () => {
+    const rows = tennisGapRows([
+      prop(1, { edgePct: 20 }), prop(2, { statType: 'Double Faults', edgePct: -45, statAvg: 1.0, line: '2.5' }),
+      prop(3, { playerId: 12, playerName: 'P2', matchId: 2, startTime: at(5), edgePct: 30 }),
+    ], matches, NOW)
+    expect(rows.map(row => row.key)).toEqual(['2', '3'])
+    expect(rows[0]).toEqual({
+      key: '2', sport: 'tennis', playerName: 'P1', market: 'Double faults', matchup: 'P1 vs Q1', when: '2:00 PM CT', line: '2.5',
+      model: '1.0', gap: '-45.0%', path: expect.stringContaining('/tennis/player/10?'),
+    })
+    expect(rows[1].gap).toBe('+30.0%')
+  })
+
+  it('keeps standard rateable lines for matches still to come and leaves the rest out', () => {
+    const rows = tennisGapRows([
+      prop(1, { oddsType: 'demon' }), prop(2, { source: 'draftkings' }), prop(3, { dataQualityFlags: ['no_market_total'] }),
+      prop(4, { recommendation: null }), prop(5, { startTime: at(-2) }), prop(6, { projectionStatus: 'missing_stats' }),
+      prop(7, { playerId: null, playerName: 'Nobody' }), prop(8, { edgePct: 12 }),
+    ], matches, NOW)
+    expect(rows.map(row => row.key)).toEqual(['8'])
+  })
+
+  it('shows at most ten rows and none for no lines', () => {
+    const many = Array.from({ length: 12 }, (_, n) => prop(n + 1, { playerId: 100 + n, playerName: `X${n}`, matchId: 1, edgePct: 50 - n }))
+    expect(tennisGapRows(many, matches, NOW).map(row => row.key)).toEqual(Array.from({ length: 10 }, (_, n) => String(n + 1)))
+    expect(tennisGapRows([], matches, NOW)).toEqual([])
+  })
+
+  it('fills the source gaps while the cards stay the same', () => {
+    const source = tennisSource(matches, NOW, [prop(1)])
+    expect(source.gaps).toHaveLength(1)
+    expect(source.gameCount).toBe(2)
+  })
+})
+
+describe('moneyline rows', () => {
+  const nflGame = (gameId: number, hours: number, model: { home: number, market: number | null } | null, status = 'scheduled') => ({
+    gameId, startUtc: at(hours), awayTeam: `A${gameId}`, homeTeam: `H${gameId}`, status, lines: [],
+    model: model && { modelVersion: 'nfl-elo-v1', homeElo: 0, awayElo: 0, homeWinProbability: model.home, marketHomeWinProbability: model.market, homeSpread: 0, total: 0 },
+  }) as unknown as NflSlateGame
+  const slate = (games: NflSlateGame[]) => ({ season: 2026, week: 9, gameCount: games.length, lineCount: 0, unmatchedCount: 0, games, unmatched: [] }) as NflSlateResponse
+
+  it('names the NFL side the model rates above the market, largest gap first', () => {
+    const rows = nflSource(slate([
+      nflGame(1, 5, { home: 0.55, market: 0.6 }), nflGame(2, 6, { home: 0.7, market: 0.6 }), nflGame(3, 7, { home: 0.5, market: 0.52 }),
+    ]), [], NOW).moneyline
+    expect(rows.map(row => [row.key, row.side, row.gap])).toEqual([['2', 'H2', '+10.0 pp'], ['1', 'A1', '+5.0 pp'], ['3', 'A3', '+2.0 pp']])
+    expect(rows[0]).toMatchObject({ sport: 'nfl', matchup: 'A2 @ H2', market: '60.0%', model: '70.0%', path: '/nfl/game/2', when: '5:00 PM CT' })
+  })
+
+  it('drops finished or started NFL games and games without a model or market probability', () => {
+    const rows = nflSource(slate([
+      nflGame(1, -1, { home: 0.7, market: 0.6 }), nflGame(2, 5, { home: 0.7, market: 0.6 }, 'completed'), nflGame(3, 5, null),
+      nflGame(4, 5, { home: 0.7, market: null }), nflGame(5, 5, { home: 0.65, market: 0.6 }),
+    ]), [], NOW).moneyline
+    expect(rows.map(row => row.key)).toEqual(['5'])
+  })
+
+  it('caps each sport at ten rows', () => {
+    const games = Array.from({ length: 12 }, (_, n) => nflGame(n + 1, 5, { home: 0.6 + n / 100, market: 0.5 }))
+    expect(nflSource(slate(games), [], NOW).moneyline).toHaveLength(10)
+  })
+
+  it('compares the tennis ensemble with the de-vigged market and skips unpriced or unmodelled matches', () => {
+    const priced = (id: number, hours: number, p1: number | null, odds: [number | null, number | null] = [-200, 170]) =>
+      ({ ...match(id, hours, odds), p1WinProb: p1, p2WinProb: p1 === null ? null : 1 - p1 })
+    const rows = tennisSource([priced(1, 3, 0.8), priced(2, 4, null), priced(3, 5, 0.5, [null, 100]), priced(4, -1, 0.9)], NOW).moneyline
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ key: '1', sport: 'tennis', side: 'P1', matchup: 'P1 vs Q1', path: '/tennis/match/1', model: '80.0%' })
+    expect(rows[0].market).toBe('64.3%')
+    expect(rows[0].gap).toBe('+15.7 pp')
+  })
+
+  it('leaves NBA and NHL without rows', () => {
+    expect(nhlSource([nhlGame(1, 3)], NOW).moneyline).toEqual([])
+    expect(nbaSource([], [], '2026-11-04', NOW).moneyline).toEqual([])
   })
 })
