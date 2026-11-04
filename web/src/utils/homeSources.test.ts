@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
 import type { MatchPrediction } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
-import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, crossSportGaps, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
 import type { NbaSlateDigestItem } from '~/utils/nbaSlate'
 
 const HOUR = 60 * 60 * 1000
@@ -40,8 +40,19 @@ describe('nhlSource', () => {
     expect(source.period).toBeNull()
   })
 
+  it('keeps a longer schedule for the gaps tab, soonest first and capped at ten', () => {
+    const games = Array.from({ length: 12 }, (_, n) => nhlGame(n + 1, 12 - n))
+    games.push(nhlGame(20, -2), nhlGame(21, 3, 'completed'))
+    const { schedule, nextGames } = nhlSource(games, NOW)
+    expect(schedule).toHaveLength(SCHEDULE_LIMIT)
+    expect(schedule[0]).toEqual({ key: '12', title: 'A12 @ H12', when: '12:00 PM' })
+    expect(schedule.map(game => game.key)).not.toContain('20')
+    expect(schedule.map(game => game.key)).not.toContain('21')
+    expect(nextGames.map(game => game.key)).toEqual(schedule.slice(0, HERO_NEXT_LIMIT).map(game => game.key))
+  })
+
   it('is empty for no games', () => {
-    expect(nhlSource([], NOW)).toMatchObject({ gameCount: 0, startsMs: [], nextGames: [] })
+    expect(nhlSource([], NOW)).toMatchObject({ gameCount: 0, startsMs: [], nextGames: [], schedule: [] })
   })
 
   it('leaves a started game out of the next list but keeps it in the count', () => {
@@ -57,11 +68,11 @@ describe('nbaSource', () => {
       key: `k${n}`, gameId: n, playerId: n, playerName: `Player ${n}`, marketKey: 'points', market: 'Points', matchup: 'A @ B',
       when: 'x', line: '20.5', model: '22.0', gap: '+1.5 · +7%',
     })
-    const source = nbaSource([], [1, 2, 3, 4, 5].map(item), '2026-11-04', NOW)
-    expect(source.gaps.map(gap => gap.key)).toEqual(['k1', 'k2', 'k3'])
+    const source = nbaSource([], Array.from({ length: 11 }, (_, n) => item(n + 1)), '2026-11-04', NOW)
+    expect(source.gaps.map(gap => gap.key)).toEqual(Array.from({ length: 10 }, (_, n) => `k${n + 1}`))
     expect(source.gaps).toHaveLength(GAPS_PER_SPORT)
     expect(source.gaps[0]).toEqual({
-      key: 'k1', sport: 'nba', playerName: 'Player 1', market: 'Points', matchup: 'A @ B', line: '20.5', model: '22.0', gap: '+1.5 · +7%',
+      key: 'k1', sport: 'nba', playerName: 'Player 1', market: 'Points', matchup: 'A @ B', when: 'x', line: '20.5', model: '22.0', gap: '+1.5 · +7%',
       path: '/nba/player/1?date=2026-11-04&market=points',
     })
   })
@@ -126,23 +137,14 @@ describe('gap rows across sports', () => {
   it('carries the sport, the model value and a player link that keeps the market and week', () => {
     const source = nflSource({ season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse, [digestItem(7, '+104.6%')], NOW)
     expect(source.gaps).toEqual([{
-      key: '107', sport: 'nfl', playerName: 'P7', market: 'Rushing yards', matchup: 'A @ B', line: '60.5', model: '70.1', gap: '+104.6%',
+      key: '107', sport: 'nfl', playerName: 'P7', market: 'Rushing yards', matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap: '+104.6%',
       path: '/nfl/player/7?market=rushing_yards&season=2026&week=9',
     }])
   })
 
-  it('takes three rows per sport, NFL then NBA, and never sorts across sports', () => {
+  it('keeps ten NFL rows in digest order and drops the rest', () => {
     const slate = { season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse
-    const nfl = nflSource(slate, [1, 2, 3, 4].map(n => digestItem(n, '+1.0%')), NOW)
-    const nbaItem = (n: number): NbaSlateDigestItem => ({
-      key: `n${n}`, gameId: n, playerId: n, playerName: `N${n}`, marketKey: 'points', market: 'Points', matchup: 'A @ B',
-      when: 'x', line: '20.5', model: '30.0', gap: '+9.5 · +46%',
-    })
-    const nba = nbaSource([], [1, 2, 3, 4].map(nbaItem), '2026-11-04', NOW)
-    expect(crossSportGaps(nfl, nba).map(gap => gap.key)).toEqual(['101', '102', '103', 'n1', 'n2', 'n3'])
-  })
-
-  it('has no rows when neither sport has gaps', () => {
-    expect(crossSportGaps(nhlSource([], NOW), nhlSource([], NOW))).toEqual([])
+    const source = nflSource(slate, Array.from({ length: 11 }, (_, n) => digestItem(n + 1, '+1.0%')), NOW)
+    expect(source.gaps.map(gap => gap.key)).toEqual(Array.from({ length: 10 }, (_, n) => String(101 + n)))
   })
 })

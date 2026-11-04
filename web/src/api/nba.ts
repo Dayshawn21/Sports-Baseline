@@ -8,8 +8,9 @@ export async function fetchNbaSlate(date: string | null): Promise<NbaSlateRespon
   return data
 }
 
-export async function fetchNbaSlateGaps(date: string): Promise<NbaSlateGapsResponse> {
-  const { data } = await client.get<NbaSlateGapsResponse>('/nba/slate/gaps', { params: { date } })
+/** No limit keeps the API's default digest size, which the slate page relies on. */
+export async function fetchNbaSlateGaps(date: string, limit?: number): Promise<NbaSlateGapsResponse> {
+  const { data } = await client.get<NbaSlateGapsResponse>('/nba/slate/gaps', { params: limit === undefined ? { date } : { date, limit } })
   return data
 }
 

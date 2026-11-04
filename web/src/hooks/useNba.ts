@@ -20,10 +20,10 @@ export function useNbaPropBoard(date: string | null) {
 }
 
 /** The digest for a date the slate has already resolved; waits for it. */
-export function useNbaSlateGaps(date: string | null) {
+export function useNbaSlateGaps(date: string | null, limit?: number) {
   return useQuery({
-    queryKey: ['nba', 'slate', date, 'gaps'],
-    queryFn: () => fetchNbaSlateGaps(date as string),
+    queryKey: limit === undefined ? ['nba', 'slate', date, 'gaps'] : ['nba', 'slate', date, 'gaps', { limit }],
+    queryFn: () => fetchNbaSlateGaps(date as string, limit),
     enabled: date !== null,
     staleTime: 5 * 60 * 1000,
   })

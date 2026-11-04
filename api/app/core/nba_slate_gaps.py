@@ -11,6 +11,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 DIGEST_LIMIT = 4
+# The home page asks for more rows than the slate page's digest box.
+SLATE_GAPS_MAX = 10
 STANDARD = "standard"
 
 

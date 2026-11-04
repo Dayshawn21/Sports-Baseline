@@ -19,6 +19,8 @@ export interface HomeGap {
   line: string
   model: string
   gap: string
+  /** The digest's own Central start text, such as `Thu 7:15 PM CT`. */
+  when: string
   /** The player page this row opens, with the market tab it came from. */
   path: string
 }
@@ -46,14 +48,19 @@ export interface HomeSource {
   propLines: number | null
   gaps: HomeGap[]
   nextGames: HomeNextGame[]
+  /** Upcoming games soonest first, longer than `nextGames`; the gaps tabs list it for sports with no gap rows. */
+  schedule: HomeNextGame[]
   /** Period under the sport name, such as `Week 9`; null for day-based sports. */
   period: string | null
+  /** True when the sport's gap query failed; the games still count. */
+  gapsFailed?: boolean
   /** Games still to come by Central day, in order; filled for the NFL only, whose week spans days. */
   days: HomeDay[]
 }
 
-export const GAPS_PER_SPORT = 3
+export const GAPS_PER_SPORT = 10
 export const HERO_NEXT_LIMIT = 3
+export const SCHEDULE_LIMIT = 10
 
 interface Schedulable {
   key: string
@@ -77,15 +84,17 @@ function upcoming(games: Schedulable[]) {
 function sourceOf(
   games: Schedulable[],
   now: number,
-  rest: Omit<HomeSource, 'startsMs' | 'nextGames' | 'days'>,
+  rest: Omit<HomeSource, 'startsMs' | 'nextGames' | 'schedule' | 'days'>,
 ): HomeSource {
   const left = upcoming(games)
-  const next = left.filter(game => game.start > now).sort((a, b) => a.start - b.start).slice(0, HERO_NEXT_LIMIT)
+  const soonest = left.filter(game => game.start > now).sort((a, b) => a.start - b.start)
+  const listed = (limit: number) => soonest.slice(0, limit).map(game => ({ key: game.key, title: game.title, when: startLabel(game.start, now) }))
   return {
     ...rest,
     days: [],
     startsMs: left.map(game => game.start),
-    nextGames: next.map(game => ({ key: game.key, title: game.title, when: startLabel(game.start, now) })),
+    nextGames: listed(HERO_NEXT_LIMIT),
+    schedule: listed(SCHEDULE_LIMIT),
   }
 }
 
@@ -111,16 +120,11 @@ function teamGames(games: (NflSlateGame | NbaSlateGame | NhlSlateGame)[]): Sched
 
 function gapOf(
   sport: HomeGap['sport'],
-  item: { playerName: string, market: string, matchup: string, line: string, model: string, gap: string },
+  item: { playerName: string, market: string, matchup: string, when: string, line: string, model: string, gap: string },
   key: string,
   path: string,
 ): HomeGap {
-  return { key, sport, playerName: item.playerName, market: item.market, matchup: item.matchup, line: item.line, model: item.model, gap: item.gap, path }
-}
-
-/** Each sport's own top rows, NFL then NBA. Sorting across sports would compare a share of a reference line with points. */
-export function crossSportGaps(nfl: HomeSource, nba: HomeSource): HomeGap[] {
-  return [...nfl.gaps.slice(0, GAPS_PER_SPORT), ...nba.gaps.slice(0, GAPS_PER_SPORT)]
+  return { key, sport, playerName: item.playerName, market: item.market, matchup: item.matchup, when: item.when, line: item.line, model: item.model, gap: item.gap, path }
 }
 
 export function nflSource(slate: NflSlateResponse, digest: NflSlateDigestItem[], now: number): HomeSource {

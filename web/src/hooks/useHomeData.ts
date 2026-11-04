@@ -7,7 +7,7 @@ import { useNhlSlate } from '~/hooks/useNhl'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { homeCard, newestUpdate, type HomeCard, type HomeSportData, type HomeStatus } from '~/utils/home'
 import { rankingRecord, tennisRecord, type HomeRecord } from '~/utils/homeRecords'
-import { crossSportGaps, nbaSource, nflSource, nhlSource, tennisSource, type HomeGap, type HomeSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT, nbaSource, nflSource, nhlSource, tennisSource, type HomeSource } from '~/utils/homeSources'
 import { nbaSlateDigest } from '~/utils/nbaSlate'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { slateDigest } from '~/utils/nflSlate'
@@ -26,8 +26,6 @@ export interface HomeView {
   sports: HomeSport[]
   /** One card per sport in the fixed order NFL, NBA, NHL, Tennis. */
   cards: (HomeCard & { retry: () => void })[]
-  /** The largest gaps across sports, each sport's own order. */
-  gaps: HomeGap[]
   /** When the newest slate loaded; null until one has. */
   refreshedAt: number | null
   /** Published model records for the sports that have a model page, in registry order. */
@@ -38,7 +36,7 @@ export interface HomeView {
   failed: boolean
 }
 
-const EMPTY_SOURCE: HomeSource = { gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], period: null, days: [] }
+const EMPTY_SOURCE: HomeSource = { gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], schedule: [], period: null, days: [] }
 
 function statusOf(query: { isError: boolean, isPending: boolean }): HomeStatus {
   if (query.isError) return 'error'
@@ -64,7 +62,7 @@ export function useHomeData(): HomeView {
   const week = useNflCurrentWeek()
   const nflSlate = useNflSlate(week.data?.season ?? null, week.data?.week ?? null)
   const nba = useNbaSlate(null)
-  const nbaGaps = useNbaSlateGaps(nba.data?.date ?? null)
+  const nbaGaps = useNbaSlateGaps(nba.data?.date ?? null, GAPS_PER_SPORT)
   const nhl = useNhlSlate(null)
   const tennis = useTennisToday()
   const tennisModel = useModelPredictions()
@@ -74,13 +72,13 @@ export function useHomeData(): HomeView {
   const nfl = useMemo<HomeSource>(() => {
     if (!nflSlate.data) return EMPTY_SOURCE
     // Built as of now, so only games not yet kicked off reach the digest.
-    const digest = slateDigest(buildNflPropBoard(nflSlate.data.games, 'all', new Date(now)))
+    const digest = slateDigest(buildNflPropBoard(nflSlate.data.games, 'all', new Date(now)), GAPS_PER_SPORT)
     return nflSource(nflSlate.data, digest, now)
   }, [nflSlate.data, now])
   // A failed gap list only hides the table; the games still count.
   const nbaSourceValue = useMemo<HomeSource>(() => nba.data
-    ? nbaSource(nba.data.games, nbaSlateDigest(nbaGaps.data?.items ?? []), nba.data.date, now)
-    : EMPTY_SOURCE, [nba.data, nbaGaps.data, now])
+    ? { ...nbaSource(nba.data.games, nbaSlateDigest(nbaGaps.data?.items ?? []), nba.data.date, now), gapsFailed: nbaGaps.isError }
+    : EMPTY_SOURCE, [nba.data, nbaGaps.data, nbaGaps.isError, now])
   const nhlSourceValue = useMemo<HomeSource>(() => nhl.data ? nhlSource(nhl.data.games, now) : EMPTY_SOURCE, [nhl.data, now])
   const tennisSourceValue = useMemo<HomeSource>(
     () => tennis.data ? tennisSource(tennis.data.matches, now) : EMPTY_SOURCE,
@@ -101,7 +99,6 @@ export function useHomeData(): HomeView {
     now,
     sports,
     cards: sports.map(sport => ({ ...homeCard(sport.data, sport.source, now), retry: sport.retry })),
-    gaps: crossSportGaps(sports[0].source, sports[1].source),
     refreshedAt: newestUpdate([nflSlate.dataUpdatedAt, nba.dataUpdatedAt, nhl.dataUpdatedAt, tennis.dataUpdatedAt]),
     records: [
       tennisRecord(tennisModel.data, statusOf(tennisModel)),

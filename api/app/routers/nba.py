@@ -3,9 +3,10 @@ from __future__ import annotations
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nba_slate_gaps import DIGEST_LIMIT, SLATE_GAPS_MAX
 from app.db.pool import get_db
 from app.schemas.nba import (
     NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
@@ -32,8 +33,10 @@ async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_
 
 
 @router.get("/slate/gaps", response_model=NbaSlateGapsResponse)
-async def get_slate_gaps(date: dt.date, db: AsyncSession = Depends(get_db)) -> NbaSlateGapsResponse:
-    return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC))
+async def get_slate_gaps(
+    date: dt.date, limit: int = Query(DIGEST_LIMIT, ge=1, le=SLATE_GAPS_MAX), db: AsyncSession = Depends(get_db),
+) -> NbaSlateGapsResponse:
+    return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC), limit=limit)
 
 
 @router.get("/props", response_model=NbaPropBoardResponse)

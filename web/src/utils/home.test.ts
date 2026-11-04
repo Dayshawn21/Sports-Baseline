@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { HomeSource } from '~/utils/homeSources'
-import { homeCard, newestUpdate, nextStart, sportNoun, startLabel, todayStatus, type HomeSportData } from '~/utils/home'
+import type { HomeGap, HomeSource } from '~/utils/homeSources'
+import {
+  allGapRows, gapTabs, gapsBody, homeCard, newestUpdate, nextStart, parseGapTab, sportNoun, startLabel, todayStatus,
+  type HomeSportData, type HomeSportView,
+} from '~/utils/home'
 
 const HOUR = 60 * 60 * 1000
 // Tue 2026-11-03 17:00 UTC = 11:00 CT.
@@ -48,7 +51,7 @@ describe('todayStatus and sportNoun', () => {
 })
 
 const source = (overrides: Partial<HomeSource> = {}): HomeSource => ({
-  gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], period: null, days: [], ...overrides,
+  gameCount: 0, startsMs: [], propLines: null, gaps: [], nextGames: [], schedule: [], period: null, days: [], ...overrides,
 })
 const game = (key: string, title: string) => ({ key, title, when: '' })
 
@@ -99,5 +102,72 @@ describe('homeCard', () => {
   it('marks a loading or failed sport without a made-up count', () => {
     expect(homeCard(sportData('nba', [], { status: 'loading' }), source(), NOW)).toMatchObject({ when: 'Loading', count: '--', tone: 'loading', next: '' })
     expect(homeCard(sportData('nba', [], { status: 'error' }), source(), NOW)).toMatchObject({ when: 'Could not load', count: '--', tone: 'error' })
+  })
+})
+
+describe('gaps tabs', () => {
+  const gap = (sport: HomeGap['sport'], key: string): HomeGap => ({
+    key, sport, playerName: key, market: 'm', matchup: 'A @ B', when: 'w', line: '1', model: '2', gap: 'g', path: `/p/${key}`,
+  })
+  const view = (sport: HomeSportData['sport'], hours: number[], overrides: Partial<HomeSource> = {}, data: Partial<HomeSportData> = {}): HomeSportView => ({
+    data: sportData(sport, hours, data), source: source({ gameCount: hours.length, ...overrides }),
+  })
+  const sports = (): HomeSportView[] => [
+    view('nfl', [56], { gaps: [gap('nfl', 'f1'), gap('nfl', 'f2')] }),
+    view('nba', [7], { gaps: [gap('nba', 'b1')] }),
+    view('nhl', [], { schedule: [{ key: '1', title: 'A @ B', when: '6:00 PM' }] }),
+    view('tennis', [], {}, { status: 'loading' }),
+  ]
+
+  it('lists All then each sport in the cards order, with the next start on a sport that has one', () => {
+    expect(gapTabs(sports(), NOW).map(tab => [tab.key, tab.text])).toEqual([
+      ['all', 'All'], ['nfl', 'NFL · Thu 7:00 PM'], ['nba', 'NBA · 6:00 PM'], ['nhl', 'NHL'], ['tennis', 'Tennis'],
+    ])
+  })
+
+  it('shows no start when the sport has nothing left or has not loaded', () => {
+    const list = sports()
+    list[1] = view('nba', [-3])
+    list[0] = view('nfl', [56], {}, { status: 'error' })
+    expect(gapTabs(list, NOW).map(tab => tab.text)).toEqual(['All', 'NFL', 'NBA', 'NHL', 'Tennis'])
+  })
+
+  it('reads a missing or unknown tab as All', () => {
+    expect(parseGapTab(null)).toBe('all')
+    expect(parseGapTab('golf')).toBe('all')
+    expect(parseGapTab('nba')).toBe('nba')
+  })
+
+  it('puts NFL rows before NBA rows and never sorts across sports', () => {
+    expect(allGapRows(sports()).map(row => row.key)).toEqual(['f1', 'f2', 'b1'])
+  })
+
+  it('gives a sport tab its own rows and a link to the props board', () => {
+    expect(gapsBody('nba', sports())).toMatchObject({
+      kind: 'rows', rows: [{ key: 'b1' }], footer: { label: 'View all NBA props', path: '/nba/board' },
+    })
+  })
+
+  it('says why a sport tab is empty, including a failed gap query', () => {
+    const noGaps = [view('nfl', [], {}), ...sports().slice(1)]
+    expect(gapsBody('nfl', noGaps)).toMatchObject({ rows: [], empty: 'No games scheduled' })
+    const quiet = [view('nfl', [56]), ...sports().slice(1)]
+    expect(gapsBody('nfl', quiet)).toMatchObject({ empty: 'No gap lines yet.' })
+    const failed = [...sports().slice(0, 1), view('nba', [7], { gapsFailed: true }), ...sports().slice(2)]
+    expect(gapsBody('nba', failed)).toMatchObject({ rows: [], empty: 'Gap lines could not load.' })
+  })
+
+  it('lists next games for NHL, and says why, with a slate link', () => {
+    expect(gapsBody('nhl', sports())).toMatchObject({
+      kind: 'games', games: [{ key: '1' }], footer: { label: 'Open the NHL slate', path: '/nhl' },
+      intro: expect.stringContaining('no gaps to show'),
+    })
+  })
+
+  it('shows a loading or failed sport as such', () => {
+    expect(gapsBody('tennis', sports())).toEqual({ kind: 'loading' })
+    const list = sports()
+    list[0] = view('nfl', [], {}, { status: 'error' })
+    expect(gapsBody('nfl', list)).toEqual({ kind: 'error', text: 'Could not load' })
   })
 })

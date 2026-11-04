@@ -1,5 +1,5 @@
 import { SPORTS, VIEW_LABELS, sportViews, type Sport, type SportView } from '~/utils/sportNav'
-import type { HomeSource } from '~/utils/homeSources'
+import type { HomeGap, HomeNextGame, HomeSource } from '~/utils/homeSources'
 
 export type HomeStatus = 'loading' | 'error' | 'ready'
 
@@ -121,4 +121,77 @@ export function homeCard(data: HomeSportData, source: HomeSource, now: number): 
     tone: when.tone,
     links: sportViews(sport).map(({ view, path }) => ({ view, label: VIEW_LABELS[view], path })),
   }
+}
+
+export type GapTabKey = 'all' | Sport
+
+const SPORT_TAB_ORDER: Sport[] = ['nfl', 'nba', 'nhl', 'tennis']
+
+/** A sport's data and source, as the gaps tabs read them. */
+export interface HomeSportView { data: HomeSportData, source: HomeSource }
+
+export interface HomeGapTab {
+  key: GapTabKey
+  label: string
+  /** The tab text: the label, then that sport's next start when it has one. */
+  text: string
+}
+
+export interface GapsFooter { label: string, path: string }
+
+export type GapsBody =
+  | { kind: 'loading' }
+  | { kind: 'error', text: string }
+  | { kind: 'rows', rows: HomeGap[], empty: string, footer: GapsFooter | null }
+  | { kind: 'games', intro: string, games: HomeNextGame[], empty: string, footer: GapsFooter }
+
+export function parseGapTab(param: string | null): GapTabKey {
+  return SPORT_TAB_ORDER.find(sport => sport === param) ?? 'all'
+}
+
+function sportLabel(sport: Sport): string {
+  return SPORTS.find(entry => entry.code === sport)!.label
+}
+
+export function gapTabs(sports: HomeSportView[], now: number): HomeGapTab[] {
+  return [
+    { key: 'all', label: 'All', text: 'All' },
+    ...SPORT_TAB_ORDER.map(sport => {
+      const label = sportLabel(sport)
+      const data = sports.find(entry => entry.data.sport === sport)!.data
+      const start = data.status === 'ready' ? nextStart(data, now) : null
+      return { key: sport, label, text: start === null ? label : `${label} · ${startLabel(start, now)}` }
+    }),
+  ]
+}
+
+const GAMES_INTRO: Partial<Record<Sport, string>> = {
+  nhl: 'NHL props are line-only with no model projection, so there are no gaps to show. Next games:',
+  tennis: 'Tennis has no reference gaps. Next priced matches:',
+}
+
+function footerFor(sport: Sport, view: SportView): GapsFooter {
+  const path = sportViews(sport).find(entry => entry.view === view)!.path
+  const label = sportLabel(sport)
+  return { label: view === 'props' ? `View all ${label} props` : `Open the ${label} slate`, path }
+}
+
+/** NFL rows then NBA rows, each in its own digest order: a share of a reference line and points never share a sort. */
+export function allGapRows(sports: HomeSportView[]): HomeGap[] {
+  return SPORT_TAB_ORDER.flatMap(sport => sports.find(entry => entry.data.sport === sport)!.source.gaps)
+}
+
+export function gapsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
+  if (tab === 'all') return { kind: 'rows', rows: allGapRows(sports), empty: 'No gap lines yet.', footer: null }
+  const { data, source } = sports.find(entry => entry.data.sport === tab)!
+  if (data.status === 'loading') return { kind: 'loading' }
+  if (data.status === 'error') return { kind: 'error', text: 'Could not load' }
+  const sport = data.sport
+  const intro = GAMES_INTRO[sport]
+  if (intro !== undefined) {
+    const empty = data.gameCount === 0 ? emptyText(sport) : `No upcoming ${NOUN[sport].many}`
+    return { kind: 'games', intro, games: source.schedule, empty, footer: footerFor(sport, 'slate') }
+  }
+  const empty = source.gapsFailed ? 'Gap lines could not load.' : data.gameCount === 0 ? emptyText(sport) : 'No gap lines yet.'
+  return { kind: 'rows', rows: source.gaps, empty, footer: footerFor(sport, 'props') }
 }
