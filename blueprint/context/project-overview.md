@@ -221,6 +221,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 51 | NFL recent form window | Complete 2026-11-02 |
 | 52 | NFL other markets in the prop tabs | Complete 2026-11-02 |
 | 53 | NBA, NHL and tennis player pages | In progress; 53a, 53b, 53d and 53g complete; 53b2, 53c, 53d2, 53e, 53f and 53h open |
+| 56 | NHL prop board and model | 56a complete 2026-11-04 (`/nhl/board`, line-only, not deployed); 56b-56d not yet specced |
 
 23 leaf items remain, with these gates:
 
@@ -242,6 +243,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 49e | Freeze goblin and demon rungs | Complete 2026-11-03: same model and anchor versions, no refit, no new rule; goblin over and demon over get their own forward sample from the first rung freeze; display stays standard-only |
 | 53a-53h | NBA, NHL and tennis player pages | NBA (53a-53c, plus 53b2 for the form chart), NHL (53d-53f) and tennis (53g-53h) are independent branches; the shared form chart helpers (53d2) come before 53b2 and 53e; display only where a market has no model, with no projection, edge, rank or color for it; 53a, 53b, 53d and 53g complete |
 | 55 | Home page | Completed 2026-11-03 (not deployed): `/` becomes a one-screen cross-sport home (reworked 2026-11-04): a card per sport with slate counts, first start, next games and Slate, Props and Model links, a gray table of the largest gaps across sports, and each sport's published model record linked ("Accruing" where no rule has adopted); the tennis slate moves to `/tennis`; built from data the existing slate and record hooks load, no new endpoints, no model or rule changes; `/props`, `/live-odds` and `/bets` keep redirecting to `/` |
+| 56a-56d | NHL prop board and model | 56a: `GET /nhl/props` and `/nhl/board`, stored PrizePicks lines only, gray and unranked, registers the `props` view. 56b: projection backtest harness (2024-25 development, 2025-26 holdout scored once, rule pre-registered; nothing served). 56c: serve and freeze (`NhlPropSource` joins `PROP_SOURCES`). 56d: forward ranking check and `/nhl/model`, registering the `model` view; none registered before 56d, and the forward check starts Accruing because NHL lines begin October 2026 |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
@@ -422,7 +424,7 @@ the NBA team-sport pattern: shared `sport_*` tables, the 17c prop pipeline
 and the web sport registries, with no third parallel stack (item 17's rule).
 Models follow NBA's backtest-first, pre-registered gates, and edges stay gray
 until a ranking slice reads `adopt`. Projection, P(over), frozen predictions,
-a model page and a prop board are later sub-items, added once 45a-45e ship.
+a model page and a prop board are later sub-items, now planned as item 56 (56a board first, the Model view only with 56d).
 
 | Step | Outcome |
 |---|---|

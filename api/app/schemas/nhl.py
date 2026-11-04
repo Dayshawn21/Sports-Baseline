@@ -113,6 +113,22 @@ class NhlLineOnlyPropsResponse(_CamelModel):
     lines: list[NhlLineOnlyLineSchema]
 
 
+class NhlPropBoardGameSchema(_CamelModel):
+    game_id: int
+    away_team: str
+    home_team: str
+    start_utc: AwareDatetime | None
+    status: str
+    lines: list[NhlLineOnlyLineSchema]
+
+
+class NhlPropBoardResponse(_CamelModel):
+    date: dt.date
+    previous_date: dt.date | None
+    next_date: dt.date | None
+    games: list[NhlPropBoardGameSchema]
+
+
 class NhlPlayerLineSchema(_CamelModel):
     line: float
     odds_type: Literal["standard", "demon", "goblin"]

@@ -1,5 +1,5 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlSlate } from '~/api/nhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
@@ -46,6 +46,15 @@ export function nhlPlayerPropsQuery(playerId: number | null, date: string | null
   })
 }
 
+export function nhlPropBoardQuery(date: string | null) {
+  const requested = parseSlateDate(date)
+  return queryOptions({
+    queryKey: ['nhl', 'prop-board', requested],
+    queryFn: () => fetchNhlPropBoard(requested),
+    staleTime: STALE_TIME,
+  })
+}
+
 export function useNhlSlate(date: string | null) {
   return useQuery(nhlSlateQuery(date))
 }
@@ -60,4 +69,8 @@ export function useNhlLineOnlyProps(gameId: number | null) {
 
 export function useNhlPlayerProps(playerId: number | null, date: string | null) {
   return useQuery(nhlPlayerPropsQuery(playerId, date))
+}
+
+export function useNhlPropBoard(date: string | null) {
+  return useQuery(nhlPropBoardQuery(date))
 }

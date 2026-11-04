@@ -381,6 +381,22 @@ async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict[str, 
     """)
 
 
+_DATE_PROPS = _latest_props("g.game_date = :game_date")
+
+
+async def get_date_line_only_lines(db: AsyncSession, game_date: date) -> dict[int, list[dict[str, object]]]:
+    """The same latest-offering rows as `get_line_only_lines`, for every served game on one date, by game id."""
+    rows = await _player_prop_read(db, _DATE_PROPS, """
+        SELECT game_id, provider, provider_prop_id, player_id, player_name, position, team,
+               market, odds_type, line, fetched_at
+        FROM latest ORDER BY game_id, player_name, player_id, market, odds_type, line, provider_prop_id
+    """, {"game_date": game_date})
+    by_game: dict[int, list[dict[str, object]]] = {}
+    for row in rows:
+        by_game.setdefault(int(str(row["game_id"])), []).append(row)
+    return by_game
+
+
 _PLAYER_PROPS = _latest_props("l.player_id = :player_id AND g.game_date = :game_date")
 _PLAYER_PROP_DATES = _latest_props("l.player_id = :player_id")
 
