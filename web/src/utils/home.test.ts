@@ -77,8 +77,8 @@ describe('homeCard', () => {
     expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ when: 'First puck 6:00 PM CT', next: '' })
   })
 
-  it('gives NHL only a Slate link and tennis all three', () => {
-    expect(homeCard(sportData('nhl', [7]), source(), NOW).links.map(link => link.label)).toEqual(['Slate'])
+  it('gives NHL Slate and Props links and tennis all three', () => {
+    expect(homeCard(sportData('nhl', [7]), source(), NOW).links.map(link => link.label)).toEqual(['Slate', 'Props'])
     expect(homeCard(sportData('tennis', [3]), source(), NOW).links.map(link => link.label)).toEqual(['Slate', 'Props', 'Model'])
   })
 

@@ -7,10 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
-from app.schemas.nhl import NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlPlayerPropsResponse, NhlSlateResponse
+from app.schemas.nhl import (
+    NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlPlayerPropsResponse, NhlPropBoardResponse, NhlSlateResponse,
+)
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
+from app.services.nhl.prop_board import build_prop_board
 from app.services.nhl.slate import build_slate
 
 router = APIRouter()
@@ -21,6 +24,11 @@ EASTERN = ZoneInfo("America/New_York")
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlSlateResponse:
     clock = dt.datetime.now(dt.timezone.utc)
     return await build_slate(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
+
+
+@router.get("/props", response_model=NhlPropBoardResponse)
+async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlPropBoardResponse:
+    return await build_prop_board(db, date, dt.datetime.now(dt.timezone.utc).astimezone(EASTERN).date())
 
 
 @router.get("/games/{game_id}", response_model=NhlGameDetailResponse)

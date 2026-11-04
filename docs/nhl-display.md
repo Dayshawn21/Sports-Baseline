@@ -19,6 +19,9 @@ The SPA uses hash routes:
 
 - `/#/nhl?date=2026-10-23`: dated slate, team/game search and game links.
 - `/#/nhl/game/57029`: matchup and Player Props tabs; Player Props opens first.
+- `/#/nhl/board?date=2026-10-24&market=points`: the Props view (56a), one date's stored
+  PrizePicks lines for one market, ordered by puck drop then player and never
+  ranked. Line-only: no projection, gap, probability or pick.
 - `/#/how-it-works`: NHL coverage and limitations alongside the other sports.
 
 Run the API and web dev commands in `AGENTS.md`. The usual web origin is
@@ -33,6 +36,7 @@ to display; NHL context additionally requires migration 0050 as above.
 | `GET /nhl/slate?date=YYYY-MM-DD` | Selected date, nearest previous/next served date, games and markets |
 | `GET /nhl/games/{game_id}` | Same game fields as the slate, plus line history |
 | `GET /nhl/games/{game_id}/line-only-props` | Game ID and eligible stored offerings |
+| `GET /nhl/props?date=YYYY-MM-DD` | The prop board: the slate's date selection and previous/next dates, each served game with its line-only offerings (identical to that game's endpoint) |
 
 For example, `curl.exe http://127.0.0.1:8000/nhl/slate?date=2026-10-23`.
 Responses use camelCase fields and aware timestamps. Missing, wrong-sport or

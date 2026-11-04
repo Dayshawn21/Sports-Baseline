@@ -98,6 +98,22 @@ export interface NhlLineOnlyProps {
   lines: NhlLineOnlyLine[]
 }
 
+export interface NhlPropBoardGame {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+  lines: NhlLineOnlyLine[]
+}
+
+export interface NhlPropBoardResponse {
+  date: string
+  previousDate: string | null
+  nextDate: string | null
+  games: NhlPropBoardGame[]
+}
+
 export interface NhlPlayerLine {
   line: number
   oddsType: 'standard' | 'demon' | 'goblin'
