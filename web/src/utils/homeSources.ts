@@ -272,7 +272,32 @@ export function tennisGapRows(props: PropLine[], matches: MatchPrediction[], now
   return rows
 }
 
-export function tennisSource(matches: MatchPrediction[], now: number, props: PropLine[] = []): HomeSource {
+const HOUR_MS = 60 * 60 * 1000
+
+/**
+ * Paris starts arrive from the match feed exactly an hour before PrizePicks' time (a stale offset on the feed's side),
+ * while ordinary drift is minutes. Only a whole-hour disagreement is taken as an offset error; the PrizePicks time wins.
+ */
+export function reconciledStart(feedStart: string | null, prizePicksStart: number | undefined): string | null {
+  const feed = parsedStart(feedStart)
+  if (feed === null || prizePicksStart === undefined) return feedStart
+  const gap = prizePicksStart - feed
+  return Math.abs(gap) >= HOUR_MS && gap % HOUR_MS === 0 ? new Date(prizePicksStart).toISOString() : feedStart
+}
+
+function prizePicksStarts(props: PropLine[]): Map<number, number> {
+  const starts = new Map<number, number>()
+  for (const line of props) {
+    const start = parsedStart(line.startTime ?? null)
+    if (line.matchId == null || start === null || line.source !== 'prizepicks') continue
+    starts.set(line.matchId, Math.min(start, starts.get(line.matchId) ?? start))
+  }
+  return starts
+}
+
+export function tennisSource(feedMatches: MatchPrediction[], now: number, props: PropLine[] = []): HomeSource {
+  const starts = prizePicksStarts(props)
+  const matches = feedMatches.map(match => ({ ...match, startUtc: reconciledStart(match.startUtc, starts.get(match.matchId)) }))
   // The feed spans two UTC dates, so a late match can arrive in both responses.
   const priced = [...new Map(matches.filter(isPricedMatch).map(match => [match.matchId, match])).values()]
   const games = priced.map(match => ({

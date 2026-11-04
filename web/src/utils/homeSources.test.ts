@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
 import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
-import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
 import type { NbaSlateDigestItem } from '~/utils/nbaSlate'
 
 const HOUR = 60 * 60 * 1000
@@ -233,5 +233,29 @@ describe('moneyline rows', () => {
   it('leaves NBA and NHL without rows', () => {
     expect(nhlSource([nhlGame(1, 3)], NOW).moneyline).toEqual([])
     expect(nbaSource([], [], '2026-11-04', NOW).moneyline).toEqual([])
+  })
+})
+
+describe('tennis start reconciliation', () => {
+  const line = (matchId: number, hours: number, minutes = 0): PropLine => ({
+    id: matchId, playerId: null, playerName: null, matchId, source: 'prizepicks', statType: 'Aces', line: '4.5', oddsType: 'standard',
+    fetchedAt: at(-1), startTime: new Date(NOW + hours * HOUR + minutes * 60000).toISOString(), pOver: null, pUnder: null, confidence: null,
+  })
+
+  it('takes the PrizePicks time only when it is a whole number of hours from the feed', () => {
+    expect(reconciledStart(at(3), NOW + 4 * HOUR)).toBe(at(4))
+    expect(reconciledStart(at(3), NOW + 2 * HOUR)).toBe(at(2))
+    expect(reconciledStart(at(3), NOW + 3 * HOUR + 20 * 60000)).toBe(at(3))
+    expect(reconciledStart(at(3), NOW + 3 * HOUR)).toBe(at(3))
+    expect(reconciledStart(at(3), undefined)).toBe(at(3))
+    expect(reconciledStart(null, NOW + 4 * HOUR)).toBeNull()
+  })
+
+  it('moves a mismatched match in the next start, the schedule and the moneyline rows, and leaves drifted ones alone', () => {
+    const priced = (id: number, hours: number) => ({ ...match(id, hours), p1WinProb: 0.7, p2WinProb: 0.3 })
+    const source = tennisSource([priced(1, 3), priced(2, 5)], NOW, [line(1, 4), line(2, 5, 20)])
+    expect(source.startsMs).toEqual([NOW + 4 * HOUR, NOW + 5 * HOUR])
+    expect(source.schedule.map(game => [game.key, game.when])).toEqual([['1', '3:00 PM'], ['2', '4:00 PM']])
+    expect(source.moneyline.map(row => [row.key, row.when])).toEqual([['1', '3:00 PM CT'], ['2', '4:00 PM CT']])
   })
 })
