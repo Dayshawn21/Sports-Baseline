@@ -11,8 +11,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from app.core import nhl_over_probability_fit as fit
+from app.core.count_over_probability import NegBinParams, ScaledNormalParams
 from app.core.nhl_context_snapshots import Freshness
-
+from app.core.nhl_over_probability_crossfit import FamilyParams, RatioParams, read_family
 from app.core.nhl_player_values import GOALIE_MARKETS, nhl_stat_value
 from app.core.nhl_projection_backtest import (
     ARMS, CENTER_ONLY_MARKETS, CENTER_POSITION, MIN_PRIOR_GAMES, MIN_PRIOR_GOALIE_STARTS, MIN_PRIOR_TOI_MINUTES,
@@ -23,7 +25,7 @@ from app.nhl.markets import NhlLineOnlyMarket
 NhlProjectionFlag = Literal[
     "few_prior_games", "low_toi", "not_center",
     "no_goalie_report", "starter_unconfirmed", "other_starter_expected", "context_stale", "injured_out",
-    "injury_listed", "injury_context_stale",
+    "injury_listed", "injury_context_stale", "integer_line", "no_over_probability",
 ]
 
 # The statuses ESPN stored in nhl_player_injuries on 2026-11-04. Each means the player will not dress.
@@ -60,6 +62,58 @@ class NhlLineProjection:
     prior_toi_minutes: float | None
     gap: float | None
     flags: tuple[NhlProjectionFlag, ...]
+    # Set only where a number is shown, the market is in the served fit and the line is not a whole number.
+    p_over: float | None = None
+    p_under: float | None = None
+    # Names the fit that covers this market whenever a number is shown, even when this line reads no probability.
+    over_probability_version: str | None = None
+
+
+@dataclass(frozen=True)
+class OverRead:
+    p_over: float | None = None
+    p_under: float | None = None
+    over_probability_version: str | None = None
+    flags: tuple[NhlProjectionFlag, ...] = ()
+
+
+def _fit_serves(market: NhlLineOnlyMarket) -> bool:
+    # A fit made for another projection version would misread this projection's values.
+    return market.value in fit.SHOWN_MARKETS and fit.FIT_PROJECTION_MODEL_VERSION == NHL_PROJECTION_REFERENCE_VERSION
+
+
+def served_over_probability_version() -> str | None:
+    """The fit's version when it matches the served projection; None when nothing is served from it."""
+    return fit.OVER_PROBABILITY_VERSION if fit.FIT_PROJECTION_MODEL_VERSION == NHL_PROJECTION_REFERENCE_VERSION else None
+
+
+def _fit_params(market: NhlLineOnlyMarket) -> FamilyParams | None:
+    family = fit.FAMILY_BY_MARKET.get(market.value)
+    if family == "negbin" and market.value in fit.NEGBIN_R:
+        return NegBinParams(fit.NEGBIN_R[market.value])
+    if family == "scaled_normal" and market.value in fit.SCALED_NORMAL:
+        return ScaledNormalParams(*fit.SCALED_NORMAL[market.value])
+    if family == "ratio" and market.value in fit.RATIO_QUANTILES:
+        return RatioParams(fit.RATIO_QUANTILES[market.value])
+    return None
+
+
+def over_read(market: NhlLineOnlyMarket, projection: float, line: float) -> OverRead:
+    """P(over) for a shown projection at one line, read by 56c2's own reader from the frozen fit.
+
+    A hidden market reads nothing and says nothing. No push is modelled, so a whole-number line
+    reads no probability and P(under) is the complement on every other line.
+    """
+    if not _fit_serves(market):
+        return OverRead()
+    version = fit.OVER_PROBABILITY_VERSION
+    if float(line).is_integer():
+        return OverRead(over_probability_version=version, flags=("integer_line",))
+    params = _fit_params(market)
+    probability = None if params is None else read_family(params, projection, line)
+    if probability is None:
+        return OverRead(over_probability_version=version, flags=("no_over_probability",))
+    return OverRead(probability, 1.0 - probability, version)
 
 
 def _not_served(sample: int, minutes: float | None, flag: NhlProjectionFlag) -> NhlLineProjection:
@@ -92,6 +146,21 @@ def _skater_flags(availability: Availability) -> tuple[NhlProjectionFlag, ...]:
 
 
 def project_line(
+    prior: Sequence[NhlHistoryRow], market: NhlLineOnlyMarket, line: float, position: str | None,
+    player_id: int, availability: Availability,
+) -> NhlLineProjection:
+    """The gated reference projection for one line, with P(over) wherever a number is shown."""
+    gated = _gated_projection(prior, market, line, position, player_id, availability)
+    if gated.projection is None:
+        return gated
+    read = over_read(market, gated.projection, line)
+    return replace(
+        gated, p_over=read.p_over, p_under=read.p_under, over_probability_version=read.over_probability_version,
+        flags=(*gated.flags, *read.flags),
+    )
+
+
+def _gated_projection(
     prior: Sequence[NhlHistoryRow], market: NhlLineOnlyMarket, line: float, position: str | None,
     player_id: int, availability: Availability,
 ) -> NhlLineProjection:

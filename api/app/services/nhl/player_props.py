@@ -9,16 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_names import nhl_team_code
 from app.core.nhl_player_values import GOALIE_MARKETS, NHL_FIRST_HISTORY_SEASON, nhl_stat_value, player_props_date
+from app.core.nhl_projection import over_read, served_over_probability_version
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.core.slate_dates import slate_date
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
 from app.schemas.nhl import (
     NhlPlayerGameRefSchema, NhlPlayerGameSchema, NhlPlayerInjurySchema, NhlPlayerLineSchema,
-    NhlPlayerMarketSchema, NhlPlayerPropsResponse,
+    NhlPlayerMarketSchema, NhlPlayerPropsResponse, NhlProjectionSchema,
 )
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext
-from app.services.nhl.projections import ProjectionInputs, line_projection
+from app.services.nhl.projections import ProjectionInputs, line_projection, rounded_probability
 from app.services.nhl.slate import assemble_games
 
 RECENT_GAMES = 10
@@ -47,6 +48,21 @@ def _games(market: NhlLineOnlyMarket, rows: Sequence[Mapping[str, object]], limi
     ]
 
 
+RUNG_FLAGS = frozenset({"integer_line", "no_over_probability"})
+
+
+def _rung(market: NhlLineOnlyMarket, projection: NhlProjectionSchema, row: Mapping[str, object]) -> NhlPlayerLineSchema:
+    line = float(str(row["line"]))
+    read = None if projection.value is None else over_read(market, projection.value, line)
+    return NhlPlayerLineSchema.model_validate({
+        "line": row["line"], "odds_type": row["odds_type"], "fetched_at": row["fetched_at"],
+        "gap": None if projection.value is None else round(projection.value - line, 2),
+        "p_over": None if read is None else rounded_probability(read.p_over),
+        "p_under": None if read is None else rounded_probability(read.p_under),
+        "flags": [] if read is None else list(read.flags),
+    })
+
+
 def _market(
     market: NhlLineOnlyMarket, rows: Sequence[Mapping[str, object]], recent: Sequence[Mapping[str, object]],
     against: Sequence[Mapping[str, object]], player: Mapping[str, object], team: str | None, inputs: ProjectionInputs,
@@ -59,14 +75,11 @@ def _market(
     )
     return NhlPlayerMarketSchema(
         market=market,
-        lines=[
-            NhlPlayerLineSchema.model_validate({
-                "line": row["line"], "odds_type": row["odds_type"], "fetched_at": row["fetched_at"],
-                "gap": None if projection.value is None else round(projection.value - float(str(row["line"])), 2),
-            })
-            for row in rungs
-        ],
-        projection=projection.model_copy(update={"gap": None}),
+        lines=[_rung(market, projection, row) for row in rungs],
+        projection=projection.model_copy(update={
+            "gap": None, "p_over": None, "p_under": None,
+            "flags": [flag for flag in projection.flags if flag not in RUNG_FLAGS],
+        }),
         recent=_games(market, recent, RECENT_GAMES), opponent_games=_games(market, against, None),
     )
 
@@ -114,7 +127,7 @@ def player_props_response(
     injury, goalies = _context(player_id, context)
     return NhlPlayerPropsResponse(
         **identity, team=team, game=NhlPlayerGameRefSchema.model_validate(game), opponent=opponent,
-        injury=injury, goalies=goalies,
+        injury=injury, goalies=goalies, over_probability_version=served_over_probability_version(),
         markets=_markets(
             lines, recent, against if opponent is not None else [], player, team,
             ProjectionInputs({player_id: history}, context),

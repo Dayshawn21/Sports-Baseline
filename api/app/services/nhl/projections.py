@@ -46,6 +46,10 @@ def availability(
     return Availability(injury_status=None if entry is None else entry.status, injury_freshness=injuries.freshness)
 
 
+def rounded_probability(probability: float | None) -> float | None:
+    return None if probability is None else round(probability, 4)
+
+
 def line_projection(
     market: NhlLineOnlyMarket, player_id: int, line: float, provider_position: str | None, team: str | None,
     inputs: ProjectionInputs,
@@ -56,7 +60,7 @@ def line_projection(
     served = project_line(prior, market, line, position, player_id, availability(market, player_id, team, inputs.context))
     return NhlProjectionSchema(
         model_version=served.model_version, value=served.projection, games_in_sample=served.games_in_sample,
-        gap=served.gap, flags=list(served.flags),
+        gap=served.gap, p_over=rounded_probability(served.p_over), flags=list(served.flags),
     )
 
 

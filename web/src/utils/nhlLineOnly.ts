@@ -1,4 +1,5 @@
 import type { NhlLineOnlyLine, NhlLineOnlyMarket, NhlProjection } from '~/types/nhl'
+import { nhlCoversProbability, nhlLineProbabilityNote } from '~/utils/nhlProjection'
 
 export const NHL_LINE_ONLY_MARKETS = [
   'shots_on_goal', 'points', 'assists', 'goals', 'power_play_points', 'blocked_shots',
@@ -48,6 +49,10 @@ export interface NhlPropRung {
   oddsTypeLabel: string
   /** Projection minus this line; null when no projection is shown. */
   gap: number | null
+  /** This line's P(over); null when the market shows none. */
+  pOver: number | null
+  /** Why this line has no P(over), such as a whole-number line; null otherwise. */
+  probabilityNote: string | null
 }
 
 export interface NhlPropListRow {
@@ -63,6 +68,11 @@ export interface NhlPropListRow {
   standard: string | null
   /** The gap to the standard line, or null when there is no standard line or no projection. */
   standardGap: number | null
+  /** The standard line's P(over); alternates never show one on the board or game page. */
+  standardPOver: number | null
+  standardProbabilityNote: string | null
+  /** True when the market's fit covers any of the player's lines, so the column is worth drawing. */
+  coversProbability: boolean
   /** One per player and market: the value does not depend on the line. */
   projection: NhlProjection
   /** The newest fetch across the player's offerings. */
@@ -83,6 +93,7 @@ function rungsFor(lines: readonly NhlLineOnlyLine[]): NhlPropRung[] {
     .map(entry => ({
       line: entry.line, label: nhlPropLineLabel(entry.market, entry.line),
       oddsType: entry.oddsType, oddsTypeLabel: ODDS_TYPE_LABELS[entry.oddsType], gap: entry.projection.gap,
+      pOver: entry.projection.pOver, probabilityNote: nhlLineProbabilityNote(entry.projection.flags),
     }))
 }
 
@@ -109,6 +120,9 @@ export function nhlPropListGroups(lines: readonly NhlLineOnlyLine[]): NhlPropLis
         team: first.team, position: first.position, market, rungs,
         standard: rungs.find(rung => rung.oddsType === 'standard')?.label ?? null,
         standardGap: rungs.find(rung => rung.oddsType === 'standard')?.gap ?? null,
+        standardPOver: rungs.find(rung => rung.oddsType === 'standard')?.pOver ?? null,
+        standardProbabilityNote: rungs.find(rung => rung.oddsType === 'standard')?.probabilityNote ?? null,
+        coversProbability: offerings.some(entry => nhlCoversProbability(entry.projection)),
         projection: first.projection,
         fetchedAt: newestFetch(offerings),
       }

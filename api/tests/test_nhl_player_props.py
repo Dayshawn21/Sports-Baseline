@@ -6,6 +6,9 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import nhl_over_probability_fit as fit
+from app.core.count_over_probability import NegBinParams
+from app.core.nhl_over_probability_crossfit import read_family
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.repositories import nhl
 from app.repositories import nhl_context as context_repo
@@ -207,3 +210,31 @@ def test_a_named_date_with_no_lines_is_an_empty_page(monkeypatch: pytest.MonkeyP
     assert response is not None and response.date == D(2026, 11, 9)
     assert response.game is None and response.markets == []
     nhl.get_player_played_games.assert_not_awaited()
+
+
+def test_a_player_market_has_no_market_probability_and_each_rung_reads_its_own() -> None:
+    lines = [line("shots_on_goal", 5.5, "demon"), line("shots_on_goal", 3.5, "goblin"), line("shots_on_goal", 4.5)]
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([]), history(12)).markets[0]
+    assert market.projection.p_over is None
+    rate = fit.NEGBIN_R["shots_on_goal"]
+    expected = [round(read_family(NegBinParams(rate), 4.0, rung.line), 4) for rung in market.lines]
+    assert [rung.p_over for rung in market.lines] == expected
+    assert expected == sorted(expected, reverse=True)
+    assert all(rung.p_under == round(1 - rung.p_over, 4) for rung in market.lines if rung.p_over is not None)
+
+
+def test_a_whole_number_rung_flags_itself_without_flagging_the_market() -> None:
+    lines = [line("shots_on_goal", 4.0), line("shots_on_goal", 4.5, "goblin")]
+    market = player_props_response(PLAYER, D(2026, 11, 2), GAME, lines, [], [], context([]), history(12)).markets[0]
+    assert market.projection.flags == []
+    whole, half = market.lines
+    assert (whole.p_over, whole.p_under, whole.flags) == (None, None, ["integer_line"])
+    assert half.p_over is not None and half.flags == []
+
+
+def test_a_hidden_market_and_an_out_player_have_no_rung_probabilities() -> None:
+    hidden = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("points", 1.5)], [], [], context([]), history(12)).markets[0]
+    assert [(r.p_over, r.p_under, r.flags) for r in hidden.lines] == [(None, None, [])]
+    assert hidden.projection.p_over is None
+    out = player_props_response(PLAYER, D(2026, 11, 2), GAME, [line("shots_on_goal", 4.5)], [], [], context([injury(7)]), history(12)).markets[0]
+    assert [(r.p_over, r.flags) for r in out.lines] == [(None, [])]

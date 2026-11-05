@@ -31,7 +31,7 @@ def test_detail_and_slate_camel_case_and_missing_data_contract() -> None:
     assert wire["games"][0]["gameId"] == 1 and wire["games"][0]["endPeriod"] == "OT"
     assert wire["games"][0]["lineMovement"] == [] and wire["games"][0]["moneyline"] is None
     assert game.model_dump(by_alias=True)["lineHistory"] == []
-    assert NhlLineOnlyPropsResponse(game_id=1, lines=[]).model_dump(by_alias=True) == {"gameId": 1, "lines": []}
+    assert NhlLineOnlyPropsResponse(game_id=1, lines=[]).model_dump(by_alias=True) == {"gameId": 1, "overProbabilityVersion": None, "lines": []}
 
 
 @pytest.mark.parametrize("market", list(NhlLineOnlyMarket))
@@ -47,7 +47,7 @@ def test_all_line_only_markets_preserve_units_and_offering_identity(market: NhlL
     assert set(wire) == {"provider", "providerPropId", "playerId", "playerName", "position",
                          "team", "market", "oddsType", "line", "fetchedAt", "projection"}
     assert wire["projection"] == {"modelVersion": "nhl-reference-v1", "value": None, "gamesInSample": 0,
-                                  "gap": None, "flags": ["few_prior_games"]}
+                                  "gap": None, "pOver": None, "flags": ["few_prior_games"]}
 
 
 @pytest.mark.parametrize("overrides", [{"game_type": "PRE"}, {"game_type": "PIN"},

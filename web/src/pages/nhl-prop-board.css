@@ -14,3 +14,5 @@
   .nhl-prop-board__rows { padding-right: 8px; padding-left: 8px; }
   .nhl-prop-board__table th:nth-child(3), .nhl-prop-board__table td:nth-child(3) { display: none; }
 }
+
+.nhl-prop-board__caption { margin: 0 0 8px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }

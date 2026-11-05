@@ -103,6 +103,10 @@ class NhlProjectionSchema(_CamelModel):
     value: float | None
     games_in_sample: int
     gap: float | None
+    # Null unless the market is in the served fit and the line is not a whole number; on a player market
+    # it is null because each rung carries its own. P(under) is 1 - p_over (no push is modelled) and,
+    # with the fit version, rides on the response rather than on every board line (F-14).
+    p_over: float | None = None
     flags: list[NhlProjectionFlag]
 
 
@@ -122,6 +126,7 @@ class NhlLineOnlyLineSchema(_CamelModel):
 
 class NhlLineOnlyPropsResponse(_CamelModel):
     game_id: int
+    over_probability_version: str | None = None
     lines: list[NhlLineOnlyLineSchema]
 
 
@@ -135,6 +140,7 @@ class NhlPropBoardGameSchema(_CamelModel):
 
 
 class NhlPropBoardResponse(_CamelModel):
+    over_probability_version: str | None = None
     date: dt.date
     previous_date: dt.date | None
     next_date: dt.date | None
@@ -147,6 +153,10 @@ class NhlPlayerLineSchema(_CamelModel):
     fetched_at: AwareDatetime
     # Projection minus this rung's line; null when the market shows no projection.
     gap: float | None
+    p_over: float | None = None
+    p_under: float | None = None
+    # Only integer_line or no_over_probability: the rung's own reason for a missing probability.
+    flags: list[NhlProjectionFlag] = Field(default_factory=list)
 
 
 class NhlPlayerGameSchema(_CamelModel):
@@ -183,6 +193,7 @@ class NhlPlayerInjurySchema(_CamelModel):
 
 
 class NhlPlayerPropsResponse(_CamelModel):
+    over_probability_version: str | None = None
     player_id: int
     name: str
     position: str | None

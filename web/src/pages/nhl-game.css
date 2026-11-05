@@ -71,3 +71,5 @@
   .nhl-prop-table .nhl-prop-updated-mobile { display: block; margin-top: 4px; }
   .nhl-prop-table td, .nhl-prop-table th { padding-right: 4px; padding-left: 4px; }
 }
+
+.nhl-prop-caption { margin: 0 0 8px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }

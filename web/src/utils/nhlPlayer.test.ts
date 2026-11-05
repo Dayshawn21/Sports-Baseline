@@ -8,13 +8,13 @@ import {
 } from '~/utils/nhlPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'WSH'): NhlPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
-const rung = (line: number, oddsType: NhlPlayerLine['oddsType']): NhlPlayerLine => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null })
+const rung = (line: number, oddsType: NhlPlayerLine['oddsType']): NhlPlayerLine => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, flags: [] })
 
 function market(overrides: Partial<NhlPlayerMarket> = {}): NhlPlayerMarket {
   return {
     market: 'shots_on_goal',
     lines: [rung(2.5, 'goblin'), rung(3.5, 'standard'), rung(4.5, 'demon')],
-    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, flags: ['few_prior_games'] },
+    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, pOver: null, flags: ['few_prior_games'] },
     recent: Array.from({ length: 10 }, (_, index) => game(30 - index, index === 1 ? null : index)),
     opponentGames: [game(3, 2), game(2, null)],
     ...overrides,

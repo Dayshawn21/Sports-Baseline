@@ -8,7 +8,7 @@ function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
     provider: 'prizepicks', providerPropId: 'a', playerId: 1, playerName: 'Amy', position: 'C', team: 'TBL',
     market: 'shots_on_goal', oddsType: 'standard', line: 2.5, fetchedAt: '2026-10-24T12:00:00Z',
-    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, flags: ['few_prior_games'] }, ...overrides,
+    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, pOver: null, flags: ['few_prior_games'] }, ...overrides,
   }
 }
 

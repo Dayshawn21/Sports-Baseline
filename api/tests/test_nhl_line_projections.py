@@ -8,6 +8,9 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import nhl_over_probability_fit as fit
+from app.core.count_over_probability import NegBinParams
+from app.core.nhl_over_probability_crossfit import read_family
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.repositories import nhl
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlGoalieSide, NhlInjuryContext, NhlInjurySchema
@@ -137,3 +140,41 @@ def test_a_failed_context_read_still_returns_the_history(monkeypatch: pytest.Mon
     history, contexts = asyncio.run(load_projection_inputs(db, [GAME_ROW], {1: [line(7, "hits", "1.5")]}, FETCH))
     nhl.get_prior_history.assert_awaited_once_with(db, [7], dt.date(2026, 10, 24))
     assert contexts == {} and list(history) == [7]
+
+
+def test_a_shown_market_line_carries_the_fit_probability_and_the_rounded_complement() -> None:
+    result = projections([line(SKATER, "shots_on_goal", "2.5")], ProjectionInputs({SKATER: skater_rows(SKATER, 12)}, context()))
+    served = result[(SKATER, "shots_on_goal")]
+    expected = round(read_family(NegBinParams(fit.NEGBIN_R["shots_on_goal"]), 3.0, 2.5), 4)
+    assert served.p_over == expected and served.flags == []
+    assert set(served.model_dump(by_alias=True)) == {"modelVersion", "value", "gamesInSample", "gap", "pOver", "flags"}
+
+
+def test_a_whole_number_line_and_a_hidden_market_carry_null_probabilities() -> None:
+    inputs = ProjectionInputs({SKATER: skater_rows(SKATER, 12)}, context())
+    whole = projections([line(SKATER, "shots_on_goal", "3.0")], inputs)[(SKATER, "shots_on_goal")]
+    assert (whole.p_over, whole.flags) == (None, ["integer_line"])
+    hidden = projections([line(SKATER, "hits", "1.5")], ProjectionInputs({SKATER: skater_rows_with_hits(SKATER)}, context()))
+    served = hidden[(SKATER, "hits")]
+    assert served.value is not None
+    assert (served.p_over, served.flags) == (None, [])
+
+
+def test_a_gated_goalie_line_carries_no_probability_and_the_wire_keys_are_present() -> None:
+    history = {OTHER_GOALIE: goalie_rows(OTHER_GOALIE)}
+    response = line_only_props(GAME, [line(OTHER_GOALIE, "goals_allowed", "2.5", position="G")], ProjectionInputs(history, context()))
+    wire = response.lines[0].model_dump(mode="json", by_alias=True)["projection"]
+    assert wire["value"] is None and wire["pOver"] is None and wire["flags"] == ["other_starter_expected"]
+
+
+def test_the_response_names_the_fit_once_instead_of_on_every_line() -> None:
+    inputs = ProjectionInputs({SKATER: skater_rows(SKATER, 12)}, context())
+    assert line_only_props(GAME, [line(SKATER, "shots_on_goal", "2.5")], inputs).over_probability_version == "nhl-pover-v1"
+
+
+def skater_rows_with_hits(player_id: int) -> list[NhlHistoryRow]:
+    stats = {"hits": 2, "time_on_ice_seconds": 1200}
+    return [
+        NhlHistoryRow(player_id, i, 2026, dt.date(2026, 10, 1) + dt.timedelta(days=i), "REG", "C", False, True, stats)
+        for i in range(12)
+    ]

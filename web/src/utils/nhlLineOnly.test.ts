@@ -6,7 +6,7 @@ function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
     provider: 'prizepicks', providerPropId: 'a', playerId: 7, playerName: 'Player', position: null, team: null,
     market: 'time_on_ice', oddsType: 'standard', line: 20.5, fetchedAt: '2026-10-23T12:00:00Z',
-    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, flags: ['few_prior_games'] }, ...overrides,
+    projection: { modelVersion: 'nhl-reference-v1', value: null, gamesInSample: 0, gap: null, pOver: null, flags: ['few_prior_games'] }, ...overrides,
   }
 }
 
@@ -98,7 +98,7 @@ it('does not change its input', () => {
 })
 
 it('carries the projection and the standard line gap onto each row and rung', () => {
-  const projection = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: null, flags: [] as never[] }
+  const projection = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: null, pOver: null, flags: [] as never[] }
   const [group] = nhlPropListGroups([
     line({ providerPropId: 'a', market: 'hits', line: 2.5, projection: { ...projection, gap: 0.5 } }),
     line({ providerPropId: 'b', market: 'hits', line: 3.5, oddsType: 'demon', projection: { ...projection, gap: -0.5 } }),
@@ -112,4 +112,37 @@ it('carries the projection and the standard line gap onto each row and rung', ()
 it('has no standard gap when the player has no standard line', () => {
   const [group] = nhlPropListGroups([line({ oddsType: 'goblin' })])
   expect(group.rows[0].standardGap).toBeNull()
+})
+
+it('carries the standard rung probability onto the row and never promotes an alternate', () => {
+  const projection = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: 0.5, flags: [] as never[] }
+  const [group] = nhlPropListGroups([
+    line({ providerPropId: 'a', line: 2.5, projection: { ...projection, pOver: 0.61 } }),
+    line({ providerPropId: 'b', line: 3.5, oddsType: 'demon', projection: { ...projection, pOver: 0.32 } }),
+  ])
+  const [row] = group.rows
+  expect(row.standardPOver).toBe(0.61)
+  expect(row.rungs.map(rung => rung.pOver)).toEqual([0.61, 0.32])
+  expect(row.coversProbability).toBe(true)
+  const [alternateOnly] = nhlPropListGroups([line({ oddsType: 'goblin', projection: { ...projection, pOver: 0.7 } })]).flatMap(entry => entry.rows)
+  expect(alternateOnly.standardPOver).toBeNull()
+})
+
+it('marks a row as covered by the fit when a line is a whole number, and not when the market is hidden', () => {
+  const base = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: 0.5, pOver: null }
+  const [whole] = nhlPropListGroups([line({ projection: { ...base, flags: ['integer_line'] } })]).flatMap(entry => entry.rows)
+  expect(whole.coversProbability).toBe(true)
+  expect(whole.standardPOver).toBeNull()
+  const [hidden] = nhlPropListGroups([line({ projection: { ...base, flags: [] } })]).flatMap(entry => entry.rows)
+  expect(hidden.coversProbability).toBe(false)
+})
+
+it('carries the whole-number reason for the standard rung only', () => {
+  const base = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: 0.5, pOver: null }
+  const [row] = nhlPropListGroups([
+    line({ providerPropId: 'a', line: 2, projection: { ...base, flags: ['integer_line'] } }),
+    line({ providerPropId: 'b', line: 3.5, oddsType: 'demon', projection: { ...base, pOver: 0.3, flags: [] } }),
+  ]).flatMap(entry => entry.rows)
+  expect(row.standardProbabilityNote).toBe('Whole-number line: no P(over)')
+  expect(row.rungs.map(rung => rung.probabilityNote)).toEqual(['Whole-number line: no P(over)', null])
 })

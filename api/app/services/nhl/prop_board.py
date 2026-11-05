@@ -7,6 +7,7 @@ from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nhl_projection import served_over_probability_version
 from app.core.slate_dates import adjacent_dates, slate_date
 from app.repositories import nhl
 from app.schemas.nhl import NhlPropBoardGameSchema, NhlPropBoardResponse
@@ -26,7 +27,7 @@ def prop_board_response(
     contexts: Mapping[int, NhlGameContextSchema],
 ) -> NhlPropBoardResponse:
     return NhlPropBoardResponse(
-        date=date, previous_date=previous_date, next_date=next_date,
+        over_probability_version=served_over_probability_version(), date=date, previous_date=previous_date, next_date=next_date,
         games=[
             NhlPropBoardGameSchema(
                 game_id=int(str(game["game_id"])), away_team=str(game["away_team"]), home_team=str(game["home_team"]),

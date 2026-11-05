@@ -8,6 +8,7 @@ from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_names import nhl_team_code
+from app.core.nhl_projection import served_over_probability_version
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
 from app.schemas.nhl import NhlLineOnlyLineSchema, NhlLineOnlyPropsResponse
@@ -30,7 +31,7 @@ def line_only_props(
         )
         parsed.append(NhlLineOnlyLineSchema.model_validate({**line, "team": team, "projection": projection}))
     return NhlLineOnlyPropsResponse(
-        game_id=int(str(game["game_id"])),
+        game_id=int(str(game["game_id"])), over_probability_version=served_over_probability_version(),
         lines=sorted(parsed, key=lambda line: (
             _MARKET_ORDER[line.market], line.player_name, line.player_id,
             line.odds_type, line.line, line.provider_prop_id,

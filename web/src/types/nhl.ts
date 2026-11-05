@@ -83,6 +83,7 @@ export type NhlLineOnlyMarket =
 export type NhlProjectionFlag =
   | 'few_prior_games' | 'low_toi' | 'not_center' | 'no_goalie_report' | 'starter_unconfirmed'
   | 'other_starter_expected' | 'context_stale' | 'injured_out' | 'injury_listed' | 'injury_context_stale'
+  | 'integer_line' | 'no_over_probability'
 
 /** `value` and `gap` are null, never zero, when no number is shown; `flags` says why or what to qualify. */
 export interface NhlProjection {
@@ -90,6 +91,8 @@ export interface NhlProjection {
   value: number | null
   gamesInSample: number
   gap: number | null
+  /** P(over) at this line; null unless the market's fit is served, a number is shown and the line is not a whole number. P(under) is 1 minus it. */
+  pOver: number | null
   flags: NhlProjectionFlag[]
 }
 
@@ -109,6 +112,8 @@ export interface NhlLineOnlyLine {
 
 export interface NhlLineOnlyProps {
   gameId: number
+  /** The P(over) fit behind the numbers; null when none is served. */
+  overProbabilityVersion: string | null
   lines: NhlLineOnlyLine[]
 }
 
@@ -122,6 +127,7 @@ export interface NhlPropBoardGame {
 }
 
 export interface NhlPropBoardResponse {
+  overProbabilityVersion: string | null
   date: string
   previousDate: string | null
   nextDate: string | null
@@ -134,6 +140,11 @@ export interface NhlPlayerLine {
   fetchedAt: string
   /** Projection minus this rung's line; null when the market shows no projection. */
   gap: number | null
+  /** This rung's own P(over) and P(under); null unless the market's fit is served and the line is not a whole number. */
+  pOver: number | null
+  pUnder: number | null
+  /** Only `integer_line` or `no_over_probability`: why this rung has no probability. */
+  flags: NhlProjectionFlag[]
 }
 
 /** `value` is null when the box score left the stat unloaded, never zero; time on ice is minutes. Goalie markets count started games only. */
@@ -171,6 +182,7 @@ export interface NhlPlayerInjury {
 }
 
 export interface NhlPlayerProps {
+  overProbabilityVersion: string | null
   playerId: number
   name: string
   position: string | null
