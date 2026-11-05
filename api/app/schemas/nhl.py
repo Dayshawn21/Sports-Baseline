@@ -122,13 +122,29 @@ class NhlLineOnlyLineSchema(_CamelModel):
     odds_type: Literal["standard", "demon", "goblin"]
     line: float
     fetched_at: AwareDatetime
-    projection: NhlProjectionSchema
+    # Projection minus this line; null when the market shows no projection.
+    gap: float | None
+    p_over: float | None = None
+    # Only integer_line or no_over_probability: this line's own reason for a missing probability.
+    flags: list[NhlProjectionFlag] = Field(default_factory=list)
+
+
+class NhlMarketProjectionSchema(_CamelModel):
+    """One projection per player and market, carried once instead of on every rung (F-14)."""
+
+    player_id: int
+    market: NhlLineOnlyMarket
+    model_version: str
+    value: float | None
+    games_in_sample: int
+    flags: list[NhlProjectionFlag]
 
 
 class NhlLineOnlyPropsResponse(_CamelModel):
     game_id: int
     over_probability_version: str | None = None
     lines: list[NhlLineOnlyLineSchema]
+    projections: list[NhlMarketProjectionSchema]
 
 
 class NhlPropBoardGameSchema(_CamelModel):
@@ -138,6 +154,7 @@ class NhlPropBoardGameSchema(_CamelModel):
     start_utc: AwareDatetime | None
     status: str
     lines: list[NhlLineOnlyLineSchema]
+    projections: list[NhlMarketProjectionSchema]
 
 
 class NhlPropBoardResponse(_CamelModel):

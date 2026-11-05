@@ -61,6 +61,9 @@ def core_projection(
     return project_line(prior, market, line, position, player_id, availability(market, player_id, team, inputs.context))
 
 
+RUNG_FLAGS = frozenset({"integer_line", "no_over_probability"})
+
+
 def line_projection(
     market: NhlLineOnlyMarket, player_id: int, line: float, provider_position: str | None, team: str | None,
     inputs: ProjectionInputs,

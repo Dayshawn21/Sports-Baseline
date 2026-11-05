@@ -334,7 +334,7 @@ verified. The deployed size and latency impact is unmeasured.
 **Suggested fix:** Measure first on the hosted API. If it matters, carry the
 projection once per player-market (as the player endpoint already does) with a
 per-line gap, and consider the NBA board's cache pattern.
-**Resolution:**
+**Resolution:** Fixed 2026-11-05, awaiting re-review: `/nhl/props` is served through `prop_board_cache` (5 min, 5 entries, same `SerialBuildCache` as NBA), and the board and game line-only responses carry each player-market projection once in `projections` while a line keeps only its gap, P(over) and line flags. The web rejoins them in `nhlJoinProjections` at the API layer. The hosted payload size was not measured; the gain is by construction (1,781 projections for 3,416 lines on 2026-10-24).
 
 ### F-17 [P3] open - Duplicated row formatting and a test module that imports another test module
 
@@ -347,7 +347,7 @@ same fixed-width f-string twice, so a column change must be made in two places.
 helper module would be sturdier.
 **Suggested fix:** One row-formatting helper used by both tables; move the
 fixture builders to a small helper module under `tests/`.
-**Resolution:**
+**Resolution:** Fixed 2026-11-05: one `_family_row` and `_TABLE_HEADER` serve both tables; `weekly_cases` moved to `tests/nhl_replay_cases.py`. Awaiting re-review.
 
 ### F-18 [P3] open - `_confirm` keeps a write flag that is now always true, and records the read after printing
 
@@ -360,4 +360,4 @@ would leave no marker and a rerun would pass the guard. This is an unverified
 edge (no such failure was observed) and only matters for the once-only claim.
 **Suggested fix:** Drop the parameter and write the module before printing, or
 write it in the same step that scores.
-**Resolution:**
+**Resolution:** Fixed 2026-11-05: `_confirm()` takes no flag and writes the module before printing. Awaiting re-review.

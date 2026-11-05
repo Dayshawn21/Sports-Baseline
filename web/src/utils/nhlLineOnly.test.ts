@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
-import type { NhlLineOnlyLine } from '~/types/nhl'
-import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel, nhlOddsTypeCounts, nhlPropLineLabel, nhlPropListGroups } from '~/utils/nhlLineOnly'
+import type { NhlLineOnlyLine, NhlLineOnlyWireLine, NhlMarketProjection } from '~/types/nhl'
+import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel, nhlJoinProjections, nhlOddsTypeCounts, nhlPropLineLabel, nhlPropListGroups } from '~/utils/nhlLineOnly'
 
 function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
@@ -145,4 +145,18 @@ it('carries the whole-number reason for the standard rung only', () => {
   ]).flatMap(entry => entry.rows)
   expect(row.standardProbabilityNote).toBe('Whole-number line: no P(over)')
   expect(row.rungs.map(rung => rung.probabilityNote)).toEqual(['Whole-number line: no P(over)', null])
+})
+
+it('rebuilds each line from the market projection plus its own gap, P(over) and line flags', () => {
+  const { projection: _projection, ...base } = line({ market: 'shots_on_goal' })
+  const wire = (overrides: Partial<NhlLineOnlyWireLine>): NhlLineOnlyWireLine => ({ ...base, gap: null, pOver: null, flags: [], ...overrides })
+  const shared: NhlMarketProjection = {
+    playerId: 7, market: 'shots_on_goal', modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 12, flags: ['low_toi'],
+  }
+  const [low, whole] = nhlJoinProjections(
+    [wire({ line: 2.5, gap: 0.5, pOver: 0.61 }), wire({ providerPropId: 'b', line: 3, gap: 0, flags: ['integer_line'] })], [shared],
+  )
+  expect(low.projection).toEqual({ modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 12, gap: 0.5, pOver: 0.61, flags: ['low_toi'] })
+  expect(whole.projection.flags).toEqual(['low_toi', 'integer_line'])
+  expect(() => nhlJoinProjections([wire({ playerId: 99 })], [shared])).toThrow('No projection')
 })

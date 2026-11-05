@@ -1,4 +1,4 @@
-import type { NhlLineOnlyLine, NhlLineOnlyMarket, NhlProjection } from '~/types/nhl'
+import type { NhlLineOnlyLine, NhlLineOnlyMarket, NhlLineOnlyWireLine, NhlMarketProjection, NhlProjection } from '~/types/nhl'
 import { nhlCoversProbability, nhlLineProbabilityNote } from '~/utils/nhlProjection'
 
 export const NHL_LINE_ONLY_MARKETS = [
@@ -38,6 +38,19 @@ export function nhlOddsTypeCounts(lines: readonly NhlLineOnlyLine[]): NhlOddsTyp
   return (['standard', 'goblin', 'demon'] as const).map(oddsType => ({
     oddsType, label: ODDS_TYPE_LABELS[oddsType], count: lines.filter(line => line.oddsType === oddsType).length,
   }))
+}
+
+/** Rebuilds each line's whole projection from its market's one projection plus the line's own gap, P(over) and flags. */
+export function nhlJoinProjections(
+  lines: readonly NhlLineOnlyWireLine[], projections: readonly NhlMarketProjection[],
+): NhlLineOnlyLine[] {
+  const byMarket = new Map(projections.map(entry => [`${entry.playerId}:${entry.market}`, entry]))
+  return lines.map(({ gap, pOver, flags, ...line }) => {
+    const shared = byMarket.get(`${line.playerId}:${line.market}`)
+    if (!shared) throw new Error(`No projection for player ${line.playerId} in ${line.market}`)
+    const { playerId: _playerId, market: _market, flags: marketFlags, ...rest } = shared
+    return { ...line, projection: { ...rest, gap, pOver, flags: [...marketFlags, ...flags] } }
+  })
 }
 
 const ODDS_TYPE_ORDER: Record<NhlLineOnlyLine['oddsType'], number> = { standard: 0, goblin: 1, demon: 2 }
