@@ -1,16 +1,16 @@
 """Select the NHL P(over) family per market on the development season, then confirm it once (item 56c2).
 
     python -m app.backtest.nhl_over_probability_fit
-    python -m app.backtest.nhl_over_probability_fit --confirm --holdout [--write]
+    python -m app.backtest.nhl_over_probability_fit --confirm --holdout --write
 
 The default run reads 2023 (history for early windows) and 2024 (2024-25, the development season)
 only, in a read-only transaction. Every family is cross-fitted by ISO-week parity and the family a
 market is carried with is chosen by the rule pre-registered in `app/core/nhl_over_probability.py`.
 
 `--confirm --holdout` is the one read of 2025-26: the families selected on development are fitted on
-all of 2024-25 and scored on 2025-26. It refuses to run when the generated module already exists, so
-the holdout cannot be read twice by accident. `--write` renders that module from the 2024-25 fits that
-were scored, for the markets that pass, and is accepted only together with `--confirm`.
+all of 2024-25 and scored on 2025-26. `--write` is required with it: it renders the generated module from
+the 2024-25 fits that were scored, for the markets that pass, and that module is the record of the read.
+The run refuses to start when the module already exists, so the holdout cannot be read twice by accident.
 """
 from __future__ import annotations
 
@@ -67,6 +67,11 @@ def season_label(season: int) -> str:
 
 
 def check_flags(confirm: bool, holdout: bool, write: bool) -> None:
+    if confirm and not write:
+        raise ValueError(
+            "--confirm records its read by writing the generated module, which is what stops a second read, "
+            "so it needs --write",
+        )
     if confirm and not holdout:
         raise ValueError(f"--confirm reads the {season_label(CONFIRMATION_SEASON)} holdout and needs --holdout")
     if holdout and not confirm:
@@ -84,7 +89,7 @@ def check_module_absent(path: Path) -> None:
         )
 
 
-def _header(case_count: int) -> list[str]:
+def _header(case_count: int, holdout_read: bool) -> list[str]:
     return [
         f"NHL over-probability fit, {season_label(FIT_SEASON)} (development: select freely)",
         "",
@@ -94,7 +99,8 @@ def _header(case_count: int) -> list[str]:
         f"candidates in tie-break order: {', '.join(CANDIDATE_ORDER)}.",
         f"Cases: {case_count} reference-arm replay cases from {season_label(FIT_SEASON)}, cross-fitted by ISO-week parity.",
         INTEGER_LINE_NOTE,
-        f"Holdout ({season_label(CONFIRMATION_SEASON)}): not read.",
+        f"Holdout ({season_label(CONFIRMATION_SEASON)}): "
+        + ("read once in this run, reported below." if holdout_read else "not read."),
     ]
 
 
@@ -143,8 +149,10 @@ def _chosen(selections: Mapping[NhlLineOnlyMarket, MarketSelection]) -> list[str
     return lines
 
 
-def report(cases: Sequence[NhlReplayCase], selections: Mapping[NhlLineOnlyMarket, MarketSelection]) -> str:
-    return "\n".join([*_header(len(cases)), "", *_selection_table(selections), "", *_chosen(selections)])
+def report(
+    cases: Sequence[NhlReplayCase], selections: Mapping[NhlLineOnlyMarket, MarketSelection], *, holdout_read: bool = False,
+) -> str:
+    return "\n".join([*_header(len(cases), holdout_read), "", *_selection_table(selections), "", *_chosen(selections)])
 
 
 def confirmation_report(confirmations: Mapping[NhlLineOnlyMarket, Confirmation]) -> str:
@@ -253,7 +261,7 @@ async def _confirm(write: bool) -> None:
     selections = select_markets(fit_cases)
     selected = {market: selection.selected for market, selection in selections.items() if selection.selected}
     confirmations = confirm_markets(selected, fit_cases, holdout_cases)
-    print(report(fit_cases, selections))
+    print(report(fit_cases, selections, holdout_read=True))
     print()
     print(confirmation_report(confirmations))
     if write:
@@ -263,7 +271,7 @@ async def _confirm(write: bool) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Select and confirm NHL P(over) families")
-    parser.add_argument("--confirm", action="store_true", help="the one holdout read (needs --holdout)")
+    parser.add_argument("--confirm", action="store_true", help="the one holdout read (needs --holdout and --write)")
     parser.add_argument("--holdout", action="store_true", help="allow reading the 2025-26 holdout")
     parser.add_argument("--write", action="store_true", help="render the generated module (needs --confirm)")
     args = parser.parse_args()

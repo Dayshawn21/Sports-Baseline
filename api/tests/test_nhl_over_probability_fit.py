@@ -41,6 +41,17 @@ def test_header_names_the_commit_the_rule_the_seasons_and_that_the_holdout_is_un
     assert "Integer lines" in text
 
 
+def test_a_confirm_run_that_reads_the_holdout_does_not_claim_it_is_unread() -> None:
+    text = cli.report([], {}, holdout_read=True)
+    assert "Holdout (2025-26): read once in this run, reported below." in text
+    assert "not read" not in text
+
+
+def test_a_confirm_run_without_write_is_refused_before_any_read() -> None:
+    with pytest.raises(ValueError, match="needs --write"):
+        cli.check_flags(True, True, False)
+
+
 def test_a_market_row_shows_cases_pairs_metrics_and_verdict() -> None:
     negbin = row(cli.report([], {NhlLineOnlyMarket.GOALS: selection()}), "goals / negbin")
     for value in ("1200", "5000", "0.0110", "0.0200", "0.2100", "0.2300", "show"):
@@ -75,9 +86,9 @@ def test_only_the_development_seasons_are_read() -> None:
 @pytest.mark.parametrize(
     ("confirm", "holdout", "write", "ok"),
     [
-        (False, False, False, True), (True, True, False, True), (True, True, True, True),
-        (True, False, False, False), (False, True, False, False), (False, False, True, False),
-        (False, True, True, False),
+        (False, False, False, True), (True, True, True, True),
+        (True, True, False, False), (True, False, True, False), (True, False, False, False),
+        (False, True, False, False), (False, False, True, False), (False, True, True, False),
     ],
 )
 def test_flags_need_each_other_in_the_registered_way(confirm: bool, holdout: bool, write: bool, ok: bool) -> None:

@@ -335,3 +335,57 @@ verified. The deployed size and latency impact is unmeasured.
 projection once per player-market (as the player endpoint already does) with a
 per-line gap, and consider the NBA board's cache pattern.
 **Resolution:**
+
+### F-15 [P2] closed - A confirm run without --write reads the holdout and leaves no once-only marker
+
+**File:** api/app/backtest/nhl_over_probability_fit.py:248
+**Found:** 2026-11-05 by /audit (scope: current; lens: all)
+**Why it matters:** The read-once guard is `check_module_absent`, which only sees
+the generated module. `--confirm --holdout` without `--write` scores 2025-26,
+prints the verdicts and writes nothing, so the guard still passes on the next
+run and the holdout can be read again, which is the accident the spec says the
+refusal prevents. The real read was made with `--write`, so the holdout was read
+once; this is a gap in the guard, not a recorded violation.
+**Suggested fix:** Require `--write` with `--confirm` (one flag, one read, one
+record), or write the module before printing. Add a flags test.
+**Resolution:** `check_flags` now refuses `--confirm` without `--write`, so every holdout read leaves the generated module that the existing guard checks; two flag tests cover it. Closed 2026-11-05 by /audit (scope: current; lens: all): re-read `check_flags`, `_confirm` and the entry point; no flag combination reads the holdout without `--write`, the module check runs before any read, and the repair introduced no new defect beyond the leftover noted in F-18.
+
+### F-16 [P2] closed - The confirm run prints "Holdout (2025-26): not read."
+
+**File:** api/app/backtest/nhl_over_probability_fit.py:97
+**Found:** 2026-11-05 by /audit (scope: current; lens: all)
+**Why it matters:** `_confirm` prints the development report first, and its
+header hard-codes "Holdout (2025-26): not read." That line appears in the same
+output that then reports the holdout read (line 8 of the saved run). A reader of
+the full output, or a pasted copy, gets a false statement about the holdout. The
+spec's Results pasted only the holdout half, so it is correct, but the tool's
+output is not.
+**Suggested fix:** Give `_header` a `holdout_read` argument (or leave the line
+out of the confirm run) and test both outputs.
+**Resolution:** `_header` takes `holdout_read`; the confirm run prints "read once in this run, reported below", the development run still prints "not read". Tests cover both. Closed 2026-11-05 by /audit (scope: current; lens: all): re-read `_header`, `report` and `_confirm`; the confirm output now says the holdout was read, the development output still says it was not.
+
+### F-17 [P3] open - Duplicated row formatting and a test module that imports another test module
+
+**File:** api/app/backtest/nhl_over_probability_fit.py:119; api/tests/test_nhl_over_probability_fit.py:13
+**Found:** 2026-11-05 by /audit (scope: current; lens: all)
+**Why it matters:** The cross-fit table rows and the confirmation rows build the
+same fixed-width f-string twice, so a column change must be made in two places.
+`test_nhl_over_probability_fit.py` imports `weekly_cases` from
+`tests.test_nhl_over_probability_crossfit`, coupling two test files; a shared
+helper module would be sturdier.
+**Suggested fix:** One row-formatting helper used by both tables; move the
+fixture builders to a small helper module under `tests/`.
+**Resolution:**
+
+### F-18 [P3] open - `_confirm` keeps a write flag that is now always true, and records the read after printing
+
+**File:** api/app/backtest/nhl_over_probability_fit.py:248
+**Found:** 2026-11-05 by /audit (scope: current; lens: all)
+**Why it matters:** Since F-15's repair, `--confirm` implies `--write`, so
+`_confirm(write)` and its `if write:` are dead. Separately the module is written
+after the report prints, so a crash between the holdout read and the write
+would leave no marker and a rerun would pass the guard. This is an unverified
+edge (no such failure was observed) and only matters for the once-only claim.
+**Suggested fix:** Drop the parameter and write the module before printing, or
+write it in the same step that scores.
+**Resolution:**
