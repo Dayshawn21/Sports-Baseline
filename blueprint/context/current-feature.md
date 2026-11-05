@@ -56,7 +56,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
 - [x] **Step 3 - Cross-fit scoring and selection (pure)** - in the same module: parity split by ISO week of `game_date`, `cross_fit`, `score_cases` at synthetic x.5 lines with the constant-sigma normal baseline from the fitting half, and `evaluate` to a candidate result per family. *Done when:* tests show no case is scored by a fit containing it, both halves are used, a tiny fixture selects the lower-Brier eligible family, an ineligible family is never selected, and a market with no eligible family is hidden.
 - [x] **Step 4 - Development CLI** - `app/backtest/nhl_over_probability_fit.py` default mode: reads 2023 and 2024 only (the same explicit-seasons rule as 56b), prints the header (pre-registration commit, rule text, seasons, "holdout not read"), per market and family cases, ECE, worst gap, Brier, normal Brier and eligibility, the selected family per market, hidden markets, and the integer-line share of synthetic lines. `--confirm` without `--holdout` is refused. *Done when:* report tests on a stub history check one market row and the selection table; the live run completes against the stored 2024-25 rows with its timing noted; no 2025 or 2026 row is read (asserted by the seasons passed to the history call).
 - [x] **Step 5 - Holdout confirmation and the generated module (code only)** - `--confirm --holdout` fits each selected family on all of 2024-25, scores 2025-26, prints verdicts and "holdout read 1"; `--write` renders `nhl_over_probability_fit.py` for shown markets from the 2024-25 fits. The confirm run refuses when the generated module already exists, so the holdout cannot be read twice by accident. *Done when:* tests cover the render (small fit, expected text), the refusal when the module exists, `--write` without a completed confirmation refused, and that a hidden market has no entry; a stubbed confirm run scores only markets selected in development.
-- [ ] **Step 6 - The one holdout read (needs a separate yes in chat)** - run `--confirm --holdout --write` once, after the owner approves in chat, then paste the output under Results. *Done when:* Results holds the full printed report, every market's verdict and selected family, the generated module is committed with `PRE_REGISTRATION_COMMIT` set to Step 1's hash, and a test imports it and checks the versions match, `SHOWN_MARKETS` is a subset of the 12 markets, and every shown market has parameters while a hidden one has none.
+- [x] **Step 6 - The one holdout read (needs a separate yes in chat)** - run `--confirm --holdout --write` once, after the owner approves in chat, then paste the output under Results. *Done when:* Results holds the full printed report, every market's verdict and selected family, the generated module is committed with `PRE_REGISTRATION_COMMIT` set to Step 1's hash, and a test imports it and checks the versions match, `SHOWN_MARKETS` is a subset of the 12 markets, and every shown market has parameters while a hidden one has none.
 - [ ] **Step 7 - Verify and interview guide** - Run the Verify command; update `docs/SportApp-Employer-Interview-Guide.md` if present (a pre-registered selection then one holdout read, with the outcome stated plainly, shown or hidden). *Done when:* `npm --prefix web run verify && cd api && python -m pytest` passes and the summary names the guide update or that the file is absent.
 
 ## Files / areas
@@ -153,3 +153,22 @@ Selected on development (each goes to the one holdout read; hidden markets never
   goals_allowed       scaled_normal
   faceoffs_won        negbin
 ```
+- **Step 6, the one holdout read** (`python -m app.backtest.nhl_over_probability_fit --confirm --holdout --write`, 2026-11-05, run once after the owner's explicit yes in chat; read-only transaction, 48 s, seasons 2023 to 2025; run from commit `3efb746f`, whose rule is the pre-registration commit `512fe51eebd18dd3e7abd3bc15aa82e640831185`). The development selection printed before it was identical to Step 4's. Holdout report:
+
+```
+HOLDOUT 2025-26: holdout read 1 (the one read; nothing was fitted on it)
+Each selected family, fitted on all of 2024-25, scored once under the same display rule.
+
+  market / family                     cases   pairs     ECE     gap   Brier  normal  verdict
+  shots_on_goal / negbin              41976  113547  0.0059  0.0121  0.2050  0.2081  show
+  goalie_saves / ratio                 2735   13675  0.0108  0.0239  0.1283  0.1281  hide (brier)
+  time_on_ice / scaled_normal         41976  209880  0.0028  0.0292  0.0698  0.0698  show
+  goals_allowed / scaled_normal        2735   10051  0.0161  0.0237  0.1909  0.1909  show
+  faceoffs_won / negbin               12607   50580  0.0121  0.0263  0.1844  0.1870  show
+
+Shown: shots_on_goal, time_on_ice, goals_allowed, faceoffs_won
+
+Wrote nhl_over_probability_fit.py
+```
+
+**Verdicts:** 4 of 5 selected markets show (Shots on Goal `negbin`, Time On Ice `scaled_normal`, Goals Allowed `scaled_normal`, Faceoffs Won `negbin`); Goalie Saves `ratio` is hidden on the Brier check (0.1283 against the normal's 0.1281, calibration itself passed). Seven markets were hidden on development and never touched the holdout. Margins over the normal baseline are thin for Time On Ice (0.0698 against 0.0698) and Goals Allowed (0.1909 against 0.1909): they pass at four decimals, and the check is `<=`, so a tie passes. Shots on Goal and Faceoffs Won clear it by 0.0031 and 0.0026. The generated module `api/app/core/nhl_over_probability_fit.py` was written by the CLI and is not hand-edited; a second confirm run is refused while it exists.
