@@ -187,3 +187,11 @@ def test_a_market_with_too_few_cases_is_hidden_and_never_selected() -> None:
 def test_plus_minus_has_only_the_scaled_normal_candidate() -> None:
     selection = select_markets(weekly_cases(2.0, 40, NhlLineOnlyMarket.PLUS_MINUS))[NhlLineOnlyMarket.PLUS_MINUS]
     assert [result.family for result in selection.results] == ["scaled_normal"]
+
+
+def test_diagnose_reports_what_the_verdict_looked_at() -> None:
+    assert crossfit.diagnose([]) == crossfit.FamilyDiagnostics(pairs=0, ece=None, worst_gap=None, normal_brier=None)
+    lines = [scored(0.5, over=index % 2 == 0, index=index, normal=0.9) for index in range(400)]
+    found = crossfit.diagnose(lines)
+    assert found.pairs == 400 and found.ece == pytest.approx(0.0) and found.worst_gap == pytest.approx(0.0)
+    assert found.normal_brier == pytest.approx(0.41)

@@ -8,7 +8,7 @@ at 20g1's synthetic x.5 lines; the rule that picks among families is pre-registe
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from math import inf
 from statistics import stdev
@@ -30,6 +30,7 @@ from app.core.nfl_over_probability_calibration import (
 )
 from app.core.nhl_over_probability import (
     CANDIDATE_ORDER,
+    MIN_BIN_PAIRS,
     CandidateResult,
     Family,
     family_applies,
@@ -106,10 +107,21 @@ class ScoredLine:
 
 
 @dataclass(frozen=True)
+class FamilyDiagnostics:
+    """What the display verdict looked at, for the report; None where there were no lines."""
+
+    pairs: int
+    ece: float | None
+    worst_gap: float | None
+    normal_brier: float | None
+
+
+@dataclass(frozen=True)
 class MarketSelection:
     """Every applicable family's cross-fit result for one market, and the family selected (None means hidden)."""
 
     results: tuple[CandidateResult, ...]
+    diagnostics: tuple[FamilyDiagnostics, ...]
     selected: Family | None
 
 
@@ -185,17 +197,51 @@ def evaluate(family: Family, lines: Sequence[ScoredLine]) -> CandidateResult:
     return CandidateResult(family=family, cases=cases, brier=report.brier, verdict=nhl_display_verdict(cases, report, normal_brier))
 
 
+def diagnose(lines: Sequence[ScoredLine]) -> FamilyDiagnostics:
+    if not lines:
+        return FamilyDiagnostics(pairs=0, ece=None, worst_gap=None, normal_brier=None)
+    report = calibrate(CalibrationPair(line.p_over, line.over) for line in lines)
+    large = [b.gap for b in report.bins if b.n >= MIN_BIN_PAIRS]
+    return FamilyDiagnostics(
+        pairs=len(lines), ece=report.ece, worst_gap=max(large) if large else None,
+        normal_brier=sum((line.normal_p_over - line.over) ** 2 for line in lines) / len(lines),
+    )
+
+
 def select_markets(cases: Sequence[NhlReplayCase]) -> dict[NhlLineOnlyMarket, MarketSelection]:
     """The development selection: every applicable family cross-fitted per market, then the registered rule."""
     pooled = {family: _by_market_lines(cross_fit(family, cases)) for family in CANDIDATE_ORDER}
     selections = {}
     for market in _by_market(cases):
-        results = tuple(
-            evaluate(family, pooled[family].get(market, []))
-            for family in CANDIDATE_ORDER if family_applies(family, market)
-        )
-        selections[market] = MarketSelection(results, select_family(results))
+        applicable = [family for family in CANDIDATE_ORDER if family_applies(family, market)]
+        results = tuple(evaluate(family, pooled[family].get(market, [])) for family in applicable)
+        diagnostics = tuple(diagnose(pooled[family].get(market, [])) for family in applicable)
+        selections[market] = MarketSelection(results, diagnostics, select_family(results))
     return selections
+
+
+@dataclass(frozen=True)
+class Confirmation:
+    """One selected market on the holdout: the 2024-25 fit that was scored, and how it did."""
+
+    family: Family
+    fit: MarketFit | None
+    result: CandidateResult
+    diagnostics: FamilyDiagnostics
+
+
+def confirm_markets(
+    selected: Mapping[NhlLineOnlyMarket, Family], fit_cases: Sequence[NhlReplayCase],
+    holdout_cases: Sequence[NhlReplayCase],
+) -> dict[NhlLineOnlyMarket, Confirmation]:
+    """Fit each selected family on all of `fit_cases` and score `holdout_cases` once; unselected markets are never scored."""
+    fit_by_market, holdout_by_market = _by_market(fit_cases), _by_market(holdout_cases)
+    confirmations = {}
+    for market, family in selected.items():
+        fit = fit_market(family, market, fit_by_market.get(market, []))
+        lines = [] if fit is None else score_cases(fit, holdout_by_market.get(market, []))
+        confirmations[market] = Confirmation(family, fit, evaluate(family, lines), diagnose(lines))
+    return confirmations
 
 
 def _by_market_lines(lines: Iterable[ScoredLine]) -> dict[NhlLineOnlyMarket, list[ScoredLine]]:

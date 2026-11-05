@@ -54,8 +54,8 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
 - [x] **Step 1 - Pre-registration (own commit, before any fit)** - `app/core/nhl_over_probability.py` with only the registered rule: the two versions, `CANDIDATE_ORDER`, domain rules per market, `FIT_SEASON = 2024`, `CONFIRMATION_SEASON = 2025`, the display-rule constants, the rule text, and a pure `nhl_display_verdict(cases_n, report, normal_brier)` and `select_family(results)`; plus `tests/test_nhl_over_probability.py` pinning every constant. No fitting, scoring or CLI code in this commit. *Done when:* the tests pin all constants (300 / 0.02 / 0.05 / 200, candidate order, domain rules, both versions, seasons), each verdict branch (299 vs 300 cases, ECE exactly 0.02, a 200-pair bin exactly 0.05 off, a 199-pair bin far off ignored, Brier equal to the normal's passing) and the tie-break; the full API suite passes; and the diff is committed alone with its hash recorded in the spec before Step 2 starts.
 - [x] **Step 2 - Family fitting and reading (pure)** - `app/core/nhl_over_probability_crossfit.py`: fit and read each family per market from `NhlReplayCase` pairs (reusing the shared families), the market's domain rules, and integer lines skipped. *Done when:* tests cover a known case per family (negbin mean equal to the projection, scaled normal variance growing with the projection, ratio quantiles on a known set), a zero-projection case skipped, a market outside a family's domain returning no fit, and integer lines reading None.
 - [x] **Step 3 - Cross-fit scoring and selection (pure)** - in the same module: parity split by ISO week of `game_date`, `cross_fit`, `score_cases` at synthetic x.5 lines with the constant-sigma normal baseline from the fitting half, and `evaluate` to a candidate result per family. *Done when:* tests show no case is scored by a fit containing it, both halves are used, a tiny fixture selects the lower-Brier eligible family, an ineligible family is never selected, and a market with no eligible family is hidden.
-- [ ] **Step 4 - Development CLI** - `app/backtest/nhl_over_probability_fit.py` default mode: reads 2023 and 2024 only (the same explicit-seasons rule as 56b), prints the header (pre-registration commit, rule text, seasons, "holdout not read"), per market and family cases, ECE, worst gap, Brier, normal Brier and eligibility, the selected family per market, hidden markets, and the integer-line share of synthetic lines. `--confirm` without `--holdout` is refused. *Done when:* report tests on a stub history check one market row and the selection table; the live run completes against the stored 2024-25 rows with its timing noted; no 2025 or 2026 row is read (asserted by the seasons passed to the history call).
-- [ ] **Step 5 - Holdout confirmation and the generated module (code only)** - `--confirm --holdout` fits each selected family on all of 2024-25, scores 2025-26, prints verdicts and "holdout read 1"; `--write` renders `nhl_over_probability_fit.py` for shown markets from the 2024-25 fits. The confirm run refuses when the generated module already exists, so the holdout cannot be read twice by accident. *Done when:* tests cover the render (small fit, expected text), the refusal when the module exists, `--write` without a completed confirmation refused, and that a hidden market has no entry; a stubbed confirm run scores only markets selected in development.
+- [x] **Step 4 - Development CLI** - `app/backtest/nhl_over_probability_fit.py` default mode: reads 2023 and 2024 only (the same explicit-seasons rule as 56b), prints the header (pre-registration commit, rule text, seasons, "holdout not read"), per market and family cases, ECE, worst gap, Brier, normal Brier and eligibility, the selected family per market, hidden markets, and the integer-line share of synthetic lines. `--confirm` without `--holdout` is refused. *Done when:* report tests on a stub history check one market row and the selection table; the live run completes against the stored 2024-25 rows with its timing noted; no 2025 or 2026 row is read (asserted by the seasons passed to the history call).
+- [x] **Step 5 - Holdout confirmation and the generated module (code only)** - `--confirm --holdout` fits each selected family on all of 2024-25, scores 2025-26, prints verdicts and "holdout read 1"; `--write` renders `nhl_over_probability_fit.py` for shown markets from the 2024-25 fits. The confirm run refuses when the generated module already exists, so the holdout cannot be read twice by accident. *Done when:* tests cover the render (small fit, expected text), the refusal when the module exists, `--write` without a completed confirmation refused, and that a hidden market has no entry; a stubbed confirm run scores only markets selected in development.
 - [ ] **Step 6 - The one holdout read (needs a separate yes in chat)** - run `--confirm --holdout --write` once, after the owner approves in chat, then paste the output under Results. *Done when:* Results holds the full printed report, every market's verdict and selected family, the generated module is committed with `PRE_REGISTRATION_COMMIT` set to Step 1's hash, and a test imports it and checks the versions match, `SHOWN_MARKETS` is a subset of the 12 markets, and every shown market has parameters while a hidden one has none.
 - [ ] **Step 7 - Verify and interview guide** - Run the Verify command; update `docs/SportApp-Employer-Interview-Guide.md` if present (a pre-registered selection then one holdout read, with the outcome stated plainly, shown or hidden). *Done when:* `npm --prefix web run verify && cd api && python -m pytest` passes and the summary names the guide update or that the file is absent.
 
@@ -91,3 +91,65 @@ Test gate on. Every pure module ships its tests in the same step (Steps 1, 2, 3,
 ## Results
 
 - **Step 1, pre-registration commit:** `512fe51eebd18dd3e7abd3bc15aa82e640831185` (`api/app/core/nhl_over_probability.py` and `api/tests/test_nhl_over_probability.py` only, 2026-11-04). No NHL family was fitted or scored and no 2025-26 row was read before it. Full API suite at that commit: 5653 passed.
+- **Step 4, development run** (`python -m app.backtest.nhl_over_probability_fit`, 2026-11-05, read-only transaction, 27 s, seasons read: 2023 and 2024 only; the 2025-26 holdout was not read). 5 of 12 markets have an eligible family and go to the one holdout read; 7 are hidden and never touch it. Full report:
+
+```
+NHL over-probability fit, 2024-25 (development: select freely)
+
+Pre-registered in commit 512fe51eebd18dd3e7abd3bc15aa82e640831185.
+Show a market only if its selected family has >= 300 cases, ECE <= 0.02, every bin of >= 200 pairs within 0.05 of its observed rate, and a Brier no worse than the constant-sigma normal's. The family is selected on 2024-25 by ISO-week-parity cross-fit and confirmed once on 2025-26.
+Projection nhl-reference-v1, over-probability nhl-pover-v1; candidates in tie-break order: negbin, scaled_normal, ratio.
+Cases: 399383 reference-arm replay cases from 2024-25, cross-fitted by ISO-week parity.
+Integer lines: a whole-number line can push, which no family models, so it reads no probability. The synthetic lines scored here are x.5 by construction, so this report cannot show how many posted lines are whole numbers (Goalie Saves and Goals Allowed post some).
+Holdout (2025-26): not read.
+
+Cross-fit at synthetic x.5 lines
+  market / family                     cases   pairs     ECE     gap   Brier  normal  verdict
+  shots_on_goal / negbin              42362  115391  0.0071  0.0180  0.2048  0.2078  show
+  shots_on_goal / scaled_normal       42362  115391  0.0471  0.0791  0.2068  0.2078  hide (ece,bin)
+  shots_on_goal / ratio               42362  115391  0.0187  0.0320  0.2060  0.2078  show
+  points / negbin                     42071   53174  0.0228  0.0959  0.2049  0.2162  hide (ece,bin)
+  points / scaled_normal              42071   53174  0.0876  0.1211  0.2123  0.2162  hide (ece,bin)
+  points / ratio                      42071   53174  0.0706  0.1234  0.2157  0.2162  hide (ece,bin)
+  assists / negbin                    41471   44230  0.0352  0.0879  0.1834  0.1960  hide (ece,bin)
+  assists / scaled_normal             41471   44230  0.0991  0.1763  0.1928  0.1960  hide (ece,bin)
+  assists / ratio                     41471   44230  0.0610  0.1089  0.1888  0.1960  hide (ece,bin)
+  goals / negbin                      36699   36997  0.0264  0.1592  0.1405  0.1495  hide (ece,bin)
+  goals / scaled_normal               36699   36997  0.1116  0.2643  0.1525  0.1495  hide (ece,bin,brier)
+  goals / ratio                       36699   36997  0.0609  0.0670  0.1443  0.1495  hide (ece,bin)
+  power_play_points / negbin          24225   24316  0.0247  0.1441  0.1319  0.1399  hide (ece,bin)
+  power_play_points / scaled_normal   24225   24316  0.1145  0.2250  0.1447  0.1399  hide (ece,bin,brier)
+  power_play_points / ratio           24225   24316  0.0588  0.0683  0.1347  0.1399  hide (ece,bin)
+  blocked_shots / negbin              42315   76723  0.0135  0.1611  0.2108  0.2178  hide (bin)
+  blocked_shots / scaled_normal       42315   76723  0.0726  0.1073  0.2154  0.2178  hide (ece,bin)
+  blocked_shots / ratio               42315   76723  0.0570  0.2329  0.2183  0.2178  hide (ece,bin,brier)
+  plus_minus / scaled_normal          19752   20267  0.0952  0.1746  0.2284  0.2284  hide (ece,bin)
+  goalie_saves / negbin                2723   13615  0.0170  0.0381  0.1238  0.1240  show
+  goalie_saves / scaled_normal         2723   13615  0.0184  0.0412  0.1239  0.1240  show
+  goalie_saves / ratio                 2723   13615  0.0046  0.0211  0.1236  0.1240  show
+  hits / negbin                       42298   89458  0.0124  0.1175  0.2098  0.2181  hide (bin)
+  hits / scaled_normal                42298   89458  0.0726  0.0979  0.2147  0.2181  hide (ece,bin)
+  hits / ratio                        42298   89458  0.0483  0.1559  0.2150  0.2181  hide (ece,bin)
+  time_on_ice / scaled_normal         42362  211810  0.0034  0.0394  0.0689  0.0689  show
+  time_on_ice / ratio                 42362  211810  0.0068  0.0654  0.0692  0.0689  hide (bin,brier)
+  goals_allowed / negbin               2723    9827  0.0161  0.0254  0.1953  0.1951  hide (brier)
+  goals_allowed / scaled_normal        2723    9827  0.0165  0.0342  0.1951  0.1951  show
+  goals_allowed / ratio                2723    9827  0.0106  0.0242  0.1953  0.1951  hide (brier)
+  faceoffs_won / negbin               12552   51577  0.0081  0.0233  0.1862  0.1878  show
+  faceoffs_won / scaled_normal        12552   51577  0.0254  0.0621  0.1869  0.1878  hide (ece,bin)
+  faceoffs_won / ratio                12552   51577  0.0402  0.1391  0.1922  0.1878  hide (ece,bin,brier)
+
+Selected on development (each goes to the one holdout read; hidden markets never do)
+  shots_on_goal       negbin
+  points              hidden (no eligible family)
+  assists             hidden (no eligible family)
+  goals               hidden (no eligible family)
+  power_play_points   hidden (no eligible family)
+  blocked_shots       hidden (no eligible family)
+  plus_minus          hidden (no eligible family)
+  goalie_saves        ratio
+  hits                hidden (no eligible family)
+  time_on_ice         scaled_normal
+  goals_allowed       scaled_normal
+  faceoffs_won        negbin
+```
