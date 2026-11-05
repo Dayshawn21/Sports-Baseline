@@ -1,5 +1,6 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlModelRanking, fetchNhlPlayerProps, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
+import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
@@ -73,4 +74,14 @@ export function useNhlPlayerProps(playerId: number | null, date: string | null) 
 
 export function useNhlPropBoard(date: string | null) {
   return useQuery(nhlPropBoardQuery(date))
+}
+
+export function useNhlModelRanking() {
+  return useQuery<PropRankingRecord, Error>({
+    queryKey: ['nhl', 'model', 'ranking', { season: 'current' }],
+    queryFn: fetchNhlModelRanking,
+    // The API caches the check for 15 minutes, so refetching sooner gains nothing.
+    staleTime: 15 * 60 * 1000,
+    retry: retryUnlessNotFound,
+  })
 }

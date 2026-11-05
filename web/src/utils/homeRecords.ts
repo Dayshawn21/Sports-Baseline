@@ -1,7 +1,7 @@
 import type { ModelPredictionsResponse } from '~/types/tennis'
 import type { HomeStatus } from '~/utils/home'
 
-export type RecordSport = 'tennis' | 'nfl' | 'nba'
+export type RecordSport = 'tennis' | 'nfl' | 'nba' | 'nhl'
 
 export interface HomeRecord {
   sport: RecordSport
@@ -15,6 +15,7 @@ const DETAIL: Record<RecordSport, string> = {
   tennis: 'Ensemble vs market, ATP+WTA',
   nfl: 'V4 forward ranking check',
   nba: 'Forward ranking check',
+  nhl: 'Forward ranking check',
 }
 
 function placeholder(sport: RecordSport, status: HomeStatus): HomeRecord {
@@ -27,9 +28,9 @@ function countOf(slices: readonly { verdict: string }[], ...verdicts: string[]):
   return slices.filter(slice => verdicts.includes(slice.verdict)).length
 }
 
-/** NFL and NBA slices: the label counts adopted ones, and the detail names the rest so a rejected slice never reads as still accruing. */
+/** NFL, NBA and NHL slices: the label counts adopted ones, and the detail names the rest so a rejected slice never reads as still accruing. */
 export function rankingRecord(
-  sport: 'nfl' | 'nba',
+  sport: 'nfl' | 'nba' | 'nhl',
   ranking: { slices: readonly { verdict: string }[] } | undefined,
   status: HomeStatus,
 ): HomeRecord {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
-import { nbaModelSummary } from '~/utils/nbaModel'
+import { propModelSummary } from '~/utils/propModel'
 
 function slice(verdict: PropRankingSlice['verdict']): PropRankingSlice {
   return {
@@ -19,15 +19,15 @@ function ranking(verdicts: PropRankingSlice['verdict'][], lastSettledWeek: numbe
   }
 }
 
-describe('nbaModelSummary', () => {
+describe('propModelSummary', () => {
   it('shows a placeholder for every figure until the check loads', () => {
-    expect(nbaModelSummary(undefined)).toEqual({
+    expect(propModelSummary(undefined)).toEqual({
       slicesAdopted: '—', lastSettledWeek: '—', projectionVersion: '—', overProbabilityVersion: '—',
     })
   })
 
   it('reads none yet before the first week settles', () => {
-    const summary = nbaModelSummary(ranking(['insufficient', 'insufficient', 'insufficient', 'insufficient'], null))
+    const summary = propModelSummary(ranking(['insufficient', 'insufficient', 'insufficient', 'insufficient'], null))
 
     expect(summary).toEqual({
       slicesAdopted: '0 of 4', lastSettledWeek: 'None yet',
@@ -36,7 +36,7 @@ describe('nbaModelSummary', () => {
   })
 
   it('counts only adopted slices, not rejected ones', () => {
-    const summary = nbaModelSummary(ranking(['adopt', 'reject', 'insufficient', 'insufficient'], 5))
+    const summary = propModelSummary(ranking(['adopt', 'reject', 'insufficient', 'insufficient'], 5))
 
     expect(summary.slicesAdopted).toBe('1 of 4')
     expect(summary.lastSettledWeek).toBe('W5')

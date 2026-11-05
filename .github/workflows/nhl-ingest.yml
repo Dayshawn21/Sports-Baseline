@@ -41,3 +41,17 @@ jobs:
         run: |
           cd api
           python -m app.ingest.prizepicks_nhl --relink
+
+      # After the box scores and the relink, so freshly linked lines count and
+      # last week's frozen predictions can settle (item 56d). Reads and prints,
+      # writes nothing.
+      - name: Report NHL forward ranking check
+        run: |
+          cd api
+          python -m app.backtest.nhl_ranking_check | tee ranking_check_report.txt
+          {
+            echo '## NHL forward ranking check'
+            echo '```'
+            cat ranking_check_report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

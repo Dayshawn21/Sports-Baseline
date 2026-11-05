@@ -3,7 +3,7 @@ import { useModelPredictions } from '~/hooks/useModelTrackRecord'
 import { useNbaModelRanking, useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
 import { useNflCurrentWeek, useNflSlate } from '~/hooks/useNfl'
 import { useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
-import { useNhlSlate } from '~/hooks/useNhl'
+import { useNhlModelRanking, useNhlSlate } from '~/hooks/useNhl'
 import { usePrizePicksProps } from '~/hooks/useProps'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { homeCard, newestUpdate, type HomeCard, type HomeSportData, type HomeStatus } from '~/utils/home'
@@ -70,6 +70,7 @@ export function useHomeData(): HomeView {
   const tennisModel = useModelPredictions()
   const nflRanking = useNflModelRanking(week.data?.season ?? null)
   const nbaRanking = useNbaModelRanking()
+  const nhlRanking = useNhlModelRanking()
 
   const nfl = useMemo<HomeSource>(() => {
     if (!nflSlate.data) return EMPTY_SOURCE
@@ -108,6 +109,7 @@ export function useHomeData(): HomeView {
       tennisRecord(tennisModel.data, statusOf(tennisModel)),
       rankingRecord('nfl', nflRanking.data, week.isError || nflRanking.isError ? 'error' : 'loading'),
       rankingRecord('nba', nbaRanking.data, statusOf(nbaRanking)),
+      rankingRecord('nhl', nhlRanking.data, statusOf(nhlRanking)),
     ],
     loading: data.every(entry => entry.status === 'loading'),
     failed: data.every(entry => entry.status === 'error'),

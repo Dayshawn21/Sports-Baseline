@@ -8,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
 from app.schemas.nhl import (
-    NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlPlayerPropsResponse, NhlPropBoardResponse, NhlSlateResponse,
+    NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlModelRankingResponse, NhlPlayerPropsResponse,
+    NhlPropBoardResponse, NhlSlateResponse,
 )
+from app.services.nhl import track_record
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
@@ -57,3 +59,16 @@ async def get_player_props(
     if props is None:
         raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
     return props
+
+
+@router.get("/model/ranking", response_model=NhlModelRankingResponse)
+async def get_model_ranking(season: int | None = None, db: AsyncSession = Depends(get_db)) -> NhlModelRankingResponse:
+    # Resolved before the cache, so the cache is always keyed by a concrete season.
+    if season is None:
+        season = await track_record.nhl_season(db, dt.datetime.now(dt.UTC))
+    if season is None:
+        raise HTTPException(status_code=404, detail="No NHL regular-season games are loaded")
+    record = await track_record.get_ranking_record(db, season)
+    if record is None:
+        raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
+    return NhlModelRankingResponse.model_validate(record)

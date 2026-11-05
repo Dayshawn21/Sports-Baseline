@@ -12,6 +12,7 @@ from app.core.nhl_odds import NhlBook
 from app.core.nhl_projection import NhlProjectionFlag
 from app.nhl.markets import NhlLineOnlyMarket
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlInjurySchema
+from app.schemas.prop_ranking import PropRankingResponse
 
 
 class _CamelModel(BaseModel):
@@ -204,3 +205,7 @@ class NhlPlayerPropsResponse(_CamelModel):
     injury: NhlPlayerInjurySchema
     goalies: NhlGoalieContext | None
     markets: list[NhlPlayerMarketSchema]
+
+
+class NhlModelRankingResponse(PropRankingResponse):
+    """27i's rule on NHL's frozen pre-puck-drop rows (56d), in NFL's 27j shape; a later NHL adoption item reads it."""

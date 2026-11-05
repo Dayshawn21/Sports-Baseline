@@ -1,0 +1,39 @@
+import NflRankingSlices from '~/components/nfl/model/NflRankingSlices'
+import ModelSection from '~/components/shared/ModelSection'
+import PageHead from '~/components/shared/PageHead'
+import StatChip from '~/components/shared/StatChip'
+import { useNhlModelRanking } from '~/hooks/useNhl'
+import { fmtDateCT, fmtTimeCT } from '~/utils/format'
+import { isNotFound } from '~/utils/httpError'
+import { propModelSummary } from '~/utils/propModel'
+import './nfl-model.css'
+import './nba-model.css'
+
+export default function NhlModelPage() {
+  const ranking = useNhlModelRanking()
+  const summary = propModelSummary(ranking.data)
+  const season = ranking.data?.season
+  const gradedAt = ranking.data?.gradedAt
+  const notFound = isNotFound(ranking.error)
+
+  return <div className="page-shell nfl-model"><div className="page-container is-wide">
+    <PageHead
+      title="Track record"
+      meta={season !== undefined && <>{season} season{gradedAt && <> · last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
+      stats={!notFound && <section className="page-head__stats nfl-model__stats nba-model__stats" aria-label="Summary">
+        <StatChip value={summary.slicesAdopted} label="Prop slices adopted" />
+        <StatChip value={summary.lastSettledWeek} label="Last settled week" />
+        <StatChip value={summary.projectionVersion} label="Projection version" />
+        <StatChip value={summary.overProbabilityVersion} label="P(over) version" />
+      </section>}
+    />
+    {notFound
+      ? <div className="model-section-empty nfl-model__none">No NHL regular-season games are loaded, so there is no season to grade.</div>
+      : <>
+        <h2 className="nfl-model-heading">Forward ranking check <small>56d · frozen pre-puck-drop predictions · 27i's rule</small></h2>
+        <ModelSection query={ranking} loading="Grading frozen predictions...">
+          {(data) => <NflRankingSlices data={data} />}
+        </ModelSection>
+      </>}
+  </div></div>
+}

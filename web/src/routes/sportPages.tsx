@@ -18,6 +18,7 @@ import NhlSlatePage from '~/pages/NhlSlatePage'
 import NhlGamePage from '~/pages/NhlGamePage'
 import NhlPlayerPage from '~/pages/NhlPlayerPage'
 import NhlPropBoardPage from '~/pages/NhlPropBoardPage'
+import NhlModelPage from '~/pages/NhlModelPage'
 import { SPORTS, sportViews, type Sport, type SportViewPaths } from '~/utils/sportNav'
 
 /** A detail page path sits under its sport's prefix, so the nav highlights the sport. */
@@ -73,6 +74,7 @@ export const SPORT_PAGES: { [S in Sport]: SportPages<S> } = {
   nhl: {
     slate: NhlSlatePage,
     props: NhlPropBoardPage,
+    model: NhlModelPage,
     details: [
       { path: '/nhl/game/:gameId', element: <NhlGamePage /> },
       { path: '/nhl/player/:playerId', element: <NhlPlayerPage /> },

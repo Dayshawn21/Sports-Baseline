@@ -28,6 +28,17 @@ describe('rankingRecord', () => {
   })
 })
 
+describe('rankingRecord for NHL', () => {
+  it('reads all accruing, one adopted, loading and error', () => {
+    expect(rankingRecord('nhl', slices('insufficient', 'insufficient', 'insufficient', 'insufficient'), 'ready'))
+      .toEqual({ sport: 'nhl', status: 'ready', label: '0 of 4 adopted', detail: 'Forward ranking check · 4 accruing' })
+    expect(rankingRecord('nhl', slices('adopt', 'insufficient', 'insufficient', 'insufficient'), 'ready'))
+      .toMatchObject({ label: '1 of 4 adopted', detail: 'Forward ranking check · 3 accruing' })
+    expect(rankingRecord('nhl', undefined, 'loading')).toMatchObject({ status: 'loading', label: '--' })
+    expect(rankingRecord('nhl', undefined, 'error')).toMatchObject({ status: 'error', label: 'Unavailable' })
+  })
+})
+
 describe('tennisRecord', () => {
   const response = (groups: unknown): ModelPredictionsResponse => ({ groups }) as ModelPredictionsResponse
 

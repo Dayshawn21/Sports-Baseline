@@ -5,13 +5,13 @@ import StatChip from '~/components/shared/StatChip'
 import { useNbaModelRanking } from '~/hooks/useNba'
 import { fmtDateCT, fmtTimeCT } from '~/utils/format'
 import { isNotFound } from '~/utils/httpError'
-import { nbaModelSummary } from '~/utils/nbaModel'
+import { propModelSummary } from '~/utils/propModel'
 import './nfl-model.css'
 import './nba-model.css'
 
 export default function NbaModelPage() {
   const ranking = useNbaModelRanking()
-  const summary = nbaModelSummary(ranking.data)
+  const summary = propModelSummary(ranking.data)
   const season = ranking.data?.season
   const gradedAt = ranking.data?.gradedAt
   const notFound = isNotFound(ranking.error)

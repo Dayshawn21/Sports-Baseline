@@ -1,6 +1,6 @@
 import type { PropRankingRecord } from '~/types/propRanking'
 
-export interface NbaModelSummary {
+export interface PropModelSummary {
   slicesAdopted: string
   lastSettledWeek: string
   projectionVersion: string
@@ -9,8 +9,8 @@ export interface NbaModelSummary {
 
 const PENDING = '—'
 
-/** The `/nba/model` summary strip; every figure waits on the ranking check, the page's one section. */
-export function nbaModelSummary(ranking: PropRankingRecord | undefined): NbaModelSummary {
+/** The `/<sport>/model` summary strip; every figure waits on the ranking check, the page's one section. */
+export function propModelSummary(ranking: PropRankingRecord | undefined): PropModelSummary {
   if (!ranking) {
     return { slicesAdopted: PENDING, lastSettledWeek: PENDING, projectionVersion: PENDING, overProbabilityVersion: PENDING }
   }

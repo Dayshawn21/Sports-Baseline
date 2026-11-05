@@ -64,23 +64,28 @@ describe('NBA', () => {
 
 describe('NHL', () => {
   it('exposes Slate and Props and recognizes game details under its prefix', () => {
-    expect(sportViews('nhl')).toEqual([{ view: 'slate', path: '/nhl' }, { view: 'props', path: '/nhl/board' }])
+    expect(sportViews('nhl')).toEqual([
+      { view: 'slate', path: '/nhl' }, { view: 'props', path: '/nhl/board' }, { view: 'model', path: '/nhl/model' },
+    ])
     expect(sportViewForPath('/nhl')).toBe('slate')
     expect(sportViewForPath('/nhl/game/57029')).toBeNull()
     expect(sportViewForPath('/nhl/board')).toBe('props')
-    expect(sportViewForPath('/nhl/model')).toBeNull()
+    expect(sportViewForPath('/nhl/model')).toBe('model')
   })
 
-  it('keeps NHL selected on slate and game pages and lists Slate and Props without a model route', () => {
+  it('keeps NHL selected on slate and game pages and lists Slate, Props and Model', () => {
     const slate = shellNav('/nhl', false)
     expect(slate.sports.filter(sport => sport.active).map(sport => sport.code)).toEqual(['nhl'])
     expect(slate.views).toEqual([
       { view: 'slate', label: 'Slate', path: '/nhl', active: true },
       { view: 'props', label: 'Props', path: '/nhl/board', active: false },
+      { view: 'model', label: 'Model', path: '/nhl/model', active: false },
     ])
     const game = shellNav('/nhl/game/57029', false)
     expect(game.sports.filter(sport => sport.active).map(sport => sport.code)).toEqual(['nhl'])
-    expect(game.views.map(entry => entry.view)).toEqual(['slate', 'props'])
+    expect(game.views.map(entry => entry.view)).toEqual(['slate', 'props', 'model'])
+    expect(shellNav('/nhl/model', false).views.find(entry => entry.active)?.view).toBe('model')
+    expect(documentTitle('/nhl/model')).toBe('NHL model · Lineform')
     expect(shellNav('/nhl/board', false).views.find(entry => entry.active)?.view).toBe('props')
     expect(documentTitle('/nhl')).toBe('NHL slate · Lineform')
     expect(documentTitle('/nhl/game/57029')).toBe('NHL game · Lineform')
@@ -185,7 +190,7 @@ describe('menuSections', () => {
       { label: 'Tennis', items: [{ key: '/tennis', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
       { label: 'NFL', items: [{ key: '/nfl', label: 'Slate' }, { key: '/nfl/board', label: 'Props' }, { key: '/nfl/model', label: 'Model' }] },
       { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/board', label: 'Props' }, { key: '/nba/model', label: 'Model' }] },
-      { label: 'NHL', items: [{ key: '/nhl', label: 'Slate' }, { key: '/nhl/board', label: 'Props' }] },
+      { label: 'NHL', items: [{ key: '/nhl', label: 'Slate' }, { key: '/nhl/board', label: 'Props' }, { key: '/nhl/model', label: 'Model' }] },
       { label: null, items: [{ key: '/how-it-works', label: 'How it works' }] },
     ])
   })
