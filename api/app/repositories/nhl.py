@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
 from app.core.nhl_player_values import NHL_FIRST_HISTORY_SEASON
 from app.core.nhl_projection_backtest import REFERENCE_GAMES, SERVED_GAME_TYPES, NhlHistoryRow
+from app.core.nhl_prop_predictions import NhlFreezeLine, settle_frozen
+from app.core.prop_ranking_check import FrozenLine
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -340,7 +342,7 @@ async def get_game_line_history(db: AsyncSession, game_id: int) -> list[dict[str
 def _latest_props(scope: str) -> str:
     return f"""
     WITH ranked AS (
-        SELECT l.game_id, l.provider, l.provider_prop_id, l.player_id, p.name AS player_name,
+        SELECT l.id AS line_id, l.game_id, l.provider, l.provider_prop_id, l.player_id, p.name AS player_name,
                p.position, l.raw_json ->> 'player_team' AS team, l.market, l.odds_type,
                l.line, l.fetched_at,
                ROW_NUMBER() OVER (
@@ -541,3 +543,165 @@ async def get_prior_history(db: AsyncSession, player_ids: Sequence[int], before:
     for row in skaters + goalies:
         by_player.setdefault(row.player_id, []).append(row)
     return by_player
+
+
+async def get_current_week(db: AsyncSession, now: datetime) -> tuple[int, int] | None:
+    """(season, week) of the next regular-season game not yet started, else the latest loaded week (56c4).
+
+    Playoff games have no week, so only `REG` counts; freezing skips started games anyway.
+    """
+    upcoming = await db.execute(text("""
+        SELECT season, week FROM sport_games
+        WHERE sport = 'nhl' AND game_type = 'REG' AND week IS NOT NULL AND start_utc > :now
+        ORDER BY start_utc, id
+        LIMIT 1
+    """), {"now": now})
+    row = upcoming.fetchone()
+    if row is None:
+        latest = await db.execute(text("""
+            SELECT season, week FROM sport_games
+            WHERE sport = 'nhl' AND game_type = 'REG' AND week IS NOT NULL
+            ORDER BY season DESC, week DESC
+            LIMIT 1
+        """))
+        row = latest.fetchone()
+    return (row[0], row[1]) if row is not None else None
+
+
+_WEEK_SCOPE = "g.season = :season AND g.week = :week AND g.game_type = 'REG'"
+_WEEK_PROPS = _latest_props(_WEEK_SCOPE)
+
+
+async def get_week_freeze_lines(db: AsyncSession, season: int, week: int) -> list[NhlFreezeLine]:
+    """Each linked full-game line of the week's `REG` games at its last snapshot before puck drop (56c4).
+
+    The board's line rule (`_latest_props`), so a frozen row is what the board showed.
+    """
+    rows = await _player_prop_read(db, _WEEK_PROPS, """
+        SELECT latest.line_id, latest.game_id, g.game_date, g.start_utc, latest.player_id, latest.team,
+               latest.position, latest.market, latest.odds_type, latest.line, latest.fetched_at
+        FROM latest JOIN sport_games g ON g.sport = 'nhl' AND g.id = latest.game_id
+        ORDER BY g.start_utc NULLS LAST, latest.game_id, latest.line_id
+    """, {"season": season, "week": week})
+    return [
+        NhlFreezeLine(
+            line_id=int(str(row["line_id"])), game_id=int(str(row["game_id"])), game_date=cast(date, row["game_date"]),
+            start_utc=cast("datetime | None", row["start_utc"]), player_id=int(str(row["player_id"])),
+            team=cast("str | None", row["team"]), position=cast("str | None", row["position"]),
+            market=str(row["market"]), odds_type=cast("str | None", row["odds_type"]),
+            line=float(str(row["line"])), fetched_at=cast(datetime, row["fetched_at"]),
+        )
+        for row in rows
+    ]
+
+
+async def get_week_games(db: AsyncSession, season: int, week: int) -> list[dict[str, object]]:
+    """The week's `REG` games in the shape the slate builders take, for loading their stored context."""
+    return await _served_games(db, _WEEK_SCOPE, {"season": season, "week": week})
+
+
+_MARKET_VALUES = [market.value for market in NhlLineOnlyMarket]
+_SKATER_SETTLE_COLUMNS = ", ".join(f"sk.{column} AS s_{column}" for column in _SKATER_VALUE_COLUMNS)
+_GOALIE_SETTLE_COLUMNS = ", ".join(
+    f"gk.{column} AS g_{column}" for column in (*_GOALIE_VALUE_COLUMNS, "started", "time_on_ice_seconds")
+)
+
+
+async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[FrozenLine]:
+    """The latest frozen pre-puck-drop prediction of every linked PrizePicks prop on a completed `REG` game (56c4).
+
+    Graded at the line it was frozen on, NFL's 27j rule, and settled against the player's
+    skater or goalie box score. A game with no box-score rows in either table is not loaded yet.
+    """
+    statement = text(f"""
+        WITH frozen AS (
+            SELECT DISTINCT ON (l.provider, l.provider_prop_id)
+                   l.id, l.market, l.odds_type, l.line, l.player_id, l.game_id, g.week,
+                   p.p_over, p.p_under, p.model_version, p.over_probability_version
+            FROM sport_prop_predictions p
+            JOIN sport_prop_lines l ON l.sport = 'nhl' AND l.id = p.prop_line_id
+            JOIN sport_games g ON g.sport = 'nhl' AND g.id = l.game_id
+            WHERE p.sport = 'nhl' AND g.season = :season AND g.game_type = 'REG' AND g.week IS NOT NULL
+              AND g.status = 'completed' AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
+              AND l.segment = 'full_game' AND l.market IN :markets
+              AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
+            ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
+        ),
+        loaded_games AS (
+            SELECT game_id FROM nhl_skater_game_stats WHERE game_id IN (SELECT game_id FROM frozen)
+            UNION
+            SELECT game_id FROM nhl_goalie_game_stats WHERE game_id IN (SELECT game_id FROM frozen)
+        )
+        SELECT frozen.*, sk.player_id IS NOT NULL AS has_skater_row, {_SKATER_SETTLE_COLUMNS},
+               gk.player_id IS NOT NULL AS has_goalie_row, {_GOALIE_SETTLE_COLUMNS},
+               lg.game_id IS NOT NULL AS game_has_box_scores
+        FROM frozen
+        LEFT JOIN nhl_skater_game_stats sk ON sk.player_id = frozen.player_id AND sk.game_id = frozen.game_id
+        LEFT JOIN nhl_goalie_game_stats gk ON gk.player_id = frozen.player_id AND gk.game_id = frozen.game_id
+        LEFT JOIN loaded_games lg ON lg.game_id = frozen.game_id
+        ORDER BY frozen.week, frozen.id
+    """).bindparams(bindparam("markets", expanding=True))
+    rows = await db.execute(statement, {"season": season, "markets": _MARKET_VALUES})
+    return [_frozen_line(row) for row in rows.mappings()]
+
+
+def _frozen_line(row: RowMapping) -> FrozenLine:
+    skater = {column: row[f"s_{column}"] for column in _SKATER_VALUE_COLUMNS} if row["has_skater_row"] else None
+    goalie = (
+        {column: row[f"g_{column}"] for column in (*_GOALIE_VALUE_COLUMNS, "started", "time_on_ice_seconds")}
+        if row["has_goalie_row"] else None
+    )
+    return FrozenLine(
+        line_id=row["id"], period=row["week"], player_id=row["player_id"], game_id=row["game_id"],
+        market=row["market"], odds_type=row["odds_type"],
+        outcome=settle_frozen(row["market"], float(row["line"]), skater, goalie, bool(row["game_has_box_scores"])),
+        p_over=row["p_over"], p_under=row["p_under"], model_version=row["model_version"],
+        over_probability_version=row["over_probability_version"],
+    )
+
+
+async def get_finished_weeks(db: AsyncSession, season: int) -> set[int]:
+    """Weeks whose `REG` games are all completed, postponed or canceled, with every completed one's box scores loaded.
+
+    A completed game without box scores holds its week open until the next load.
+    """
+    rows = await db.execute(text("""
+        SELECT g.week FROM sport_games g
+        WHERE g.sport = 'nhl' AND g.season = :season AND g.game_type = 'REG' AND g.week IS NOT NULL
+        GROUP BY g.week
+        HAVING bool_and(g.status IN ('completed', 'postponed', 'canceled'))
+           AND bool_and(
+                   g.status <> 'completed'
+                   OR EXISTS (SELECT 1 FROM nhl_skater_game_stats s WHERE s.game_id = g.id)
+                   OR EXISTS (SELECT 1 FROM nhl_goalie_game_stats s WHERE s.game_id = g.id)
+               )
+    """), {"season": season})
+    return {row[0] for row in rows.fetchall()}
+
+
+async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[int, int]]:
+    """Per week: (gradeable full-game lines on completed `REG` games, how many have any frozen pre-start row)."""
+    statement = text("""
+        WITH latest AS (
+            SELECT DISTINCT ON (l.provider, l.provider_prop_id) l.provider, l.provider_prop_id, g.week
+            FROM sport_prop_lines l
+            JOIN sport_games g ON g.sport = 'nhl' AND g.id = l.game_id
+            WHERE l.sport = 'nhl' AND g.season = :season AND g.game_type = 'REG' AND g.week IS NOT NULL
+              AND g.status = 'completed' AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
+              AND l.fetched_at < g.start_utc AND l.segment = 'full_game' AND l.market IN :markets
+            ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+        )
+        SELECT latest.week, COUNT(*),
+               COUNT(*) FILTER (WHERE EXISTS (
+                   SELECT 1 FROM sport_prop_lines fl
+                   JOIN sport_prop_predictions p ON p.sport = 'nhl' AND p.prop_line_id = fl.id
+                   JOIN sport_games fg ON fg.sport = 'nhl' AND fg.id = fl.game_id
+                   WHERE fl.sport = 'nhl' AND fl.provider = latest.provider
+                     AND fl.provider_prop_id = latest.provider_prop_id
+                     AND fl.fetched_at < fg.start_utc AND p.generated_at < fg.start_utc
+               ))
+        FROM latest
+        GROUP BY latest.week ORDER BY latest.week
+    """).bindparams(bindparam("markets", expanding=True))
+    rows = await db.execute(statement, {"season": season, "markets": _MARKET_VALUES})
+    return {week: (int(lines), int(frozen)) for week, lines, frozen in rows.fetchall()}

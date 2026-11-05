@@ -12,6 +12,7 @@ from app.core import nhl_over_probability_fit as fit
 from app.core.count_over_probability import NegBinParams
 from app.core.nhl_over_probability_crossfit import read_family
 from app.core.nhl_projection_backtest import NhlHistoryRow
+from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlGoalieSide, NhlInjuryContext, NhlInjurySchema
 from app.services.nhl.line_only_props import line_only_props
@@ -178,3 +179,24 @@ def skater_rows_with_hits(player_id: int) -> list[NhlHistoryRow]:
         NhlHistoryRow(player_id, i, 2026, dt.date(2026, 10, 1) + dt.timedelta(days=i), "REG", "C", False, True, stats)
         for i in range(12)
     ]
+
+
+@pytest.mark.parametrize(("market", "player_id", "value", "position"), [
+    ("shots_on_goal", SKATER, "2.5", "C"), ("shots_on_goal", SKATER, "3.0", "C"), ("hits", SKATER, "1.5", "C"),
+    ("goalie_saves", GOALIE, "24.5", "G"), ("goals_allowed", OTHER_GOALIE, "2.5", "G"),
+])
+def test_the_page_value_is_the_frozen_core_value_shaped_for_the_wire(
+    market: str, player_id: int, value: str, position: str,
+) -> None:
+    inputs = ProjectionInputs(
+        {SKATER: skater_rows(SKATER, 12), GOALIE: goalie_rows(GOALIE), OTHER_GOALIE: goalie_rows(OTHER_GOALIE)},
+        context(),
+    )
+    market_enum = NhlLineOnlyMarket(market)
+    core = projection_service.core_projection(market_enum, player_id, float(value), position, "TBL", inputs)
+    wire = projection_service.line_projection(market_enum, player_id, float(value), position, "TBL", inputs)
+
+    assert (wire.model_version, wire.value, wire.games_in_sample, wire.gap, wire.flags) == (
+        core.model_version, core.projection, core.games_in_sample, core.gap, list(core.flags),
+    )
+    assert wire.p_over == projection_service.rounded_probability(core.p_over)

@@ -141,6 +141,9 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   (3 The Odds API credits a run, dry run included)
 - NHL schedule + box scores: `python -m app.ingest.nhl_api [--season 2025] [--days-back 3] [--dry-run]`
 - NHL props: `python -m app.ingest.prizepicks_nhl [--dry-run] [--relink]`
+- NHL frozen predictions (56c4): `python -m app.ingest.nhl_prop_predictions [--dry-run]`
+  (freezes the current week's pre-puck-drop projection and P(over) into
+  `sport_prop_predictions`; the first real run needs a separate yes in chat)
 - NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2] [--min-requests-remaining 20] [--dry-run]`
   (dry run still spends hourly Odds-API.io requests)
 - NHL injuries and goalies: `python -m app.ingest.nhl_context [--dry-run] [--date YYYY-MM-DD]`

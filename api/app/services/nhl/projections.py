@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_player_values import GOALIE_MARKETS
-from app.core.nhl_projection import Availability, GoalieAvailability, project_line
+from app.core.nhl_projection import Availability, GoalieAvailability, NhlLineProjection, project_line
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
@@ -50,14 +50,22 @@ def rounded_probability(probability: float | None) -> float | None:
     return None if probability is None else round(probability, 4)
 
 
+def core_projection(
+    market: NhlLineOnlyMarket, player_id: int, line: float, provider_position: str | None, team: str | None,
+    inputs: ProjectionInputs,
+) -> NhlLineProjection:
+    """The one path the pages serve and the freeze stores, at full precision."""
+    prior = inputs.history.get(player_id, [])
+    # The stored roster position is what 56b replayed, so it wins over the provider's label.
+    position = prior[-1].position if prior else provider_position
+    return project_line(prior, market, line, position, player_id, availability(market, player_id, team, inputs.context))
+
+
 def line_projection(
     market: NhlLineOnlyMarket, player_id: int, line: float, provider_position: str | None, team: str | None,
     inputs: ProjectionInputs,
 ) -> NhlProjectionSchema:
-    prior = inputs.history.get(player_id, [])
-    # The stored roster position is what 56b replayed, so it wins over the provider's label.
-    position = prior[-1].position if prior else provider_position
-    served = project_line(prior, market, line, position, player_id, availability(market, player_id, team, inputs.context))
+    served = core_projection(market, player_id, line, provider_position, team, inputs)
     return NhlProjectionSchema(
         model_version=served.model_version, value=served.projection, games_in_sample=served.games_in_sample,
         gap=served.gap, p_over=rounded_probability(served.p_over), flags=list(served.flags),

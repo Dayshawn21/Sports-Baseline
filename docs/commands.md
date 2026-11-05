@@ -127,8 +127,18 @@ per command; read this file before running, scheduling or changing one.
   dispatch; rate-limit exhaustion exits 75. `nhl-ingest.yml` relinks after
   the daily schedule/box-score load. A local snapshot stored 941 lines with
   all player/game links resolved; both subsequent relinks changed zero rows.
-  No NHL predictions are written. GitHub registration and runner acceptance
-  remain unverified until an approved push and actual run.
+  GitHub registration and runner acceptance remain unverified until an
+  approved push and actual run.
+- NHL frozen predictions (56c4): `python -m app.ingest.nhl_prop_predictions
+  [--dry-run]`. For the current regular-season week it freezes, for every
+  linked full-game line not yet at puck drop (all 12 markets, every odds
+  type), the `nhl-reference-v1` projection and, in the four shown markets,
+  `nhl-pover-v1` P(over), into `sport_prop_predictions`. Gated lines freeze
+  with a null projection and their flag. Reads stored goalie and injury
+  context only. Safe to re-run (a line already stored for its versions is
+  skipped). It runs as a step of `nhl-prop-lines.yml` after the snapshot and
+  talks to the database directly, never the hosted API. Playoff games have no
+  week and are not frozen.
 - NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2]
   [--min-requests-remaining 20] [--dry-run]` (DraftKings and FanDuel full-game
   moneyline with OT/SO, +/-1.5 puck line and total, per-book de-vigged, stored
