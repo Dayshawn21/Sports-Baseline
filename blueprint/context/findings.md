@@ -336,34 +336,6 @@ projection once per player-market (as the player endpoint already does) with a
 per-line gap, and consider the NBA board's cache pattern.
 **Resolution:**
 
-### F-15 [P2] closed - A confirm run without --write reads the holdout and leaves no once-only marker
-
-**File:** api/app/backtest/nhl_over_probability_fit.py:248
-**Found:** 2026-11-05 by /audit (scope: current; lens: all)
-**Why it matters:** The read-once guard is `check_module_absent`, which only sees
-the generated module. `--confirm --holdout` without `--write` scores 2025-26,
-prints the verdicts and writes nothing, so the guard still passes on the next
-run and the holdout can be read again, which is the accident the spec says the
-refusal prevents. The real read was made with `--write`, so the holdout was read
-once; this is a gap in the guard, not a recorded violation.
-**Suggested fix:** Require `--write` with `--confirm` (one flag, one read, one
-record), or write the module before printing. Add a flags test.
-**Resolution:** `check_flags` now refuses `--confirm` without `--write`, so every holdout read leaves the generated module that the existing guard checks; two flag tests cover it. Closed 2026-11-05 by /audit (scope: current; lens: all): re-read `check_flags`, `_confirm` and the entry point; no flag combination reads the holdout without `--write`, the module check runs before any read, and the repair introduced no new defect beyond the leftover noted in F-18.
-
-### F-16 [P2] closed - The confirm run prints "Holdout (2025-26): not read."
-
-**File:** api/app/backtest/nhl_over_probability_fit.py:97
-**Found:** 2026-11-05 by /audit (scope: current; lens: all)
-**Why it matters:** `_confirm` prints the development report first, and its
-header hard-codes "Holdout (2025-26): not read." That line appears in the same
-output that then reports the holdout read (line 8 of the saved run). A reader of
-the full output, or a pasted copy, gets a false statement about the holdout. The
-spec's Results pasted only the holdout half, so it is correct, but the tool's
-output is not.
-**Suggested fix:** Give `_header` a `holdout_read` argument (or leave the line
-out of the confirm run) and test both outputs.
-**Resolution:** `_header` takes `holdout_read`; the confirm run prints "read once in this run, reported below", the development run still prints "not read". Tests cover both. Closed 2026-11-05 by /audit (scope: current; lens: all): re-read `_header`, `report` and `_confirm`; the confirm output now says the holdout was read, the development output still says it was not.
-
 ### F-17 [P3] open - Duplicated row formatting and a test module that imports another test module
 
 **File:** api/app/backtest/nhl_over_probability_fit.py:119; api/tests/test_nhl_over_probability_fit.py:13
