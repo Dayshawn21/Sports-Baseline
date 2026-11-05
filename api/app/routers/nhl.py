@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.pool import get_db
@@ -15,7 +15,7 @@ from app.services.nhl import track_record
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
-from app.services.nhl.prop_board import build_prop_board
+from app.services.nhl.prop_board_cache import cached_prop_board_json
 from app.services.nhl.slate import build_slate
 
 router = APIRouter()
@@ -29,9 +29,12 @@ async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_
 
 
 @router.get("/props", response_model=NhlPropBoardResponse)
-async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlPropBoardResponse:
-    clock = dt.datetime.now(dt.timezone.utc)
-    return await build_prop_board(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
+async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> Response:
+    today = dt.datetime.now(dt.timezone.utc).astimezone(EASTERN).date()
+    body = await cached_prop_board_json(db, date, today)
+    if body is None:
+        raise HTTPException(status_code=503, detail="The NHL prop board is unavailable; try again shortly")
+    return Response(content=body, media_type="application/json")
 
 
 @router.get("/games/{game_id}", response_model=NhlGameDetailResponse)

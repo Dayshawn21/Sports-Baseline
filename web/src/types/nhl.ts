@@ -110,6 +110,37 @@ export interface NhlLineOnlyLine {
   projection: NhlProjection
 }
 
+/** A line as served: its own gap, P(over) and line flags, with the player-market projection sent once beside it. */
+export interface NhlLineOnlyWireLine extends Omit<NhlLineOnlyLine, 'projection'> {
+  gap: number | null
+  pOver: number | null
+  flags: NhlProjectionFlag[]
+}
+
+/** One per player and market; carries no gap or P(over), which belong to each line. */
+export interface NhlMarketProjection {
+  playerId: number
+  market: NhlLineOnlyMarket
+  modelVersion: string
+  value: number | null
+  gamesInSample: number
+  flags: NhlProjectionFlag[]
+}
+
+export interface NhlLineOnlyWireProps extends Omit<NhlLineOnlyProps, 'lines'> {
+  lines: NhlLineOnlyWireLine[]
+  projections: NhlMarketProjection[]
+}
+
+export interface NhlPropBoardWireGame extends Omit<NhlPropBoardGame, 'lines'> {
+  lines: NhlLineOnlyWireLine[]
+  projections: NhlMarketProjection[]
+}
+
+export interface NhlPropBoardWireResponse extends Omit<NhlPropBoardResponse, 'games'> {
+  games: NhlPropBoardWireGame[]
+}
+
 export interface NhlLineOnlyProps {
   gameId: number
   /** The P(over) fit behind the numbers; null when none is served. */

@@ -14,6 +14,7 @@ from app.core.nhl_over_probability_crossfit import read_family
 from app.core.nhl_projection_backtest import NhlHistoryRow
 from app.nhl.markets import NhlLineOnlyMarket
 from app.repositories import nhl
+from app.schemas.nhl import NhlProjectionSchema
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext, NhlGoalieSide, NhlInjuryContext, NhlInjurySchema
 from app.services.nhl.line_only_props import line_only_props
 from app.services.nhl import projections as projection_service
@@ -65,8 +66,19 @@ def context(away_status: str = "confirmed", away_goalie: int | None = GOALIE, in
     )
 
 
-def projections(lines: list[dict[str, object]], inputs: ProjectionInputs):  # noqa: ANN201
-    return {(row.player_id, row.market.value): row.projection for row in line_only_props(GAME, lines, inputs).lines}
+def projections(lines: list[dict[str, object]], inputs: ProjectionInputs) -> dict[tuple[int, str], NhlProjectionSchema]:
+    """Each line's whole projection, rejoined from the market's one projection and the line's own fields."""
+    response = line_only_props(GAME, lines, inputs)
+    market = {(item.player_id, item.market.value): item for item in response.projections}
+    return {
+        (row.player_id, row.market.value): NhlProjectionSchema(
+            model_version=market[(row.player_id, row.market.value)].model_version,
+            value=market[(row.player_id, row.market.value)].value,
+            games_in_sample=market[(row.player_id, row.market.value)].games_in_sample,
+            gap=row.gap, p_over=row.p_over, flags=[*market[(row.player_id, row.market.value)].flags, *row.flags],
+        )
+        for row in response.lines
+    }
 
 
 def test_skater_line_gets_the_twenty_game_mean_and_gap() -> None:
@@ -148,7 +160,23 @@ def test_a_shown_market_line_carries_the_fit_probability_and_the_rounded_complem
     served = result[(SKATER, "shots_on_goal")]
     expected = round(read_family(NegBinParams(fit.NEGBIN_R["shots_on_goal"]), 3.0, 2.5), 4)
     assert served.p_over == expected and served.flags == []
-    assert set(served.model_dump(by_alias=True)) == {"modelVersion", "value", "gamesInSample", "gap", "pOver", "flags"}
+    response = line_only_props(GAME, [line(SKATER, "shots_on_goal", "2.5")], ProjectionInputs({SKATER: skater_rows(SKATER, 12)}, context()))
+    assert set(response.lines[0].model_dump(by_alias=True)) >= {"gap", "pOver", "flags"}
+    assert "projection" not in response.lines[0].model_dump(by_alias=True)
+    assert set(response.projections[0].model_dump(by_alias=True)) == {
+        "playerId", "market", "modelVersion", "value", "gamesInSample", "flags",
+    }
+
+
+def test_a_player_market_with_several_rungs_carries_one_projection_and_a_gap_per_rung() -> None:
+    rungs = [
+        {**line(SKATER, "shots_on_goal", "1.5"), "provider_prop_id": "a", "odds_type": "goblin"},
+        {**line(SKATER, "shots_on_goal", "2.5"), "provider_prop_id": "b"},
+        {**line(SKATER, "shots_on_goal", "3.5"), "provider_prop_id": "c", "odds_type": "demon"},
+    ]
+    response = line_only_props(GAME, rungs, ProjectionInputs({SKATER: skater_rows(SKATER, 12)}, context()))
+    assert len(response.projections) == 1 and response.projections[0].value == 3.0
+    assert {row.line: row.gap for row in response.lines} == {1.5: 1.5, 2.5: 0.5, 3.5: -0.5}
 
 
 def test_a_whole_number_line_and_a_hidden_market_carry_null_probabilities() -> None:
@@ -164,8 +192,9 @@ def test_a_whole_number_line_and_a_hidden_market_carry_null_probabilities() -> N
 def test_a_gated_goalie_line_carries_no_probability_and_the_wire_keys_are_present() -> None:
     history = {OTHER_GOALIE: goalie_rows(OTHER_GOALIE)}
     response = line_only_props(GAME, [line(OTHER_GOALIE, "goals_allowed", "2.5", position="G")], ProjectionInputs(history, context()))
-    wire = response.lines[0].model_dump(mode="json", by_alias=True)["projection"]
-    assert wire["value"] is None and wire["pOver"] is None and wire["flags"] == ["other_starter_expected"]
+    wire = response.lines[0].model_dump(mode="json", by_alias=True)
+    assert wire["gap"] is None and wire["pOver"] is None and wire["flags"] == []
+    assert response.projections[0].value is None and response.projections[0].flags == ["other_starter_expected"]
 
 
 def test_the_response_names_the_fit_once_instead_of_on_every_line() -> None:

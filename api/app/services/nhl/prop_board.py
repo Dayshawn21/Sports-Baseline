@@ -26,16 +26,20 @@ def prop_board_response(
     history: Mapping[int, Sequence[NhlHistoryRow]],
     contexts: Mapping[int, NhlGameContextSchema],
 ) -> NhlPropBoardResponse:
+    served = {
+        int(str(game["game_id"])): line_only_props(
+            game, lines_by_game.get(int(str(game["game_id"])), []),
+            ProjectionInputs(history, contexts.get(int(str(game["game_id"])))),
+        )
+        for game in games
+    }
     return NhlPropBoardResponse(
         over_probability_version=served_over_probability_version(), date=date, previous_date=previous_date, next_date=next_date,
         games=[
             NhlPropBoardGameSchema(
                 game_id=int(str(game["game_id"])), away_team=str(game["away_team"]), home_team=str(game["home_team"]),
                 start_utc=cast(dt.datetime | None, game["start_utc"]), status=str(game["status"]),
-                lines=line_only_props(
-                    game, lines_by_game.get(int(str(game["game_id"])), []),
-                    ProjectionInputs(history, contexts.get(int(str(game["game_id"])))),
-                ).lines,
+                lines=served[int(str(game["game_id"]))].lines, projections=served[int(str(game["game_id"]))].projections,
             )
             for game in games
         ],

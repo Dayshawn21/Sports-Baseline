@@ -19,7 +19,7 @@ from app.schemas.nhl import (
     NhlPlayerMarketSchema, NhlPlayerPropsResponse, NhlProjectionSchema,
 )
 from app.schemas.nhl_context import NhlGameContextSchema, NhlGoalieContext
-from app.services.nhl.projections import ProjectionInputs, line_projection, rounded_probability
+from app.services.nhl.projections import RUNG_FLAGS, ProjectionInputs, line_projection, rounded_probability
 from app.services.nhl.slate import assemble_games
 
 RECENT_GAMES = 10
@@ -46,9 +46,6 @@ def _games(market: NhlLineOnlyMarket, rows: Sequence[Mapping[str, object]], limi
         )
         for row in ordered[:limit]
     ]
-
-
-RUNG_FLAGS = frozenset({"integer_line", "no_over_probability"})
 
 
 def _rung(market: NhlLineOnlyMarket, projection: NhlProjectionSchema, row: Mapping[str, object]) -> NhlPlayerLineSchema:

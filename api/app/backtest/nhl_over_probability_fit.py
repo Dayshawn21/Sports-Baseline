@@ -24,6 +24,7 @@ from pathlib import Path
 from app.core.count_over_probability import NegBinParams, ScaledNormalParams
 from app.core.nhl_over_probability import (
     CANDIDATE_ORDER,
+    CandidateResult,
     CONFIRMATION_SEASON,
     FIT_SEASON,
     MAX_BIN_GAP,
@@ -122,21 +123,27 @@ def _num(value: float | None) -> str:
     return f"{value:8.4f}" if value is not None else f"{'--':>8}"
 
 
+_TABLE_HEADER = f"  {'market / family':<34}{'cases':>7}{'pairs':>8}{'ECE':>8}{'gap':>8}{'Brier':>8}{'normal':>8}  verdict"
+
+
+def _family_row(market: NhlLineOnlyMarket, result: CandidateResult, diagnostics: FamilyDiagnostics) -> str:
+    failed = failed_checks(result.cases, diagnostics, result.brier)
+    brier = _num(None if diagnostics.pairs == 0 else result.brier)
+    return (
+        f"  {market.value + ' / ' + result.family:<34}{result.cases:>7}{diagnostics.pairs:>8}"
+        f"{_num(diagnostics.ece)}{_num(diagnostics.worst_gap)}{brier}{_num(diagnostics.normal_brier)}"
+        f"  {result.verdict}{' (' + failed + ')' if failed else ''}"
+    )
+
+
 def _selection_table(selections: Mapping[NhlLineOnlyMarket, MarketSelection]) -> list[str]:
-    header = f"  {'market / family':<34}{'cases':>7}{'pairs':>8}{'ECE':>8}{'gap':>8}{'Brier':>8}{'normal':>8}  verdict"
-    lines = ["Cross-fit at synthetic x.5 lines", header]
+    lines = ["Cross-fit at synthetic x.5 lines", _TABLE_HEADER]
     for market in NhlLineOnlyMarket:
         selection = selections.get(market)
         if selection is None:
             continue
         for result, diagnostics in zip(selection.results, selection.diagnostics, strict=True):
-            failed = failed_checks(result.cases, diagnostics, result.brier)
-            brier = _num(None if diagnostics.pairs == 0 else result.brier)
-            lines.append(
-                f"  {market.value + ' / ' + result.family:<34}{result.cases:>7}{diagnostics.pairs:>8}"
-                f"{_num(diagnostics.ece)}{_num(diagnostics.worst_gap)}{brier}{_num(diagnostics.normal_brier)}"
-                f"  {result.verdict}{' (' + failed + ')' if failed else ''}",
-            )
+            lines.append(_family_row(market, result, diagnostics))
     return lines
 
 
@@ -160,20 +167,13 @@ def confirmation_report(confirmations: Mapping[NhlLineOnlyMarket, Confirmation])
         f"HOLDOUT {season_label(CONFIRMATION_SEASON)}: holdout read 1 (the one read; nothing was fitted on it)",
         f"Each selected family, fitted on all of {season_label(FIT_SEASON)}, scored once under the same display rule.",
         "",
-        f"  {'market / family':<34}{'cases':>7}{'pairs':>8}{'ECE':>8}{'gap':>8}{'Brier':>8}{'normal':>8}  verdict",
+        _TABLE_HEADER,
     ]
     for market in NhlLineOnlyMarket:
         confirmation = confirmations.get(market)
         if confirmation is None:
             continue
-        diagnostics, result = confirmation.diagnostics, confirmation.result
-        failed = failed_checks(result.cases, diagnostics, result.brier)
-        brier = _num(None if diagnostics.pairs == 0 else result.brier)
-        lines.append(
-            f"  {market.value + ' / ' + confirmation.family:<34}{result.cases:>7}{diagnostics.pairs:>8}"
-            f"{_num(diagnostics.ece)}{_num(diagnostics.worst_gap)}{brier}{_num(diagnostics.normal_brier)}"
-            f"  {result.verdict}{' (' + failed + ')' if failed else ''}",
-        )
+        lines.append(_family_row(market, confirmation.result, confirmation.diagnostics))
     shown = [market.value for market in NhlLineOnlyMarket if _shown(confirmations.get(market))]
     return "\n".join([*lines, "", f"Shown: {', '.join(shown) if shown else 'none'}"])
 
@@ -253,7 +253,7 @@ async def _develop() -> None:
     print(report(cases, select_markets(cases)))
 
 
-async def _confirm(write: bool) -> None:
+async def _confirm() -> None:
     check_module_absent(FIT_MODULE_PATH)
     history = await _load_history(CONFIRMATION_SEASONS)
     fit_cases = replay_cases(history, FIT_SEASON, ARMS[REFERENCE_ARM])
@@ -261,12 +261,12 @@ async def _confirm(write: bool) -> None:
     selections = select_markets(fit_cases)
     selected = {market: selection.selected for market, selection in selections.items() if selection.selected}
     confirmations = confirm_markets(selected, fit_cases, holdout_cases)
+    # The module is the record that stops a second read, so it lands before anything can fail while printing.
+    FIT_MODULE_PATH.write_text(render_module(confirmations), encoding="utf-8", newline="\n")
     print(report(fit_cases, selections, holdout_read=True))
     print()
     print(confirmation_report(confirmations))
-    if write:
-        FIT_MODULE_PATH.write_text(render_module(confirmations), encoding="utf-8", newline="\n")
-        print(f"\nWrote {FIT_MODULE_PATH.name}")
+    print(f"\nWrote {FIT_MODULE_PATH.name}")
 
 
 if __name__ == "__main__":
@@ -283,4 +283,4 @@ if __name__ == "__main__":
         parser.error(str(error))
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(_confirm(args.write) if args.confirm else _develop())
+    asyncio.run(_confirm() if args.confirm else _develop())

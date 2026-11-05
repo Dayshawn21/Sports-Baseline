@@ -10,7 +10,7 @@ from app.core.nhl_over_probability_crossfit import (
     Confirmation, FamilyDiagnostics, MarketFit, MarketSelection, RatioParams, confirm_markets, select_markets,
 )
 from app.nhl.markets import NhlLineOnlyMarket
-from tests.test_nhl_over_probability_crossfit import weekly_cases
+from tests.nhl_replay_cases import weekly_cases
 
 
 def selection(selected: Family | None = "negbin") -> MarketSelection:
