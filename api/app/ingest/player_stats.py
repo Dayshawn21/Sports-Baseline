@@ -200,7 +200,9 @@ def _fetch_one(url: str, name: str, slug: str) -> Optional[list]:
     return rows or None
 
 
-def _fetch_matches(name: str, tour: str = "", slug_override: Optional[str] = None) -> Optional[list]:
+def _fetch_matches(
+    name: str, tour: str = "", slug_override: Optional[str] = None, *, today: date,
+) -> Optional[list]:
     """
     Fetch and parse a TennisAbstract player page. Returns list of rows or None.
 
@@ -220,7 +222,7 @@ def _fetch_matches(name: str, tour: str = "", slug_override: Optional[str] = Non
     # Most likely source first, so the common case still costs one request.
     candidates = [jsmatches, classic] if tour.upper() == "WTA" else [classic, jsmatches]
 
-    fresh_cutoff = (date.today() - timedelta(days=STALE_AFTER_DAYS)).strftime("%Y%m%d")
+    fresh_cutoff = (today - timedelta(days=STALE_AFTER_DAYS)).strftime("%Y%m%d")
     best: Optional[list] = None
     best_date = ""
 
@@ -675,7 +677,7 @@ async def ingest_single_player(
     today = date.today()
     cutoff = (today - timedelta(days=WINDOW_DAYS)).strftime("%Y%m%d")
 
-    raw_rows = _fetch_matches(player_name, tour=tour or "", slug_override=ta_slug_override)
+    raw_rows = _fetch_matches(player_name, tour=tour or "", slug_override=ta_slug_override, today=today)
 
     if raw_rows is None:
         return {
@@ -790,7 +792,7 @@ async def run(
         # Fetched outside any transaction: a retry must not spend another
         # TennisAbstract request, and the 429 backoff inside this call is exactly
         # what used to hold row locks open for minutes.
-        raw_rows = _fetch_matches(name, tour=tour or "", slug_override=ta_slug)
+        raw_rows = _fetch_matches(name, tour=tour or "", slug_override=ta_slug, today=today)
 
         if raw_rows is None:
             skip += 1

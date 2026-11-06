@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameModel, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { formatKickoffTime } from '~/utils/nflLabels'
-import { nflPropDetail } from '~/utils/nflPropDetail'
+import { history, nflPropDetail } from '~/utils/nflPropDetail'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -150,6 +150,11 @@ describe('nflPropDetail history', () => {
   it('lists each game once with its date when the sample has one', () => {
     const detail = nflPropDetail(row({ market: 'anytime_touchdown', recentForm: { average: 0.5, values: [{ value: 1, opponentTeam: 'TB', gameDate: '2020-10-04' }, { value: 0, opponentTeam: 'JAX' }] } }), game(), [], NOW)
     expect(detail.recentForm.games).toEqual(["TD vs TB (Oct 4 '20)", 'No TD vs JAX'])
+  })
+
+  it('reads the season from the passed now, not the wall clock', () => {
+    const sample = { average: 26, values: [{ value: 26, opponentTeam: 'TB', gameDate: '2020-10-04' }] }
+    expect(history('Recent form', 'receiving_yards', sample, new Date(2021, 0, 10)).games).toEqual(['26.0 vs TB (Oct 4)'])
   })
 })
 

@@ -65,7 +65,7 @@ export function DetailGameLog({ row }: { row: NflSlateLine }) {
   const [params] = useSearchParams()
   const window = resolveFormWindow(row, parseFormWindow(params))
   const sample = formSample(row, window)
-  const form = history(formTitle(row, window), row.market, sample)
+  const form = history(formTitle(row, window), row.market, sample, new Date())
   const note = formShortNote(row, window)
   const bars = formBars(sample, row).bars.length > 0
   return <section className="nfl-prop-detail__section">

@@ -342,7 +342,7 @@ version and forward validation.
 **Found:** 2026-11-06 by /audit (scope: full; lens: tests)
 **Why it matters:** `history()` calls `formHistoryDate(..., new Date())` though `nflPropDetail` is passed `now`; its test stays stable only because it uses a 2020 date. API tests build dates from `date.today()` / `datetime.now` because `player_stats._fetch_matches` and the props staleness check read the clock (`test_best_picks.py:165`, `test_props_audit_projection.py:61,281`, `test_props_router_best_of.py:24`, `test_prop_projection_best_of.py:38`); the Ask spend test can flake across UTC midnight.
 **Suggested fix:** thread `now` through `history()`; inject `today`/`now` into the two API functions and pass fixed values.
-**Resolution:**
+**Resolution:** Partly fixed 2026-11-06, still open for the router part (re-reviewed by /audit current the same day). `history()` takes `now`; `nflPropDetail` passes its `now` and `DetailGameLog` its own; a new test passes a 2021 `now` and gets no year on a 2020 game, which the wall clock would add. `player_stats._fetch_matches` takes `today`, both callers pass theirs (the parameter is required, so no wall-clock fallback is left), and `test_player_stats_sources.py` uses a fixed `TODAY` plus a test that a later `today` makes the same page stale. Left for later, because a sibling session owns `api/app/routers/` this round: the props staleness check (`routers/props.py:410`, read by the `test_best_picks`, `test_props_audit_projection`, `test_props_router_best_of` and `test_prop_projection_best_of` dates) and the Ask route clock (`routers/ask.py:73`, behind the `test_ask_route.py` midnight flake).
 
 ### F-32 [P3] open - Small consistency cleanups
 
@@ -358,7 +358,7 @@ version and forward validation.
 - `/tennis/predictions/best-picks` and `/tennis/bankroll/today` can spend Odds-API.io quota from a public GET when `ODDS_API_KEY` is set (dev only; production has none).
 - 33 `from tests.test_x import ...` cross-imports couple test files.
 **Suggested fix:** take them as they are touched; `askError.test.ts` and the two `os.getenv` removals are the cheapest.
-**Resolution:**
+**Resolution:** Partial 2026-11-06: `repositories/props.py` uses `pydantic.JsonValue` instead of `Any`. The rest stays open.
 
 ### F-33 [P3] fixed - `streamAsk` drops a final SSE frame that lacks a trailing blank line
 
@@ -376,39 +376,6 @@ version and forward validation.
 **Signals:** web verify (typecheck, 81 test files / 1,235 tests, build) passed. API `pytest` passed, 5,799 tests, run with a dummy `DATABASE_URL` because this worktree has no `api/app/.env` (the first run failed at collection on the missing setting, an environment gap, not a code defect). No lint command exists. No skipped, focused or xfail tests found on either side.
 **Clean:** no SQL injection (every `text(f"...")` interpolates module constants; values are bound), admin key compared with `hmac.compare_digest`, production settings refuse weak keys and wildcard CORS, workflows use `contents: read` and no `pull_request_target`, no tracked secret, Ask output renders only allowlisted internal links, no `any` or `@ts-ignore` in the web, `app/core` has no I/O, dry runs guard their writes.
 **Ledger:** added prizepicks-rerun-snapshots/F-19 to F-33; closed prizepicks-rerun-snapshots/F-14, prizepicks-rerun-snapshots/F-17 and prizepicks-rerun-snapshots/F-18.
-
-### F-35 [P3] invalid - prizepicks-rerun-snapshots/F-19's key relies on Cloudflare always setting CF-Connecting-IP on Render
-
-**File:** api/app/core/rate_limits.py:27
-**Found:** 2026-11-06 by /audit (scope: current; lens: security)
-**Why it matters:** `client_key` falls back to `request.client.host`, which under `--forwarded-allow-ips '*'` is still the client-written leftmost `X-Forwarded-For` entry. If a request reaches the API without `CF-Connecting-IP`, or Cloudflare passes a client-sent one through, the prizepicks-rerun-snapshots/F-19 bypass returns. Neither is verified; sources are a Render community thread and a blog post.
-**Suggested fix:** after deploy, send 11 requests to a heavy route with rotating fake `CF-Connecting-IP` and `X-Forwarded-For`; the 11th must be a 429. If the header is ever missing in production, key on `"unknown"` there rather than the peer (`is_production()`).
-**Resolution:** Invalid 2026-11-06, verified on production (`sportapp-api-ftsf.onrender.com`, running `9960c720`): 11 requests with a client-set `CF-Connecting-IP` were rejected by Cloudflare with a 403 before reaching Render, so a client cannot supply that header; 11 requests to `/nfl/slate` with a different fake `X-Forwarded-For` each were limited as one client (429 from the 10th, one earlier request had counted), so the deployed key is not taken from `X-Forwarded-For` and Cloudflare's header is present. The fallback hardening is not needed. Note: `sportapp-api.onrender.com`, still named in some docs, is an old suspended service.
-
-### F-36 [P3] open - The prizepicks-rerun-snapshots/F-19 and prizepicks-rerun-snapshots/F-20 tests mostly cannot fail on the old code
-
-**File:** api/tests/test_rate_limits.py; api/tests/test_prizepicks_rerun.py:80
-**Found:** 2026-11-06 by /audit (scope: current; lens: tests)
-**Why it matters:**
-- `test_x_forwarded_for_alone_is_ignored` and `test_rotating_forwarded_for_does_not_reset_the_limit` pass before and after the fix, because TestClient never runs uvicorn's proxy-headers middleware. Only `test_each_cloudflare_address_gets_its_own_bucket` exercises the change.
-- The rerun tests assert SQL substrings and grep the ingest's source, so they cannot catch a key mismatch with `get_today_props` or a rounding mismatch.
-- Nothing tests that `run()` passes `prune_pulled=False` after a failed league fetch.
-**Suggested fix:**
-- Exercise the spoof path in the rate-limit tests by wrapping the app in `ProxyHeadersMiddleware(trusted_hosts="*")`.
-- Extract the league-fetch loop so the failure count is unit-testable.
-- Keep the SQL checks, but add one assertion that the refresh key matches the `get_today_props` DISTINCT ON expression.
-**Resolution:**
-
-### F-37 [P3] unverified - The refresh matches a rounded column with an unrounded float, and scans per line
-
-**File:** api/app/repositories/props.py:364
-**Found:** 2026-11-06 by /audit (scope: current; lenses: quality, performance)
-**Why it matters:**
-- **Rounding:** `props.line` is `Numeric(6,1)` (migration `0001:156`), but the match compares `CAST(:line AS numeric)` on the raw float. A line with two decimals would be stored rounded and never matched again, so every re-run would insert a fresh row.
-- **Scans:** each feed line runs a subquery on `COALESCE(player_id::text, ...)` that no index serves (the only props index is `(player_id, stat_type, fetched_at)`). That is one scan per line where the old code ran one delete.
-- Neither is observed: tennis lines appear to be .0/.5, and the table size and run time were not measured.
-**Suggested fix:** cast to `numeric(6,1)`; if run time grows, add an index on `(source, fetched_at)`.
-**Resolution:**
 
 ### F-38 [P3] open - Best picks still swallows a live-moneyline overlay failure
 

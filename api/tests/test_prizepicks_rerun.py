@@ -7,6 +7,7 @@ fixed id or none, so these exercise which statements run and with what keys.
 """
 import asyncio
 import datetime as dt
+import re
 
 import pytest
 
@@ -185,3 +186,107 @@ def test_the_ingest_holds_no_sql():
 
     assert "DELETE FROM" not in source
     assert "sqlalchemy" not in source
+
+
+def _squash(sql: str) -> str:
+    return re.sub(r"\s+\)", ")", re.sub(r"\(\s+", "(", " ".join(sql.split())))
+
+
+def _distinct_on_terms(sql: str) -> list[str]:
+    """The comma-separated terms of the first DISTINCT ON (...), whitespace collapsed."""
+    body = sql[sql.index("DISTINCT ON (") + len("DISTINCT ON ("):]
+    terms, current, depth = [], "", 0
+    for ch in body:
+        if ch == ")" and depth == 0:
+            break
+        if ch == "," and depth == 0:
+            terms.append(current)
+            current = ""
+            continue
+        depth += {"(": 1, ")": -1}.get(ch, 0)
+        current += ch
+    terms.append(current)
+    return [_squash(term) for term in terms]
+
+
+def test_the_refresh_key_is_the_board_key():
+    """A refresh matching on fewer or other columns than the board collapses on
+    would update a row the board no longer shows, or insert a second copy."""
+    db = _Session()
+    asyncio.run(get_today_props(db, source="prizepicks"))
+    board = _distinct_on_terms(db.calls[0][0])
+    refresh = _squash(props_repo._SAME_TODAY_LINE)
+    identity = "COALESCE(p.player_id::text, NULLIF(p.raw_json ->> 'player_name', '')"
+
+    assert board[0] == "p.source" and "p.source = :src" in refresh
+    assert board[1].startswith(identity) and identity in refresh
+    for column in board[2:]:
+        assert f"{column} = " in refresh or f"{column} IS NOT DISTINCT FROM " in refresh, column
+    assert len(board) == 6
+
+
+def test_the_refresh_compares_the_line_at_the_column_precision():
+    db = _Session()
+
+    _store(db)
+
+    assert "p.line = CAST(:line AS numeric(6,1))" in db.calls[0][0]
+
+
+@pytest.fixture
+def leagues(monkeypatch):
+    """Two tennis leagues where league 2 fails, with each fetch recorded."""
+    fetched: list[int] = []
+
+    async def projections(_client, league_id):
+        fetched.append(league_id)
+        if league_id == 2:
+            raise RuntimeError("feed down")
+        return {"league": league_id}
+
+    async def no_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr(prizepicks, "_fetch_projections", projections)
+    monkeypatch.setattr(prizepicks, "_parse_projections", lambda _raw, _league_id: list(FEED))
+    monkeypatch.setattr(prizepicks.asyncio, "sleep", no_sleep)
+    return fetched
+
+
+def test_a_failed_league_is_counted_and_the_others_kept(leagues):
+    props, failed = asyncio.run(prizepicks._fetch_league_props(object(), [1, 2, 3]))
+
+    assert leagues == [1, 2, 3]
+    assert failed == 1
+    assert len(props) == 2 * len(FEED)
+
+
+class _SessionScope:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def commit(self):
+        return None
+
+
+@pytest.mark.parametrize(("league_ids", "prunes"), [([1, 3], True), ([1, 2], False)])
+def test_run_prunes_only_when_every_league_fetched(leagues, monkeypatch, league_ids, prunes):
+    seen: list[bool] = []
+
+    async def tennis_leagues(_client):
+        return [{"id": lg, "attributes": {"name": f"Tennis {lg}"}} for lg in league_ids]
+
+    async def store(_db, props, *, prune_pulled):
+        seen.append(prune_pulled)
+        return len(props)
+
+    monkeypatch.setattr(prizepicks, "_fetch_leagues", tennis_leagues)
+    monkeypatch.setattr(prizepicks, "_store_props", store)
+    monkeypatch.setattr("app.db.pool.SessionLocal", _SessionScope)
+
+    asyncio.run(prizepicks.run())
+
+    assert seen == [prunes]

@@ -199,6 +199,26 @@ def link_date_utc(start_time: dt.datetime | str) -> dt.date:
     return dt.date.fromisoformat(str(start_time)[:10])
 
 
+async def _fetch_league_props(client: httpx.AsyncClient, league_ids: list[int]) -> tuple[list[dict], int]:
+    """Every league's parsed props, and how many leagues failed to fetch or parse."""
+    all_props: list[dict] = []
+    failed = 0
+    for lg_id in league_ids:
+        try:
+            raw = await _fetch_projections(client, lg_id)
+            props = _parse_projections(raw, lg_id)
+            logger.info("  league %d: %d props", lg_id, len(props))
+            all_props.extend(props)
+        except httpx.HTTPStatusError as e:
+            failed += 1
+            logger.error("  league %d: HTTP %d", lg_id, e.response.status_code)
+        except Exception as e:
+            failed += 1
+            logger.error("  league %d: %s", lg_id, e)
+        await asyncio.sleep(0.5)
+    return all_props, failed
+
+
 async def _store_props(db, props: list[dict], *, prune_pulled: bool) -> int:
     """Store the feed, refreshing today's rows in place so a re-run keeps their snapshots.
 
@@ -287,22 +307,7 @@ async def run(dry_run: bool = False) -> None:
             logger.info("No tennis leagues found on PrizePicks today.")
             return
 
-        all_props: list[dict] = []
-        failed_leagues = 0
-        for lg_id in tennis_ids:
-            try:
-                raw = await _fetch_projections(client, lg_id)
-                props = _parse_projections(raw, lg_id)
-                logger.info("  league %d: %d props", lg_id, len(props))
-                all_props.extend(props)
-            except httpx.HTTPStatusError as e:
-                failed_leagues += 1
-                logger.error("  league %d: HTTP %d", lg_id, e.response.status_code)
-            except Exception as e:
-                failed_leagues += 1
-                logger.error("  league %d: %s", lg_id, e)
-            await asyncio.sleep(0.5)
-
+        all_props, failed_leagues = await _fetch_league_props(client, tennis_ids)
         logger.info("Total props: %d", len(all_props))
 
         # Print stat type breakdown

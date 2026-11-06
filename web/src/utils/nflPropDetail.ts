@@ -77,10 +77,10 @@ function typeLabel(oddsType: string | null, fallback: string): string {
   return oddsType ? ODDS_TYPE_LABELS[oddsType] ?? oddsType : fallback
 }
 
-export function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
+export function history(title: string, market: string, sample: NflHistorySample, now: Date): NflDetailHistory {
   if (sample.average === null) return { title, value: 'No completed history', detail: null, games: [] }
   const games = sample.values.map(item => {
-    const date = formDateText(formHistoryDate(item.gameDate, new Date()))
+    const date = formDateText(formHistoryDate(item.gameDate, now))
     return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
   })
   return {
@@ -184,6 +184,7 @@ export function nflPropDetail(row: NflSlateLine, game: NflSlateGame | null, alte
   const opponent = row.opponentTeam ?? 'Opponent'
   const group = row.position ? `${row.position}s` : 'the position'
   const adjustment = reference || row.opponentAdjustmentPct === null ? '' : ` Opponent adjustment: ${signedPct(row.opponentAdjustmentPct)}.`
+  const today = new Date(now)
   return {
     badge: game ? teamBadge(row, game.awayTeam, game.homeTeam) : row.position ?? '--',
     playerName: row.playerName,
@@ -193,10 +194,10 @@ export function nflPropDetail(row: NflSlateLine, game: NflSlateGame | null, alte
     deltaText: deltaText(row),
     isUnder: !reference && row.edge !== null && row.edge < 0,
     hasEdge: !reference && row.edge !== null,
-    recentForm: history('Recent form', row.market, row.recentForm),
+    recentForm: history('Recent form', row.market, row.recentForm, today),
     context: [
-      history(`Vs ${opponent}`, row.market, row.opponentHistory),
-      ...(!reference ? [history(`${opponent} allowed to all ${group}, per game · last 5`, row.market, row.opponentAllowedHistory)] : []),
+      history(`Vs ${opponent}`, row.market, row.opponentHistory, today),
+      ...(!reference ? [history(`${opponent} allowed to all ${group}, per game · last 5`, row.market, row.opponentAllowedHistory, today)] : []),
     ],
     why: `${signalSummary(row)}.${adjustment}`,
     breakdown: breakdown(row),

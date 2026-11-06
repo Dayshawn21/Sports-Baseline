@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 import json
-from typing import Any, Optional
+from typing import Optional
 
+from pydantic import JsonValue
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +27,7 @@ class Prop:
     p1_odds: Optional[int] = None
     p2_odds: Optional[int] = None
     surface: Optional[str] = None
-    raw_json: Optional[dict[str, Any]] = None
+    raw_json: Optional[dict[str, JsonValue]] = None
     match_status: Optional[str] = None
     match_link_invalid: bool = False
     # Best-of format of the linked match. None when no match is linked, which is
@@ -364,7 +365,7 @@ _SAME_TODAY_LINE = """
         = COALESCE(CAST(:pid AS text), NULLIF(:player_name, ''))
     AND p.start_time IS NOT DISTINCT FROM CAST(:start AS timestamptz)
     AND p.stat_type = :stat
-    AND p.line = CAST(:line AS numeric)
+    AND p.line = CAST(:line AS numeric(6,1))
     AND COALESCE(p.odds_type, '') = COALESCE(:odds_type, '')
 """
 
