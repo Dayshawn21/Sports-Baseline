@@ -36,7 +36,7 @@ services:
         sync: false
       - key: ADMIN_API_KEY
         sync: false
-      # JSON list holding the web origin, e.g. ["https://sportapp-web.onrender.com"]
+      # JSON list holding the web origin, e.g. ["https://sportapp-web-7v3r.onrender.com"]
       - key: CORS_ORIGINS
         sync: false
       # Ask Lineform (47). Both set in the dashboard, so a deploy never turns
@@ -57,7 +57,7 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: build
     envVars:
-      # The API origin, e.g. https://sportapp-api.onrender.com, read at build time.
+      # The API origin, e.g. https://sportapp-api-ftsf.onrender.com, read at build time.
       - key: VITE_API_BASE_URL
         sync: false
     headers:
