@@ -8,7 +8,9 @@ import pytest
 
 from app.ingest import tennis_elo as ratings
 from app.ingest import tennis_elo_comparison as ingest
-from app.services.tennis.elo_comparison import ComparisonPlan
+from app.ingest.predictions import MODELS_DIR
+from app.ml.registry import ModelRegistry
+from app.services.tennis.elo_comparison import ComparisonPlan, ExperimentConfig
 from app.repositories.tennis_elo_comparison import FreezeCycle
 from tests.test_tennis_elo_comparison import NOW, Registry, candidates, config
 
@@ -208,3 +210,8 @@ def test_cache_handoff_rejects_incomplete_or_wrong_day_inputs(tmp_path, monkeypa
     with pytest.raises((ValueError, OSError)):
         asyncio.run(ingest.check_daily_snapshot(cache_dir=tmp_path))
     assert state.commits == 0 and state.writes == []
+
+
+def test_committed_experiment_pins_match_the_runtime_the_scheduled_freeze_checks():
+    pinned = ExperimentConfig.from_record(json.loads(ingest.EXPERIMENT_PATH.read_text(encoding="utf-8")))
+    pinned.check_runtime(ModelRegistry(MODELS_DIR), ratings.load_identity_registry().sha256)

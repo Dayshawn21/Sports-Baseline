@@ -62,3 +62,4 @@ WTA,335958,266647,verified,exact name; implied birth date spread 0d; country CHN
 WTA,223168,269265,verified,exact name; implied birth date spread 1d; country USA; never same event or opponents
 WTA,259733,269267,verified,exact name; implied birth date spread 0d; country ESP/USA; never same event or opponents
 WTA,222034,329512,verified,exact name; implied birth date spread 1d; country USA; never same event or opponents
+WTA,266722,266652,verified,exact name Maaya Rajeshwaran Revathi; country IND; 266652 only in 2025_wta.csv (Chennai 2025-10-27 R32; age 16.375); 266722 only in wta_ongoing_tourneys.csv (Chennai 2026-11-03 R32/R16/QF; no age); never same event or opponents; neither ID used for another name in 2021-2026 files; both resolve by name to local 2679; checked 2026-11-06

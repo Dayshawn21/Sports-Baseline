@@ -150,7 +150,7 @@ def test_reviewed_manifest_is_pinned_to_the_identity_registry(rows, tmp_path, mo
     write_registry(registry_dir, [alias("Z999", "A001", "ATP")], [])
     writes, _, _ = setup_run(monkeypatch, tmp_path, rows[:1])
     preview = asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir))
-    assert "Identity registry tennis-elo-identities-v2" in capsys.readouterr().out
+    assert "Identity registry tennis-elo-identities-v3" in capsys.readouterr().out
     write_registry(registry_dir, [alias("Z999", "A001", "ATP"), alias("Y888", "B002", "ATP")], [])
     with pytest.raises(ValueError, match="identity registry changed"):
         asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir, dry_run=False,
@@ -172,3 +172,8 @@ def test_tracked_registry_parses_and_only_verified_rows_apply(tmp_path):
     shutil.copytree(source, tmp_path / "copy")
     assert ingest.load_identity_registry(tmp_path / "copy").sha256 == loaded.sha256
     assert isinstance(loaded.registry, IdentityRegistry)
+
+
+@pytest.mark.parametrize("name", ["tennis_elo_identities.csv", "tennis_elo_local_overrides.csv"])
+def test_registry_files_are_checked_out_with_lf_so_every_platform_hashes_the_same_bytes(name):
+    assert b"\r" not in (ingest.REGISTRY_DIR / name).read_bytes()

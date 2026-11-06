@@ -143,10 +143,17 @@ skips. Never update this file automatically to match a changed runtime.
 | Experiment | Identity version | Status |
 |---|---|---|
 | `tennis-elo-source-v1` | `tennis-elo-identities-v1` | Closed 2026-10-29, stopped with no verdict. Activated 2026-10-21; the WTA alias fix (`e4fe60b7`) changed the registry and stopped accrual on 2026-10-28. Its 52 pairs and 6 freeze cycles stay stored unchanged and are never pooled with v2 or scored. |
-| `tennis-elo-source-v2` | `tennis-elo-identities-v2` | Pinned 2026-10-29 under the same pre-registered rule. Coefficient, gate and incumbent pins are unchanged from v1. Activated 2026-10-29T20:00:36Z; first eligible UTC day 2026-10-30. |
+| `tennis-elo-source-v2` | `tennis-elo-identities-v2` | Closed 2026-11-06, stopped with no verdict and no rows. Activated 2026-10-29T20:00:36Z, but its `identity_sha256` was hashed from a Windows CRLF checkout of the registry, so the Linux runner never matched it and every scheduled freeze from 2026-10-30 stopped on the pin guard. No v2 freeze cycle or comparison was ever stored. |
+| `tennis-elo-source-v3` | `tennis-elo-identities-v3` | Pinned 2026-11-06 under the same pre-registered rule, after the Rajeshwaran Revathi alias (`WTA 266722 -> 266652`). Coefficient, gate and incumbent pins are unchanged from v2. Activated 2026-11-06T19:56:33Z; first eligible UTC day 2026-11-07. |
 
-The next post-activation registry change closes v2 the same way. Batch
+The next post-activation registry change closes v3 the same way. Batch
 reviewed alias fixes to avoid repeated restarts.
+
+Pins must hash the same bytes the runner reads. `.gitattributes` checks the
+registry CSVs out with LF on every platform, and
+`test_registry_files_are_checked_out_with_lf_so_every_platform_hashes_the_same_bytes`
+fails on a CRLF working copy. Re-check out both CSVs before deriving pins
+on a checkout that predates that rule.
 
 ## Scheduled handoff and recovery
 

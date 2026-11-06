@@ -1,6 +1,6 @@
 {
-  "experiment_version": "tennis-elo-source-v2",
-  "identity_sha256": "96eed61d960b1fe5b7e1ff6872ac0ff01f7c6a65f0c4b625353a1af90dc8b0e3",
+  "experiment_version": "tennis-elo-source-v3",
+  "identity_sha256": "7b32092206ed201e3acd61a4a1ae10f1ed7e61cf40ed13f63488495bd9c8d52c",
   "coefficient_sha256": "8cd48afb3800a62ba5d59b4ba1d45736d14afd60bd2e85a58b9261f8b4745185",
   "gate_sha256": "36dfa04966f5a74fe6c05a2216479241f39c603d51d818b6f99766df3218cb97",
   "model_versions": {
@@ -8,5 +8,5 @@
     "WTA": "ensemble-v3+lgbm-v6",
     "CHALLENGER": "ensemble-v3+lgbm-none"
   },
-  "activated_at": "2026-10-29T20:00:36.089865+00:00"
+  "activated_at": "2026-11-06T19:56:33.770792+00:00"
 }

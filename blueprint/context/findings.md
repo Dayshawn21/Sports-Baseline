@@ -438,4 +438,13 @@ version and forward validation.
 **Found:** 2026-11-06 by /audit (scope: current; lenses: quality, performance)
 **Why it matters:** `asyncio.Lock.release()` clears `locked()` before the woken waiter re-acquires, so an eviction in that window drops a lock a waiter is about to take; a new caller then makes a fresh lock and can build the same key twice. It needs `max_entries` other stores within one loop turn, so it is practically negligible.
 **Suggested fix:** track in-flight keys explicitly and skip their locks on eviction.
+
+### F-42 [P3] open - Windows checkouts made before the eol=lf rule keep CRLF registry CSVs until they are checked out again
+
+**File:** .gitattributes:9; api/tests/test_tennis_elo_identities.py:177
+**Found:** 2026-11-06 by /audit (scope: current; lenses: all)
+**Why it matters:**
+- Git only applies a new `eol` attribute when it writes the file. In an existing Windows checkout (the main `C:\dev\SportAppV2` and the sibling worktrees), a merge rewrites `tennis_elo_identities.csv` but leaves an unchanged `tennis_elo_local_overrides.csv` as CRLF.
+- There, the new LF test and the committed-pin test fail, and any pins derived on that checkout would be wrong again. CI on Linux is unaffected.
+**Suggested fix:** after merging, delete both registry CSVs in each existing checkout and run `git checkout --` on them. The data README already says to re-check them out before deriving pins.
 **Resolution:**
