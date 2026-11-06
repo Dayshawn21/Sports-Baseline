@@ -9,7 +9,7 @@ import pytest
 from app.backtest import tennis_elo as cli
 from app.repositories.tennis_elo_report import ReportInputs
 from app.services.tennis.elo_comparison import ExperimentConfig
-from tests.test_tennis_elo_report import FIRST, NOW, PINS, observation, result, series
+from tests.helpers.tennis_elo_report import FIRST, NOW, PINS, observation, result, series
 
 
 def setup(tmp_path, monkeypatch, daily=None, active=True):

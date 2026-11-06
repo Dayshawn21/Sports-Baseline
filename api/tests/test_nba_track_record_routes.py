@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.db.pool import get_db
 from app.routers import nba as nba_router
 from app.services.nba import track_record
-from tests.test_nfl_track_record_service import GRADED_AT, _call, _inputs
+from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
 
 
 def _client() -> TestClient:

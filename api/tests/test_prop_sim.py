@@ -10,7 +10,7 @@ from app.routers.props import MarketTotal, enrich_with
 from app.schemas.props import PropLine
 from app.services.tennis import prop_sim
 from app.services.tennis.prop_sim import SIM_STATS, SimInputs, line_probabilities, sim_prop_lines, stat_values
-from tests.test_props_audit_projection import _prop, _stats
+from tests.helpers.props_audit_projection import NOW, _prop, _stats
 
 DRAWS = simulate_match(0.8, 0.74, 3, 0.07, 0.05, 0.035, 0.045, draws=4_000, seed=2)
 
@@ -88,7 +88,7 @@ def _props(*stats: tuple[int, str, str]) -> list[Prop]:
 
 def _rows(props: list[Prop], inputs: SimInputs) -> list[PropLine]:
     v3 = enrich_with(props, inputs.opponent_ids, inputs.rolling_stats, inputs.prediction_probs,
-                     inputs.market_probs, inputs.market_totals)
+                     inputs.market_probs, inputs.market_totals, now=NOW)
     return sim_prop_lines(props, v3, inputs)
 
 

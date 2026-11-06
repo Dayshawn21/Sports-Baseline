@@ -12,7 +12,7 @@ from app.core.ask_messages import AskUsage
 from app.evals import ask as runner
 from app.services.ask import tools
 from app.services.ask.loop import AskOutcome, ToolCallRecord
-from tests.test_ask_loop import SETTINGS, FakeClient, _message, _text, _tool_result, _tool_use
+from tests.helpers.ask_loop import SETTINGS, FakeClient, _message, _text, _tool_result, _tool_use
 
 NOW = dt.datetime(2026, 10, 28, 19, 40, tzinfo=dt.UTC)
 PRICES = AskPrices(input=1.0, output=10.0, cache_read=0.1, cache_write=1.25)

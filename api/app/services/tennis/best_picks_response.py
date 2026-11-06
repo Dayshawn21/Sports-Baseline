@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.bookmakers import stored_book_keys
+from app.core.production_settings import is_production
 from app.core.tennis_odds_events import event_start, match_event
 from app.ml.registry import ModelRegistry
 from app.repositories import matches as match_repo
@@ -64,13 +65,22 @@ def dec_to_american(dec) -> Optional[int]:
         return None
 
 
+def live_overlay_allowed(odds_api_key: str, api_env: str) -> bool:
+    """The overlay runs behind public GETs, so production never spends quota on it,
+    even if a key is later added there; stored odds come from the ingest jobs."""
+    return bool(odds_api_key) and not is_production(api_env)
+
+
 async def overlay_live_moneyline(predictions: list[PredictionOutput]) -> None:
     """Fetch live moneyline odds and fill in any predictions missing DB odds.
 
     DB odds (from odds_api.py ingest) are used when available; the live API is
-    only called when one or more predictions have no odds in the DB, and its
-    result is shared across requests for _LIVE_ODDS_TTL_SECONDS.
+    only called outside production, with a key, when one or more predictions have
+    no odds in the DB, and its result is shared across requests for
+    _LIVE_ODDS_TTL_SECONDS.
     """
+    if not live_overlay_allowed(settings.odds_api_key, settings.api_env):
+        return
     needs = [p for p in predictions if p.p1_odds_american is None or p.p2_odds_american is None]
     if not needs:
         return

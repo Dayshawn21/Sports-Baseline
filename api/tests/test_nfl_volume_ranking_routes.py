@@ -11,8 +11,8 @@ from app.routers import nfl as nfl_router
 from app.schemas.nfl import NflModelRankingResponse
 from app.services.nfl import track_record, volume_ranking
 from app.services.nfl.track_record import build_ranking_record
-from tests.test_nfl_track_record_service import GRADED_AT, _call, _inputs
-from tests.test_nfl_volume_ranking_service import FINISHED, _fresh_caches, _passing_sample, _rungs, _volume  # noqa: F401
+from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
+from tests.helpers.nfl_volume_ranking_service import FINISHED, _fresh_caches, _passing_sample, _rungs, _volume  # noqa: F401
 
 
 @pytest.fixture(autouse=True)

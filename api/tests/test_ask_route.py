@@ -10,17 +10,20 @@ from fastapi.testclient import TestClient
 
 from app.config import settings
 from app.main import app
-from app.routers.ask import ask_client_factory, ask_session_factory
+from app.routers.ask import ask_client_factory, ask_clock, ask_session_factory
 from app.schemas.ask import ToolResult
 from app.services.ask import guardrails, tools
 from app.services.ask.answer_stream import ReservedStreamingResponse, ask_frames, error_kind
 from app.services.ask.client import question_reserve_usd
 from app.services.ask.stream import ERROR_MESSAGES, SSE_PING
-from tests.test_ask_loop import (
+from tests.helpers.ask_loop import (
     SETTINGS, FakeClient, FakeStream, _failing_client, _message, _slate_round, _text, _tool_use, ran,  # noqa: F401
 )
 
 NOW = dt.datetime(2026, 10, 28, 22, 0, tzinfo=dt.UTC)
+# One second before midnight UTC: a test that read the wall clock for its spend
+# date could disagree with the route here, and this clock never moves.
+ROUTE_NOW = dt.datetime(2026, 10, 28, 23, 59, 59, tzinfo=dt.UTC)
 
 
 class FakeSession:
@@ -81,7 +84,9 @@ def _frames(text):
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    app.dependency_overrides[ask_clock] = lambda: ROUTE_NOW
+    yield TestClient(app)
+    app.dependency_overrides.pop(ask_clock, None)
 
 
 @pytest.fixture
@@ -363,7 +368,7 @@ def test_a_disconnect_after_the_answer_finished_keeps_its_stop(caplog):
 
 
 def _today():
-    return dt.datetime.now(dt.UTC).date()
+    return ROUTE_NOW.date()
 
 
 @pytest.fixture

@@ -11,7 +11,7 @@ from app.schemas.nba import NbaPropBoardResponse
 from app.services.nba import prop_board_cache
 from app.services.nba.prop_board import prop_board_response
 from app.services.serial_build_cache import SerialBuildCache
-from tests.test_nba_prop_board import DATE, NEXT, PREVIOUS, _box, _game, _line, _prior
+from tests.helpers.nba_prop_board import DATE, NEXT, PREVIOUS, _box, _game, _line, _prior
 
 TODAY = dt.date(2026, 10, 23)
 TOMORROW = TODAY + dt.timedelta(days=1)

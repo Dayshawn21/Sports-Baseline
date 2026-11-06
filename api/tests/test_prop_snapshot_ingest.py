@@ -14,6 +14,7 @@ from app.services.tennis.prop_sim import SimInputs
 from app.services.tennis.prop_snapshots import SNAPSHOT_ELIGIBILITY_POLICY
 
 CAPTURE = datetime(2026, 10, 18, 12, tzinfo=UTC)
+ENRICHED_AT = CAPTURE - timedelta(seconds=30)
 START = CAPTURE + timedelta(hours=2)
 INPUTS = SimInputs({}, {}, {}, {}, {})
 
@@ -67,11 +68,12 @@ def _wire(monkeypatch: pytest.MonkeyPatch, props: list[Prop], inserts: list[list
         stages.append("inputs")
         return INPUTS
 
-    def enrich(loaded, *loaded_inputs):
+    def enrich(loaded, *loaded_inputs, now):
         assert loaded == props and loaded_inputs == (
             INPUTS.opponent_ids, INPUTS.rolling_stats, INPUTS.prediction_probs, INPUTS.market_probs,
             INPUTS.market_totals,
         )
+        assert now is ENRICHED_AT
         stages.append("v3")
         return v3
 
@@ -83,7 +85,11 @@ def _wire(monkeypatch: pytest.MonkeyPatch, props: list[Prop], inserts: list[list
     class Clock:
         @staticmethod
         def now(tz):
-            assert tz is UTC and stages == ["load", "inputs", "v3", "v4"]
+            assert tz is UTC
+            if stages == ["load", "inputs"]:
+                stages.append("enrich clock")
+                return ENRICHED_AT
+            assert stages == ["load", "inputs", "enrich clock", "v3", "v4"]
             stages.append("capture")
             return CAPTURE
 
@@ -144,7 +150,7 @@ def test_a_dry_run_inserts_nothing_and_commits_nothing(monkeypatch):
     counts = asyncio.run(ingest.snapshot_props(dry_run=True))
 
     assert inserts == [] and not session.committed
-    assert stages == ["load", "inputs", "v3", "v4", "capture"]
+    assert stages == ["load", "inputs", "enrich clock", "v3", "v4", "capture"]
     assert counts == {
         "loaded": 5, "eligible": 3, "props-v3_eligible": 3, "props-v4_eligible": 3,
         "skipped_live": 1, "skipped_started": 1,

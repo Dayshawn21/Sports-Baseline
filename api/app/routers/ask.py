@@ -58,6 +58,10 @@ def ask_session_factory() -> SessionFactory:
     return SessionLocal
 
 
+def ask_clock() -> dt.datetime:
+    return dt.datetime.now(dt.UTC)
+
+
 @router.get("/status", response_model=AskStatusResponse)
 async def get_status() -> AskStatusResponse:
     return AskStatusResponse(enabled=ask_available(settings))
@@ -69,8 +73,8 @@ async def ask(
     request: Request,
     make: Callable[[Settings], AsyncAnthropic] = Depends(ask_client_factory),
     sessions: SessionFactory = Depends(ask_session_factory),
+    now: dt.datetime = Depends(ask_clock),
 ) -> ReservedStreamingResponse:
-    now = dt.datetime.now(dt.UTC)
     reservation = require_ask_budget(request, now.date())
     try:
         client = make(settings)

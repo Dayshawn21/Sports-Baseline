@@ -17,7 +17,7 @@ from app.core.prop_ranking_rule import FrozenCall
 from app.db import pool
 from app.services.nfl import track_record, volume_ranking
 from app.services.prop_ranking import RankingCalls
-from tests.test_nfl_volume_ranking_service import _passing_sample
+from tests.helpers.nfl_volume_ranking_service import _passing_sample
 
 
 def _inputs(model: str) -> RankingCalls:

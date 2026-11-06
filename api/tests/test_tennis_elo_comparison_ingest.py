@@ -14,7 +14,7 @@ from app.ingest.predictions import MODELS_DIR
 from app.ml.registry import ModelRegistry
 from app.services.tennis.elo_comparison import ComparisonPlan, ExperimentConfig
 from app.repositories.tennis_elo_comparison import FreezeCycle
-from tests.test_tennis_elo_comparison import NOW, Registry, candidates, config
+from tests.helpers.tennis_elo_comparison import NOW, Registry, candidates, config
 
 
 def reviewed_snapshot(tmp_path, monkeypatch, extra=None):
@@ -133,7 +133,7 @@ def test_existing_cycle_reuses_frozen_ledger_before_loading_live_inputs(tmp_path
 
 
 def test_incomplete_snapshot_cannot_create_partial_pairs(tmp_path, monkeypatch):
-    from tests.test_tennis_elo_comparison import batch, match
+    from tests.helpers.tennis_elo_comparison import batch, match
     path, state = setup_run(tmp_path, monkeypatch)
     async def upcoming(*args): return [match()]
     async def load(*args): return batch()
@@ -168,7 +168,7 @@ def test_scheduled_inactive_or_partial_first_day_skips_without_database(tmp_path
 
 
 def test_active_scheduled_cache_miss_retains_eligible_denominator(tmp_path, monkeypatch, capsys):
-    from tests.test_tennis_elo_comparison import batch, match
+    from tests.helpers.tennis_elo_comparison import batch, match
     path, state = setup_run(tmp_path, monkeypatch)
     async def upcoming(*args): return [match()]
     async def load(*args): return batch()

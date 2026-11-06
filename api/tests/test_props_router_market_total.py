@@ -6,13 +6,13 @@ import pytest
 from app.core.prop_projection import compute_stat_avg
 from app.repositories.matches import MarketTotal, get_market_totals
 from app.routers.props import _enrich
-from tests.test_props_audit_projection import _Rows, _prop, _stats
+from tests.helpers.props_audit_projection import NOW, _Rows, _prop, _stats
 
 
 def _row(stat_type: str, line: str, *, win_prob: float = 0.6, total: float | None = 21.5,
          over_prob: float | None = None, tour: str | None = "ATP"):
     prop = replace(_prop(line), stat_type=stat_type, best_of=3, player_tour=tour)
-    return _enrich(prop, _stats(), _stats(2), win_prob, market_total_games=total, market_total_over_prob=over_prob)
+    return _enrich(prop, _stats(), _stats(2), win_prob, market_total_games=total, market_total_over_prob=over_prob, now=NOW)
 
 
 def test_a_book_line_is_read_as_its_implied_mean():

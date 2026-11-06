@@ -15,7 +15,7 @@ from sqlalchemy.sql.elements import TextClause
 from app.core.nfl_targets_projection import NFL_TARGETS_MODEL_VERSION
 from app.core.prop_ranking_check import FrozenLine
 from app.repositories import nfl_targets_ranking as repo
-from tests.test_nfl_targets_repository import _Result, _Session
+from tests.helpers.nfl_targets_repository import _Result, _Session
 
 KICKOFF = "2026-10-18T17:00:00"
 

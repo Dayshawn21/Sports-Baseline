@@ -1,73 +1,17 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 import asyncio
 
 from app.core.poisson import over_under_push_probs
 from app.core.rolling_stats import pick_stats_for_player
 from app.repositories.matches import get_market_totals
-from app.repositories.players import PlayerRollingStats
-from app.repositories.props import Prop
 from app.routers.props import (
     _compute_stat_avg,
     _enrich,
     _expected_break_point_chances,
     _expected_service_points,
 )
-
-
-def _prop(line: str = "5.0", *, player_id: int | None = 1, match_id: int | None = 10) -> Prop:
-    return Prop(
-        id=1,
-        player_id=player_id,
-        player_name="Test Player",
-        match_id=match_id,
-        source="prizepicks",
-        stat_type="Aces",
-        line=Decimal(line),
-        odds_type=None,
-        fetched_at=datetime(2026, 4, 30, 12, 0, tzinfo=UTC),
-        start_time=datetime(2026, 4, 30, 18, 0, tzinfo=UTC),
-        surface="Hard",
-        raw_json={"match_link_method": "player_start_time"},
-    )
-
-
-def _stats(
-    player_id: int = 1,
-    *,
-    matches_count: int = 30,
-    computed_at: datetime | None = None,
-    aces_per_game: float = 0.18,
-    break_pct: float = 0.24,
-) -> PlayerRollingStats:
-    return PlayerRollingStats(
-        player_id=player_id,
-        surface="Hard",
-        stat_period="last_52w",
-        split_type="overall",
-        split_value="all",
-        win_rate=0.62,
-        svc_pts_won=0.65,
-        ret_pts_won=0.38,
-        aces_per_game=aces_per_game,
-        df_per_game=0.05,
-        hold_pct=0.82,
-        break_pct=break_pct,
-        matches_count=matches_count,
-        first_in_pct=0.62,
-        first_won_pct=0.73,
-        second_won_pct=0.52,
-        dominance_ratio=1.08,
-        computed_at=computed_at or datetime.now(UTC),
-        allowed_aces_per_sp=0.08,
-        allowed_df_per_sp=0.05,
-        allowed_first_in_pct=0.62,
-        allowed_first_won_pct=0.70,
-        allowed_second_won_pct=0.50,
-        allowed_hold_pct=0.78,
-        break_points_created_per_return_game=0.65,
-        allowed_break_points_per_service_game=0.60,
-    )
+from tests.helpers.props_audit_projection import NOW, _Rows, _prop, _stats
 
 
 def test_poisson_integer_line_splits_push_probability():
@@ -97,8 +41,8 @@ def test_same_player_same_match_aces_projection_is_stable_across_lines():
     stats = _stats(aces_per_game=0.08)
     opponent = _stats(2)
 
-    low_line = _enrich(_prop("2.5"), stats, opponent, 0.55, market_total_games=22.5)
-    high_line = _enrich(_prop("4.5"), stats, opponent, 0.55, market_total_games=22.5)
+    low_line = _enrich(_prop("2.5"), stats, opponent, 0.55, market_total_games=22.5, now=NOW)
+    high_line = _enrich(_prop("4.5"), stats, opponent, 0.55, market_total_games=22.5, now=NOW)
 
     assert low_line.stat_avg == high_line.stat_avg
     assert low_line.expected_service_points == high_line.expected_service_points
@@ -173,7 +117,7 @@ def test_double_fault_projection_keeps_neutral_factor_without_opponent():
 
 
 def test_aces_projection_falls_back_to_model_total_without_market_total():
-    enriched = _enrich(_prop("2.5"), _stats(), _stats(2), 0.55, market_total_games=None)
+    enriched = _enrich(_prop("2.5"), _stats(), _stats(2), 0.55, market_total_games=None, now=NOW)
 
     assert enriched.market_total_games is None
     assert enriched.projection_source == "model_total"
@@ -202,8 +146,8 @@ def test_total_games_probability_uses_match_closeness():
     stats = _stats()
     opponent = _stats(2)
 
-    close = _enrich(prop, stats, opponent, 0.50, market_total_games=23.0)
-    lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=23.0)
+    close = _enrich(prop, stats, opponent, 0.50, market_total_games=23.0, now=NOW)
+    lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=23.0, now=NOW)
 
     assert close.market_total_games == lopsided.market_total_games
     assert close.p_over is not None
@@ -218,21 +162,13 @@ def test_total_games_probability_uses_match_closeness_for_best_of_five():
     stats = _stats()
     opponent = _stats(2)
 
-    close = _enrich(prop, stats, opponent, 0.50, market_total_games=30.0)
-    lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=30.0)
+    close = _enrich(prop, stats, opponent, 0.50, market_total_games=30.0, now=NOW)
+    lopsided = _enrich(prop, stats, opponent, 0.90, market_total_games=30.0, now=NOW)
 
     assert close.market_total_games == lopsided.market_total_games
     assert close.p_over is not None
     assert lopsided.p_over is not None
     assert close.p_over > lopsided.p_over
-
-
-class _Rows:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def fetchall(self):
-        return self._rows
 
 
 class _Db:
@@ -278,16 +214,24 @@ def test_fantasy_projection_does_not_add_break_points_as_separate_bonus():
 
 
 def test_stale_stats_are_flagged_and_keep_their_side():
-    stale = datetime.now(UTC) - timedelta(days=3)
-    enriched = _enrich(_prop(), _stats(computed_at=stale), _stats(2, computed_at=stale), 0.65, market_total_games=22.5)
+    stale = NOW - timedelta(days=3)
+    enriched = _enrich(_prop(), _stats(computed_at=stale), _stats(2, computed_at=stale), 0.65, market_total_games=22.5, now=NOW)
 
     assert "stale_stats" in enriched.data_quality_flags
     assert enriched.confidence is None
     assert enriched.recommendation is not None
 
 
+def test_staleness_is_measured_from_the_now_passed_in():
+    def flags(now: datetime) -> list[str]:
+        return _enrich(_prop(), _stats(), _stats(2), 0.65, market_total_games=22.5, now=now).data_quality_flags
+
+    assert "stale_stats" not in flags(NOW + timedelta(hours=47))
+    assert "stale_stats" in flags(NOW + timedelta(hours=49))
+
+
 def test_missing_match_blocks_prizepicks_recommendation():
-    enriched = _enrich(_prop(match_id=None), _stats(), None, None)
+    enriched = _enrich(_prop(match_id=None), _stats(), None, None, now=NOW)
 
     assert "missing_match" in enriched.data_quality_flags
     assert enriched.projection_status == "missing_match"
@@ -299,7 +243,7 @@ def test_finished_match_blocks_prizepicks_recommendation():
     prop = _prop()
     prop.match_status = "completed"
 
-    enriched = _enrich(prop, _stats(), _stats(2), 0.65)
+    enriched = _enrich(prop, _stats(), _stats(2), 0.65, now=NOW)
 
     assert enriched.match_status == "completed"
     assert enriched.match_finished is True
@@ -313,7 +257,7 @@ def test_invalid_match_link_blocks_prizepicks_recommendation():
     prop.match_status = "scheduled"
     prop.match_link_invalid = True
 
-    enriched = _enrich(prop, _stats(), _stats(2), 0.65)
+    enriched = _enrich(prop, _stats(), _stats(2), 0.65, now=NOW)
 
     assert enriched.match_status == "scheduled"
     assert enriched.match_finished is False
@@ -324,7 +268,7 @@ def test_invalid_match_link_blocks_prizepicks_recommendation():
 
 
 def test_small_sample_is_flagged():
-    enriched = _enrich(_prop(), _stats(matches_count=4), _stats(2), 0.65, market_total_games=22.5)
+    enriched = _enrich(_prop(), _stats(matches_count=4), _stats(2), 0.65, market_total_games=22.5, now=NOW)
 
     assert "small_sample" in enriched.data_quality_flags
     assert enriched.confidence is None

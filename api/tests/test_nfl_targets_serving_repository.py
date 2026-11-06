@@ -15,7 +15,7 @@ from app.core.nfl_availability import NflAvailability
 from app.core.nfl_targets_projection import project_targets
 from app.repositories.nfl import _AVAILABILITY_CTE, _player_teams_cte
 from app.repositories.nfl_targets import get_targets_serving_lines, get_unmatched_targets_lines
-from tests.test_nfl_targets_repository import _Session, _history
+from tests.helpers.nfl_targets_repository import _Session, _history
 
 KICKOFF = datetime(2026, 10, 25, 17, tzinfo=UTC)
 FETCHED = datetime(2026, 10, 24, 15, tzinfo=UTC)

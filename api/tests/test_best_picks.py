@@ -98,7 +98,7 @@ def test_bo5_games_won_prop_uses_match_format():
         stat_type="Games Won",
         line=Decimal("16.5"),
         odds_type=None,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=_NOW,
         start_time=None,
         surface="Hard",
         best_of=5,
@@ -111,6 +111,7 @@ def test_bo5_games_won_prop_uses_match_format():
         {(1, 1): 0.74, (2, 1): 0.26},
         {},
         {1: MarketTotal(38.5)},
+        now=_NOW,
     )
     # Best-of-3 scaling would read about 8 games; a 38.5 best-of-5 book total reads about 14 (45a).
     assert 14 <= lines[0].stat_avg < 15
@@ -162,7 +163,7 @@ def _parity_prop(stat_type: str, line: str, **overrides) -> Prop:
 
 
 def _parity_stats() -> dict:
-    fresh = datetime.now(timezone.utc)
+    fresh = _NOW
     return {
         (1, "Hard"): replace(_stats(1), computed_at=fresh, aces_per_game=0.15),
         (2, "Hard"): replace(_stats(2), computed_at=fresh),
@@ -177,6 +178,7 @@ def _board(prop: Prop, stats=None, opponents=None, win_probs=None, totals=None):
         {(1, 1): 0.61, (2, 1): 0.39} if win_probs is None else win_probs,
         {},
         {1: MarketTotal(22.5)} if totals is None else totals,
+        now=_NOW,
     )
     return line
 

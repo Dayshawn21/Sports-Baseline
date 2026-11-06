@@ -130,7 +130,7 @@ def no_row_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     async def no_props(db: object, source: str | None = None) -> list[Prop]:
         return []
 
-    async def no_lines(db: object, props: list[Prop]) -> list[PropLine]:
+    async def no_lines(db: object, props: list[Prop], *, now: datetime) -> list[PropLine]:
         return []
 
     async def session() -> object:

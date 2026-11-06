@@ -5,7 +5,7 @@ import json
 
 from app.repositories import tennis_elo_report as repo
 from app.repositories.tennis_elo_comparison import EXPERIMENT
-from tests.test_tennis_elo_comparison_repository import NOW, pair
+from tests.helpers.tennis_elo_comparison_repository import NOW, pair
 
 
 def json_payload():

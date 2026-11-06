@@ -10,7 +10,7 @@ from app.ingest.nfl_slate_snapshot import parse_weeks, summary
 from app.repositories import report_snapshots
 from app.services.nfl import slate_cache
 from app.services.nfl.slate_cache import load_slate_json, slate_json, slate_report
-from tests.test_nfl_prop_predictions import NOW, _game, _line, _slate
+from tests.helpers.nfl_prop_predictions import NOW, _game, _line, _slate
 
 
 def _sample():

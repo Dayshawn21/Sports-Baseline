@@ -13,7 +13,7 @@ from app.schemas.nfl import NflModelPropLinesResponse
 from app.services.nfl import track_record
 from app.services.nfl.prop_lines_snapshot import PROP_LINES_REPORT, get_prop_lines_response, to_payload
 from app.services.nfl.track_record import build_line_record
-from tests.test_nfl_track_record_service import GRADED_AT, _line, _line_inputs
+from tests.helpers.nfl_track_record_service import GRADED_AT, _line, _line_inputs
 
 
 def _response(season: int = 2026) -> NflModelPropLinesResponse:

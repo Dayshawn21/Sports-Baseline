@@ -17,7 +17,7 @@ from app.core.tennis_elo import (
 )
 from app.core.tennismylife import PlayerNameIndex
 from app.ingest import tennis_elo as ingest
-from tests.test_tennis_elo_ingest import INDEX, cached, matches, rows, setup_run  # noqa: F401
+from tests.helpers.tennis_elo_ingest import INDEX, cached, matches, rows, setup_run  # noqa: F401
 
 BASE = TennisEloMatch(
     namespace="WTA", family="WTA", event_id="2025-1", match_number=1, provider_date=date(2025, 6, 2),

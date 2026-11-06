@@ -31,36 +31,7 @@ from app.repositories import nfl as nfl_repository
 from app.repositories.nfl import get_current_week, get_environment_fit_games, get_unmatched_slate_lines, get_elo_games, get_gradeable_prop_lines, get_replay_rows, get_game_line_games, get_team_game_position_totals, replace_team_elo, upsert_game
 from app.repositories.nfl import TeamEfficiencyWriteResult, get_slate_team_elo, get_team_efficiency, replace_team_efficiency
 from app.repositories.nfl import SnapCountWriteResult, _attach_snap_history, get_slate_opponent_position_history, get_snap_rows, get_weekly_td_rows,replace_snap_counts,PlayerWeekWriteResult,_availability, RedZoneWriteResult, RosterWriteResult, get_team_schedule, replace_weekly_depth_charts, replace_weekly_injuries, _player_teams_cte, get_historical_player_baselines, get_player_candidates, replace_weekly_rosters, _optional_averages, _td_history, _usage, get_slate_lines, get_slate_matchup_context, get_slate_player_history, get_slate_prop_odds, get_upcoming_games_needing_weather, insert_game_weather_snapshot, insert_player_prop_odds_snapshot, upsert_weekly_stat, write_red_zone_usage
-
-
-class _Result:
-    def __init__(self, result_id: int = 0) -> None:
-        self.result_id = result_id
-
-    def mappings(self) -> list[dict[str, object]]:
-        return []
-
-    def fetchall(self) -> list[tuple[object, ...]]:
-        return []
-
-    def scalar_one(self) -> int:
-        return self.result_id
-
-
-class _RecordingSession:
-    def __init__(self) -> None:
-        self.statement = ""
-        self.params: dict[str, object] = {}
-        self.result_id = 0
-
-    async def execute(
-        self,
-        statement: TextClause,
-        params: dict[str, object] | None = None,
-    ) -> _Result:
-        self.statement = str(statement)
-        self.params = params or {}
-        return _Result(self.result_id)
+from tests.helpers.nfl_repository import _RecordingSession, _Result
 
 
 def test_matchup_team_games_keep_pre_week_nfl_regular_season_filters_and_decode_attempts() -> None:

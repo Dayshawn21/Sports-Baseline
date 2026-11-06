@@ -9,7 +9,7 @@ from app.schemas.nfl import NflModelRankingResponse, NflRankingModelVersion
 from app.services.nba import track_record as nba
 from app.services.nfl import track_record as nfl
 from app.services.prop_ranking import RankingCalls
-from tests.test_nfl_track_record_service import GRADED_AT, _call, _inputs
+from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
 
 
 @pytest.mark.parametrize("version, probability_version", [

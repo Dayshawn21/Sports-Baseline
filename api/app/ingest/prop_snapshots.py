@@ -41,7 +41,7 @@ async def snapshot_props(*, dry_run: bool = False) -> dict[str, int]:
         inputs = await load_sim_inputs(db, props)
         v3_lines = enrich_with(
             props, inputs.opponent_ids, inputs.rolling_stats, inputs.prediction_probs,
-            inputs.market_probs, inputs.market_totals,
+            inputs.market_probs, inputs.market_totals, now=datetime.now(UTC),
         )
         v4_lines = sim_prop_lines(props, v3_lines, inputs)
         now = datetime.now(UTC)

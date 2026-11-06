@@ -224,6 +224,8 @@ def _enrich(
     win_prob: Optional[float] = None,
     market_total_games: Optional[float] = None,
     market_total_over_prob: Optional[float] = None,
+    *,
+    now: datetime,
 ) -> PropLine:
     line_f = float(prop.line) if prop.line is not None else None
     stat_norm = _normalize_stat_type(prop.stat_type)
@@ -388,7 +390,7 @@ def _enrich(
     candidate_times = [s.computed_at for s in (stats, opponent_stats) if s is not None and s.computed_at is not None]
     if candidate_times:
         stats_computed_at = min(candidate_times)
-        age_hours = (datetime.now(UTC) - stats_computed_at).total_seconds() / 3600.0
+        age_hours = (now - stats_computed_at).total_seconds() / 3600.0
         stats_stale = age_hours > _STATS_STALE_HOURS
         if stats_stale:
             data_quality_flags.append("stale_stats")
@@ -481,7 +483,7 @@ def _pick_stats(
     return pick_stats_for_player(prop.player_id, prop.surface, all_stats)
 
 
-async def _enrich_props(db: AsyncSession, props: list["Prop"]) -> list[PropLine]:
+async def _enrich_props(db: AsyncSession, props: list["Prop"], *, now: datetime) -> list[PropLine]:
     opponent_ids_map = await get_opponent_ids(db, props)
     player_ids = {p.player_id for p in props if p.player_id is not None}
     opponent_ids = set(opponent_ids_map.values())
@@ -489,7 +491,9 @@ async def _enrich_props(db: AsyncSession, props: list["Prop"]) -> list[PropLine]
     prediction_probs = await get_prediction_win_probs(db, props)
     market_probs = await get_market_win_probs(db, props)
     market_totals = await get_market_totals(db, props)
-    return enrich_with(props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_totals)
+    return enrich_with(
+        props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_totals, now=now,
+    )
 
 
 def enrich_with(
@@ -499,6 +503,8 @@ def enrich_with(
     prediction_probs: dict[tuple[int, int], float],
     market_probs: dict[tuple[int, int], float],
     market_totals: dict[int, MarketTotal],
+    *,
+    now: datetime,
 ) -> list[PropLine]:
     """The board's rows from already-loaded inputs; best-pick cards read the same rows."""
     return [
@@ -515,6 +521,7 @@ def enrich_with(
                 prediction_probs.get((p.player_id, p.match_id))
                 or market_probs.get((p.player_id, p.match_id))
             ) if p.player_id and p.match_id else None,
+            now=now,
         )
         for p in props
     ]
@@ -526,11 +533,14 @@ def _enrich_with_total(
     stats: Optional[PlayerRollingStats],
     opponent_stats: Optional[PlayerRollingStats],
     win_prob: Optional[float],
+    *,
+    now: datetime,
 ) -> PropLine:
     return _enrich(
         prop, stats, opponent_stats, win_prob,
         market_total_games=total.line if total is not None else None,
         market_total_over_prob=total.p_over if total is not None else None,
+        now=now,
     )
 
 
@@ -565,7 +575,7 @@ def _audit_summary(props: list[PropLine]) -> PropsAuditSummary:
 async def get_prizepicks_props_audit(db: AsyncSession = Depends(get_db)):
     try:
         props = await get_today_props(db, source="prizepicks")
-        enriched = await _enrich_props(db, props)
+        enriched = await _enrich_props(db, props, now=datetime.now(UTC))
         return PropsAuditResponse(
             source="prizepicks",
             count=len(enriched),
@@ -580,10 +590,11 @@ async def get_prizepicks_props_audit(db: AsyncSession = Depends(get_db)):
 @router.get("/prizepicks", response_model=PropsResponse)
 async def get_prizepicks_props(db: AsyncSession = Depends(get_db)):
     try:
+        now = datetime.now(UTC)
         props = await get_today_props(db, source="prizepicks")
-        enriched = await _enrich_props(db, props)
+        enriched = await _enrich_props(db, props, now=now)
         adopted = await prop_adoption.load_adopted(db)
-        enriched = prop_adoption.apply_adoption(props, enriched, adopted, datetime.now(UTC))
+        enriched = prop_adoption.apply_adoption(props, enriched, adopted, now)
         return PropsResponse(
             source="prizepicks",
             count=len(props),
@@ -599,7 +610,7 @@ async def get_dk_props(db: AsyncSession = Depends(get_db)):
     props = await get_today_props(db, source="draftkings")
     odds_props = await get_today_match_odds_as_props(db, books=["draftkings"])
     props = [*props, *odds_props]
-    enriched = await _enrich_props(db, props)
+    enriched = await _enrich_props(db, props, now=datetime.now(UTC))
     return PropsResponse(
         source="draftkings",
         count=len(props),

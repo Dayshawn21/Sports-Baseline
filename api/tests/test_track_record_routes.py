@@ -8,7 +8,7 @@ from app.db.pool import get_db
 from app.routers import tennis as tennis_router
 from app.services.tennis import track_record
 from app.services.tennis.track_record import build_prediction_grading
-from tests.test_track_record_service import GRADED_AT, MODEL, _row
+from tests.helpers.track_record_service import GRADED_AT, MODEL, _row
 
 
 def _client() -> TestClient:
@@ -119,7 +119,7 @@ def test_cached_loader_reads_once_for_every_version(monkeypatch):
 
 def test_prizepicks_lines_route_serializes_in_camel_case(monkeypatch):
     from app.services.tennis.track_record import build_line_settlement
-    from tests.test_track_record_service import _line
+    from tests.helpers.track_record_service import _line
 
     async def settlement(_db):
         return build_line_settlement([_line(1, 18.5), _line(2, 25.5, "goblin")], {}, GRADED_AT)
@@ -139,7 +139,7 @@ def test_prizepicks_lines_route_serializes_in_camel_case(monkeypatch):
 
 def test_prop_tiers_route_serializes_in_camel_case(monkeypatch):
     from app.services.tennis.track_record import build_tier_grading
-    from tests.test_track_record_service import AS_OF, _snap
+    from tests.helpers.track_record_service import AS_OF, _snap
 
     async def grading(_db):
         return build_tier_grading([_snap(1)], {}, AS_OF, GRADED_AT)

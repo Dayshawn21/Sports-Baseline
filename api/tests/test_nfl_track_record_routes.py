@@ -8,7 +8,7 @@ from app.repositories import report_snapshots
 from app.routers import nfl as nfl_router
 from app.services.nfl import track_record
 from app.services.nfl.track_record import build_clv_record, build_line_record, build_ranking_record
-from tests.test_nfl_track_record_service import (
+from tests.helpers.nfl_track_record_service import (
     GRADED_AT, _call, _clv_pick, _grade, _inputs, _line, _line_inputs,
 )
 

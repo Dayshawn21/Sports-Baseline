@@ -16,8 +16,8 @@ from app.services.nfl.prop_source import NflPropSource
 from app.services.prop_ranking import RankingCalls
 from app.services.sport_registry import prop_source
 from app.services.tennis.live_odds_cache import TimedSingleFlight
-from tests.test_nfl_track_record_service import GRADED_AT
-from tests.test_prop_ranking_check import _frozen
+from tests.helpers.nfl_track_record_service import GRADED_AT
+from tests.helpers.prop_ranking_check import _frozen
 
 DB = cast(AsyncSession, object())
 

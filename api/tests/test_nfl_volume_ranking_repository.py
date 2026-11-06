@@ -16,7 +16,7 @@ from app.core.nfl_volume_anchor import NFL_VOLUME_ANCHOR_VERSION
 from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.prop_ranking_check import FrozenLine
 from app.repositories import nfl_volume_ranking as repo
-from tests.test_nfl_targets_repository import _Result, _Session
+from tests.helpers.nfl_targets_repository import _Result, _Session
 
 KICKOFF = "2026-11-08T18:00:00"
 V4 = "opponent-dvp-tg-blend-usage-snap-v4"

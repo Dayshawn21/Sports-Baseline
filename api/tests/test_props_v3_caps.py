@@ -11,12 +11,12 @@ from app.db.pool import get_db
 from app.routers import props as props_router
 from app.routers.props import _enrich
 from app.services.tennis.prop_snapshots import PROJECTION_VERSION
-from tests.test_props_audit_projection import _prop, _stats
+from tests.helpers.props_audit_projection import NOW, _prop, _stats
 
 
 def _row(stat_type: str, line: str, total: float | None, **overrides):
     prop = replace(_prop(line), stat_type=stat_type, best_of=3, player_tour="ATP", **overrides)
-    return _enrich(prop, _stats(), _stats(2), 0.6, market_total_games=total)
+    return _enrich(prop, _stats(), _stats(2), 0.6, market_total_games=total, now=NOW)
 
 
 @pytest.mark.parametrize("stat", ["Total Games", "Total Games Won", "Aces", "Double Faults",

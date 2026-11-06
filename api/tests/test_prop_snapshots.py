@@ -10,7 +10,7 @@ from app.schemas.props import PropLine
 from app.services.tennis.prop_snapshots import (
     PROJECTION_VERSION, SIM_PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
 )
-from tests.test_props_audit_projection import _stats
+from tests.helpers.props_audit_projection import NOW as STATS_NOW, _stats
 
 NOW = datetime(2026, 9, 25, 13, 30, tzinfo=timezone.utc)
 START = NOW + timedelta(hours=5)
@@ -106,7 +106,7 @@ class TestSkipReason:
 class TestToSnapshot:
     def test_an_enriched_line_is_frozen_with_its_probabilities_and_no_tier(self):
         prop = _prop(best_of=3, player_tour="ATP")
-        line = _enrich(prop, _stats(11), _stats(12), 0.6, market_total_games=21.5)
+        line = _enrich(prop, _stats(11), _stats(12), 0.6, market_total_games=21.5, now=STATS_NOW)
         snap = to_snapshot(prop, line, NOW)
         assert snap.confidence is None
         assert snap.p_over is not None and (snap.p_over, snap.p_under) == (line.p_over, line.p_under)

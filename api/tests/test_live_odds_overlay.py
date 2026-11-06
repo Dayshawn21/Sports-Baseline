@@ -199,6 +199,8 @@ def live(monkeypatch):
 
     monkeypatch.setattr(best_picks_response, "fetch_live_tennis_odds", fake_fetch)
     monkeypatch.setattr(best_picks_response, "_LIVE_ODDS", TimedSingleFlight(900, Clock()))
+    monkeypatch.setattr(best_picks_response.settings, "odds_api_key", "test-key")
+    monkeypatch.setattr(best_picks_response.settings, "api_env", "dev")
     return SimpleNamespace(calls=calls, payload=payload)
 
 
@@ -228,6 +230,24 @@ class TestOverlay:
     def test_predictions_with_stored_odds_never_call_the_api(self, live):
         asyncio.run(best_picks_response.overlay_live_moneyline([_pred(p1_odds_american=-150, p2_odds_american=130)]))
         assert live.calls == []
+
+    @pytest.mark.parametrize(("key", "env"), [("test-key", "production"), ("", "dev")])
+    def test_production_or_a_missing_key_never_calls_the_api(self, live, monkeypatch, key, env):
+        live.payload["events"] = [_event("Vacherot, Valentin", "Harris, Lloyd", START, "1.80", "2.00")]
+        monkeypatch.setattr(best_picks_response.settings, "odds_api_key", key)
+        monkeypatch.setattr(best_picks_response.settings, "api_env", env)
+        pred = _pred()
+        asyncio.run(best_picks_response.overlay_live_moneyline([pred]))
+        assert live.calls == []
+        assert pred.p1_odds_american is None
+
+
+@pytest.mark.parametrize(
+    ("key", "env", "allowed"),
+    [("k", "dev", True), ("k", "production", False), ("k", "PRODUCTION", False), ("", "dev", False)],
+)
+def test_live_overlay_allowed(key, env, allowed):
+    assert best_picks_response.live_overlay_allowed(key, env) is allowed
 
 
 def test_a_provider_429_becomes_a_rate_limit_error():

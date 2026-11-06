@@ -12,38 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.nfl.markets import NFL_V4_PROP_MARKETS, NflLineOnlyMarket, NflPropMarket
 from app.repositories.nfl import LINE_ONLY_MARKET_FILTER, MODELLED_MARKET_FILTER, V4_MARKET_FILTER
-from app.repositories.nfl_targets import TargetsServingLine, TargetsUnmatchedLine
+from app.repositories.nfl_targets import TargetsUnmatchedLine
 from app.services.nfl import slate
 from app.services.nfl.prop_predictions import freeze_rows
 from app.services.nfl.prop_source import NflPropSource
 from app.services.prop_predictions import freeze_current_period
-from tests.test_nfl_projection_harness import _replay_row
-from tests.test_nfl_targets_service import FETCHED, KICKOFF, NOW, _source
+from tests.helpers.nfl_projection_harness import _replay_row
+from tests.helpers.nfl_targets_service import FETCHED, NOW, _source
+from tests.helpers.nfl_targets_slate import _game, _inputs
 
 DB = cast(AsyncSession, object())
-
-
-def _game(game_id: int = 50) -> dict[str, object]:
-    return {"game_id": game_id, "game_date": KICKOFF.date(), "start_utc": KICKOFF,
-            "away_team": "BUF", "home_team": "MIA", "status": "scheduled"}
-
-
-def _inputs(
-    monkeypatch: pytest.MonkeyPatch, games: list[dict[str, object]], v4: list[dict[str, object]],
-    targets: list[TargetsServingLine], unmatched: list[TargetsUnmatchedLine] | None = None,
-) -> None:
-    reads = {
-        "get_slate_games": games, "get_slate_lines": v4, "get_slate_player_history": {},
-        "get_slate_opponent_position_history": {}, "get_team_game_position_totals": {},
-        "get_slate_market_probabilities": {}, "get_slate_matchup_context": {}, "get_slate_weather": {},
-        "get_unmatched_slate_lines": [], "get_slate_prop_odds": {}, "get_slate_team_elo": {}, "get_elo_games": [],
-        "get_current_week": (2026, 7),
-    }
-    for name, value in reads.items():
-        monkeypatch.setattr(slate.nfl_repo, name, AsyncMock(return_value=value))
-    monkeypatch.setattr(slate.targets_repo, "get_targets_serving_lines", AsyncMock(return_value=targets))
-    monkeypatch.setattr(slate.targets_repo, "get_unmatched_targets_lines", AsyncMock(return_value=unmatched or []))
-    monkeypatch.setattr(slate.volume_repo, "get_volume_serving_lines", AsyncMock(return_value=[]))
 
 
 def test_promotion_widens_serving_and_removes_only_targets_from_line_only() -> None:

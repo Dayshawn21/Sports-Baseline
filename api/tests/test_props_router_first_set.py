@@ -4,7 +4,7 @@ import pytest
 from app.core.tennis_first_set import first_set_distribution, pmf_probabilities
 from app.core.prop_projection import serve_hold
 from app.routers.props import _enrich
-from tests.test_props_router_best_of import _enriched, _prop, _stats
+from tests.helpers.props_router_best_of import _enriched, _prop, _stats
 
 
 @pytest.mark.parametrize(("stat", "line"), [("1st Set Total Games", "9.5"), ("1st Set Total Games Won", "4.5")])

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from app.core.prop_probs import prop_probabilities, prop_side
 from app.routers.props import _enrich
-from tests.test_props_audit_projection import _prop, _stats
+from tests.helpers.props_audit_projection import NOW, _prop, _stats
 
 
 def test_a_skewed_count_just_over_the_line_is_still_likelier_under():
@@ -21,7 +21,7 @@ def _just_over_a_half_line() -> tuple[object, float]:
     """Stats whose aces projection sits a hair above a .5 line."""
     for rate in (x / 1000 for x in range(60, 260)):
         stats = _stats(aces_per_game=rate)
-        mean = _enrich(_prop("0.5"), stats, _stats(2)).stat_avg
+        mean = _enrich(_prop("0.5"), stats, _stats(2), now=NOW).stat_avg
         line = math.floor(mean - 0.5) + 0.5
         if 0 < mean - line < 0.1 and line > 2:
             return stats, line
@@ -30,7 +30,7 @@ def _just_over_a_half_line() -> tuple[object, float]:
 
 def test_router_recommends_the_likelier_side_not_the_side_of_the_mean():
     stats, line = _just_over_a_half_line()
-    row = _enrich(_prop(str(line)), stats, _stats(2))
+    row = _enrich(_prop(str(line)), stats, _stats(2), now=NOW)
     assert row.stat_avg > line
     assert row.p_under > row.p_over
     assert row.recommendation == "UNDER"
@@ -39,5 +39,5 @@ def test_router_recommends_the_likelier_side_not_the_side_of_the_mean():
 def test_demon_and_goblin_stay_over():
     stats, line = _just_over_a_half_line()
     for odds_type in ("demon", "goblin"):
-        row = _enrich(replace(_prop(str(line)), odds_type=odds_type), stats, _stats(2))
+        row = _enrich(replace(_prop(str(line)), odds_type=odds_type), stats, _stats(2), now=NOW)
         assert row.recommendation == "OVER"

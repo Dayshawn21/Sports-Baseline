@@ -16,9 +16,9 @@ from app.services.nfl import slate
 from app.services.nfl.prop_predictions import freeze_rows
 from app.services.nfl.prop_source import NflPropSource
 from app.services.prop_predictions import freeze_current_period
-from tests.test_nfl_projection_harness import _replay_row
-from tests.test_nfl_targets_service import FETCHED, KICKOFF, NOW
-from tests.test_nfl_targets_slate import _game, _inputs
+from tests.helpers.nfl_projection_harness import _replay_row
+from tests.helpers.nfl_targets_service import FETCHED, KICKOFF, NOW
+from tests.helpers.nfl_targets_slate import _game, _inputs
 
 DB = cast(AsyncSession, object())
 V4_VERSION = "opponent-dvp-tg-blend-usage-snap-v4"
