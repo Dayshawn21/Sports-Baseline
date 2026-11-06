@@ -2553,7 +2553,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 
 | Prefix | Endpoints |
 |---|---|
-| `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `players/stats`, `bankroll/today`, `parlays/suggested` |
+| `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `bankroll/today`, `parlays/suggested` |
 | `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk` (`bet` removed 2026-10-27) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
 | `/nba` | `slate?date=`, `slate/gaps?date=`, `props?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |

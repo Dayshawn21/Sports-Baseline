@@ -5,16 +5,9 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rolling_stats import SMALL_SAMPLE_MATCHES
 from app.db.pool import get_db
 from app.repositories import matches as match_repo
-from app.repositories.players import (
-    find_player_id_for_stats,
-    get_latest_elo,
-    get_rolling_stats,
-    get_rolling_stats_batch_all_surfaces,
-    normalize_name,
-)
+from app.repositories.players import get_rolling_stats_batch_all_surfaces
 from app.schemas.tennis import (
     BankrollBuilderResponse,
     BankrollPickSchema,
@@ -46,7 +39,6 @@ from app.schemas.tennis import (
     PlayerSurfaceComparisonSchema,
     PlayerSurfaceStatsSchema,
     TourAverageStatsSchema,
-    PlayerStatsResponse,
     PlayerRecentForm,
     PlayerFormStats,
     PredictionsResponse,
@@ -408,56 +400,6 @@ async def get_best_picks(
     if response is None:
         raise HTTPException(status_code=503, detail=PREDICTIONS_UNAVAILABLE)
     return response
-
-
-@router.get("/players/stats", response_model=PlayerStatsResponse | None)
-async def get_player_stats(
-    name: str,
-    tour: str | None = None,
-    surface: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    player_id = await find_player_id_for_stats(db, normalize_name(name), tour)
-    if player_id is None:
-        return None
-
-    # Prefer last_52w (complete stats including ret_pts_won).
-    # Use surface-specific rows only when the sample is large enough; otherwise
-    # mirror the projection path and show the all-surface baseline.
-    stats = await get_rolling_stats(db, player_id, surface=surface, stat_period="last_52w")
-    if surface is not None and (
-        stats is None or (stats.matches_count or 0) < SMALL_SAMPLE_MATCHES
-    ):
-        fallback_stats = await get_rolling_stats(db, player_id, surface=None, stat_period="last_52w")
-        if fallback_stats is not None:
-            stats = fallback_stats
-    if stats is None:
-        return None
-
-    elo_data = await get_latest_elo(db, player_id)
-    return PlayerStatsResponse(
-        player_id=stats.player_id,
-        surface=stats.surface,
-        stat_period=stats.stat_period,
-        win_rate=stats.win_rate,
-        svc_pts_won=stats.svc_pts_won,
-        ret_pts_won=stats.ret_pts_won,
-        aces_per_game=stats.aces_per_game,
-        df_per_game=stats.df_per_game,
-        hold_pct=stats.hold_pct,
-        break_pct=stats.break_pct,
-        matches_count=stats.matches_count,
-        first_in_pct=stats.first_in_pct,
-        first_won_pct=stats.first_won_pct,
-        second_won_pct=stats.second_won_pct,
-        dominance_ratio=stats.dominance_ratio,
-        break_points_created_per_return_game=stats.break_points_created_per_return_game,
-        allowed_break_points_per_service_game=stats.allowed_break_points_per_service_game,
-        elo=elo_data.elo if elo_data else None,
-        elo_hard=elo_data.elo_hard if elo_data else None,
-        elo_clay=elo_data.elo_clay if elo_data else None,
-        elo_grass=elo_data.elo_grass if elo_data else None,
-    )
 
 
 @router.get("/bankroll/today", response_model=BankrollBuilderResponse)

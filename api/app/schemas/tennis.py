@@ -47,31 +47,6 @@ class PredictionsResponse(_CamelModel):
     matches: list[MatchPrediction]
 
 
-class PlayerStatsResponse(_CamelModel):
-    player_id: int
-    surface: Optional[str]
-    stat_period: str
-    win_rate: Optional[float]
-    svc_pts_won: Optional[float]
-    ret_pts_won: Optional[float]
-    aces_per_game: Optional[float]
-    df_per_game: Optional[float]
-    hold_pct: Optional[float]
-    break_pct: Optional[float]
-    matches_count: Optional[int]
-    first_in_pct: Optional[float] = None
-    first_won_pct: Optional[float] = None
-    second_won_pct: Optional[float] = None
-    dominance_ratio: Optional[float] = None
-    break_points_created_per_return_game: Optional[float] = None
-    allowed_break_points_per_service_game: Optional[float] = None
-    # ELO ratings (all surfaces + per surface)
-    elo: Optional[float] = None
-    elo_hard: Optional[float] = None
-    elo_clay: Optional[float] = None
-    elo_grass: Optional[float] = None
-
-
 class RecentMatchResult(_CamelModel):
     match_date: date
     opponent_name: str
