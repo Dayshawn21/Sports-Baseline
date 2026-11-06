@@ -320,28 +320,12 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-25 [P2] open - `/nhl/model/` is not rate-limited as heavy, and season-keyed caches never evict
-
-**File:** api/app/core/rate_limits.py:8; api/app/services/tennis/live_odds_cache.py:47
-**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
-**Why it matters:** `HEAVY_PREFIXES` lists the NFL, tennis and NBA model routes but not `/nhl/model/ranking`, which replays on a cold cache. `TimedSingleFlight` only grows its `_entries` and `_locks`, is keyed by the raw `season` query int (NFL, NBA, NHL track records, NFL volume ranking), and builds different keys concurrently, so arbitrary seasons add entries and parallel builds. Memory impact unmeasured.
-**Suggested fix:** add `"/nhl/model/"` to `HEAVY_PREFIXES`; bound `season` in the routers to known seasons, or give `TimedSingleFlight` a `max_entries` like `SerialBuildCache`.
-**Resolution:**
-
 ### F-27 [P2] open - Tennis player stats are fetched in a `useEffect` that refires on every render
 
 **File:** web/src/components/tennis/TennisMatchDetail.tsx:115
 **Found:** 2026-11-06 by /audit (scope: full; lens: performance)
 **Why it matters:** `usePlayerStats` calls `fetchPlayerStats` from `~/api/tennis` in a `useEffect` keyed on `[match]`. When a match has no prediction, `unifiedMatchToPrediction` builds a new object per render, so each re-render of the expanded row fires two requests. No cache, no loading or error state; an error shows as `--`. Breaks the TanStack Query convention.
 **Suggested fix:** a `useQuery` hook in `src/hooks/` keyed `['tennis', 'player-stats', { name, tour, surface }]` with a 5-minute `staleTime`.
-**Resolution:**
-
-### F-28 [P2] open - `/nfl/prospects` scans every stored NFL prop line and nothing calls it
-
-**File:** api/app/routers/nfl.py:129; api/app/repositories/nfl.py:2390
-**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
-**Why it matters:** `get_latest_prop_lines` runs `DISTINCT ON` over all NFL `sport_prop_lines` with no season, time or `LIMIT` bound, on a public route that the web only redirects (`App.tsx:170`). It grows with every ingest and is not in the heavy rate limit.
-**Suggested fix:** remove the endpoint (and the repository function if unused), or bound it to upcoming games.
 **Resolution:**
 
 ### F-29 [P3] open - A service imports a router, and SQL lives in routers and a service
@@ -446,4 +430,12 @@ version and forward validation.
 **Found:** 2026-11-06 by /audit (scope: current; lens: quality)
 **Why it matters:** `ask_daily_spend_cap_usd` accepts any value above 0, but since ask-spend-reservation/F-26 a question is admitted only when its worst-case hold fits (`question_reserve_usd`, about $0.021 at the defaults and up to about $0.041 at the largest `ask_max_tokens` and `ask_max_tool_iterations`). A cap of, say, $0.02 makes every `POST /ask` a 503 "reached today's limit" with nothing spent and no log line saying why. The default $1 cap is unaffected.
 **Suggested fix:** in `Settings`, reject (or warn at startup on) a cap below `question_reserve_usd(settings)` when `ask_enabled`, so the misconfiguration fails at boot like the other Ask bounds.
+**Resolution:**
+
+### F-40 [P3] open - Evicting a just-released lock can let one duplicate build start
+
+**File:** api/app/services/tennis/live_odds_cache.py:80
+**Found:** 2026-11-06 by /audit (scope: current; lenses: quality, performance)
+**Why it matters:** `asyncio.Lock.release()` clears `locked()` before the woken waiter re-acquires, so an eviction in that window drops a lock a waiter is about to take; a new caller then makes a fresh lock and can build the same key twice. It needs `max_entries` other stores within one loop turn, so it is practically negligible.
+**Suggested fix:** track in-flight keys explicitly and skip their locks on eviction.
 **Resolution:**

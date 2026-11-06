@@ -42,6 +42,9 @@ from app.services.sport_registry import prop_source
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
 CACHE_TTL_SECONDS = 15 * 60
+# Every season `is_model_season` accepts times the ranking's two cached versions, with room for a
+# decade more; records are small.
+CACHE_MAX_ENTRIES = 32
 # The CLV report names the total model by its parameter set; it carries no version string.
 CLV_MODEL_VERSIONS: dict[Market, str] = {"spread": NFL_ELO_MODEL_VERSION, "total": "NFL_SCORING_V1"}
 
@@ -363,9 +366,9 @@ def get_fit_record() -> FitRecord:
     return build_fit_record(NFL_PROJECTION_MODEL_VERSION)
 
 
-_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
-_CLV: TimedSingleFlight[ClvRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
-_LINES: TimedSingleFlight[LineRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
+_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
+_CLV: TimedSingleFlight[ClvRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
+_LINES: TimedSingleFlight[LineRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
 
 
 async def get_ranking_record(

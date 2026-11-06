@@ -14,6 +14,8 @@ from app.services.sport_registry import prop_source
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
 CACHE_TTL_SECONDS = 15 * 60
+# Every season `is_model_season` accepts, with room for a decade more; records are small.
+CACHE_MAX_ENTRIES = 16
 
 
 async def nhl_season(db: AsyncSession, now: datetime) -> int | None:
@@ -33,7 +35,7 @@ def build_ranking_record(inputs: RankingCalls, season: int, graded_at: datetime)
     )
 
 
-_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
+_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
 
 
 async def get_ranking_record(db: AsyncSession, season: int) -> RankingRecord | None:

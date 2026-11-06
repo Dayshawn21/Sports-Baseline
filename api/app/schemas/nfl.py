@@ -235,27 +235,6 @@ class NflProjectionsResponse(_CamelModel):
     projections: list[NflProjectionSchema]
 
 
-class NflPropLineSchema(_CamelModel):
-    id: int
-    provider: str
-    provider_prop_id: str | None
-    player_name: str
-    position: str | None
-    market: str
-    segment: str = "full_game"
-    league_name: str | None = None
-    line: float
-    start_time: datetime | None
-    fetched_at: datetime
-
-
-class NflProspectsResponse(_CamelModel):
-    count: int
-    provider: str = "prizepicks"
-    refresh_interval_minutes: int = 120
-    lines: list[NflPropLineSchema]
-
-
 class NflVolumeReferenceSchema(_CamelModel):
     """The gray `nfl-volume-v1` receptions reference beside v4 on the same line (49c).
 

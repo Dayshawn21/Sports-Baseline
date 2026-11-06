@@ -2387,37 +2387,6 @@ async def get_recent_stat_rows(
     return [dict(row) for row in rows.mappings()]
 
 
-async def get_latest_prop_lines(db: AsyncSession) -> list[dict]:
-    """Return the newest stored provider snapshot for each NFL player prop.
-
-    PrizePicks identifiers do not currently map to our normalized player IDs at
-    ingest time, so the provider player name retained in raw_json is the safe
-    display fallback until that linking step is introduced.
-    """
-    rows = await db.execute(
-        text("""
-            SELECT DISTINCT ON (l.provider, l.provider_prop_id)
-                   l.id, l.provider, l.provider_prop_id, l.market, l.line,
-                   l.start_time, l.fetched_at,
-                   COALESCE(p.name, l.raw_json ->> 'player_name', 'Unknown player') AS player_name,
-                   p.position, l.segment, l.raw_json ->> 'league_name' AS league_name
-            FROM sport_prop_lines l
-            LEFT JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
-            WHERE l.sport = 'nfl'
-            ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
-        """),
-    )
-    return [
-        {
-            "id": row[0], "provider": row[1], "provider_prop_id": row[2],
-            "market": row[3], "line": float(row[4]), "start_time": row[5],
-            "fetched_at": row[6], "player_name": row[7], "position": row[8],
-            "segment": row[9], "league_name": row[10],
-        }
-        for row in rows.fetchall()
-    ]
-
-
 async def get_settled_prop_prices(db: AsyncSession) -> list[SettledPropRow]:
     """Every anytime-TD price stored for a completed game, with its result evidence.
 

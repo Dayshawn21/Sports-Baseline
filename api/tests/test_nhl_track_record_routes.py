@@ -56,6 +56,15 @@ def test_ranking_route_defaults_to_the_current_nhl_season(monkeypatch):
     assert graded == [2026] and res.json()["season"] == 2026
 
 
+def test_ranking_route_refuses_an_unknown_season_before_grading(monkeypatch):
+    graded = _serve(monkeypatch, current_season=2026)
+
+    responses = [_client().get("/nhl/model/ranking", params={"season": s}) for s in (1999, 9999)]
+
+    assert [r.status_code for r in responses] == [422, 422]
+    assert graded == []
+
+
 def test_ranking_route_404s_with_no_regular_season_game(monkeypatch):
     graded = _serve(monkeypatch, current_season=None)
 

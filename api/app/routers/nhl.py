@@ -11,6 +11,7 @@ from app.schemas.nhl import (
     NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlModelRankingResponse, NhlPlayerPropsResponse,
     NhlPropBoardResponse, NhlSlateResponse,
 )
+from app.season_query import optional_model_season
 from app.services.nhl import track_record
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
@@ -65,7 +66,9 @@ async def get_player_props(
 
 
 @router.get("/model/ranking", response_model=NhlModelRankingResponse)
-async def get_model_ranking(season: int | None = None, db: AsyncSession = Depends(get_db)) -> NhlModelRankingResponse:
+async def get_model_ranking(
+    season: int | None = Depends(optional_model_season), db: AsyncSession = Depends(get_db),
+) -> NhlModelRankingResponse:
     # Resolved before the cache, so the cache is always keyed by a concrete season.
     if season is None:
         season = await track_record.nhl_season(db, dt.datetime.now(dt.UTC))

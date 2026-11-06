@@ -11,7 +11,10 @@ HEAVY = "10/minute"
 
 @pytest.mark.parametrize(
     "path",
-    ["/nfl/model/prop-lines", "/tennis/model/predictions", "/nba/model/ranking", "/nfl/slate", "/admin/session", "/ask"],
+    [
+        "/nfl/model/prop-lines", "/tennis/model/predictions", "/nba/model/ranking", "/nhl/model/ranking",
+        "/nfl/slate", "/admin/session", "/ask",
+    ],
 )
 def test_heavy_routes_get_their_own_bucket(path: str) -> None:
     assert rule_for_path(path, DEFAULT, HEAVY) == RateRule(HEAVY, path)

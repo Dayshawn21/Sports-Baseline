@@ -99,6 +99,25 @@ def test_routes_require_a_season():
     assert _client().get("/nfl/model/ranking").status_code == 422
 
 
+def test_routes_refuse_an_unknown_season_before_grading(monkeypatch):
+    graded = []
+
+    async def record(_db, season, _model_version=track_record.NFL_PROJECTION_MODEL_VERSION):
+        graded.append(season)
+
+    for name in ("get_ranking_record", "get_clv_record", "get_line_record"):
+        monkeypatch.setattr(track_record, name, record)
+    client = _client()
+
+    for path in ("/nfl/model/ranking", "/nfl/model/game-line-clv", "/nfl/model/prop-lines"):
+        assert client.get(path, params={"season": 9999}).status_code == 422
+    assert graded == []
+
+
+def test_prospects_route_is_gone():
+    assert _client().get("/nfl/prospects").status_code == 404
+
+
 def test_fit_route_serves_the_recorded_table():
     body = _client().get("/nfl/model/over-probability-fit").json()
 

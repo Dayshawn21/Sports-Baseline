@@ -28,6 +28,8 @@ from app.services.prop_ranking import RankingCalls, RankingRecord, RankingSliceR
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
 CACHE_TTL_SECONDS = 15 * 60
+# Every season `is_model_season` accepts, with room for a decade more; records are small.
+CACHE_MAX_ENTRIES = 16
 
 SliceState = Literal["evaluated", "not_frozen"]
 
@@ -142,7 +144,7 @@ def build_volume_record(inputs: VolumeInputs, season: int, graded_at: datetime) 
     return VolumeRankingRecord(replace(base, slices=rows), states, progress)
 
 
-_VOLUME: TimedSingleFlight[VolumeRankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
+_VOLUME: TimedSingleFlight[VolumeRankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
 
 
 async def get_volume_record(db: AsyncSession, season: int) -> VolumeRankingRecord | None:

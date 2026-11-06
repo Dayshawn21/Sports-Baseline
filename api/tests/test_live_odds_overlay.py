@@ -74,6 +74,63 @@ class TestTimedSingleFlight:
         assert asyncio.run(run()) == (None, None)
         assert len(calls) == 1
 
+    def test_max_entries_drops_the_least_recently_stored_key_and_its_lock(self):
+        calls = []
+
+        async def fetch():
+            calls.append(1)
+            return len(calls)
+
+        cache = TimedSingleFlight(900, Clock(), max_entries=2)
+
+        async def run():
+            for key in (2024, 2025, 2026):
+                await cache.get(key, fetch)
+            return await cache.get(2025, fetch), await cache.get(2024, fetch)
+
+        assert asyncio.run(run()) == (2, 4)
+        assert list(cache._entries) == [2026, 2024]
+        assert set(cache._locks) == {2026, 2024}
+
+    def test_a_lock_held_by_a_build_survives_eviction(self):
+        release = asyncio.Event()
+
+        async def slow():
+            await release.wait()
+            return "slow"
+
+        async def fast():
+            return "fast"
+
+        cache = TimedSingleFlight(900, Clock(), max_entries=1)
+
+        async def run():
+            await cache.get("a", fast)
+            # Expire "a" so a rebuild takes its lock, then evict it while that build is open.
+            cache._clock.now = 1000
+            rebuild = asyncio.create_task(cache.get("a", slow))
+            await asyncio.sleep(0)
+            held = cache._locks["a"]
+            await cache.get("b", fast)
+            assert cache._locks.get("a") is held
+            release.set()
+            return await rebuild
+
+        assert asyncio.run(run()) == "slow"
+
+    def test_without_max_entries_nothing_is_dropped(self):
+        async def fetch():
+            return "x"
+
+        cache = TimedSingleFlight(900, Clock())
+
+        async def run():
+            for key in range(50):
+                await cache.get(key, fetch)
+
+        asyncio.run(run())
+        assert len(cache._entries) == 50
+
 
 def _pred(**over):
     base = dict(p1_name="Valentin Vacherot", p2_name="Lloyd Harris", start_utc=START,
