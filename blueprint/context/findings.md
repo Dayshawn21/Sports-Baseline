@@ -340,10 +340,10 @@ version and forward validation.
 - The last two are on commits without the `eol=lf` rule (`2ce4cf00`, `c0728da0`). Their `tennis_elo_identities.csv` differs from `master`, so a merge rewrites it as LF, but their `tennis_elo_local_overrides.csv` is byte-identical to `master` in git and still CRLF on disk (11 CR bytes each), so a merge leaves it CRLF: the exact case this finding describes.
 - To close: after either checkout next merges `master`, delete its `tennis_elo_local_overrides.csv` and run `git checkout -- api/app/ingest/data/tennis_elo_local_overrides.csv`, or remove the leftover worktree. Not done here, since both checkouts belong to other work.
 
-### F-41 [P3] open - The tennis slate drawer's Match and serve section is unreachable
+### F-44 [P3] open - `GET /tennis/players/stats` has no client left
 
-**File:** web/src/components/tennis/TennisMatchDetail.tsx:213; web/src/components/tennis/TennisSlateTable.tsx:169
+**File:** api/app/routers/tennis.py:413
 **Found:** 2026-11-06 by /audit (scope: current; lens: quality)
-**Why it matters:** the slate opens the inline drawer only when `matchAnalysisPath(row.match)` is `null`, that is when `matchId` is `null`. `buildUnifiedTennisMatches` gives every match with a `prediction` or a `bestMatch` its `matchId` (`getMatch`), so `unifiedMatchToPrediction` always returns `null` inside the drawer and `MatchAndServe` (match facts, serve and return, and f27-player-stats-hook/F-27's stats queries) never renders. Confirmed in the browser on 2026-11-06: no slate row had a drawer toggle, and opening a predicted row navigated to its analysis page. The section and its CSS are dead weight that later changes keep maintaining.
-**Suggested fix:** remove `MatchAndServe` and its helpers from the drawer (the analysis page covers them), or decide the drawer should show them and change the expand rule. A product choice, so not folded into f27-player-stats-hook/F-27.
+**Why it matters:** F-41 removed the web's only caller (`fetchPlayerStats` in `web/src/api/tennis.ts`, used by the drawer's serve and return section). Nothing in `web/src` or the Ask tools calls the route now, so the router function, its repository read and `PlayerStatsResponse` are maintained for no reader. Out of scope for the F-41 fix, which did not touch `api/`.
+**Suggested fix:** remove the route and whatever only it uses, or record why it stays public (for example an external consumer).
 **Resolution:**

@@ -131,11 +131,11 @@ function TourTabs({ tab, onChange }: { tab: TourTab; onChange: (tab: TourTab) =>
   )
 }
 
-function DetailRow({ row, columns, showFlags }: { row: SlateRow; columns: number; showFlags: boolean }) {
+function DetailRow({ row, columns }: { row: SlateRow; columns: number }) {
   return (
     <tr className="tennis-slate-table__detail" id={detailId(row.key)}>
       <td colSpan={columns}>
-        <div className="tennis-match-detail"><TennisMatchDetail match={row.match} showFlags={showFlags} /></div>
+        <div className="tennis-match-detail"><TennisMatchDetail match={row.match} /></div>
       </td>
     </tr>
   )
@@ -170,7 +170,7 @@ export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle,
                   return (
                     <Fragment key={row.key}>
                       <SlateTableRow row={row} open={open} showTournament={!grouped} showFlags={showFlags} onToggle={() => onToggle(row.key)} />
-                      {open && <DetailRow row={row} columns={columns} showFlags={showFlags} />}
+                      {open && <DetailRow row={row} columns={columns} />}
                     </Fragment>
                   )
                 })}

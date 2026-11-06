@@ -91,31 +91,6 @@ export interface PropLine {
   adoptedPick?: AdoptedPick | null
 }
 
-export interface PlayerStats {
-  playerId: number
-  surface: string | null
-  statPeriod: string
-  winRate: number | null
-  svcPtsWon: number | null
-  retPtsWon: number | null
-  acesPerGame: number | null
-  dfPerGame: number | null
-  holdPct: number | null
-  breakPct: number | null
-  matchesCount: number | null
-  firstInPct: number | null
-  firstWonPct: number | null
-  secondWonPct: number | null
-  dominanceRatio: number | null
-  breakPointsCreatedPerReturnGame?: number | null
-  allowedBreakPointsPerServiceGame?: number | null
-  // ELO ratings (all surfaces + per surface)
-  elo: number | null
-  eloHard: number | null
-  eloClay: number | null
-  eloGrass: number | null
-}
-
 export interface RecentMatchResult {
   matchDate: string
   opponentName: string
