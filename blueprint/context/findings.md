@@ -328,14 +328,6 @@ version and forward validation.
 **Suggested fix:** add `"/nhl/model/"` to `HEAVY_PREFIXES`; bound `season` in the routers to known seasons, or give `TimedSingleFlight` a `max_entries` like `SerialBuildCache`.
 **Resolution:**
 
-### F-26 [P2] open - Ask's daily spend cap is checked before and recorded after, so concurrent questions overshoot it
-
-**File:** api/app/routers/ask.py:34; api/app/services/ask/answer_stream.py:121
-**Found:** 2026-11-06 by /audit (scope: full; lens: security)
-**Why it matters:** `spend.exhausted()` runs at admission and cost is added in the stream's `finally`, so every question in flight passes the check. With prizepicks-rerun-snapshots/F-19, concurrency is unbounded per client. Overshoot is bounded by the Console monthly limit; the per-question worst case (about $0.01) is an estimate.
-**Suggested fix:** reserve a worst-case cost at admission and settle on completion, or cap concurrent streams with a semaphore.
-**Resolution:**
-
 ### F-27 [P2] open - Tennis player stats are fetched in a `useEffect` that refires on every render
 
 **File:** web/src/components/tennis/TennisMatchDetail.tsx:115
@@ -446,4 +438,12 @@ version and forward validation.
 **Found:** 2026-11-06 by /audit (scope: current; lenses: all)
 **Why it matters:** `build_best_picks_response` wraps `overlay_live_moneyline` in `except Exception: pass`, the pattern F-23 removed from the Bankroll Builder. A provider or parsing failure silently drops live prices from best picks with no log line.
 **Suggested fix:** log a warning with `exc_info=True`, as `bankroll_builder.py` now does.
+**Resolution:**
+
+### F-39 [P3] open - An Ask spend cap below one question's hold silently refuses every question
+
+**File:** api/app/services/ask/guardrails.py:37; api/app/config.py:54
+**Found:** 2026-11-06 by /audit (scope: current; lens: quality)
+**Why it matters:** `ask_daily_spend_cap_usd` accepts any value above 0, but since ask-spend-reservation/F-26 a question is admitted only when its worst-case hold fits (`question_reserve_usd`, about $0.021 at the defaults and up to about $0.041 at the largest `ask_max_tokens` and `ask_max_tool_iterations`). A cap of, say, $0.02 makes every `POST /ask` a 503 "reached today's limit" with nothing spent and no log line saying why. The default $1 cap is unaffected.
+**Suggested fix:** in `Settings`, reject (or warn at startup on) a cap below `question_reserve_usd(settings)` when `ask_enabled`, so the misconfiguration fails at boot like the other Ask bounds.
 **Resolution:**

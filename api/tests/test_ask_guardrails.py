@@ -30,12 +30,59 @@ def test_nothing_spent_before_the_first_question():
     assert DailySpend().spent(DAY) == 0.0
 
 
-def test_exhausted_flips_exactly_at_the_cap():
+def test_a_reservation_fits_exactly_at_the_cap_and_recorded_spend_refuses():
     spend = DailySpend()
     spend.record(DAY, 0.75)
-    assert not spend.exhausted(DAY, 1.0)
-    spend.record(DAY, 0.25)
-    assert spend.exhausted(DAY, 1.0)
+    assert spend.reserve(DAY, 0.25, 1.0) is not None
+    spend = DailySpend()
+    spend.record(DAY, 1.0)
+    assert spend.reserve(DAY, 0.01, 1.0) is None
+
+
+def test_questions_in_flight_fill_the_cap_before_any_cost_is_recorded():
+    spend = DailySpend()
+    first = spend.reserve(DAY, 0.4, 1.0)
+    second = spend.reserve(DAY, 0.4, 1.0)
+    assert first is not None and second is not None
+    # Nothing is spent yet, but the two holds leave no room for a third.
+    assert spend.spent(DAY) == 0.0
+    assert spend.held(DAY) == pytest.approx(0.8)
+    assert spend.reserve(DAY, 0.4, 1.0) is None
+
+
+def test_settling_replaces_the_hold_with_the_real_cost():
+    spend = DailySpend()
+    first = spend.reserve(DAY, 0.4, 1.0)
+    spend.reserve(DAY, 0.4, 1.0)
+    assert first.settle(0.05) == pytest.approx(0.05)
+    assert spend.spent(DAY) == pytest.approx(0.05)
+    assert spend.held(DAY) == pytest.approx(0.4)
+    assert spend.reserve(DAY, 0.4, 1.0) is not None
+
+
+def test_a_reservation_settles_once():
+    spend = DailySpend()
+    reservation = spend.reserve(DAY, 0.4, 1.0)
+    reservation.settle(0.05)
+    reservation.release()
+    reservation.settle(0.30)
+    assert spend.spent(DAY) == pytest.approx(0.05)
+    assert spend.held(DAY) == 0.0
+
+
+def test_a_release_frees_the_hold_and_records_nothing():
+    spend = DailySpend()
+    spend.reserve(DAY, 0.4, 1.0).release()
+    assert (spend.spent(DAY), spend.held(DAY)) == (0.0, 0.0)
+
+
+def test_a_question_that_ran_past_midnight_leaves_the_new_day_alone():
+    spend = DailySpend()
+    late = spend.reserve(DAY, 0.4, 1.0)
+    spend.reserve(NEXT_DAY, 0.3, 1.0)
+    late.settle(0.05)
+    assert spend.spent(NEXT_DAY) == 0.0
+    assert spend.held(NEXT_DAY) == pytest.approx(0.3)
 
 
 def test_the_twenty_first_question_waits_while_another_ip_does_not():

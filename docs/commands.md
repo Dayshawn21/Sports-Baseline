@@ -219,7 +219,7 @@ per command; read this file before running, scheduling or changing one.
 - **Guardrails (47d, in memory, one process; a restart resets both):**
   - Global daily spend cap, `ask_daily_spend_cap_usd` (default $1, UTC day):
     `POST /ask` is a 503 "Ask Lineform has reached today's limit..." once
-    today's estimated spend reaches it.
+    today's estimated spend plus what questions in flight hold would pass it.
   - Per-client daily questions, `ask_daily_questions_per_ip` (default 20, a
     rolling 24 hours): past it, a 429 with `Retry-After`. Checked after the
     cap and after body validation, so a refused or invalid question uses
@@ -228,9 +228,16 @@ per command; read this file before running, scheduling or changing one.
     passes through with client-written entries, never sets the key while
     Cloudflare's header is present (F-19).
   - Both refuse before a client exists, so a refused question costs nothing.
-    The check reads spend before a question runs, so questions in flight can
-    overshoot the cap by at most one question's maximum cost each. **The
-    Anthropic Console monthly spend limit is the hard stop.**
+  - Each admitted question holds a worst-case cost against the cap (F-26):
+    `ask_max_tool_iterations + 1` requests at `ask_max_tokens` output and an
+    assumed 20,000 input tokens each (`max_question_cost_usd` in
+    `app/core/ask_cost.py`, about $0.021 at the defaults, against a typical
+    $0.001). When the question ends, the hold becomes its estimated cost; a
+    429, a missing key or a disconnect before the stream starts releases it.
+    So questions in flight cannot overshoot the cap together; only a question
+    whose real input passes the assumption can overshoot, by that excess. The
+    last hold's worth of the cap goes unused. **The Anthropic Console monthly
+    spend limit is the hard stop.**
   - Cost is estimated from token usage and the `ask_price_*_per_mtok`
     settings (Haiku 5.5's up-to-100K rates; update them with `ask_model`).
     Every question that reached Claude logs one INFO line from

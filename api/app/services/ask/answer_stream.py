@@ -10,19 +10,21 @@ import contextlib
 import datetime as dt
 import logging
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractAsyncContextManager
 
 import anthropic
 from anthropic import AsyncAnthropic
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.types import Receive, Scope, Send
 
 from app.config import Settings
 from app.core.ask_cost import estimate_cost_usd
 from app.core.ask_messages import AskUsage
 from app.ml.registry import ModelRegistry
-from app.services.ask import guardrails
 from app.services.ask.client import ask_prices
+from app.services.ask.guardrails import Reservation
 from app.services.ask.loop import AskEvent, AskOutcome, ToolStarted, run_ask
 from app.services.ask.stream import SSE_PING, ErrorKind, done_frame, error_frame, event_frame
 from app.services.ask.tools import ToolContext
@@ -43,14 +45,15 @@ def error_kind(error: BaseException) -> ErrorKind:
 
 
 def record_question(
-    usage: AskUsage, stop: str, tools: list[str], ms: int, settings: Settings, now: dt.datetime,
+    usage: AskUsage, stop: str, tools: list[str], ms: int, settings: Settings, reservation: Reservation,
 ) -> None:
-    """Add the question's cost to today's spend and log it. Never the question,
-    the answer or the client IP: Ask stores no user data."""
+    """Settle the question's reservation to its cost and log it. Never the
+    question, the answer or the client IP: Ask stores no user data."""
     if usage.requests == 0:
+        reservation.release()
         return
     cost = estimate_cost_usd(usage, ask_prices(settings))
-    total = guardrails.spend.record(now.astimezone(dt.UTC).date(), cost)
+    total = reservation.settle(cost)
     logger.info(
         "ask question stop=%s requests=%d input=%d output=%d cache_read=%d cache_write=%d "
         "cost_usd=%.6f spent_today_usd=%.4f tools=%s ms=%d",
@@ -68,8 +71,9 @@ async def ask_frames(
     settings: Settings,
     now: dt.datetime,
     production: bool,
+    reservation: Reservation,
     ping_seconds: float = PING_SECONDS,
-) -> AsyncIterator[str]:
+) -> AsyncGenerator[str, None]:
     # None marks the end; the task's result is read after the queue drains.
     queue: asyncio.Queue[str | None] = asyncio.Queue()
     # Owned here, not by the loop, so rounds before an error or a disconnect are still counted.
@@ -115,7 +119,30 @@ async def ask_frames(
         else:
             stop = "cancelled"
             task.cancel()
+        # Before any await: a disconnect can cancel the awaits below, and usage is
+        # final once the task is cancelled (a round it cuts off is never added).
+        record_question(usage, stop, tools, round((time.perf_counter() - started) * 1000), settings, reservation)
+        if stop == "cancelled":
             with contextlib.suppress(asyncio.CancelledError):
                 await task
         await client.close()
-        record_question(usage, stop, tools, round((time.perf_counter() - started) * 1000), settings, now)
+
+
+class ReservedStreamingResponse(StreamingResponse):
+    """Ends the question's reservation however the response ends. Starlette never
+    closes the body on a disconnect, and one that never started never runs its
+    `finally`, so close it here, then release whatever it did not settle."""
+
+    def __init__(
+        self, frames: AsyncGenerator[str, None], reservation: Reservation, headers: dict[str, str],
+    ) -> None:
+        super().__init__(frames, media_type="text/event-stream", headers=headers)
+        self._frames = frames
+        self._reservation = reservation
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self._frames.aclose()
+            self._reservation.release()

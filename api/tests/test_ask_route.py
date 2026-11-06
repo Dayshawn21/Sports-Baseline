@@ -13,7 +13,8 @@ from app.main import app
 from app.routers.ask import ask_client_factory, ask_session_factory
 from app.schemas.ask import ToolResult
 from app.services.ask import guardrails, tools
-from app.services.ask.answer_stream import ask_frames, error_kind
+from app.services.ask.answer_stream import ReservedStreamingResponse, ask_frames, error_kind
+from app.services.ask.client import question_reserve_usd
 from app.services.ask.stream import ERROR_MESSAGES, SSE_PING
 from tests.test_ask_loop import (
     SETTINGS, FakeClient, FakeStream, _failing_client, _message, _slate_round, _text, _tool_use, ran,  # noqa: F401
@@ -237,8 +238,16 @@ class HangingClient(FakeClient):
         self.messages = HangingMessages()
 
 
-def _frames_for(fake, sessions, ping_seconds=0.01):
-    return ask_frames("who plays?", fake, sessions, None, SETTINGS, NOW, True, ping_seconds=ping_seconds)
+RESERVE = 0.05
+
+
+def _reserve():
+    return guardrails.spend.reserve(NOW.date(), RESERVE, 1.0)
+
+
+def _frames_for(fake, sessions, ping_seconds=0.01, reservation=None):
+    reservation = reservation or _reserve()
+    return ask_frames("who plays?", fake, sessions, None, SETTINGS, NOW, True, reservation, ping_seconds=ping_seconds)
 
 
 def test_silence_sends_a_ping_and_a_disconnect_closes_everything():
@@ -277,6 +286,7 @@ def test_a_finished_question_records_its_cost_and_logs_one_line(caplog):
 
     # 2,000 input at $0.10 and 100 output at $0.50 per million tokens.
     assert guardrails.spend.spent(NOW.date()) == pytest.approx(0.00025)
+    assert guardrails.spend.held(NOW.date()) == 0.0
     [line] = _question_lines(caplog)
     assert "stop=answered requests=1 input=2000 output=100 cache_read=0 cache_write=0 cost_usd=0.000250" in line
     assert "tools= " in line
@@ -320,6 +330,7 @@ def test_a_disconnect_after_a_round_records_it_as_cancelled(caplog, ran):
 
     assert [event for event, _ in _frames("".join(seen))] == ["tool_start", "tool_end"]
     assert guardrails.spend.spent(NOW.date()) == pytest.approx(0.00012)
+    assert guardrails.spend.held(NOW.date()) == 0.0
     [line] = _question_lines(caplog)
     assert "stop=cancelled requests=1" in line
 
@@ -331,6 +342,7 @@ def test_a_question_that_never_reached_claude_records_nothing(caplog):
     _drain(_frames_for(RaisingClient(error), FakeSessions()))
 
     assert guardrails.spend.spent(NOW.date()) == 0.0
+    assert guardrails.spend.held(NOW.date()) == 0.0
     assert _question_lines(caplog) == []
 
 
@@ -410,9 +422,81 @@ def test_a_bad_or_disabled_question_counts_nothing(client, enabled, sessions, co
 
 
 def test_an_answered_question_adds_to_the_cap_the_route_checks(client, enabled, sessions, counted_client, monkeypatch):
-    # The real loop records spend under the same UTC date the route checks.
-    monkeypatch.setattr(settings, "ask_daily_spend_cap_usd", 0.0001)
+    # The real loop settles spend under the same UTC date the route checks: room
+    # for one reservation plus less than the first question's $0.00025.
+    monkeypatch.setattr(settings, "ask_daily_spend_cap_usd", question_reserve_usd(settings) + 0.0001)
     counted_client(_message(_text("ok"), input_tokens=2000, output_tokens=100))
 
     assert client.post("/ask", json={"question": "who plays?"}).status_code == 200
     assert client.post("/ask", json={"question": "who plays?"}).status_code == 503
+
+
+def test_a_question_in_flight_holds_its_reserve_against_the_next(client, enabled, sessions, counted_client, monkeypatch):
+    # Room for one reservation and a bit: before F-26 every question in flight passed.
+    monkeypatch.setattr(settings, "ask_daily_spend_cap_usd", question_reserve_usd(settings) * 1.5)
+    made = counted_client(_message(_text("ok")))
+    in_flight = guardrails.spend.reserve(_today(), question_reserve_usd(settings), settings.ask_daily_spend_cap_usd)
+
+    assert client.post("/ask", json={"question": "who plays?"}).status_code == 503
+    assert made == []
+
+    in_flight.settle(0.001)
+    assert client.post("/ask", json={"question": "who plays?"}).status_code == 200
+    assert guardrails.spend.held(_today()) == 0.0
+
+
+def test_a_refused_visitor_holds_nothing(client, enabled, sessions, counted_client, monkeypatch):
+    monkeypatch.setattr(settings, "ask_daily_questions_per_ip", 1)
+    counted_client(_message(_text("ok"), input_tokens=0, output_tokens=0))
+
+    assert client.post("/ask", json={"question": "who plays?"}).status_code == 200
+    assert client.post("/ask", json={"question": "who plays?"}).status_code == 429
+    assert guardrails.spend.held(_today()) == 0.0
+
+
+def test_a_missing_key_holds_nothing(client, enabled, monkeypatch):
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    assert client.post("/ask", json={"question": "who plays?"}).status_code == 503
+    assert guardrails.spend.held(_today()) == 0.0
+
+
+def test_a_disconnect_before_the_stream_starts_releases_the_hold():
+    fake, sessions = HangingClient(), FakeSessions()
+    reservation = _reserve()
+    response = ReservedStreamingResponse(_frames_for(fake, sessions, reservation=reservation), reservation, {})
+
+    async def receive():
+        await asyncio.sleep(0)  # lets the response reach its first send
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        await asyncio.Event().wait()  # the browser left while the headers were going out
+
+    asyncio.run(response({"type": "http"}, receive, send))
+
+    # The body never ran, so its own `finally` never could: the response released the hold.
+    assert sessions.opened == 0
+    assert guardrails.spend.held(NOW.date()) == 0.0
+    assert guardrails.spend.spent(NOW.date()) == 0.0
+
+
+def test_a_body_left_suspended_is_closed_and_settled():
+    fake = FakeClient(_message(_text("Two games tonight."), input_tokens=2000, output_tokens=100))
+    sessions = FakeSessions()
+    reservation = _reserve()
+    response = ReservedStreamingResponse(_frames_for(fake, sessions, ping_seconds=5, reservation=reservation), reservation, {})
+
+    async def receive():
+        await asyncio.Event().wait()
+
+    async def send(message):
+        if message["type"] == "http.response.body":
+            raise OSError("socket went away")
+
+    with pytest.raises((OSError, ExceptionGroup)):
+        asyncio.run(response({"type": "http"}, receive, send))
+
+    # The real cost lands before the release, so the release cannot drop it.
+    assert guardrails.spend.spent(NOW.date()) == pytest.approx(0.00025)
+    assert guardrails.spend.held(NOW.date()) == 0.0
+    assert (sessions.opened, sessions.closed) == (1, 1)
