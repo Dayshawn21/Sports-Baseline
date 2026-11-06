@@ -1,8 +1,9 @@
 import { Tooltip } from 'antd'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fmtEv, tourTone } from '~/utils/tennisSlate'
-import { fetchPlayerStats } from '~/api/tennis'
+import ErrorState from '~/components/shared/ErrorState'
+import LoadingState from '~/components/shared/LoadingState'
+import { usePlayerStats } from '~/hooks/useTennisPlayer'
 import type { BestPick, MatchPrediction, PlayerStats, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
 import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unifiedTennis'
@@ -112,21 +113,6 @@ function measureValue(value: number | null | undefined): string {
   return value == null ? MISSING : fmtPct(value)
 }
 
-function usePlayerStats(match: MatchPrediction): [PlayerStats | null, PlayerStats | null] {
-  const [stats, setStats] = useState<[PlayerStats | null, PlayerStats | null]>([null, null])
-  useEffect(() => {
-    let active = true
-    Promise.all([
-      fetchPlayerStats(match.p1Name, match.tour, match.surface),
-      fetchPlayerStats(match.p2Name, match.tour, match.surface),
-    ])
-      .then((result) => { if (active) setStats(result) })
-      .catch(() => { if (active) setStats([null, null]) })
-    return () => { active = false }
-  }, [match])
-  return stats
-}
-
 function surfaceElo(match: MatchPrediction, p1: PlayerStats | null, p2: PlayerStats | null): [number | null | undefined, number | null | undefined] {
   if (match.surface === 'Hard') return [p1?.eloHard, p2?.eloHard]
   if (match.surface === 'Clay') return [p1?.eloClay, p2?.eloClay]
@@ -139,7 +125,12 @@ function surname(name: string): string {
 }
 
 function MatchAndServe({ match }: { match: MatchPrediction }) {
-  const [p1, p2] = usePlayerStats(match)
+  const p1Query = usePlayerStats(match.p1Name, match.tour, match.surface)
+  const p2Query = usePlayerStats(match.p2Name, match.tour, match.surface)
+  const p1 = p1Query.data ?? null
+  const p2 = p2Query.data ?? null
+  const statsError = p1Query.error ?? p2Query.error
+  const retryStats = () => { void p1Query.refetch(); void p2Query.refetch() }
   const models = [['ELO', match.p1EloProb], ['ML', match.p1MlProb], ['Market', match.p1MarketProb]]
     .filter((item): item is [string, number] => item[1] != null)
   // The rolling-stat names mislead: acesPerGame and dfPerGame are per serve point and
@@ -170,11 +161,13 @@ function MatchAndServe({ match }: { match: MatchPrediction }) {
           <span title={match.p1Name}>{surname(match.p1Name)}</span>
           <span title={match.p2Name}>{surname(match.p2Name)}</span>
         </div>
-        {measures.map(([label, first, second]) => (
-          <div key={label} className="tennis-detail__measure">
-            <small>{label}</small><span>{measureValue(first)}</span><span>{measureValue(second)}</span>
-          </div>
-        ))}
+        {statsError ? <ErrorState error={statsError} onRetry={retryStats} />
+          : p1Query.isPending || p2Query.isPending ? <LoadingState message="Loading serve and return" />
+          : measures.map(([label, first, second]) => (
+            <div key={label} className="tennis-detail__measure">
+              <small>{label}</small><span>{measureValue(first)}</span><span>{measureValue(second)}</span>
+            </div>
+          ))}
       </section>
     </>
   )

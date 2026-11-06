@@ -320,14 +320,6 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-27 [P2] open - Tennis player stats are fetched in a `useEffect` that refires on every render
-
-**File:** web/src/components/tennis/TennisMatchDetail.tsx:115
-**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
-**Why it matters:** `usePlayerStats` calls `fetchPlayerStats` from `~/api/tennis` in a `useEffect` keyed on `[match]`. When a match has no prediction, `unifiedMatchToPrediction` builds a new object per render, so each re-render of the expanded row fires two requests. No cache, no loading or error state; an error shows as `--`. Breaks the TanStack Query convention.
-**Suggested fix:** a `useQuery` hook in `src/hooks/` keyed `['tennis', 'player-stats', { name, tour, surface }]` with a 5-minute `staleTime`.
-**Resolution:**
-
 ### F-29 [P3] open - A service imports a router, and SQL lives in routers and a service
 
 **File:** api/app/services/tennis/best_picks_response.py:75; api/app/routers/props.py:675; api/app/routers/tennis.py:403; api/app/services/tennis/history_cache.py:48
@@ -447,4 +439,12 @@ version and forward validation.
 - Git only applies a new `eol` attribute when it writes the file. In an existing Windows checkout (the main `C:\dev\SportAppV2` and the sibling worktrees), a merge rewrites `tennis_elo_identities.csv` but leaves an unchanged `tennis_elo_local_overrides.csv` as CRLF.
 - There, the new LF test and the committed-pin test fail, and any pins derived on that checkout would be wrong again. CI on Linux is unaffected.
 **Suggested fix:** after merging, delete both registry CSVs in each existing checkout and run `git checkout --` on them. The data README already says to re-check them out before deriving pins.
+**Resolution:**
+
+### F-41 [P3] open - The tennis slate drawer's Match and serve section is unreachable
+
+**File:** web/src/components/tennis/TennisMatchDetail.tsx:213; web/src/components/tennis/TennisSlateTable.tsx:169
+**Found:** 2026-11-06 by /audit (scope: current; lens: quality)
+**Why it matters:** the slate opens the inline drawer only when `matchAnalysisPath(row.match)` is `null`, that is when `matchId` is `null`. `buildUnifiedTennisMatches` gives every match with a `prediction` or a `bestMatch` its `matchId` (`getMatch`), so `unifiedMatchToPrediction` always returns `null` inside the drawer and `MatchAndServe` (match facts, serve and return, and f27-player-stats-hook/F-27's stats queries) never renders. Confirmed in the browser on 2026-11-06: no slate row had a drawer toggle, and opening a predicted row navigated to its analysis page. The section and its CSS are dead weight that later changes keep maintaining.
+**Suggested fix:** remove `MatchAndServe` and its helpers from the drawer (the analysis page covers them), or decide the drawer should show them and change the expand rule. A product choice, so not folded into f27-player-stats-hook/F-27.
 **Resolution:**
