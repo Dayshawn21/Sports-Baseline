@@ -12,8 +12,8 @@ export default function TennisSlateSummary({ matches, props, locks, strongOrBett
   return (
     <section className="page-head__stats" aria-label="Slate summary">
       <StatChip value={matches} label="Matches" />
-      <StatChip value={locks} label="Locks" color="var(--positive)" />
-      <StatChip value={strongOrBetter} label="Strong+" color="var(--positive)" />
+      <StatChip value={locks} label="Locks" />
+      <StatChip value={strongOrBetter} label="Strong+" />
       <StatChip value={props} label="Player props" />
     </section>
   )

@@ -320,44 +320,146 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-14 [P2] open - The NHL board repeats one projection on every rung and is uncached
+### F-22 [P2] open - `nfl_odds` spends its credit before the floor check and with no games
 
-**File:** api/app/services/nhl/line_only_props.py:36
-**Found:** 2026-11-04 by /audit (scope: current; lenses: all)
-**Why it matters:** The board for 2026-10-24 grew from 764 KB to 1,119 KB of
-JSON (46 KB gzipped, up from 32 KB) because the identical value, flags and
-sample are attached to each of 3,416 lines although there are 1,781
-player-market rows. Each request also builds it live in about 0.3 s warm and
-1.05 s cold, where the NBA board is served through `prop_board_cache`. No gzip
-middleware appears in `app/main.py`, so whether the host compresses is not
-verified. The deployed size and latency impact is unmeasured.
-**Suggested fix:** Measure first on the hosted API. If it matters, carry the
-projection once per player-market (as the player endpoint already does) with a
-per-line gap, and consider the NBA board's cache pattern.
-**Resolution:** Fixed 2026-11-05, awaiting re-review: `/nhl/props` is served through `prop_board_cache` (5 min, 5 entries, same `SerialBuildCache` as NBA), and the board and game line-only responses carry each player-market projection once in `projections` while a line keeps only its gap, P(over) and line flags. The web rejoins them in `nhlJoinProjections` at the API layer. The hosted payload size was not measured; the gain is by construction (1,781 projections for 3,416 lines on 2026-10-24).
+**File:** api/app/ingest/nfl_odds.py:72
+**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
+**Why it matters:** `run` calls the paid `/odds` endpoint first and only then returns without storing when `remaining < min_requests_remaining`, so the floor never prevents a spend and every scheduled run below it burns a credit for nothing. With no upcoming games (offseason) it still calls, unlike `nba_odds.py:56-58`.
+**Suggested fix:** follow `nba_odds.py:37-63`: return early on no games, check the floor with the free `/sports` call, then fetch.
+**Resolution:**
 
-### F-17 [P3] open - Duplicated row formatting and a test module that imports another test module
+### F-23 [P2] open - Bankroll Builder rebuilds every tennis prediction per request
 
-**File:** api/app/backtest/nhl_over_probability_fit.py:119; api/tests/test_nhl_over_probability_fit.py:13
-**Found:** 2026-11-05 by /audit (scope: current; lens: all)
-**Why it matters:** The cross-fit table rows and the confirmation rows build the
-same fixed-width f-string twice, so a column change must be made in two places.
-`test_nhl_over_probability_fit.py` imports `weekly_cases` from
-`tests.test_nhl_over_probability_crossfit`, coupling two test files; a shared
-helper module would be sturdier.
-**Suggested fix:** One row-formatting helper used by both tables; move the
-fixture builders to a small helper module under `tests/`.
-**Resolution:** Fixed 2026-11-05: one `_family_row` and `_TABLE_HEADER` serve both tables; `weekly_cases` moved to `tests/nhl_replay_cases.py`. Awaiting re-review.
+**File:** api/app/services/tennis/bankroll_builder.py:566
+**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
+**Why it matters:** it calls `predict_today` directly instead of `prediction_cache.cached_predictions`, which best picks uses, so each request repeats the feature build and inference on the 512 MB instance; `/tennis/parlays/suggested` does the same. `max_singles` and `max_parlays` are unbounded (`routers/tennis.py:508`), and an overlay failure is swallowed with `except Exception: pass` (`:576-579`). Latency on the host is unmeasured.
+**Suggested fix:** route through `cached_predictions`, bound both limits with `Query(le=...)`, and log the overlay failure.
+**Resolution:**
 
-### F-18 [P3] open - `_confirm` keeps a write flag that is now always true, and records the read after printing
+### F-24 [P2] open - Bankroll totals use surface stats from any sample; the board and best picks need 10 matches
 
-**File:** api/app/backtest/nhl_over_probability_fit.py:248
-**Found:** 2026-11-05 by /audit (scope: current; lens: all)
-**Why it matters:** Since F-15's repair, `--confirm` implies `--write`, so
-`_confirm(write)` and its `if write:` are dead. Separately the module is written
-after the report prints, so a crash between the holdout read and the write
-would leave no marker and a rerun would pass the guard. This is an unverified
-edge (no such failure was observed) and only matters for the once-only claim.
-**Suggested fix:** Drop the parameter and write the module before printing, or
-write it in the same step that scores.
-**Resolution:** Fixed 2026-11-05: `_confirm()` takes no flag and writes the module before printing. Awaiting re-review.
+**File:** api/app/services/tennis/bankroll_builder.py:613; api/app/routers/props.py:649; api/app/services/tennis/best_picks.py:185
+**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
+**Why it matters:** three copies of the stats selection have drifted. Props and best picks use surface stats only when `matches_count >= 10` (one named, one hardcoded), but bankroll takes surface stats whenever any exist, so its total-games picks can project from a one or two match surface sample the other views reject.
+**Suggested fix:** one shared helper with one constant, used by all three.
+**Resolution:**
+
+### F-25 [P2] open - `/nhl/model/` is not rate-limited as heavy, and season-keyed caches never evict
+
+**File:** api/app/core/rate_limits.py:8; api/app/services/tennis/live_odds_cache.py:47
+**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
+**Why it matters:** `HEAVY_PREFIXES` lists the NFL, tennis and NBA model routes but not `/nhl/model/ranking`, which replays on a cold cache. `TimedSingleFlight` only grows its `_entries` and `_locks`, is keyed by the raw `season` query int (NFL, NBA, NHL track records, NFL volume ranking), and builds different keys concurrently, so arbitrary seasons add entries and parallel builds. Memory impact unmeasured.
+**Suggested fix:** add `"/nhl/model/"` to `HEAVY_PREFIXES`; bound `season` in the routers to known seasons, or give `TimedSingleFlight` a `max_entries` like `SerialBuildCache`.
+**Resolution:**
+
+### F-26 [P2] open - Ask's daily spend cap is checked before and recorded after, so concurrent questions overshoot it
+
+**File:** api/app/routers/ask.py:34; api/app/services/ask/answer_stream.py:121
+**Found:** 2026-11-06 by /audit (scope: full; lens: security)
+**Why it matters:** `spend.exhausted()` runs at admission and cost is added in the stream's `finally`, so every question in flight passes the check. With prizepicks-rerun-snapshots/F-19, concurrency is unbounded per client. Overshoot is bounded by the Console monthly limit; the per-question worst case (about $0.01) is an estimate.
+**Suggested fix:** reserve a worst-case cost at admission and settle on completion, or cap concurrent streams with a semaphore.
+**Resolution:**
+
+### F-27 [P2] open - Tennis player stats are fetched in a `useEffect` that refires on every render
+
+**File:** web/src/components/tennis/TennisMatchDetail.tsx:115
+**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
+**Why it matters:** `usePlayerStats` calls `fetchPlayerStats` from `~/api/tennis` in a `useEffect` keyed on `[match]`. When a match has no prediction, `unifiedMatchToPrediction` builds a new object per render, so each re-render of the expanded row fires two requests. No cache, no loading or error state; an error shows as `--`. Breaks the TanStack Query convention.
+**Suggested fix:** a `useQuery` hook in `src/hooks/` keyed `['tennis', 'player-stats', { name, tour, surface }]` with a 5-minute `staleTime`.
+**Resolution:**
+
+### F-28 [P2] open - `/nfl/prospects` scans every stored NFL prop line and nothing calls it
+
+**File:** api/app/routers/nfl.py:129; api/app/repositories/nfl.py:2390
+**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
+**Why it matters:** `get_latest_prop_lines` runs `DISTINCT ON` over all NFL `sport_prop_lines` with no season, time or `LIMIT` bound, on a public route that the web only redirects (`App.tsx:170`). It grows with every ingest and is not in the heavy rate limit.
+**Suggested fix:** remove the endpoint (and the repository function if unused), or bound it to upcoming games.
+**Resolution:**
+
+### F-29 [P3] open - A service imports a router, and SQL lives in routers and a service
+
+**File:** api/app/services/tennis/best_picks_response.py:75; api/app/routers/props.py:675; api/app/routers/tennis.py:403; api/app/services/tennis/history_cache.py:48
+**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
+**Why it matters:** `best_picks_response` lazily imports `_fetch_live_tennis_odds` from `app.routers.props` to dodge a cycle. `routers/props.py` (931 lines) holds four raw-SQL helpers, the Odds-API.io client and a 254-line `_enrich` (moving them is noted as deferred to item 17); `/tennis/players/stats` builds four `text()` queries inline; `history_cache` queries directly. This breaks "repositories own SQL".
+**Suggested fix:** move the SQL helpers into `repositories/matches.py` and `players.py` and the odds client into `services/tennis/`.
+**Resolution:**
+
+### F-30 [P3] open - Dead code and orphan ingest modules
+
+**File:** api/app/routers/tennis.py:499; api/app/ingest/odds_probe.py; api/app/ingest/espn_nfl.py
+**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
+**Why it matters:** `/tennis/players/compare` is a `TODO` stub returning `{}`. Unreferenced anywhere: `repositories/matches.py:279` `get_match_by_key`, `:378` `mark_completed`, `repositories/players.py:217` `update_birth_date`, `repositories/predictions.py:61` `get_latest_prediction`. Referenced only by tests: `routers/props.py:732` `_fetch_market_total_games`, `repositories/nfl.py:368` `get_latest_game_odds`, `:1101` `upsert_player_alias`, `services/nfl/volume.py:77` `volume_unavailable_reason`, `services/tennis/predictor.py:106` `predict_match`. `odds_probe.py` is a diagnostic script that reads `os.getenv` and parses `.env` itself (the standards keep these out of `api/`); `espn_nfl.py` has no caller or test.
+**Suggested fix:** confirm no script outside `app/` uses them, then delete; move `odds_probe.py` out of the live tree.
+**Resolution:**
+
+### F-31 [P3] open - Wall-clock reads in a helper that takes `now`, and in tests
+
+**File:** web/src/utils/nflPropDetail.ts:83; api/tests/test_player_stats_sources.py:51; api/tests/test_ask_route.py:354
+**Found:** 2026-11-06 by /audit (scope: full; lens: tests)
+**Why it matters:** `history()` calls `formHistoryDate(..., new Date())` though `nflPropDetail` is passed `now`; its test stays stable only because it uses a 2020 date. API tests build dates from `date.today()` / `datetime.now` because `player_stats._fetch_matches` and the props staleness check read the clock (`test_best_picks.py:165`, `test_props_audit_projection.py:61,281`, `test_props_router_best_of.py:24`, `test_prop_projection_best_of.py:38`); the Ask spend test can flake across UTC midnight.
+**Suggested fix:** thread `now` through `history()`; inject `today`/`now` into the two API functions and pass fixed values.
+**Resolution:**
+
+### F-32 [P3] open - Small consistency cleanups
+
+**File:** api/app/routers/props.py:4; api/app/ingest/livetennis.py:940; api/app/ingest/odds_api.py:719; web/src/hooks/useBestPicks.ts:5; web/src/pages/AdminPage.tsx:137; web/src/utils/askError.ts
+**Found:** 2026-11-06 by /audit (scope: full; lenses: quality, tests)
+**Why it matters:** each is minor; together they are standards drift.
+- `Any` in `routers/props.py` (lines 4, 493, 508, 527, 542, 611) and `repositories/props.py:7,28`.
+- `os.getenv` fallbacks in `livetennis.py:940-942` and `odds_api.py:719-721` beside `Settings`.
+- `useBestPicks.ts` and `useTennisToday.ts` are near copies with their own untested `new Date()` day helpers, already drifted (`dataUpdatedAt`).
+- `AdminPage.tsx:137-160` defines its queries and mutations inline instead of in `hooks/useAdmin.ts`.
+- `utils/askError.ts` has branching logic and no test.
+- `_provider_status_error` (`routers/props.py:536`) would echo 260 characters of a provider body in `detail`; no current caller surfaces it.
+- `/tennis/predictions/best-picks` and `/tennis/bankroll/today` can spend Odds-API.io quota from a public GET when `ODDS_API_KEY` is set (dev only; production has none).
+- 33 `from tests.test_x import ...` cross-imports couple test files.
+**Suggested fix:** take them as they are touched; `askError.test.ts` and the two `os.getenv` removals are the cheapest.
+**Resolution:**
+
+### F-33 [P3] unverified - `streamAsk` drops a final SSE frame that lacks a trailing blank line
+
+**File:** web/src/api/ask.ts:60
+**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
+**Why it matters:** when the reader finishes, whatever is left in `buffer` is discarded. If the server's last frame ends without a blank line, the `done` event is lost and the drawer reports a cut-off answer. Not verified that the server ever ends that way.
+**Suggested fix:** after the loop, parse the leftover buffer plus a blank line when it is not empty.
+**Resolution:**
+
+## Full audit evidence, 2026-11-06
+
+**Scope:** full, all four lenses, on `claude/audit-d40214` at `eaa95078` (equal to `master`; no active feature, clean tree). **Coverage was partial**, not a complete full-project audit: four parallel reviewers covered API security, API performance and quality, the web app, and ingest plus the API tests, reading hot paths in full and the rest by grep and AST scan. Not read in depth: NBA and NHL board builders and track records (beyond prizepicks-rerun-snapshots/F-14's repair), the `nflverse*`, `hoopr_nba`, `nhl_api`, `tennismylife`, `tennis_elo*` bodies, `app/ml`, `backtest`, `evals`, most NBA, NFL and NHL web components, Ask core helpers past their entry points, git history for secrets, and dependency CVEs. Excluded: `blueprint/`, `analysis/`, `.claude/`, `.agents/`, `.impeccable/`, `api/models/`, `node_modules`, build output.
+**Signals:** web verify (typecheck, 81 test files / 1,235 tests, build) passed. API `pytest` passed, 5,799 tests, run with a dummy `DATABASE_URL` because this worktree has no `api/app/.env` (the first run failed at collection on the missing setting, an environment gap, not a code defect). No lint command exists. No skipped, focused or xfail tests found on either side.
+**Clean:** no SQL injection (every `text(f"...")` interpolates module constants; values are bound), admin key compared with `hmac.compare_digest`, production settings refuse weak keys and wildcard CORS, workflows use `contents: read` and no `pull_request_target`, no tracked secret, Ask output renders only allowlisted internal links, no `any` or `@ts-ignore` in the web, `app/core` has no I/O, dry runs guard their writes.
+**Ledger:** added prizepicks-rerun-snapshots/F-19 to F-33; closed prizepicks-rerun-snapshots/F-14, prizepicks-rerun-snapshots/F-17 and prizepicks-rerun-snapshots/F-18.
+
+### F-35 [P3] unverified - prizepicks-rerun-snapshots/F-19's key relies on Cloudflare always setting CF-Connecting-IP on Render
+
+**File:** api/app/core/rate_limits.py:27
+**Found:** 2026-11-06 by /audit (scope: current; lens: security)
+**Why it matters:** `client_key` falls back to `request.client.host`, which under `--forwarded-allow-ips '*'` is still the client-written leftmost `X-Forwarded-For` entry. If a request reaches the API without `CF-Connecting-IP`, or Cloudflare passes a client-sent one through, the prizepicks-rerun-snapshots/F-19 bypass returns. Neither is verified; sources are a Render community thread and a blog post.
+**Suggested fix:** after deploy, send 11 requests to a heavy route with rotating fake `CF-Connecting-IP` and `X-Forwarded-For`; the 11th must be a 429. If the header is ever missing in production, key on `"unknown"` there rather than the peer (`is_production()`).
+**Resolution:**
+
+### F-36 [P3] open - The prizepicks-rerun-snapshots/F-19 and prizepicks-rerun-snapshots/F-20 tests mostly cannot fail on the old code
+
+**File:** api/tests/test_rate_limits.py; api/tests/test_prizepicks_rerun.py:80
+**Found:** 2026-11-06 by /audit (scope: current; lens: tests)
+**Why it matters:**
+- `test_x_forwarded_for_alone_is_ignored` and `test_rotating_forwarded_for_does_not_reset_the_limit` pass before and after the fix, because TestClient never runs uvicorn's proxy-headers middleware. Only `test_each_cloudflare_address_gets_its_own_bucket` exercises the change.
+- The rerun tests assert SQL substrings and grep the ingest's source, so they cannot catch a key mismatch with `get_today_props` or a rounding mismatch.
+- Nothing tests that `run()` passes `prune_pulled=False` after a failed league fetch.
+**Suggested fix:**
+- Exercise the spoof path in the rate-limit tests by wrapping the app in `ProxyHeadersMiddleware(trusted_hosts="*")`.
+- Extract the league-fetch loop so the failure count is unit-testable.
+- Keep the SQL checks, but add one assertion that the refresh key matches the `get_today_props` DISTINCT ON expression.
+**Resolution:**
+
+### F-37 [P3] unverified - The refresh matches a rounded column with an unrounded float, and scans per line
+
+**File:** api/app/repositories/props.py:364
+**Found:** 2026-11-06 by /audit (scope: current; lenses: quality, performance)
+**Why it matters:**
+- **Rounding:** `props.line` is `Numeric(6,1)` (migration `0001:156`), but the match compares `CAST(:line AS numeric)` on the raw float. A line with two decimals would be stored rounded and never matched again, so every re-run would insert a fresh row.
+- **Scans:** each feed line runs a subquery on `COALESCE(player_id::text, ...)` that no index serves (the only props index is `(player_id, stat_type, fetched_at)`). That is one scan per line where the old code ran one delete.
+- Neither is observed: tennis lines appear to be .0/.5, and the table size and run time were not measured.
+**Suggested fix:** cast to `numeric(6,1)`; if run time grows, add an index on `(source, fetched_at)`.
+**Resolution:**

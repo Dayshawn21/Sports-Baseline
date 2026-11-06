@@ -220,8 +220,10 @@ per command; read this file before running, scheduling or changing one.
   - Per-client daily questions, `ask_daily_questions_per_ip` (default 20, a
     rolling 24 hours): past it, a 429 with `Retry-After`. Checked after the
     cap and after body validation, so a refused or invalid question uses
-    none. The client is `request.client.host`, spoofable through
-    `X-Forwarded-For` (37d's accepted limit).
+    none. The client is Cloudflare's `CF-Connecting-IP`, else the socket
+    peer (`core/rate_limits.client_key`); `X-Forwarded-For`, which Render
+    passes through with client-written entries, never sets the key while
+    Cloudflare's header is present (F-19).
   - Both refuse before a client exists, so a refused question costs nothing.
     The check reads spend before a question runs, so questions in flight can
     overshoot the cap by at most one question's maximum cost each. **The

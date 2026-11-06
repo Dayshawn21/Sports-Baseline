@@ -26,12 +26,8 @@ const BET_TYPE_CONFIG: Record<string, { label: string; color: string; short: str
   total_games:  { label: 'Total Games',   color: 'var(--caution)', short: 'TOTAL' },
 }
 
-const CONF_STYLES: Record<string, { color: string; bg: string; border: string }> = {
-  LOCK:   { color: 'var(--positive)', bg: 'var(--positive-soft)',   border: 'color-mix(in srgb, var(--positive) 30%, transparent)' },
-  STRONG: { color: 'var(--positive)', bg: 'transparent',  border: 'color-mix(in srgb, var(--positive) 35%, transparent)' },
-  LEAN:   { color: 'var(--caution)', bg: 'var(--caution-soft)',  border: 'color-mix(in srgb, var(--caution) 30%, transparent)' },
-  PASS:   { color: 'var(--text-muted)', bg: 'var(--bg-raised)', border: 'var(--bg-raised)' },
-}
+// One muted style for every tier: no tennis tier has passed the 32b tier rule (F-21).
+const TIER_STYLE = { color: 'var(--text-muted)', bg: 'var(--bg-raised)', border: 'var(--bg-raised)' }
 
 /** Column template for the singles table — the row adds a trailing action column. */
 const SINGLES_COLS = '32px 60px minmax(200px, 0.85fr) minmax(240px, 1.6fr) auto auto auto auto'
@@ -61,7 +57,7 @@ function BetTypeBadge({ betType }: { betType: string }) {
 }
 
 function ConfidenceBadge({ confidence }: { confidence: string }) {
-  const s = CONF_STYLES[confidence] ?? CONF_STYLES.PASS
+  const s = TIER_STYLE
   return (
     <span style={{
       fontFamily: 'var(--font-display)',
@@ -104,7 +100,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         fontFamily: 'var(--font-mono)',
         fontSize: 14,
         fontWeight: 700,
-        color: rank <= 3 ? 'var(--positive)' : 'var(--text-secondary)',
+        color: 'var(--text-secondary)',
         textAlign: 'center',
       }}>
         #{rank}
@@ -166,7 +162,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         fontFamily: 'var(--font-mono)',
         fontSize: 12,
         fontWeight: 600,
-        color: edgePositive ? 'var(--positive)' : 'var(--negative)',
+        color: 'var(--text-primary)',
         minWidth: 52,
         textAlign: 'right',
       }}>
@@ -179,7 +175,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
           fontFamily: 'var(--font-mono)',
           fontSize: 12,
           fontWeight: 700,
-          color: 'var(--positive)',
+          color: 'var(--text-primary)',
         }}>
           {(pick.ev * 100).toFixed(1)}% EV
         </div>
@@ -197,7 +193,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         fontFamily: 'var(--font-mono)',
         fontSize: 13,
         fontWeight: 700,
-        color: pick.oddsAmerican != null && pick.oddsAmerican > 0 ? 'var(--positive)' : 'var(--text-secondary)',
+        color: 'var(--text-secondary)',
         minWidth: 52,
         textAlign: 'right',
       }}>
@@ -208,7 +204,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
 }
 
 function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
-  const conf = CONF_STYLES[parlay.confidence] ?? CONF_STYLES.PASS
+  const conf = TIER_STYLE
   const evPct = (parlay.combinedEv * 100).toFixed(1)
   const kellyPct = (parlay.combinedKelly * 100).toFixed(1)
   const edgePct = parlay.combinedEdgePct.toFixed(1)
@@ -260,7 +256,7 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
           fontFamily: 'var(--font-mono)',
           fontSize: 14,
           fontWeight: 700,
-          color: parlay.combinedOddsAmerican > 0 ? 'var(--positive)' : 'var(--text-secondary)',
+          color: 'var(--text-secondary)',
         }}>
           {fmtAmerican(parlay.combinedOddsAmerican)}
         </span>
@@ -341,8 +337,8 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
       }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
           <StatPill label="Prob" value={fmtPct(parlay.combinedProb)} />
-          <StatPill label="Edge" value={`${parlay.combinedEdgePct > 0 ? '+' : ''}${edgePct}%`} color={parlay.combinedEdgePct >= 0 ? 'var(--positive)' : 'var(--negative)'} />
-          <StatPill label="EV" value={`${evPct}%`} color="var(--positive)" />
+          <StatPill label="Edge" value={`${parlay.combinedEdgePct > 0 ? '+' : ''}${edgePct}%`} color="var(--text-primary)" />
+          <StatPill label="EV" value={`${evPct}%`} color="var(--text-primary)" />
           <StatPill label="¼ Kelly" value={`${kellyPct}%`} />
         </div>
       </div>
@@ -381,7 +377,7 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
   const tourColor = TOUR_COLORS[pick.tour] ?? 'var(--text-secondary)'
   const edgePositive = pick.edgePct >= 0
-  const conf = CONF_STYLES[pick.confidence] ?? CONF_STYLES.PASS
+  const conf = TIER_STYLE
 
   return (
     <div style={{
@@ -413,7 +409,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontFamily: 'var(--font-mono)',
             fontSize: 13,
             fontWeight: 700,
-            color: rank <= 3 ? 'var(--positive)' : 'var(--text-secondary)',
+            color: 'var(--text-secondary)',
           }}>
             #{rank}
           </span>
@@ -472,7 +468,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
             fontWeight: 600,
-            color: edgePositive ? 'var(--positive)' : 'var(--negative)',
+            color: 'var(--text-primary)',
           }}>
             Edge: {edgePositive ? '+' : ''}{pick.edgePct.toFixed(1)}%
           </span>
@@ -480,7 +476,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
             fontWeight: 700,
-            color: 'var(--positive)',
+            color: 'var(--text-primary)',
           }}>
             {(pick.ev * 100).toFixed(1)}% EV
           </span>
@@ -495,7 +491,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontFamily: 'var(--font-mono)',
             fontSize: 13,
             fontWeight: 700,
-            color: pick.oddsAmerican != null && pick.oddsAmerican > 0 ? 'var(--positive)' : 'var(--text-secondary)',
+            color: 'var(--text-secondary)',
             marginLeft: 'auto',
           }}>
             {fmtAmerican(pick.oddsAmerican)}
@@ -535,9 +531,9 @@ function TourSection({ title, color, singles, parlays, isNarrow }: {
             <span style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 11,
-              color: 'var(--positive)',
-              background: 'var(--positive-soft)',
-              border: '1px solid color-mix(in srgb, var(--positive) 30%, transparent)',
+              color: 'var(--text-secondary)',
+              background: 'var(--bg-raised)',
+              border: '1px solid var(--bg-raised)',
               borderRadius: 4,
               padding: '2px 9px',
             }}>
@@ -689,7 +685,7 @@ export default function ParlaysPage() {
         {data && (
           <div className="page-head__stats">
             <StatChip value={data.totalMatchesScanned} label="Scanned" />
-            <StatChip value={data.singlesCount} label="Singles" color="var(--positive)" />
+            <StatChip value={data.singlesCount} label="Singles" />
             <StatChip value={data.parlaysCount} label="Parlays" color="var(--text-primary)" />
           </div>
         )}

@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 
 from app.config import Settings, settings
 from app.core.production_settings import is_production
+from app.core.rate_limits import client_key
 from app.db.pool import SessionLocal
 from app.schemas.ask import AskRequest, AskStatusResponse
 from app.services.ask import guardrails
@@ -35,7 +36,7 @@ def require_ask_budget(request: Request, today: dt.date) -> None:
         raise HTTPException(
             status_code=503, detail="Ask Lineform has reached today's limit. It resets at midnight UTC.",
         )
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = client_key(request.headers, request.client.host if request.client else None)
     per_day = settings.ask_daily_questions_per_ip
     retry_after = guardrails.question_retry_after(client_ip, per_day)
     if retry_after is not None:

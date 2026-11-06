@@ -199,20 +199,17 @@ def link_date_utc(start_time: dt.datetime | str) -> dt.date:
     return dt.date.fromisoformat(str(start_time)[:10])
 
 
-async def _store_props(db, props: list[dict]) -> int:
-    from sqlalchemy import text as _text
+async def _store_props(db, props: list[dict], *, prune_pulled: bool) -> int:
+    """Store the feed, refreshing today's rows in place so a re-run keeps their snapshots.
+
+    `prune_pulled` is False when a league failed to fetch: its lines are missing
+    from `props` only because of the failure, so none of today's rows are pulled.
+    """
     from app.repositories.players import resolve_player
     from app.repositories.matches import find_match_for_player
-    from app.repositories.props import upsert_prop
+    from app.repositories.props import retire_pulled_today_props, store_today_prop
 
-    # Clear existing PrizePicks props fetched today to prevent duplicates on re-run
-    await db.execute(_text("""
-        DELETE FROM props
-        WHERE source = 'prizepicks'
-          AND fetched_at >= CURRENT_DATE
-    """))
-
-    stored = 0
+    stored_ids: list[int] = []
     for p in props:
         player_id = None
         if p["player_name"] and p["tour"]:
@@ -237,7 +234,7 @@ async def _store_props(db, props: list[dict]) -> int:
         elif player_id:
             match_link_method = "player_date_fallback"
 
-        await upsert_prop(
+        stored_ids.append(await store_today_prop(
             db,
             player_id=player_id,
             match_id=match_id,
@@ -253,10 +250,17 @@ async def _store_props(db, props: list[dict]) -> int:
                 "prizepicks_event_id": p.get("event_id"),
                 "match_link_method": match_link_method,
             },
-        )
-        stored += 1
+        ))
 
-    return stored
+    if prune_pulled:
+        pulled = await retire_pulled_today_props(db, "prizepicks", stored_ids)
+        logger.info(
+            "Lines no longer offered: %d removed, %d withdrawn (kept for their snapshots).",
+            pulled.deleted, pulled.withdrawn,
+        )
+    else:
+        logger.warning("A league failed to fetch; keeping all of today's earlier lines.")
+    return len(stored_ids)
 
 
 # =============================================================================
@@ -284,6 +288,7 @@ async def run(dry_run: bool = False) -> None:
             return
 
         all_props: list[dict] = []
+        failed_leagues = 0
         for lg_id in tennis_ids:
             try:
                 raw = await _fetch_projections(client, lg_id)
@@ -291,8 +296,10 @@ async def run(dry_run: bool = False) -> None:
                 logger.info("  league %d: %d props", lg_id, len(props))
                 all_props.extend(props)
             except httpx.HTTPStatusError as e:
+                failed_leagues += 1
                 logger.error("  league %d: HTTP %d", lg_id, e.response.status_code)
             except Exception as e:
+                failed_leagues += 1
                 logger.error("  league %d: %s", lg_id, e)
             await asyncio.sleep(0.5)
 
@@ -318,7 +325,7 @@ async def run(dry_run: bool = False) -> None:
             return
 
         async with SessionLocal() as db:
-            stored = await _store_props(db, all_props)
+            stored = await _store_props(db, all_props, prune_pulled=failed_leagues == 0)
             await db.commit()
             logger.info("Stored %d props.", stored)
 

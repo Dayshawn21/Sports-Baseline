@@ -189,7 +189,9 @@ No lint command is configured.
 
 - `sportapp-api`: a Python web service on the always-on `0.5c-512mb` plan in
   Virginia, beside Neon's us-east-1. It runs `uvicorn ... --proxy-headers
-  --forwarded-allow-ips '*'` with `API_ENV=production`. Its secrets
+  --forwarded-allow-ips '*'` with `API_ENV=production` (kept for the https
+  scheme); per-client limits key on Cloudflare's `CF-Connecting-IP`, not the
+  spoofable `request.client.host` (F-19). Its secrets
   (`DATABASE_URL`, `ADMIN_API_KEY`, `CORS_ORIGINS`) are entered in the
   dashboard, never committed.
 - `sportapp-web`: a static site built with `VITE_API_BASE_URL` set to the API

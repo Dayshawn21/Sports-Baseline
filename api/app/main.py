@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.production_settings import is_production, validate_production_settings
-from app.core.rate_limits import rule_for_path
+from app.core.rate_limits import client_key, rule_for_path
 from app.db.pool import engine
 from app.ml.registry import ModelRegistry
 from app.rate_limit import retry_after_seconds
@@ -59,7 +59,7 @@ async def rate_limit(
 ) -> Response:
     rule = rule_for_path(request.url.path, settings.rate_limit_default, settings.rate_limit_heavy)
     if rule is not None:
-        client = request.client.host if request.client else "unknown"
+        client = client_key(request.headers, request.client.host if request.client else None)
         retry_after = retry_after_seconds(client, rule)
         if retry_after is not None:
             return JSONResponse(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -61,6 +62,7 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
                 p.*
             FROM props p
             WHERE p.fetched_at >= now() - interval '24 hours'
+              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
     """
     params: dict = {}
     if source:
@@ -353,7 +355,21 @@ async def get_prizepicks_link_coverage(db: AsyncSession) -> PrizePicksCoverage:
     return PrizePicksCoverage(**dict(row.mappings().one()))
 
 
-async def upsert_prop(
+# The line identity `get_today_props` collapses on with DISTINCT ON, so a refreshed
+# row is the one the board already shows.
+_SAME_TODAY_LINE = """
+    p.source = :src
+    AND p.fetched_at >= CURRENT_DATE
+    AND COALESCE(p.player_id::text, NULLIF(p.raw_json ->> 'player_name', ''))
+        = COALESCE(CAST(:pid AS text), NULLIF(:player_name, ''))
+    AND p.start_time IS NOT DISTINCT FROM CAST(:start AS timestamptz)
+    AND p.stat_type = :stat
+    AND p.line = CAST(:line AS numeric)
+    AND COALESCE(p.odds_type, '') = COALESCE(:odds_type, '')
+"""
+
+
+async def store_today_prop(
     db: AsyncSession,
     player_id: Optional[int],
     match_id: Optional[int],
@@ -362,16 +378,84 @@ async def upsert_prop(
     line: float,
     odds_type: Optional[str] = None,
     start_time: Optional[datetime] = None,
-    raw_json: Optional[dict] = None,
-) -> None:
-    await db.execute(
+    raw_json: Optional[dict[str, object]] = None,
+) -> int:
+    """Refresh today's row for the same line in place, or insert one; returns its id.
+
+    Reusing the id is what keeps a re-run from losing the line's frozen
+    `prop_projection_snapshots` rows, which cascade when their prop is deleted.
+    """
+    params = {
+        "pid": player_id, "mid": match_id, "src": source, "stat": stat_type,
+        "line": line, "odds_type": odds_type, "start": start_time,
+        "player_name": (raw_json or {}).get("player_name"),
+        "raw": json.dumps(raw_json) if raw_json is not None else None,
+    }
+    refreshed = await db.execute(
+        text(f"""
+            UPDATE props
+            SET fetched_at = now(), match_id = :mid, raw_json = CAST(:raw AS jsonb)
+            WHERE id = (
+                SELECT p.id FROM props p
+                WHERE {_SAME_TODAY_LINE}
+                ORDER BY p.id DESC
+                LIMIT 1
+            )
+            RETURNING id
+        """),
+        params,
+    )
+    prop_id = refreshed.scalar_one_or_none()
+    if prop_id is not None:
+        return int(prop_id)
+    inserted = await db.execute(
         text("""
             INSERT INTO props (player_id, match_id, source, stat_type, line, odds_type, start_time, raw_json)
             VALUES (:pid, :mid, :src, :stat, :line, :odds_type, :start, CAST(:raw AS jsonb))
+            RETURNING id
         """),
-        {
-            "pid": player_id, "mid": match_id, "src": source, "stat": stat_type,
-            "line": line, "odds_type": odds_type, "start": start_time,
-            "raw": json.dumps(raw_json) if raw_json is not None else None,
-        },
+        params,
     )
+    return int(inserted.scalar_one())
+
+
+@dataclass(frozen=True)
+class PulledProps:
+    deleted: int
+    withdrawn: int
+
+
+_PULLED_TODAY = """
+    p.source = :src
+    AND p.fetched_at >= CURRENT_DATE
+    AND NOT (p.id = ANY(CAST(:kept AS bigint[])))
+"""
+_HAS_SNAPSHOT = "EXISTS (SELECT 1 FROM prop_projection_snapshots s WHERE s.prop_id = p.id)"
+
+
+async def retire_pulled_today_props(db: AsyncSession, source: str, kept_ids: Sequence[int]) -> PulledProps:
+    """Retire today's rows for `source` this run did not store.
+
+    A row with a frozen snapshot is marked withdrawn instead of deleted, because
+    deleting it would cascade to the snapshot; `get_today_props` skips it (F-34).
+    """
+    params = {"src": source, "kept": list(kept_ids)}
+    withdrawn = await db.execute(
+        text(f"""
+            UPDATE props p
+            SET raw_json = jsonb_set(COALESCE(p.raw_json, '{{}}'::jsonb), '{{withdrawn}}', 'true'::jsonb)
+            WHERE {_PULLED_TODAY}
+              AND {_HAS_SNAPSHOT}
+              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
+        """),
+        params,
+    )
+    deleted = await db.execute(
+        text(f"""
+            DELETE FROM props p
+            WHERE {_PULLED_TODAY}
+              AND NOT {_HAS_SNAPSHOT}
+        """),
+        params,
+    )
+    return PulledProps(deleted=deleted.rowcount, withdrawn=withdrawn.rowcount)

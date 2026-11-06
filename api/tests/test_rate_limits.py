@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.core.rate_limits import RateRule, rule_for_path
+from app.core.rate_limits import RateRule, client_key, rule_for_path
 from app.main import app
 
 DEFAULT = "120/minute"
@@ -61,3 +61,36 @@ def test_a_429_carries_cors_headers_for_an_allowed_origin(monkeypatch: pytest.Mo
     res = client.get("/openapi.json", headers=origin)
     assert res.status_code == 429
     assert res.headers["access-control-allow-origin"] == "http://localhost:3001"
+
+
+def test_the_cloudflare_address_wins_over_a_spoofed_forwarded_for() -> None:
+    headers = {"cf-connecting-ip": "198.51.100.4", "x-forwarded-for": "203.0.113.7, 198.51.100.4"}
+    assert client_key(headers, "10.0.0.1") == "198.51.100.4"
+
+
+def test_x_forwarded_for_alone_is_ignored() -> None:
+    assert client_key({"x-forwarded-for": "203.0.113.7"}, "10.0.0.1") == "10.0.0.1"
+
+
+@pytest.mark.parametrize("headers", [{}, {"cf-connecting-ip": "  "}])
+def test_a_missing_or_blank_cloudflare_header_falls_back_to_the_peer(headers: dict[str, str]) -> None:
+    assert client_key(headers, "10.0.0.1") == "10.0.0.1"
+
+
+def test_no_header_and_no_peer_is_unknown() -> None:
+    assert client_key({}, None) == "unknown"
+
+
+def test_rotating_forwarded_for_does_not_reset_the_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_default", "1/minute")
+    client = TestClient(app)
+    client.get("/openapi.json", headers={"X-Forwarded-For": "203.0.113.1"})
+    assert client.get("/openapi.json", headers={"X-Forwarded-For": "203.0.113.2"}).status_code == 429
+
+
+def test_each_cloudflare_address_gets_its_own_bucket(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_default", "1/minute")
+    client = TestClient(app)
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.1"}).status_code == 200
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.2"}).status_code == 200
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.1"}).status_code == 429
