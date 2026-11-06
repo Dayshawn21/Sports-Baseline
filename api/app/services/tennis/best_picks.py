@@ -19,6 +19,7 @@ from app.core.odds import american_to_prob, devig_two_way
 from app.core.poisson import confidence_tier
 from app.core.prop_probs import total_games_probs
 from app.core.prop_projection import compute_stat_avg as _compute_stat_avg
+from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_sets import set_outcomes
 from app.repositories.players import PlayerRollingStats
 from app.services.tennis.predictor import PredictionOutput
@@ -175,19 +176,6 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     )
 
 
-def _pick_stats_for_player(
-    player_id: Optional[int],
-    surface: Optional[str],
-    all_stats: dict,
-) -> Optional[PlayerRollingStats]:
-    if player_id is None:
-        return None
-    surface_stats = all_stats.get((player_id, surface))
-    if surface_stats is not None and (surface_stats.matches_count or 0) >= 10:
-        return surface_stats
-    return all_stats.get((player_id, None))
-
-
 def generate_market_odds_picks(
     pred: PredictionOutput,
     props: list,
@@ -201,8 +189,8 @@ def generate_market_odds_picks(
         return picks
 
     p1_id, p2_id = match_player_ids
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
     mtg_map = market_total_games_map or {}
 
     for prop in props:
@@ -375,8 +363,8 @@ def generate_serve_edge_picks(
         return picks
 
     p1_id, p2_id = match_player_ids
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
 
     for player_name, player_stats, opp_stats in [
         (pred.p1_name, p1_stats, p2_stats),
@@ -643,8 +631,8 @@ def build_best_picks(
     """Build ranked best picks for a single match: top 3 ML/derived + top 3 prop picks."""
 
     p1_id, p2_id = match_player_ids if match_player_ids else (None, None)
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
 
     # Bucket A: Moneyline + Derived (top 3). Priced picks lead: a derived pick's
     # score is an edge against a hardcoded baseline, not a price, so it cannot be

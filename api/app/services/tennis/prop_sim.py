@@ -22,6 +22,7 @@ from app.core.prop_projection import (
     normalize_stat_type,
     serve_hold,
 )
+from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_match_chain import SET_EFFECT_SD, solve_holds
 from app.core.tennis_match_sim import ACE_RATE_SHAPE, DEFAULT_DRAWS, DF_RATE_SHAPE, MatchDraws, simulate_match
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,6 @@ from app.routers.props import (
     _fetch_market_win_probs,
     _fetch_opponent_ids,
     _fetch_win_probs,
-    _pick_stats_for_player,
 )
 from app.schemas.props import PropLine
 
@@ -197,7 +197,7 @@ def build_match_sim(prop: Prop, inputs: SimInputs) -> MatchSim | None:
         return None
     win_prob, source = anchor
     best_of = prop.best_of or 3
-    stats = [_pick_stats_for_player(player, prop.surface, inputs.rolling_stats) for player in players]
+    stats = [pick_stats_for_player(player, prop.surface, inputs.rolling_stats) for player in players]
     line, p_over = _total_anchor(inputs.market_totals.get(prop.match_id))
     level = sum(serve_hold(s) if s is not None else _BASELINE_HOLD_PCT for s in stats) / 2.0
     solution = solve_holds(

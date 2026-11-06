@@ -3,6 +3,7 @@ from decimal import Decimal
 import asyncio
 
 from app.core.poisson import over_under_push_probs
+from app.core.rolling_stats import pick_stats_for_player
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
 from app.routers.props import (
@@ -11,7 +12,6 @@ from app.routers.props import (
     _expected_break_point_chances,
     _expected_service_points,
     _fetch_market_total_games,
-    _pick_stats_for_player,
 )
 
 
@@ -336,6 +336,6 @@ def test_surface_stats_fall_back_to_all_surface_when_sample_is_tiny():
     overall = _stats(matches_count=47)
     overall.surface = None
 
-    picked = _pick_stats_for_player(1, "Clay", {(1, "Clay"): clay, (1, None): overall})
+    picked = pick_stats_for_player(1, "Clay", {(1, "Clay"): clay, (1, None): overall})
 
     assert picked is overall

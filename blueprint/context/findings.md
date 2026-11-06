@@ -320,22 +320,6 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-23 [P2] open - Bankroll Builder rebuilds every tennis prediction per request
-
-**File:** api/app/services/tennis/bankroll_builder.py:566
-**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
-**Why it matters:** it calls `predict_today` directly instead of `prediction_cache.cached_predictions`, which best picks uses, so each request repeats the feature build and inference on the 512 MB instance; `/tennis/parlays/suggested` does the same. `max_singles` and `max_parlays` are unbounded (`routers/tennis.py:508`), and an overlay failure is swallowed with `except Exception: pass` (`:576-579`). Latency on the host is unmeasured.
-**Suggested fix:** route through `cached_predictions`, bound both limits with `Query(le=...)`, and log the overlay failure.
-**Resolution:**
-
-### F-24 [P2] open - Bankroll totals use surface stats from any sample; the board and best picks need 10 matches
-
-**File:** api/app/services/tennis/bankroll_builder.py:613; api/app/routers/props.py:649; api/app/services/tennis/best_picks.py:185
-**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
-**Why it matters:** three copies of the stats selection have drifted. Props and best picks use surface stats only when `matches_count >= 10` (one named, one hardcoded), but bankroll takes surface stats whenever any exist, so its total-games picks can project from a one or two match surface sample the other views reject.
-**Suggested fix:** one shared helper with one constant, used by all three.
-**Resolution:**
-
 ### F-25 [P2] open - `/nhl/model/` is not rate-limited as heavy, and season-keyed caches never evict
 
 **File:** api/app/core/rate_limits.py:8; api/app/services/tennis/live_odds_cache.py:47
@@ -454,4 +438,12 @@ version and forward validation.
 - **Scans:** each feed line runs a subquery on `COALESCE(player_id::text, ...)` that no index serves (the only props index is `(player_id, stat_type, fetched_at)`). That is one scan per line where the old code ran one delete.
 - Neither is observed: tennis lines appear to be .0/.5, and the table size and run time were not measured.
 **Suggested fix:** cast to `numeric(6,1)`; if run time grows, add an index on `(source, fetched_at)`.
+**Resolution:**
+
+### F-38 [P3] open - Best picks still swallows a live-moneyline overlay failure
+
+**File:** api/app/services/tennis/best_picks_response.py:154
+**Found:** 2026-11-06 by /audit (scope: current; lenses: all)
+**Why it matters:** `build_best_picks_response` wraps `overlay_live_moneyline` in `except Exception: pass`, the pattern F-23 removed from the Bankroll Builder. A provider or parsing failure silently drops live prices from best picks with no log line.
+**Suggested fix:** log a warning with `exc_info=True`, as `bankroll_builder.py` now does.
 **Resolution:**

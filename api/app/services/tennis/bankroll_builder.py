@@ -7,12 +7,12 @@ ranks every pick by composite value, and suggests optimal 2-leg parlays.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import combinations
 from typing import Optional
 
-from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.bettable_criteria import MIN_EV, assess_bettable_pick
@@ -26,11 +26,16 @@ from app.core.odds import (
 )
 from app.core.poisson import confidence_tier
 from app.core.prop_probs import total_games_probs
+from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_sets import set_outcomes
+from app.ml.registry import ModelRegistry
 from app.repositories import matches as match_repo
 from app.repositories import players as player_repo
 from app.services.tennis.best_picks import _compute_stat_avg, _CONF_MULT
-from app.services.tennis.predictor import PredictionOutput, predict_today
+from app.services.tennis.best_picks_response import overlay_live_moneyline, slate_predictions, target_dates
+from app.services.tennis.predictor import PredictionOutput
+
+logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 _SERVICE_GAMES_PER_MATCH = 11.0
@@ -554,36 +559,39 @@ def _generate_parlays(
 
 async def build_bankroll_picks(
     db: AsyncSession,
-    request: Request,
-    match_date: date | list[date],
+    registry: ModelRegistry,
+    match_date: Optional[date],
+    today: date,
     tour_filter: Optional[str] = None,
     max_singles: int = 15,
     max_parlays: int = 10,
 ) -> BankrollBuilderResult:
-    """Scan all today's matches and return ranked singles + 2-leg parlays."""
+    """Scan all today's matches and return ranked singles + 2-leg parlays.
+
+    Raises PredictionsUnavailable when the shared prediction build failed.
+    """
 
     # 1. Predictions
-    predictions = await predict_today(db, request.app.state.registry, match_date)
+    predictions = await slate_predictions(db, registry, match_date, today)
     if tour_filter:
         predictions = [p for p in predictions if p.tour.upper() == tour_filter.upper()]
 
-    _result_date = min(match_date) if isinstance(match_date, list) else match_date
+    _result_date = match_date or today
     if not predictions:
         return BankrollBuilderResult(date=_result_date, total_matches_scanned=0, singles=[], parlays=[])
 
     # 2. Overlay live moneyline for any missing odds
-    from app.services.tennis.best_picks_response import overlay_live_moneyline
     try:
         await overlay_live_moneyline(predictions)
     except Exception:
-        pass
+        logger.warning("Bankroll live moneyline overlay failed; using stored odds", exc_info=True)
 
     # 3. Batch-fetch all market odds (moneyline, total_games, set_handicap, etc.)
     match_ids = [p.match_id for p in predictions]
     all_market_odds = await match_repo.get_all_market_odds_batch(db, match_ids)
 
     # 4. Get matches for player IDs, then batch-fetch rolling stats
-    matches = await match_repo.get_upcoming(db, match_date)
+    matches = await match_repo.get_upcoming(db, target_dates(match_date, today))
     match_map = {m.id: m for m in matches}
 
     all_player_ids = list({
@@ -609,9 +617,8 @@ async def build_bankroll_picks(
 
         # Total games picks (need rolling stats for both players)
         if match:
-            surface = pred.surface
-            p1_stats = stats_cache.get((match.p1_id, surface)) or stats_cache.get((match.p1_id, None))
-            p2_stats = stats_cache.get((match.p2_id, surface)) or stats_cache.get((match.p2_id, None))
+            p1_stats = pick_stats_for_player(match.p1_id, pred.surface, stats_cache)
+            p2_stats = pick_stats_for_player(match.p2_id, pred.surface, stats_cache)
             all_picks.extend(_generate_total_picks(pred, match_odds, p1_stats, p2_stats))
 
     # 6. Filter: strict EV + LEAN or better

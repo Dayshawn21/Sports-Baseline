@@ -41,6 +41,7 @@ from app.core.prop_projection import (
     normalize_stat_type as _normalize_stat_type,
     serve_hold as _serve_hold,
 )
+from app.core.rolling_stats import SMALL_SAMPLE_MATCHES, pick_stats_for_player
 from app.core.tennis_first_set import FIRST_SET_STATS, pmf_probabilities, stat_pmf
 from app.core.tennis_odds_events import odds_event_tour
 from app.db.pool import get_db
@@ -63,7 +64,6 @@ _DEFAULT_EXPECTED: dict[str, float] = {
 }
 
 _STATS_STALE_HOURS = 48
-_SMALL_SAMPLE_MATCHES = 10
 _SUPPORTED_PROJECTION_STATS = {
     "aces",
     "double_faults",
@@ -326,7 +326,7 @@ def _enrich(
                 "devigged" if market_total_over_prob is not None else "even"
             )
         matches_count = stats.matches_count
-        if matches_count is not None and matches_count < _SMALL_SAMPLE_MATCHES:
+        if matches_count is not None and matches_count < SMALL_SAMPLE_MATCHES:
             data_quality_flags.append("small_sample")
         if stat_avg is not None and line_f > 0:
             edge_pct = round((stat_avg - line_f) / line_f * 100, 1)
@@ -638,25 +638,11 @@ async def _fetch_live_tennis_odds(bookmakers: str, hours_ahead: int) -> dict[str
     return {"bookmakers": bookmakers, "count": len(merged), "events": merged}
 
 
-def _pick_stats_for_player(
-    player_id: Optional[int],
-    surface: Optional[str],
-    all_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
-) -> Optional[PlayerRollingStats]:
-    """Return surface-specific stats if available, else fall back to all-surface."""
-    if player_id is None:
-        return None
-    surface_stats = all_stats.get((player_id, surface))
-    if surface_stats is not None and (surface_stats.matches_count or 0) >= _SMALL_SAMPLE_MATCHES:
-        return surface_stats
-    return all_stats.get((player_id, None))
-
-
 def _pick_stats(
     prop: "Prop",
     all_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
 ) -> Optional[PlayerRollingStats]:
-    return _pick_stats_for_player(prop.player_id, prop.surface, all_stats)
+    return pick_stats_for_player(prop.player_id, prop.surface, all_stats)
 
 
 async def _fetch_win_probs(
@@ -830,7 +816,7 @@ def enrich_with(
             p,
             market_totals.get(p.match_id) if p.match_id is not None else None,
             _pick_stats(p, rolling_stats),
-            _pick_stats_for_player(
+            pick_stats_for_player(
                 opponent_ids_map.get((p.player_id, p.match_id)) if p.player_id and p.match_id else None,
                 p.surface,
                 rolling_stats,

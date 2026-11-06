@@ -1,10 +1,11 @@
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rolling_stats import SMALL_SAMPLE_MATCHES
 from app.db.pool import get_db
 from app.repositories import matches as match_repo
 from app.repositories.players import get_latest_elo, get_rolling_stats, get_rolling_stats_batch_all_surfaces, normalize_name
@@ -46,6 +47,7 @@ from app.schemas.tennis import (
     RecentMatchResult as RecentMatchResultSchema,
     SuggestedParlaySchema,
 )
+from app.services.tennis.bankroll_builder import build_bankroll_picks
 from app.services.tennis.best_picks_response import (
     PREDICTIONS_UNAVAILABLE,
     PredictionsUnavailable,
@@ -73,7 +75,9 @@ from app.services.tennis.player_detail import (
 )
 
 router = APIRouter()
-_PLAYER_STATS_MIN_SURFACE_SAMPLE = 10
+# Each bankroll pick and parlay is built and serialized per request.
+MAX_BANKROLL_SINGLES = 50
+MAX_BANKROLL_PARLAYS = 20
 
 
 @router.get("/matches/{match_id}/recent-form", response_model=MatchRecentFormResponse)
@@ -462,7 +466,7 @@ async def get_player_stats(
     # mirror the projection path and show the all-surface baseline.
     stats = await get_rolling_stats(db, player_id, surface=surface, stat_period="last_52w")
     if surface is not None and (
-        stats is None or (stats.matches_count or 0) < _PLAYER_STATS_MIN_SURFACE_SAMPLE
+        stats is None or (stats.matches_count or 0) < SMALL_SAMPLE_MATCHES
     ):
         fallback_stats = await get_rolling_stats(db, player_id, surface=None, stat_period="last_52w")
         if fallback_stats is not None:
@@ -506,22 +510,21 @@ async def compare_players(p1: str, p2: str, db: AsyncSession = Depends(get_db)):
 async def get_bankroll_builder(
     match_date: date = None,
     tour: str = None,
-    max_singles: int = 15,
-    max_parlays: int = 10,
+    max_singles: int = Query(15, ge=1, le=MAX_BANKROLL_SINGLES),
+    max_parlays: int = Query(10, ge=1, le=MAX_BANKROLL_PARLAYS),
     request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Bankroll Builder: ranked singles + 2-leg parlays across all bet types."""
-    from app.services.tennis.bankroll_builder import build_bankroll_picks
-
-    today = date.today()
-    target_date = match_date or [today, today + timedelta(days=1)]
-    result = await build_bankroll_picks(
-        db, request, target_date,
-        tour_filter=tour,
-        max_singles=max_singles,
-        max_parlays=max_parlays,
-    )
+    try:
+        result = await build_bankroll_picks(
+            db, request.app.state.registry, match_date, date.today(),
+            tour_filter=tour,
+            max_singles=max_singles,
+            max_parlays=max_parlays,
+        )
+    except PredictionsUnavailable:
+        raise HTTPException(status_code=503, detail=PREDICTIONS_UNAVAILABLE)
 
     return BankrollBuilderResponse(
         date=result.date,
