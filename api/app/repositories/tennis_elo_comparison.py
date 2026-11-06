@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.odds import american_to_prob, devig_two_way, odds_are_stale
+from app.core.tennis_elo import IdentityAmendment, extends_prefix
 from app.core.tennis_elo_report import EXPERIMENT
 from app.repositories.tennis_elo import TennisEloSnapshot
 
@@ -24,6 +25,27 @@ _GROUPS = {"ATP", "WTA", "ATP_CHALLENGER"}
 def _aware(value: datetime) -> None:
     if value.utcoffset() is None:
         raise ValueError("Comparison timestamps must be timezone-aware")
+
+
+AMENDMENT_KEYS = ("amendment_count", "amendments_sha256")
+
+
+def _amendment_provenance(count: int | None, digest: str | None) -> None:
+    if (count is None) != (digest is None) or (count is not None and (
+        type(count) is not int or count < 0 or not re.fullmatch(r"[a-f0-9]{64}", digest or "")
+    )):
+        raise ValueError("Identity amendment count and digest must be recorded together")
+
+
+def stored(value: object) -> object:
+    """Serializable form; unpinned amendment keys are dropped so bytes-pinned rows keep their shape."""
+    if hasattr(value, "__dataclass_fields__"):
+        value = asdict(value)
+    if isinstance(value, dict):
+        return {k: stored(v) for k, v in value.items() if not (k in AMENDMENT_KEYS and v is None)}
+    if isinstance(value, (list, tuple)):
+        return [stored(v) for v in value]
+    return value
 
 
 def _probability(value: float) -> None:
@@ -123,10 +145,13 @@ class FrozenComparison:
     experiment_sha256: str
     activated_at: datetime | None
     eligible_from: date | None
+    amendment_count: int | None = None
+    amendments_sha256: str | None = None
 
     def __post_init__(self) -> None:
         for value in (self.match_id, self.p1_id, self.p2_id):
             _positive_id(value)
+        _amendment_provenance(self.amendment_count, self.amendments_sha256)
         _aware(self.kickoff)
         _aware(self.frozen_at)
         if self.group not in _GROUPS or self.p1_id == self.p2_id or self.market.match_id != self.match_id:
@@ -180,9 +205,12 @@ class CoverageAttempt:
     candidate_available: bool
     reason: str
     experiment_sha256: str | None = None
+    amendment_count: int | None = None
+    amendments_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _positive_id(self.match_id)
+        _amendment_provenance(self.amendment_count, self.amendments_sha256)
         if self.experiment_sha256 is not None and not re.fullmatch(r"[a-f0-9]{64}", self.experiment_sha256):
             raise ValueError("Coverage experiment pin must be a SHA-256 hash")
         if self.group is not None and self.group not in _GROUPS:
@@ -237,6 +265,9 @@ def _validate_cycle(cycle: FreezeCycle, pairs: Sequence[FrozenComparison]) -> st
             raise ValueError("Comparison and coverage experiment pins disagree")
     if len({a.experiment_sha256 for a in cycle.attempts if a.experiment_sha256 is not None}) > 1:
         raise ValueError("Coverage attempts must share one experiment pin")
+    if len({(a.amendment_count, a.amendments_sha256) for a in cycle.attempts}
+           | {(p.amendment_count, p.amendments_sha256) for p in pairs}) > 1:
+        raise ValueError("A comparison cycle requires one identity amendment set")
     versions = {
         (p.coefficient_sha256, p.gate_sha256, p.identity_sha256,
          p.candidate_ratings[0].manifest_sha256, p.experiment_sha256, p.activated_at, p.eligible_from) for p in pairs
@@ -248,8 +279,8 @@ def _validate_cycle(cycle: FreezeCycle, pairs: Sequence[FrozenComparison]) -> st
             raise ValueError("A comparison group requires one incumbent model version")
     plan = {
         "experiment_version": EXPERIMENT, "cycle_key": cycle.cycle_key, "frozen_at": cycle.frozen_at,
-        "attempts": [asdict(a) for a in sorted(cycle.attempts, key=lambda a: a.match_id)],
-        "pairs": [asdict(p) for p in sorted(pairs, key=lambda p: p.match_id)],
+        "attempts": [stored(a) for a in sorted(cycle.attempts, key=lambda a: a.match_id)],
+        "pairs": [stored(p) for p in sorted(pairs, key=lambda p: p.match_id)],
     }
     return hashlib.sha256(_json(plan).encode()).hexdigest()
 
@@ -280,6 +311,19 @@ async def check_experiment_continuity(db: AsyncSession, experiment_sha256: str) 
         raise ValueError("Experiment configuration changed after a frozen comparison; review required")
 
 
+async def check_amendment_continuity(db: AsyncSession, amendments: tuple[IdentityAmendment, ...]) -> None:
+    """Every amendment set a stored row recorded must still be the head of today's file."""
+    rows = (await db.execute(text(
+        "SELECT DISTINCT (payload->>'amendment_count')::int, payload->>'amendments_sha256' "
+        "FROM tennis_elo_comparisons WHERE experiment_version = :experiment AND payload ? 'amendment_count' "
+        "UNION SELECT DISTINCT (attempt->>'amendment_count')::int, attempt->>'amendments_sha256' "
+        "FROM tennis_elo_freeze_cycles, jsonb_array_elements(attempts) AS attempt "
+        "WHERE experiment_version = :experiment AND attempt ? 'amendment_count'"
+    ), {"experiment": EXPERIMENT})).all()
+    if any(not extends_prefix(amendments, count, digest) for count, digest in rows):
+        raise ValueError("Identity amendments were edited, reordered or removed after a frozen row; review required")
+
+
 async def get_resulted_match_ids(db: AsyncSession, match_ids: list[int]) -> set[int]:
     rows = await db.execute(text(
         "SELECT id FROM matches WHERE id = ANY(:ids) AND "
@@ -306,7 +350,7 @@ async def _insert_pair(db: AsyncSession, cycle: FreezeCycle, pair: FrozenCompari
     ), {"experiment": EXPERIMENT, "cycle_key": cycle.cycle_key,
         "match_id": pair.match_id, "p1_id": pair.p1_id, "p2_id": pair.p2_id,
         "group": pair.group, "kickoff": pair.kickoff, "frozen_at": pair.frozen_at,
-        "payload": _json(asdict(pair))})
+        "payload": _json(stored(pair))})
     if result.scalar_one_or_none() is None:
         raise ValueError("Comparison insert did not precede kickoff or its key already exists")
     return 1
@@ -348,7 +392,7 @@ async def freeze_cycle(db: AsyncSession, cycle: FreezeCycle, pairs: Sequence[Fro
             "(experiment_version, cycle_key, frozen_at, plan_sha256, attempts) "
             "VALUES (:experiment, :cycle_key, :frozen_at, :plan_sha256, CAST(:attempts AS jsonb))"
         ), {**key, "frozen_at": cycle.frozen_at, "plan_sha256": plan_hash,
-            "attempts": _json([asdict(a) for a in sorted(attempts, key=lambda a: a.match_id)])})
+            "attempts": _json([stored(a) for a in sorted(attempts, key=lambda a: a.match_id)])})
         inserted = 0
         for pair in pairs:
             if pair.match_id not in existing_ids:

@@ -18,6 +18,10 @@ This review does not approve a database write.
   its own canonical key. Canonical keys never cross ATP/WTA.
 - `tennis_elo_local_overrides.csv` pins a canonical provider identity to one
   local `players.id` when its provider names resolve to several local rows.
+- `tennis_elo_identity_amendments.csv` holds verified rows appended after
+  activation, under a pinned identity contract only (see "Identity
+  amendments" below). It is empty while the active experiment pins no
+  contract, and any row there stops both the refresh and the freeze.
 
 `status` is `verified` or `proposed`. Only `verified` rows may be applied; a
 `proposed` row stays blocking until the owner decides it.
@@ -119,9 +123,15 @@ local rows keep their data and simply receive no candidate snapshot.
 ## Changing this registry
 
 Before activation, any edit invalidates an uncommitted reviewed manifest. After
-activation, a change needs a new normalization version and a separate
-experiment review. New conflicts found by a daily dry run block the write
-until reviewed here.
+activation, the two base CSVs never change while the experiment runs.
+
+- **No contract pinned** (v3): any registry change needs a new normalization
+  version and a separate experiment review, closing the running experiment.
+- **Contract pinned** (from v4): a new verified alias or override that meets
+  the contract goes into the amendments file instead, and accrual continues.
+  Anything else still closes the experiment.
+
+New conflicts found by a daily dry run block the write until reviewed here.
 
 ## Shadow experiment pins
 
@@ -146,14 +156,50 @@ skips. Never update this file automatically to match a changed runtime.
 | `tennis-elo-source-v2` | `tennis-elo-identities-v2` | Closed 2026-11-06, stopped with no verdict and no rows. Activated 2026-10-29T20:00:36Z, but its `identity_sha256` was hashed from a Windows CRLF checkout of the registry, so the Linux runner never matched it and every scheduled freeze from 2026-10-30 stopped on the pin guard. No v2 freeze cycle or comparison was ever stored. |
 | `tennis-elo-source-v3` | `tennis-elo-identities-v3` | Pinned 2026-11-06 under the same pre-registered rule, after the Rajeshwaran Revathi alias (`WTA 266722 -> 266652`). Coefficient, gate and incumbent pins are unchanged from v2. Activated 2026-11-06T19:56:33Z; first eligible UTC day 2026-11-07. |
 
-The next post-activation registry change closes v3 the same way. Batch
-reviewed alias fixes to avoid repeated restarts.
+v3 pins no identity contract, so the next post-activation registry change
+closes v3 the same way. That restart opens v4 with
+`"identity_contract": "tennis-elo-identity-contract-v1"` and the new alias
+folded into the base, so later verified aliases no longer restart it.
+
+### Identity amendments
+
+Under contract v1 (`app/core/tennis_elo.py`, `check_amendments`), a row in
+`tennis_elo_identity_amendments.csv` (`namespace,kind,provider_id,target,effective_from,evidence`)
+is admitted only if:
+
+1. `kind` is `alias` (raw ID to canonical ID) or `override` (canonical ID to
+   local `players.id`). There is no `status` column: commit only verified rows.
+2. It adds a new key. An alias's raw ID is not already a base or amended
+   alias, a canonical ID, or an overridden key. An alias's target is not an
+   alias anywhere. An override's key is not overridden or aliased, and its
+   local ID is not another override's target.
+3. Its `effective_from` is after the activation UTC day, and rows stay in
+   `effective_from` order. Always use a **future** UTC day: a row dated today,
+   committed after the 11:00 UTC refresh, costs that day's freeze (a
+   one-day `invalid_daily_snapshot` coverage miss).
+4. Its evidence meets the standard above with no exceptions. A judgment-based
+   case like Ilagan needs a new experiment version.
+5. The base has no `proposed` rows. A proposed row has no effect, so the
+   contract cannot tell whether an amendment re-decides it.
+
+Each day replays with the base plus the amendments in effect. The manifest,
+every frozen pair and every coverage attempt record that set's count and
+digest; the freeze stops if any stored set is no longer the head of the file.
+**Never edit, reorder or delete an amendment row.** A violation stops accrual
+for review, exactly like a changed pin. The report's identity pin stays the
+base digest; at v4, `RULE` adds a context-only sensitivity line excluding
+pairs that involve an amended player.
 
 Pins must hash the same bytes the runner reads. `.gitattributes` checks the
 registry CSVs out with LF on every platform, and
 `test_registry_files_are_checked_out_with_lf_so_every_platform_hashes_the_same_bytes`
-fails on a CRLF working copy. Re-check out both CSVs before deriving pins
-on a checkout that predates that rule.
+fails on a CRLF working copy. Re-check out the registry CSVs before deriving
+pins on a checkout that predates that rule.
+
+The workflow cache keys hash `core/tennis_elo.py`, `ingest/tennis_elo.py` and
+the three registry CSVs. A push that changes any of them between the 11:00 UTC
+refresh and the 13:30 UTC freeze makes that day's freeze miss the cache, so
+push outside that window.
 
 ## Scheduled handoff and recovery
 

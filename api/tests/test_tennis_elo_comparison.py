@@ -1,17 +1,23 @@
 import asyncio
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta, timezone
+import json
 from types import SimpleNamespace
 
 import pytest
 
 from app.core.odds import odds_are_stale
-from app.core.tennis_elo import TennisEloMatch, TennisEloRating
+from app.core.tennis_elo import (
+    IDENTITY_CONTRACT, IdentityRegistry, TennisEloMatch, TennisEloRating, amendments_sha256, parse_amendments,
+)
 from app.ml.asof_features import HistoryIndex
 from app.ml.elo_history import EloIndex
 from app.repositories.matches import Match
 from app.repositories.players import Player, PlayerElo
+from app.repositories import tennis_elo_comparison as comparison_repo
 from app.repositories.tennis_elo import SOURCE, TennisEloSnapshot
+from app.repositories.tennis_elo_comparison import AMENDMENT_KEYS, stored
+from app.repositories.tennis_elo_report import decode_comparison
 from app.services.tennis import predictor
 from app.services.tennis.elo_comparison import (
     ExperimentConfig, build_plan, runtime_pins, source_result_targets,
@@ -258,3 +264,94 @@ def test_single_match_serving_path_and_shared_batch_have_full_output_parity(monk
     monkeypatch.setattr(predictor, "odds_are_stale", lambda stamp, now=None: odds_are_stale(stamp, now=NOW))
     expected = asyncio.run(predictor.predict_match(None, reg, m))
     assert inputs.build(reg, m, now=NOW) == expected
+
+
+CONTRACT_BASE = IdentityRegistry({("WTA", "310000"): "201000"})
+
+
+def amendments(*rows):
+    columns = ("namespace", "kind", "provider_id", "target", "effective_from", "evidence")
+    return parse_amendments(dict(zip(columns, (*row, "exact name; implied birth date spread 0d"))) for row in rows)
+
+
+def contract_config(contract=IDENTITY_CONTRACT):
+    return replace(config(), identity_contract=contract)
+
+
+def test_identity_contract_pin_enters_the_config_hash_and_must_match_the_runtime():
+    dormant, pinned = config(), contract_config()
+    assert "identity_contract" not in dormant.pins() and pinned.pins()["identity_contract"] == IDENTITY_CONTRACT
+    assert pinned.sha256 != dormant.sha256
+    pinned.check_runtime(Registry(), "d" * 64)
+    with pytest.raises(ValueError, match="changed"):
+        contract_config("tennis-elo-identity-contract-v0").check_runtime(Registry(), "d" * 64)
+    record = {**runtime_pins(Registry(), "d" * 64), "activated_at": None, "identity_contract": " "}
+    with pytest.raises(ValueError, match="named version"):
+        ExperimentConfig.from_record(record)
+
+
+def test_identity_check_stops_accrual_on_unpinned_or_invalid_amendments():
+    rows = amendments(("WTA", "alias", "330000", "201000", "2026-11-08"))
+    with pytest.raises(ValueError, match="changed") as stopped:
+        config().check_identity(CONTRACT_BASE, rows, DAY)
+    assert "pinned identity contract" in str(stopped.value.__cause__)
+    effective = contract_config().check_identity(CONTRACT_BASE, rows, DAY)
+    assert effective.registry.canonical[("WTA", "330000")] == "201000" and effective.amendment_count == 1
+    with pytest.raises(ValueError, match="changed"):
+        contract_config().check_identity(CONTRACT_BASE, amendments(("WTA", "alias", "310000", "209999",
+                                                                    "2026-11-08")), DAY)
+
+
+def test_pairs_and_attempts_carry_amendment_provenance_only_when_the_contract_is_pinned():
+    dormant = plan()
+    assert dormant.pairs[0].amendment_count is None and dormant.cycle.attempts[0].amendments_sha256 is None
+    effective = contract_config().check_identity(CONTRACT_BASE, (), DAY)
+    pinned = plan(cfg=contract_config(), identity=effective)
+    assert (pinned.pairs[0].amendment_count, pinned.pairs[0].amendments_sha256) == (0, amendments_sha256(()))
+    assert pinned.cycle.attempts[0].amendment_count == 0
+
+
+def test_unpinned_rows_serialize_to_exactly_todays_keys():
+    dormant, pinned = plan(), plan(cfg=contract_config(),
+                                   identity=contract_config().check_identity(CONTRACT_BASE, (), DAY))
+    pair, attempt = dormant.pairs[0], dormant.cycle.attempts[0]
+    assert set(stored(pair)) == set(asdict(pair)) - set(AMENDMENT_KEYS)
+    assert set(stored(attempt)) == {"match_id", "group", "kickoff", "incumbent_eligible", "candidate_available",
+                                    "reason", "experiment_sha256"}
+    assert set(AMENDMENT_KEYS) <= set(stored(pinned.pairs[0])) and set(AMENDMENT_KEYS) <= set(
+        stored(pinned.cycle.attempts[0]))
+    assert decode_comparison(json.loads(comparison_repo._json(stored(pair)))) == pair
+
+
+def test_amendment_count_and_digest_are_recorded_together_and_one_set_per_cycle():
+    attempt = plan().cycle.attempts[0]
+    with pytest.raises(ValueError, match="together"):
+        replace(attempt, amendment_count=1)
+    with pytest.raises(ValueError, match="together"):
+        replace(attempt, amendment_count=-1, amendments_sha256="a" * 64)
+    pinned = plan(cfg=contract_config(), identity=contract_config().check_identity(CONTRACT_BASE, (), DAY))
+    mixed = replace(pinned.cycle, attempts=(*pinned.cycle.attempts, replace(
+        pinned.cycle.attempts[0], match_id=999, reason="missing_market", incumbent_eligible=False,
+        amendment_count=None, amendments_sha256=None)))
+    with pytest.raises(ValueError, match="one identity amendment set"):
+        comparison_repo._validate_cycle(mixed, pinned.pairs)
+
+
+class StoredRows:
+    def __init__(self, rows):
+        self.rows = rows
+
+    async def execute(self, *_args):
+        return SimpleNamespace(all=lambda: self.rows)
+
+
+def test_continuity_accepts_appended_amendments_and_stops_on_edited_history():
+    first = amendments(("WTA", "alias", "330000", "201000", "2026-11-08"))
+    appended = (*first, *amendments(("WTA", "alias", "340000", "202000", "2026-11-09")))
+    db = StoredRows([(0, amendments_sha256(())), (1, amendments_sha256(first))])
+    asyncio.run(comparison_repo.check_amendment_continuity(db, appended))
+    edited = amendments(("WTA", "alias", "330000", "202000", "2026-11-08"))
+    with pytest.raises(ValueError, match="edited, reordered or removed"):
+        asyncio.run(comparison_repo.check_amendment_continuity(db, edited))
+    with pytest.raises(ValueError, match="edited, reordered or removed"):
+        asyncio.run(comparison_repo.check_amendment_continuity(db, ()))

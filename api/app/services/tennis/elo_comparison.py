@@ -10,7 +10,10 @@ import math
 import re
 
 from app.core.odds import STALE_ODDS_HOURS, odds_are_stale
-from app.core.tennis_elo import TennisEloMatch
+from app.core.tennis_elo import (
+    IDENTITY_CONTRACT, EffectiveIdentity, IdentityAmendment, IdentityRegistry, TennisEloContractError,
+    TennisEloMatch, resolve_identity,
+)
 from app.core.tennis_format import is_qualifying_event, is_qualifying_round
 from app.core.tennis_market_blend_fit import FIT_COEFFICIENTS
 from app.ml.registry import ModelRegistry
@@ -34,8 +37,14 @@ def _digest(value: object) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def runtime_pins(registry: ModelRegistry, identity_sha256: str) -> dict[str, object]:
-    return {
+PINS_CHANGED = "Pinned ELO experiment inputs changed; accrual stopped for review"
+
+
+def runtime_pins(
+    registry: ModelRegistry, identity_sha256: str, identity_contract: str | None = None,
+) -> dict[str, object]:
+    contract = {} if identity_contract is None else {"identity_contract": identity_contract}
+    return {**contract,
         "experiment_version": EXPERIMENT,
         "identity_sha256": identity_sha256,
         "coefficient_sha256": _digest({g: asdict(c) for g, c in FIT_COEFFICIENTS.items()}),
@@ -54,6 +63,7 @@ class ExperimentConfig:
     gate_sha256: str
     model_versions: tuple[tuple[str, str], ...]
     activated_at: datetime | None
+    identity_contract: str | None = None
 
     @classmethod
     def from_record(cls, record: Mapping[str, object]) -> ExperimentConfig:
@@ -62,10 +72,12 @@ class ExperimentConfig:
         models = record.get("model_versions")
         if not isinstance(models, dict) or set(models) != {"ATP", "WTA", "CHALLENGER"}:
             raise ValueError("Experiment must pin all three incumbent model versions")
-        activated = record.get("activated_at")
+        activated, contract = record.get("activated_at"), record.get("identity_contract")
+        if contract is not None and (not isinstance(contract, str) or not contract.strip()):
+            raise ValueError("Experiment identity contract must be a named version")
         result = cls(str(record["identity_sha256"]), str(record["coefficient_sha256"]),
                      str(record["gate_sha256"]), tuple(sorted((str(k), str(v)) for k, v in models.items())),
-                     datetime.fromisoformat(str(activated)) if activated is not None else None)
+                     datetime.fromisoformat(str(activated)) if activated is not None else None, contract)
         if any(not re.fullmatch(r"[a-f0-9]{64}", v) for v in (
             result.identity_sha256, result.coefficient_sha256, result.gate_sha256,
         )) or any(not v.strip() for _, v in result.model_versions):
@@ -81,7 +93,8 @@ class ExperimentConfig:
         return max(SPEC_APPROVED_ON, self.activated_at.astimezone(timezone.utc).date()) + timedelta(days=1)
 
     def pins(self) -> dict[str, object]:
-        return {"experiment_version": EXPERIMENT, "identity_sha256": self.identity_sha256,
+        contract = {} if self.identity_contract is None else {"identity_contract": self.identity_contract}
+        return {**contract, "experiment_version": EXPERIMENT, "identity_sha256": self.identity_sha256,
                 "coefficient_sha256": self.coefficient_sha256, "gate_sha256": self.gate_sha256,
                 "model_versions": dict(self.model_versions)}
 
@@ -92,8 +105,19 @@ class ExperimentConfig:
                         "spec_approved_on": SPEC_APPROVED_ON.isoformat()})
 
     def check_runtime(self, registry: ModelRegistry, identity_sha256: str) -> None:
-        if self.pins() != runtime_pins(registry, identity_sha256):
-            raise ValueError("Pinned ELO experiment inputs changed; accrual stopped for review")
+        contract = None if self.identity_contract is None else IDENTITY_CONTRACT
+        if self.pins() != runtime_pins(registry, identity_sha256, contract):
+            raise ValueError(PINS_CHANGED)
+
+    def check_identity(
+        self, base: IdentityRegistry, amendments: tuple[IdentityAmendment, ...], day: date,
+    ) -> EffectiveIdentity:
+        activated_on = self.activated_at.astimezone(timezone.utc).date() if self.activated_at else None
+        try:
+            return resolve_identity(base, amendments, day, contract=self.identity_contract,
+                                    activated_on=activated_on)
+        except TennisEloContractError as exc:
+            raise ValueError(PINS_CHANGED) from exc
 
 
 @dataclass(frozen=True)
@@ -179,6 +203,7 @@ def _forecast(output: PredictionOutput, prior: int) -> FrozenForecast:
 def _make_pair(
     match: Match, batch: PredictionBatch, candidates: Mapping[int, TennisEloSnapshot],
     config: ExperimentConfig, now: datetime, baseline: PredictionOutput, *, preview: bool = False,
+    identity: EffectiveIdentity | None = None,
 ) -> FrozenComparison:
     c1, c2 = (candidates[pid] for pid in (match.p1_id, match.p2_id))
     surface = SURFACE_MAP.get(match.surface or "")
@@ -211,14 +236,21 @@ def _make_pair(
                                              market["p1_odds"], market["p2_odds"], baseline.p1_market_prob),
         incumbent, (c1, c2), _forecast(baseline, min(counts)), candidate, baseline.p1_ml_prob,
         config.sha256, None if preview else config.activated_at, None if preview else config.eligible_from,
+        **_amendment_provenance(identity),
     )
+
+
+def _amendment_provenance(identity: EffectiveIdentity | None) -> dict[str, int | str | None]:
+    if identity is None:
+        return {}
+    return {"amendment_count": identity.amendment_count, "amendments_sha256": identity.amendments_sha256}
 
 
 def build_plan(
     matches: list[Match], batch: PredictionBatch, registry: ModelRegistry,
     candidates: Mapping[int, TennisEloSnapshot], config: ExperimentConfig, *,
     now: datetime, cycle_key: datetime, resulted: set[int], frozen: set[int],
-    snapshot_error: str | None = None,
+    snapshot_error: str | None = None, identity: EffectiveIdentity | None = None,
 ) -> ComparisonPlan:
     """Preview readiness while inactive; only active, mature-start cohorts produce storable pairs."""
     if now.utcoffset() is None:
@@ -241,7 +273,8 @@ def build_plan(
                     raise ValueError(snapshot_error)
                 if any(pid not in candidates for pid in (match.p1_id, match.p2_id)):
                     raise ValueError("missing_candidate")
-                value = _make_pair(match, batch, candidates, config, now, baseline, preview=not active)
+                value = _make_pair(match, batch, candidates, config, now, baseline, preview=not active,
+                                   identity=identity)
                 available = True
             except ValueError:
                 reason = snapshot_error or "missing_or_invalid_candidate"
@@ -253,5 +286,6 @@ def build_plan(
                 else:
                     reason = "experiment_inactive"
         kickoff = match.start_utc if match.start_utc and match.start_utc.utcoffset() is not None else None
-        attempts.append(CoverageAttempt(match.id, group, kickoff, eligible, available, reason, config.sha256))
+        attempts.append(CoverageAttempt(match.id, group, kickoff, eligible, available, reason, config.sha256,
+                                        **_amendment_provenance(identity)))
     return ComparisonPlan(FreezeCycle(cycle_key, now, tuple(attempts)), tuple(pairs), preview_pairs, active)

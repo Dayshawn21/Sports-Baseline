@@ -230,6 +230,120 @@ def parse_identity_registry(
     return IdentityRegistry(canonical, local, proposed)
 
 
+IDENTITY_CONTRACT = "tennis-elo-identity-contract-v1"
+AMENDMENT_COLUMNS = ("namespace", "kind", "provider_id", "target", "effective_from", "evidence")
+
+
+@dataclass(frozen=True)
+class IdentityAmendment:
+    """A verified registry row appended after activation; it can only add, never alter."""
+    namespace: Namespace
+    kind: Literal["alias", "override"]
+    provider_id: str
+    target: str
+    effective_from: date
+    evidence: str
+
+    @property
+    def key(self) -> PlayerKey:
+        return self.namespace, self.provider_id
+
+
+def _amendment(row: Mapping[str, str | None]) -> IdentityAmendment:
+    if tuple(row) != AMENDMENT_COLUMNS:
+        raise TennisEloContractError(f"ELO identity amendment columns must be {', '.join(AMENDMENT_COLUMNS)}")
+    values = {k: (row[k] or "").strip() for k in AMENDMENT_COLUMNS}
+    target = re.compile(r"[1-9]\d*") if values["kind"] == "override" else _PROVIDER_ID
+    if (values["namespace"] not in {"ATP", "WTA"} or values["kind"] not in {"alias", "override"}
+            or not _PROVIDER_ID.fullmatch(values["provider_id"]) or not target.fullmatch(values["target"])
+            or not values["evidence"] or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", values["effective_from"])):
+        raise TennisEloContractError(f"Invalid ELO identity amendment: {values}")
+    return IdentityAmendment(
+        "ATP" if values["namespace"] == "ATP" else "WTA",
+        "alias" if values["kind"] == "alias" else "override",
+        values["provider_id"], values["target"], date.fromisoformat(values["effective_from"]), values["evidence"],
+    )
+
+
+def parse_amendments(rows: Iterable[Mapping[str, str | None]]) -> tuple[IdentityAmendment, ...]:
+    amendments = tuple(_amendment(row) for row in rows)
+    if any(a.effective_from > b.effective_from for a, b in zip(amendments, amendments[1:])):
+        raise TennisEloContractError("ELO identity amendments must be appended in effective_from order")
+    return amendments
+
+
+def check_amendments(base: IdentityRegistry, amendments: tuple[IdentityAmendment, ...], activated_on: date) -> None:
+    """Contract v1: every amendment adds a new key and leaves every base mapping untouched."""
+    if base.proposed:
+        raise TennisEloContractError("An amendable identity base must have no proposed rows")
+    aliases = set(base.canonical) | {a.key for a in amendments if a.kind == "alias"}
+    canonicals = {(ns, t) for (ns, _), t in base.canonical.items()}
+    overridden, targeted = set(base.local_overrides), set(base.local_overrides.values())
+    seen: set[PlayerKey] = set()
+    for a in amendments:
+        if a.effective_from <= activated_on:
+            raise TennisEloContractError(f"ELO identity amendment must take effect after activation: {a.key}")
+        if a.kind == "alias":
+            if (a.key in seen or a.key in base.canonical or a.key in canonicals or a.key in overridden
+                    or a.target == a.provider_id or (a.namespace, a.target) in aliases):
+                raise TennisEloContractError(f"ELO identity amendment would alter or chain a mapping: {a.key}")
+            seen.add(a.key)
+            canonicals.add((a.namespace, a.target))
+        else:
+            if a.key in overridden or a.key in aliases or int(a.target) in targeted:
+                raise TennisEloContractError(f"ELO identity amendment would alter a local override: {a.key}")
+            overridden.add(a.key)
+            targeted.add(int(a.target))
+
+
+def effective_registry(
+    base: IdentityRegistry, amendments: tuple[IdentityAmendment, ...], day: date,
+) -> IdentityRegistry:
+    """The registry a snapshot for `day` replays with: base plus amendments already in effect."""
+    active = [a for a in amendments if a.effective_from <= day]
+    canonical = {**base.canonical, **{a.key: a.target for a in active if a.kind == "alias"}}
+    local = {**base.local_overrides, **{a.key: int(a.target) for a in active if a.kind == "override"}}
+    return replace(base, canonical=canonical, local_overrides=local)
+
+
+def amendments_sha256(amendments: tuple[IdentityAmendment, ...]) -> str:
+    rows = [[a.namespace, a.kind, a.provider_id, a.target, a.effective_from.isoformat(), a.evidence]
+            for a in amendments]
+    return hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest()
+
+
+def extends_prefix(amendments: tuple[IdentityAmendment, ...], count: int, digest: str) -> bool:
+    """True when the first `count` amendments are exactly the ones a stored row recorded."""
+    return count <= len(amendments) and amendments_sha256(amendments[:count]) == digest
+
+
+@dataclass(frozen=True)
+class EffectiveIdentity:
+    """The registry one UTC day replays with; amendment fields are None while the contract is unpinned."""
+    registry: IdentityRegistry
+    amendment_count: int | None = None
+    amendments_sha256: str | None = None
+
+
+def resolve_identity(
+    base: IdentityRegistry, amendments: tuple[IdentityAmendment, ...], day: date, *,
+    contract: str | None, activated_on: date | None,
+) -> EffectiveIdentity:
+    """Without a pinned contract any amendment would silently change a bytes-pinned experiment."""
+    if contract is None:
+        if amendments:
+            raise TennisEloContractError("ELO identity amendments require a pinned identity contract")
+        return EffectiveIdentity(base)
+    if contract != IDENTITY_CONTRACT:
+        raise TennisEloContractError(f"Unknown ELO identity contract: {contract}")
+    if amendments and activated_on is None:
+        raise TennisEloContractError("ELO identity amendments before activation belong in the base registry")
+    if activated_on is not None:
+        check_amendments(base, amendments, activated_on)
+    active = tuple(a for a in amendments if a.effective_from <= day)
+    return EffectiveIdentity(effective_registry(base, amendments, day), len(active), amendments_sha256(active))
+
+
 def normalize_identities(match: TennisEloMatch, registry: IdentityRegistry) -> TennisEloMatch:
     winner = registry.canonical.get(match.winner_key, match.winner_id)
     loser = registry.canonical.get(match.loser_key, match.loser_id)

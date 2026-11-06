@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import json
 import random
 import shutil
 from dataclasses import replace
@@ -9,8 +10,10 @@ from pathlib import Path
 import pytest
 
 from app.core.tennis_elo import (
-    IDENTITY_COLUMNS, OVERRIDE_COLUMNS, IdentityRegistry, TennisEloContractError, TennisEloMatch,
-    TennisEloReplay, deduplicate, normalize_identities, parse_identity_registry,
+    AMENDMENT_COLUMNS, IDENTITY_COLUMNS, OVERRIDE_COLUMNS, IdentityRegistry, TennisEloContractError,
+    TennisEloMatch, TennisEloReplay, amendments_sha256, check_amendments, deduplicate, effective_registry,
+    IDENTITY_CONTRACT, extends_prefix, normalize_identities, parse_amendments, parse_identity_registry,
+    resolve_identity,
 )
 from app.core.tennismylife import PlayerNameIndex
 from app.ingest import tennis_elo as ingest
@@ -174,6 +177,193 @@ def test_tracked_registry_parses_and_only_verified_rows_apply(tmp_path):
     assert isinstance(loaded.registry, IdentityRegistry)
 
 
-@pytest.mark.parametrize("name", ["tennis_elo_identities.csv", "tennis_elo_local_overrides.csv"])
+@pytest.mark.parametrize("name", ["tennis_elo_identities.csv", "tennis_elo_local_overrides.csv",
+                                  "tennis_elo_identity_amendments.csv"])
 def test_registry_files_are_checked_out_with_lf_so_every_platform_hashes_the_same_bytes(name):
     assert b"\r" not in (ingest.REGISTRY_DIR / name).read_bytes()
+
+
+ACTIVATED_ON = date(2026, 11, 6)
+AMENDABLE_BASE = parse_identity_registry([alias("310000", "201000")], [override("213873", 53141, "WTA")])
+
+
+def amendment(provider_id, target, effective_from="2026-11-08", kind="alias", namespace="WTA"):
+    return dict(zip(AMENDMENT_COLUMNS, (namespace, kind, provider_id, target, effective_from,
+                                        "exact name; implied birth date spread 0d; never same event")))
+
+
+def amend(*rows):
+    amendments = parse_amendments(rows)
+    check_amendments(AMENDABLE_BASE, amendments, ACTIVATED_ON)
+    return amendments
+
+
+def test_amendments_add_aliases_and_overrides_only_from_their_effective_day():
+    amendments = amend(amendment("266722", "266652"), amendment("223410", "79460", "2026-11-09", "override"))
+    before = effective_registry(AMENDABLE_BASE, amendments, date(2026, 11, 7))
+    assert before == AMENDABLE_BASE
+    first = effective_registry(AMENDABLE_BASE, amendments, date(2026, 11, 8))
+    assert first.canonical == {("WTA", "310000"): "201000", ("WTA", "266722"): "266652"}
+    assert first.local_overrides == AMENDABLE_BASE.local_overrides
+    both = effective_registry(AMENDABLE_BASE, amendments, date(2026, 11, 9))
+    assert both.local_overrides == {("WTA", "213873"): 53141, ("WTA", "223410"): 79460}
+    assert both.version == AMENDABLE_BASE.version and both.proposed == 0
+
+
+def test_an_amended_alias_merges_history_like_a_base_alias():
+    amendments = amend(amendment("320000", "202000"))
+    registry = effective_registry(AMENDABLE_BASE, amendments, date(2026, 11, 8))
+    renamed = normalize_identities(replace(BASE, event_id="2026-9", loser_id="320000"), registry)
+    assert renamed.loser_id == "202000"
+    with pytest.raises(TennisEloContractError, match="self-match"):
+        normalize_identities(replace(BASE, winner_id="310000", loser_id="320000",
+                                     event_id="2026-9"), effective_registry(
+            AMENDABLE_BASE, amend(amendment("320000", "201000")), date(2026, 11, 8)))
+
+
+@pytest.mark.parametrize("rows", [
+    [amendment("310000", "201999")],
+    [amendment("201000", "201999")],
+    [amendment("213873", "201999")],
+    [amendment("330000", "310000")],
+    [amendment("330000", "340000"), amendment("340000", "201000")],
+    [amendment("340000", "201000"), amendment("330000", "340000")],
+    [amendment("330000", "201000"), amendment("330000", "202000", "2026-11-09")],
+    [amendment("330000", "330000")],
+    [amendment("213873", "1", kind="override")],
+    [amendment("310000", "7", kind="override")],
+    [amendment("330000", "53141", kind="override")],
+    [amendment("330000", "201000"), amendment("330000", "7", "2026-11-09", "override")],
+    [amendment("330000", "7", kind="override"), amendment("330000", "201000", "2026-11-09")],
+    [amendment("330000", "201000", "2026-11-06")],
+    [amendment("330000", "201000", "2026-10-30")],
+], ids=["alters-base-alias", "aliases-base-canonical", "aliases-overridden-key", "targets-base-alias",
+        "chain-forward", "chain-backward", "duplicate", "self-alias", "re-overrides-key",
+        "overrides-an-alias", "override-target-taken", "override-after-alias", "alias-after-override",
+        "activation-day", "before-activation"])
+def test_amendments_that_would_alter_chain_or_predate_the_base_stop(rows):
+    with pytest.raises(TennisEloContractError):
+        amend(*rows)
+
+
+@pytest.mark.parametrize("rows", [
+    [amendment("330000", "201000", "2026-11-09"), amendment("340000", "202000", "2026-11-08")],
+    [{**amendment("330000", "201000"), "status": "verified"}],
+    [amendment("330000", "201000", "11/08/2026")],
+    [amendment("330000", "201000", kind="merge")],
+    [amendment("330000", "0", kind="override")],
+    [{**amendment("330000", "201000"), "evidence": " "}],
+    [amendment("330000", "201000", namespace="ITF")],
+], ids=["out-of-order", "status-column", "bad-date", "bad-kind", "bad-local-id", "no-evidence", "bad-namespace"])
+def test_malformed_or_reordered_amendment_rows_stop(rows):
+    with pytest.raises(TennisEloContractError):
+        parse_amendments(rows)
+
+
+def test_a_base_with_proposed_rows_cannot_be_amended():
+    base = parse_identity_registry([alias("310000", "201000"), alias("I0A0", "I0B0", "ATP", "proposed")], [])
+    with pytest.raises(TennisEloContractError, match="proposed"):
+        check_amendments(base, parse_amendments([amendment("330000", "201000")]), ACTIVATED_ON)
+
+
+def test_stored_prefix_proves_amendments_were_only_appended():
+    rows = [amendment("330000", "201000"), amendment("340000", "202000", "2026-11-09")]
+    stored = parse_amendments(rows)
+    count, digest = len(stored), amendments_sha256(stored)
+    appended = parse_amendments([*rows, amendment("350000", "203000", "2026-11-10")])
+    assert extends_prefix(appended, count, digest) and extends_prefix(stored, 0, amendments_sha256(()))
+    edited = parse_amendments([rows[0], {**rows[1], "evidence": "different evidence"}])
+    reordered = parse_amendments([amendment("340000", "202000"), amendment("330000", "201000")])
+    for changed in (edited, reordered, stored[:1]):
+        assert not extends_prefix(changed, count, digest)
+
+
+def test_tracked_amendments_file_is_empty_while_the_contract_is_dormant():
+    with (ingest.REGISTRY_DIR / "tennis_elo_identity_amendments.csv").open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        assert tuple(reader.fieldnames or ()) == AMENDMENT_COLUMNS
+        assert parse_amendments(reader) == ()
+
+
+def resolve(amendments, day=date(2026, 11, 8), contract=IDENTITY_CONTRACT, activated_on=ACTIVATED_ON):
+    return resolve_identity(AMENDABLE_BASE, parse_amendments(amendments), day,
+                            contract=contract, activated_on=activated_on)
+
+
+def test_unpinned_contract_keeps_the_base_and_refuses_any_amendment():
+    dormant = resolve([], contract=None, activated_on=ACTIVATED_ON)
+    assert dormant.registry == AMENDABLE_BASE and dormant.amendment_count is None
+    assert dormant.amendments_sha256 is None
+    with pytest.raises(TennisEloContractError, match="pinned identity contract"):
+        resolve([amendment("330000", "201000")], contract=None)
+
+
+def test_pinned_contract_applies_only_the_amendments_already_in_effect():
+    rows = [amendment("330000", "201000"), amendment("340000", "202000", "2026-11-09")]
+    first = resolve(rows)
+    assert first.registry.canonical[("WTA", "330000")] == "201000"
+    assert ("WTA", "340000") not in first.registry.canonical
+    assert (first.amendment_count, first.amendments_sha256) == (1, amendments_sha256(parse_amendments(rows[:1])))
+    assert resolve([]).amendment_count == 0 and resolve([], activated_on=None).amendment_count == 0
+
+
+@pytest.mark.parametrize("rows, contract, activated_on, message", [
+    ([], "tennis-elo-identity-contract-v0", ACTIVATED_ON, "Unknown"),
+    ([amendment("330000", "201000")], IDENTITY_CONTRACT, None, "before activation"),
+    ([amendment("310000", "201999")], IDENTITY_CONTRACT, ACTIVATED_ON, "alter or chain"),
+])
+def test_pinned_contract_stops_on_an_unknown_version_early_rows_or_a_violation(rows, contract, activated_on, message):
+    with pytest.raises(TennisEloContractError, match=message):
+        resolve(rows, contract=contract, activated_on=activated_on)
+
+
+DORMANT_MANIFEST_KEYS = {"source", "as_of_date", "computed_at", "mapping_sha256", "ratings_sha256",
+                         "identity_version", "identity_sha256", "files"}
+
+
+def write_amendments(directory, rows):
+    with (directory / ingest.AMENDMENTS_FILE).open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=AMENDMENT_COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def pinned_experiment(tmp_path):
+    path = tmp_path / "experiment.json"
+    record = json.loads(ingest.EXPERIMENT_PATH.read_text(encoding="utf-8"))
+    record.update(identity_contract=IDENTITY_CONTRACT, activated_at="2026-10-18T12:00:00+00:00")
+    path.write_text(json.dumps(record), encoding="utf-8")
+    return path
+
+
+def test_dormant_refresh_writes_todays_manifest_keys_and_stops_on_any_amendment(rows, tmp_path, monkeypatch):
+    registry_dir = tmp_path / "registry"
+    write_registry(registry_dir, [], [])
+    writes, _, _ = setup_run(monkeypatch, tmp_path, rows[:1])
+    preview = asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir))
+    assert set(json.loads(preview.manifest_path.read_bytes())) == DORMANT_MANIFEST_KEYS
+    write_amendments(registry_dir, [amendment("Z999", "A001", "2026-10-20", namespace="ATP")])
+    with pytest.raises(TennisEloContractError, match="pinned identity contract"):
+        asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir))
+    assert writes == []
+
+
+def test_pinned_refresh_replays_with_amendments_in_effect_and_records_them(rows, tmp_path, monkeypatch, capsys):
+    registry_dir, experiment = tmp_path / "registry", pinned_experiment(tmp_path)
+    write_registry(registry_dir, [], [])
+    in_effect = amendment("Z999", "A001", "2026-10-20", namespace="ATP")
+    write_amendments(registry_dir, [in_effect])
+    setup_run(monkeypatch, tmp_path, [dict(rows[0], winner_id="Z999")])
+    preview = asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir, experiment_path=experiment))
+    manifest = json.loads(preview.manifest_path.read_bytes())
+    assert manifest["amendment_count"] == 1
+    assert manifest["amendments_sha256"] == amendments_sha256(parse_amendments([in_effect]))
+    assert "provider=ATP:A001" in capsys.readouterr().out
+    write_amendments(registry_dir, [in_effect, amendment("Y888", "B002", "2026-10-21", namespace="ATP")])
+    reproduced = asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir, experiment_path=experiment,
+                                        manifest_path=preview.manifest_path))
+    assert reproduced.manifest_path == preview.manifest_path
+    write_amendments(registry_dir, [{**in_effect, "evidence": "edited after review"}])
+    with pytest.raises(ValueError, match="identity registry changed"):
+        asyncio.run(ingest.run(cache_dir=tmp_path, registry_dir=registry_dir, experiment_path=experiment,
+                               manifest_path=preview.manifest_path))

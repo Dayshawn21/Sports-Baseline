@@ -83,7 +83,7 @@ jobs:
           path: |
             api/data/tennismylife-elo/files
             api/data/tennismylife-elo/manifests
-          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv') }}
+          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv', 'api/app/ingest/data/tennis_elo_identity_amendments.csv') }}
       - name: Refresh isolated candidate ratings
         working-directory: api
         run: python -m app.ingest.tennis_elo --write
