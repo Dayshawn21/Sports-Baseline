@@ -61,3 +61,8 @@ export function parseSseChunks(buffer: string): { events: AskEvent[]; rest: stri
   const events = frames.map(parseFrame).filter((event): event is AskEvent => event !== null)
   return { events, rest }
 }
+
+/** Events in what is left when the stream ends, read as a final frame that lacked its blank line. */
+export function flushSseBuffer(rest: string): AskEvent[] {
+  return rest.trim() === '' ? [] : parseSseChunks(`${rest}\n\n`).events
+}

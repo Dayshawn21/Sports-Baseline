@@ -360,13 +360,15 @@ version and forward validation.
 **Suggested fix:** take them as they are touched; `askError.test.ts` and the two `os.getenv` removals are the cheapest.
 **Resolution:**
 
-### F-33 [P3] unverified - `streamAsk` drops a final SSE frame that lacks a trailing blank line
+### F-33 [P3] fixed - `streamAsk` drops a final SSE frame that lacks a trailing blank line
 
 **File:** web/src/api/ask.ts:60
 **Found:** 2026-11-06 by /audit (scope: full; lens: quality)
 **Why it matters:** when the reader finishes, whatever is left in `buffer` is discarded. If the server's last frame ends without a blank line, the `done` event is lost and the drawer reports a cut-off answer. Not verified that the server ever ends that way.
 **Suggested fix:** after the loop, parse the leftover buffer plus a blank line when it is not empty.
-**Resolution:**
+**Resolution:** Fixed 2026-11-06 defensively. The server never ends a frame without a blank line: every frame `ask_frames` (`api/app/services/ask/answer_stream.py`) yields comes from `sse_frame` or `SSE_PING` (`stream.py`), and both end in `
+
+`. `streamAsk` now passes the leftover to `flushSseBuffer` (`web/src/utils/askStream.ts`), which reads a non-empty one as a final frame; `askStream.test.ts` covers an unterminated `done`, a single-newline ending, and empty, blank and ping-only leftovers.
 
 ## Full audit evidence, 2026-11-06
 
@@ -416,20 +418,21 @@ version and forward validation.
 **Suggested fix:** log a warning with `exc_info=True`, as `bankroll_builder.py` now does.
 **Resolution:**
 
-### F-39 [P3] open - An Ask spend cap below one question's hold silently refuses every question
+### F-39 [P3] fixed - An Ask spend cap below one question's hold silently refuses every question
 
 **File:** api/app/services/ask/guardrails.py:37; api/app/config.py:54
 **Found:** 2026-11-06 by /audit (scope: current; lens: quality)
 **Why it matters:** `ask_daily_spend_cap_usd` accepts any value above 0, but since ask-spend-reservation/F-26 a question is admitted only when its worst-case hold fits (`question_reserve_usd`, about $0.021 at the defaults and up to about $0.041 at the largest `ask_max_tokens` and `ask_max_tool_iterations`). A cap of, say, $0.02 makes every `POST /ask` a 503 "reached today's limit" with nothing spent and no log line saying why. The default $1 cap is unaffected.
 **Suggested fix:** in `Settings`, reject (or warn at startup on) a cap below `question_reserve_usd(settings)` when `ask_enabled`, so the misconfiguration fails at boot like the other Ask bounds.
-**Resolution:**
+**Resolution:** Fixed 2026-11-06. A `Settings` model validator rejects `ask_daily_spend_cap_usd` below one question's hold when `ask_enabled`, so the API fails at construction with a message naming the hold. The hold formula moved onto `Settings` (`ask_prices`, `ask_question_reserve_usd`), and `client.question_reserve_usd` delegates to it, so the check and the reservation share one formula. `test_production_settings.py` covers below, exactly at, disabled, and the default $1 against the largest allowed hold (about $0.041).
 
-### F-40 [P3] open - Evicting a just-released lock can let one duplicate build start
+### F-40 [P3] fixed - Evicting a just-released lock can let one duplicate build start
 
 **File:** api/app/services/tennis/live_odds_cache.py:80
 **Found:** 2026-11-06 by /audit (scope: current; lenses: quality, performance)
 **Why it matters:** `asyncio.Lock.release()` clears `locked()` before the woken waiter re-acquires, so an eviction in that window drops a lock a waiter is about to take; a new caller then makes a fresh lock and can build the same key twice. It needs `max_entries` other stores within one loop turn, so it is practically negligible.
 **Suggested fix:** track in-flight keys explicitly and skip their locks on eviction.
+**Resolution:** Fixed 2026-11-06. `TimedSingleFlight` counts callers holding or waiting on each key's lock (`_users`, decremented in a `finally`, so a cancelled waiter leaves too), and eviction drops a lock only for a key with none. `test_a_lock_handed_to_a_waiter_survives_eviction` reproduces the window with scheduler yields only (`asyncio.sleep(0)`, no timed sleeps): a waiter woken by release, an eviction in the same step, then a new caller. It saw two concurrent builds on the old code and sees one now.
 
 ### F-42 [P3] open - Windows checkouts made before the eol=lf rule keep CRLF registry CSVs until they are checked out again
 

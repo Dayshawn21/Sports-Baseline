@@ -3,7 +3,7 @@ from __future__ import annotations
 from anthropic import AsyncAnthropic
 
 from app.config import Settings
-from app.core.ask_cost import AskPrices, max_question_cost_usd
+from app.core.ask_cost import AskPrices
 
 
 class AskNotConfigured(Exception):
@@ -21,14 +21,8 @@ def make_client(settings: Settings) -> AsyncAnthropic:
 
 
 def ask_prices(settings: Settings) -> AskPrices:
-    return AskPrices(
-        input=settings.ask_price_input_per_mtok,
-        output=settings.ask_price_output_per_mtok,
-        cache_read=settings.ask_price_cache_read_per_mtok,
-        cache_write=settings.ask_price_cache_write_per_mtok,
-    )
+    return settings.ask_prices
 
 
 def question_reserve_usd(settings: Settings) -> float:
-    # One request per tool round plus the final answer.
-    return max_question_cost_usd(ask_prices(settings), settings.ask_max_tool_iterations + 1, settings.ask_max_tokens)
+    return settings.ask_question_reserve_usd

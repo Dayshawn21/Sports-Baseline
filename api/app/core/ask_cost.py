@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from app.core.ask_messages import AskUsage
+if TYPE_CHECKING:
+    # Type-only, so `app.config` can import this module without loading the Anthropic SDK.
+    from app.core.ask_messages import AskUsage
 
 PER_MILLION = 1_000_000
 

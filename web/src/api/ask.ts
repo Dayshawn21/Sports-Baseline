@@ -1,7 +1,7 @@
 import client from './client'
 import type { AskEvent, AskStatus } from '~/types/ask'
 import { resolveApiBaseUrl } from '~/utils/apiBase'
-import { parseSseChunks } from '~/utils/askStream'
+import { flushSseBuffer, parseSseChunks } from '~/utils/askStream'
 
 const API_BASE = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
@@ -64,4 +64,5 @@ export async function streamAsk(
     buffer = rest
     events.forEach(onEvent)
   }
+  flushSseBuffer(buffer).forEach(onEvent)
 }

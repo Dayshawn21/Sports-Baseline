@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSseChunks } from '~/utils/askStream'
+import { flushSseBuffer, parseSseChunks } from '~/utils/askStream'
 
 const frame = (event: string, data: object) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 
@@ -57,5 +57,24 @@ describe('parseSseChunks', () => {
       { type: 'tool_start', name: 'find', sport: null },
       { type: 'tool_start', name: 'find', sport: null },
     ])
+  })
+})
+
+describe('flushSseBuffer', () => {
+  it('reads a final frame that ended without its blank line', () => {
+    const last = frame('done', { stop: 'answered', text: 'Done.' }).trimEnd()
+    const { events, rest } = parseSseChunks(frame('text', { delta: 'Done.' }) + last)
+    expect(events).toEqual([{ type: 'text', delta: 'Done.' }])
+    expect(flushSseBuffer(rest)).toEqual([{ type: 'done', stop: 'answered', text: 'Done.' }])
+  })
+
+  it('reads a final frame that ended with a single newline', () => {
+    expect(flushSseBuffer('event: error\ndata: {"message":"Busy."}\n')).toEqual([{ type: 'error', message: 'Busy.' }])
+  })
+
+  it('finds nothing in an empty, blank or ping-only leftover', () => {
+    expect(flushSseBuffer('')).toEqual([])
+    expect(flushSseBuffer('\n')).toEqual([])
+    expect(flushSseBuffer(': ping')).toEqual([])
   })
 })

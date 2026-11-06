@@ -123,6 +123,30 @@ def test_the_ask_defaults_are_in_range() -> None:
     assert (defaults.ask_daily_questions_per_ip, defaults.ask_daily_spend_cap_usd) == (20, 1.0)
 
 
+def _ask_settings(**overrides: object) -> Settings:
+    return Settings(database_url="postgresql://localhost/ci", _env_file=None, **overrides)
+
+
+def test_an_enabled_cap_below_one_question_hold_fails_validation() -> None:
+    reserve = _ask_settings().ask_question_reserve_usd
+    with pytest.raises(ValidationError, match="below one question's worst-case hold"):
+        _ask_settings(ask_enabled=True, ask_daily_spend_cap_usd=reserve * 0.99)
+
+
+def test_a_cap_of_exactly_one_hold_is_allowed() -> None:
+    reserve = _ask_settings().ask_question_reserve_usd
+    assert _ask_settings(ask_enabled=True, ask_daily_spend_cap_usd=reserve).ask_daily_spend_cap_usd == reserve
+
+
+def test_a_low_cap_is_not_checked_while_ask_is_off() -> None:
+    assert _ask_settings(ask_daily_spend_cap_usd=0.001).ask_daily_spend_cap_usd == 0.001
+
+
+def test_the_default_cap_fits_the_largest_allowed_hold() -> None:
+    largest = _ask_settings(ask_enabled=True, ask_max_tokens=4096, ask_max_tool_iterations=8)
+    assert largest.ask_question_reserve_usd < largest.ask_daily_spend_cap_usd
+
+
 def test_the_api_prints_its_own_info_lines() -> None:
     # Importing app.main (as uvicorn does) must make app.* INFO visible.
     app_log = logging.getLogger("app")

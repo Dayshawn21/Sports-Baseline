@@ -118,6 +118,46 @@ class TestTimedSingleFlight:
 
         assert asyncio.run(run()) == "slow"
 
+    def test_a_lock_handed_to_a_waiter_survives_eviction(self):
+        # release() clears locked() before the woken waiter re-acquires; an eviction
+        # in that same step must not drop the lock the waiter is about to take.
+        first_build, rebuild = asyncio.Event(), asyncio.Event()
+        building, peak = 0, 0
+
+        async def build(gate: asyncio.Event) -> str:
+            nonlocal building, peak
+            building += 1
+            peak = max(peak, building)
+            await gate.wait()
+            building -= 1
+            return "k"
+
+        async def instant() -> str:
+            return "other"
+
+        cache = TimedSingleFlight(900, Clock(), max_entries=1)
+        late: list[asyncio.Task] = []
+
+        async def first_then_evict() -> None:
+            await cache.get("k", lambda: build(first_build))
+            # Same step as the release: the waiter is woken but has not run yet.
+            await cache.get("other", instant)
+            late.append(asyncio.create_task(cache.get("k", lambda: build(rebuild))))
+
+        async def run() -> None:
+            first = asyncio.create_task(first_then_evict())
+            await asyncio.sleep(0)
+            waiter = asyncio.create_task(cache.get("k", lambda: build(rebuild)))
+            await asyncio.sleep(0)
+            first_build.set()
+            await first
+            await asyncio.sleep(0)
+            rebuild.set()
+            await asyncio.gather(waiter, *late)
+
+        asyncio.run(run())
+        assert peak == 1
+
     def test_without_max_entries_nothing_is_dropped(self):
         async def fetch():
             return "x"
