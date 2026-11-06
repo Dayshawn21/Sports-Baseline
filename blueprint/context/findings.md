@@ -375,13 +375,13 @@ version and forward validation.
 **Clean:** no SQL injection (every `text(f"...")` interpolates module constants; values are bound), admin key compared with `hmac.compare_digest`, production settings refuse weak keys and wildcard CORS, workflows use `contents: read` and no `pull_request_target`, no tracked secret, Ask output renders only allowlisted internal links, no `any` or `@ts-ignore` in the web, `app/core` has no I/O, dry runs guard their writes.
 **Ledger:** added prizepicks-rerun-snapshots/F-19 to F-33; closed prizepicks-rerun-snapshots/F-14, prizepicks-rerun-snapshots/F-17 and prizepicks-rerun-snapshots/F-18.
 
-### F-35 [P3] unverified - prizepicks-rerun-snapshots/F-19's key relies on Cloudflare always setting CF-Connecting-IP on Render
+### F-35 [P3] invalid - prizepicks-rerun-snapshots/F-19's key relies on Cloudflare always setting CF-Connecting-IP on Render
 
 **File:** api/app/core/rate_limits.py:27
 **Found:** 2026-11-06 by /audit (scope: current; lens: security)
 **Why it matters:** `client_key` falls back to `request.client.host`, which under `--forwarded-allow-ips '*'` is still the client-written leftmost `X-Forwarded-For` entry. If a request reaches the API without `CF-Connecting-IP`, or Cloudflare passes a client-sent one through, the prizepicks-rerun-snapshots/F-19 bypass returns. Neither is verified; sources are a Render community thread and a blog post.
 **Suggested fix:** after deploy, send 11 requests to a heavy route with rotating fake `CF-Connecting-IP` and `X-Forwarded-For`; the 11th must be a 429. If the header is ever missing in production, key on `"unknown"` there rather than the peer (`is_production()`).
-**Resolution:**
+**Resolution:** Invalid 2026-11-06, verified on production (`sportapp-api-ftsf.onrender.com`, running `9960c720`): 11 requests with a client-set `CF-Connecting-IP` were rejected by Cloudflare with a 403 before reaching Render, so a client cannot supply that header; 11 requests to `/nfl/slate` with a different fake `X-Forwarded-For` each were limited as one client (429 from the 10th, one earlier request had counted), so the deployed key is not taken from `X-Forwarded-For` and Cloudflare's header is present. The fallback hardening is not needed. Note: `sportapp-api.onrender.com`, still named in some docs, is an old suspended service.
 
 ### F-36 [P3] open - The prizepicks-rerun-snapshots/F-19 and prizepicks-rerun-snapshots/F-20 tests mostly cannot fail on the old code
 
