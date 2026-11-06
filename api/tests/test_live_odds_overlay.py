@@ -7,8 +7,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from app.routers import props as props_router
-from app.services.tennis import best_picks_response
+from app.services.tennis import best_picks_response, live_odds_client
 from app.services.tennis.live_odds_cache import LiveOddsRateLimited, TimedSingleFlight
 
 START = datetime(2026, 9, 26, 8, 30, tzinfo=timezone.utc)
@@ -198,7 +197,7 @@ def live(monkeypatch):
         calls.append((bookmakers, hours_ahead))
         return payload
 
-    monkeypatch.setattr(props_router, "_fetch_live_tennis_odds", fake_fetch)
+    monkeypatch.setattr(best_picks_response, "fetch_live_tennis_odds", fake_fetch)
     monkeypatch.setattr(best_picks_response, "_LIVE_ODDS", TimedSingleFlight(900, Clock()))
     return SimpleNamespace(calls=calls, payload=payload)
 
@@ -234,9 +233,42 @@ class TestOverlay:
 def test_a_provider_429_becomes_a_rate_limit_error():
     request = httpx.Request("GET", "https://api.odds-api.io/v3/events")
     response = httpx.Response(429, headers={"x-ratelimit-reset": "1790000000"}, text="{}", request=request)
-    error = props_router._provider_status_error(
+    error = live_odds_client._provider_status_error(
         httpx.HTTPStatusError("429", request=request, response=response), "Events fetch failed"
     )
     assert isinstance(error, LiveOddsRateLimited)
     assert error.status_code == 429
     assert error.reset == "1790000000"
+
+
+def test_a_provider_error_detail_never_carries_the_provider_body():
+    request = httpx.Request("GET", "https://api.odds-api.io/v3/events")
+    for status in (429, 500):
+        response = httpx.Response(status, text="secret provider text", request=request)
+        error = live_odds_client._provider_status_error(
+            httpx.HTTPStatusError(str(status), request=request, response=response), "Events fetch failed"
+        )
+        assert error.status_code == status
+        assert error.detail == "Events fetch failed"
+
+
+@pytest.mark.parametrize("failure", ["status", "transport"])
+def test_a_provider_failure_traceback_never_carries_the_api_key(monkeypatch, failure):
+    import traceback
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if failure == "transport":
+            raise httpx.ConnectError(f"cannot reach {request.url}", request=request)
+        return httpx.Response(429, text="{}", request=request)
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(live_odds_client.settings, "odds_api_key", "SECRET-KEY")
+    monkeypatch.setattr(
+        live_odds_client.httpx, "AsyncClient",
+        lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+
+    with pytest.raises(Exception) as caught:
+        asyncio.run(live_odds_client.fetch_live_tennis_odds("DraftKings", 24))
+
+    assert "SECRET-KEY" not in "".join(traceback.format_exception(caught.value))

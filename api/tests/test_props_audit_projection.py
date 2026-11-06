@@ -4,6 +4,7 @@ import asyncio
 
 from app.core.poisson import over_under_push_probs
 from app.core.rolling_stats import pick_stats_for_player
+from app.repositories.matches import get_market_totals
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
 from app.routers.props import (
@@ -11,7 +12,6 @@ from app.routers.props import (
     _enrich,
     _expected_break_point_chances,
     _expected_service_points,
-    _fetch_market_total_games,
 )
 
 
@@ -247,10 +247,10 @@ class _Db:
 def test_market_total_games_lookup_returns_latest_lines_by_match_id():
     db = _Db()
 
-    totals = asyncio.run(_fetch_market_total_games(db, [_prop(match_id=10)]))
+    totals = asyncio.run(get_market_totals(db, [_prop(match_id=10)]))
 
     assert db.params == {"mids": [10]}
-    assert totals == {10: 22.5}
+    assert {match_id: total.line for match_id, total in totals.items()} == {10: 22.5}
 
 
 def test_favorite_fantasy_projection_is_not_flatlined_under_line():

@@ -13,18 +13,6 @@ from app.core.tennis_grading import is_completed_score
 from app.repositories.matches import _BOOK_PRIORITY_SQL
 
 
-@dataclass
-class Prediction:
-    id: int
-    match_id: int
-    generated_at: datetime
-    model_version: str
-    p1_elo_prob: Optional[float]
-    p1_ml_prob: Optional[float]
-    p1_market_prob: Optional[float]
-    p1_ensemble_prob: Optional[float]
-
-
 async def insert_prediction(
     db: AsyncSession,
     match_id: int,
@@ -56,22 +44,6 @@ async def insert_prediction(
         },
     )
     return row.scalar_one()
-
-
-async def get_latest_prediction(db: AsyncSession, match_id: int) -> Optional[Prediction]:
-    row = await db.execute(
-        text("""
-            SELECT id, match_id, generated_at, model_version,
-                   p1_elo_prob, p1_ml_prob, p1_market_prob, p1_ensemble_prob
-            FROM predictions
-            WHERE match_id = :mid
-            ORDER BY generated_at DESC
-            LIMIT 1
-        """),
-        {"mid": match_id},
-    )
-    r = row.fetchone()
-    return Prediction(*r) if r else None
 
 
 @dataclass(frozen=True)

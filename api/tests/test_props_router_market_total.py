@@ -4,7 +4,8 @@ from dataclasses import replace
 import pytest
 
 from app.core.prop_projection import compute_stat_avg
-from app.routers.props import MarketTotal, _enrich, _fetch_market_totals
+from app.repositories.matches import MarketTotal, get_market_totals
+from app.routers.props import _enrich
 from tests.test_props_audit_projection import _Rows, _prop, _stats
 
 
@@ -66,7 +67,7 @@ class _Db:
 
 def test_market_totals_read_line_and_prices():
     db = _Db()
-    totals = asyncio.run(_fetch_market_totals(db, [replace(_prop(), match_id=10), replace(_prop(), match_id=11)]))
+    totals = asyncio.run(get_market_totals(db, [replace(_prop(), match_id=10), replace(_prop(), match_id=11)]))
     assert "mo.p1_odds, mo.p2_odds" in db.query
     assert totals[10] == MarketTotal(22.5, -125, 105)
     assert totals[11].p_over is None

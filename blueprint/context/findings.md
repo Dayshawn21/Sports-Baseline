@@ -320,22 +320,6 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-29 [P3] open - A service imports a router, and SQL lives in routers and a service
-
-**File:** api/app/services/tennis/best_picks_response.py:75; api/app/routers/props.py:675; api/app/routers/tennis.py:403; api/app/services/tennis/history_cache.py:48
-**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
-**Why it matters:** `best_picks_response` lazily imports `_fetch_live_tennis_odds` from `app.routers.props` to dodge a cycle. `routers/props.py` (931 lines) holds four raw-SQL helpers, the Odds-API.io client and a 254-line `_enrich` (moving them is noted as deferred to item 17); `/tennis/players/stats` builds four `text()` queries inline; `history_cache` queries directly. This breaks "repositories own SQL".
-**Suggested fix:** move the SQL helpers into `repositories/matches.py` and `players.py` and the odds client into `services/tennis/`.
-**Resolution:**
-
-### F-30 [P3] open - Dead code and orphan ingest modules
-
-**File:** api/app/routers/tennis.py:499; api/app/ingest/odds_probe.py; api/app/ingest/espn_nfl.py
-**Found:** 2026-11-06 by /audit (scope: full; lens: quality)
-**Why it matters:** `/tennis/players/compare` is a `TODO` stub returning `{}`. Unreferenced anywhere: `repositories/matches.py:279` `get_match_by_key`, `:378` `mark_completed`, `repositories/players.py:217` `update_birth_date`, `repositories/predictions.py:61` `get_latest_prediction`. Referenced only by tests: `routers/props.py:732` `_fetch_market_total_games`, `repositories/nfl.py:368` `get_latest_game_odds`, `:1101` `upsert_player_alias`, `services/nfl/volume.py:77` `volume_unavailable_reason`, `services/tennis/predictor.py:106` `predict_match`. `odds_probe.py` is a diagnostic script that reads `os.getenv` and parses `.env` itself (the standards keep these out of `api/`); `espn_nfl.py` has no caller or test.
-**Suggested fix:** confirm no script outside `app/` uses them, then delete; move `odds_probe.py` out of the live tree.
-**Resolution:**
-
 ### F-31 [P3] open - Wall-clock reads in a helper that takes `now`, and in tests
 
 **File:** web/src/utils/nflPropDetail.ts:83; api/tests/test_player_stats_sources.py:51; api/tests/test_ask_route.py:354
@@ -358,7 +342,7 @@ version and forward validation.
 - `/tennis/predictions/best-picks` and `/tennis/bankroll/today` can spend Odds-API.io quota from a public GET when `ODDS_API_KEY` is set (dev only; production has none).
 - 33 `from tests.test_x import ...` cross-imports couple test files.
 **Suggested fix:** take them as they are touched; `askError.test.ts` and the two `os.getenv` removals are the cheapest.
-**Resolution:** Partial 2026-11-06: `repositories/props.py` uses `pydantic.JsonValue` instead of `Any`. The rest stays open.
+**Resolution:** partly fixed 2026-11-06 (fix p3-layering-cleanup). Fixed: `Any` gone from `routers/props.py` (the client moved with TypedDicts); the two `os.getenv` fallbacks removed (`Settings` already reads the environment); `useBestPicks` / `useTennisToday` share `hooks/useTennisSlate.ts` and a tested `defaultSlateDates(now)` (tomorrow is now the next UTC date, not local-clock +1 day); AdminPage reads `useFlaggedPlayers` and three mutation hooks in `hooks/useAdmin.ts`; `askError.test.ts` added; `_provider_status_error` logs the body and returns only the label. `repositories/props.py` uses `pydantic.JsonValue` instead of `Any` (a sibling fix). Left open: the public-GET Odds-API.io spend (dev only), and the test cross-imports.
 
 ### F-33 [P3] fixed - `streamAsk` drops a final SSE frame that lacks a trailing blank line
 
@@ -376,14 +360,6 @@ version and forward validation.
 **Signals:** web verify (typecheck, 81 test files / 1,235 tests, build) passed. API `pytest` passed, 5,799 tests, run with a dummy `DATABASE_URL` because this worktree has no `api/app/.env` (the first run failed at collection on the missing setting, an environment gap, not a code defect). No lint command exists. No skipped, focused or xfail tests found on either side.
 **Clean:** no SQL injection (every `text(f"...")` interpolates module constants; values are bound), admin key compared with `hmac.compare_digest`, production settings refuse weak keys and wildcard CORS, workflows use `contents: read` and no `pull_request_target`, no tracked secret, Ask output renders only allowlisted internal links, no `any` or `@ts-ignore` in the web, `app/core` has no I/O, dry runs guard their writes.
 **Ledger:** added prizepicks-rerun-snapshots/F-19 to F-33; closed prizepicks-rerun-snapshots/F-14, prizepicks-rerun-snapshots/F-17 and prizepicks-rerun-snapshots/F-18.
-
-### F-38 [P3] open - Best picks still swallows a live-moneyline overlay failure
-
-**File:** api/app/services/tennis/best_picks_response.py:154
-**Found:** 2026-11-06 by /audit (scope: current; lenses: all)
-**Why it matters:** `build_best_picks_response` wraps `overlay_live_moneyline` in `except Exception: pass`, the pattern F-23 removed from the Bankroll Builder. A provider or parsing failure silently drops live prices from best picks with no log line.
-**Suggested fix:** log a warning with `exc_info=True`, as `bankroll_builder.py` now does.
-**Resolution:**
 
 ### F-39 [P3] fixed - An Ask spend cap below one question's hold silently refuses every question
 

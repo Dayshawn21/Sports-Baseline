@@ -938,9 +938,6 @@ async def run(
 
     api_key = (settings.livetennis_api_key or "").strip()
     if not api_key:
-        import os
-        api_key = os.getenv("LIVETENNIS_API_KEY", "").strip()
-    if not api_key:
         raise RuntimeError(
             "LIVETENNIS_API_KEY is required — set it in api/app/.env or the environment"
         )

@@ -7,11 +7,10 @@ import {
   message,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchFlaggedPlayers, fetchPlayerElo, fetchPlayerStats, setPlayerElo } from '~/api/admin'
-import type { FlaggedPlayer, FetchEloRequest, FetchStatsRequest, SetEloRequest } from '~/types/admin'
+import { useQueryClient } from '@tanstack/react-query'
+import type { FlaggedPlayer, SetEloRequest } from '~/types/admin'
 import { useIsMobile } from '~/hooks/useIsMobile'
-import { useAdminSession } from '~/hooks/useAdmin'
+import { useAdminSession, useFetchPlayerElo, useFetchPlayerStats, useFlaggedPlayers, useSetPlayerElo } from '~/hooks/useAdmin'
 import AdminSignIn from '~/components/admin/AdminSignIn'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
@@ -120,7 +119,6 @@ export default function AdminPage() {
 
 function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
   const isMobile = useIsMobile()
-  const qc = useQueryClient()
   const [messageApi, contextHolder] = message.useMessage()
 
   // Which panel is open per player: playerId → 'stats' | 'elo' | null
@@ -134,51 +132,41 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
     elo: string; hard: string; clay: string; grass: string
   }>>({})
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['admin', 'flagged'],
-    queryFn: fetchFlaggedPlayers,
-    staleTime: 60 * 1000,
-  })
+  const { data, isLoading, isError, refetch, isFetching } = useFlaggedPlayers()
 
-  const fetchStatsMutation = useMutation({
-    mutationFn: ({ playerId, payload }: { playerId: number; payload: FetchStatsRequest }) =>
-      fetchPlayerStats(playerId, payload),
-    onSuccess: (result, { playerId }) => {
+  const closePanel = (playerId: number) => setActivePanel((p) => ({ ...p, [playerId]: null }))
+  const networkError = () => messageApi.error('Network error — check backend logs')
+
+  const fetchStatsMutation = useFetchPlayerStats({
+    onSuccess: (result, playerId) => {
       if (result.success) {
         messageApi.success(`${result.playerName}: found ${result.matchesFound} matches — stats saved`)
-        setActivePanel((p) => ({ ...p, [playerId]: null }))
-        qc.invalidateQueries({ queryKey: ['admin', 'flagged'] })
+        closePanel(playerId)
       } else {
         messageApi.error(result.error ?? 'Stats fetch failed')
       }
     },
-    onError: () => messageApi.error('Network error — check backend logs'),
+    onError: networkError,
   })
 
-  const fetchEloMutation = useMutation({
-    mutationFn: ({ playerId, payload }: { playerId: number; payload: FetchEloRequest }) =>
-      fetchPlayerElo(playerId, payload),
-    onSuccess: (result, { playerId }) => {
+  const fetchEloMutation = useFetchPlayerElo({
+    onSuccess: (result, playerId) => {
       if (result.success) {
         messageApi.success(`${result.playerName}: ELO ${result.elo?.toFixed(0)} fetched from TennisAbstract`)
-        setActivePanel((p) => ({ ...p, [playerId]: null }))
-        qc.invalidateQueries({ queryKey: ['admin', 'flagged'] })
+        closePanel(playerId)
       } else {
         messageApi.error(result.error ?? 'ELO fetch failed')
       }
     },
-    onError: () => messageApi.error('Network error — check backend logs'),
+    onError: networkError,
   })
 
-  const setEloMutation = useMutation({
-    mutationFn: ({ playerId, payload }: { playerId: number; payload: SetEloRequest }) =>
-      setPlayerElo(playerId, payload),
-    onSuccess: (result, { playerId }) => {
+  const setEloMutation = useSetPlayerElo({
+    onSuccess: (result, playerId) => {
       messageApi.success(`ELO saved for ${result.playerName}`)
-      setActivePanel((p) => ({ ...p, [playerId]: null }))
-      qc.invalidateQueries({ queryKey: ['admin', 'flagged'] })
+      closePanel(playerId)
     },
-    onError: () => messageApi.error('Network error — check backend logs'),
+    onError: networkError,
   })
 
   function togglePanel(playerId: number, panel: Exclude<ActivePanel, null>) {

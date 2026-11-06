@@ -11,3 +11,8 @@ export function utcDatesForCentralDay(date: string): [string, string] {
   next.setUTCDate(next.getUTCDate() + 1)
   return [date, next.toISOString().slice(0, 10)]
 }
+
+/** The UTC dates a slate shows when no date is chosen: today's and the next. */
+export function defaultSlateDates(now: Date): [string, string] {
+  return utcDatesForCentralDay(now.toISOString().slice(0, 10))
+}

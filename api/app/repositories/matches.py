@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional, TypedDict
 
-from sqlalchemy import text
+from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.odds import american_to_prob, devig_two_way
 from app.repositories.player_match_stats import get_box_score_candidates
+from app.repositories.props import Prop
 
 
 @dataclass
@@ -276,19 +279,6 @@ async def get_odds_history(
     ]
 
 
-async def get_match_by_key(db: AsyncSession, match_key: str) -> Optional[Match]:
-    row = await db.execute(
-        text("""
-            SELECT id, match_key, match_date, start_utc, tour, surface, tournament, round, best_of,
-                   p1_id, p2_id, p1_rank, p2_rank, winner_id, status, sofascore_id, livetennis_id
-            FROM matches WHERE match_key = :key
-        """),
-        {"key": match_key},
-    )
-    r = row.fetchone()
-    return Match(*r) if r else None
-
-
 async def upsert_match(
     db: AsyncSession,
     match_key: str,
@@ -373,17 +363,6 @@ async def upsert_match(
         },
     )
     return row.scalar_one()
-
-
-async def mark_completed(db: AsyncSession, match_id: int, winner_id: int, score: str) -> None:
-    await db.execute(
-        text("""
-            UPDATE matches
-            SET winner_id = :wid, score = :score, status = 'completed', updated_at = now()
-            WHERE id = :mid
-        """),
-        {"wid": winner_id, "score": score, "mid": match_id},
-    )
 
 
 async def upsert_odds(
@@ -947,3 +926,175 @@ async def get_player_matches(
         PlayerMatchLogRow(*r[:10], score=_flip_score(r[10]) if r[11] else r[10])
         for r in rows.fetchall()
     ]
+
+
+@dataclass(frozen=True)
+class MarketTotal:
+    """A book's main total-games line and its prices (over in p1_odds, under in p2_odds)."""
+
+    line: float
+    over_odds: Optional[int] = None
+    under_odds: Optional[int] = None
+
+    @property
+    def p_over(self) -> Optional[float]:
+        if self.over_odds is None or self.under_odds is None:
+            return None
+        return devig_two_way(american_to_prob(self.over_odds), american_to_prob(self.under_odds))[0]
+
+
+async def get_prediction_win_probs(
+    db: AsyncSession,
+    props: Sequence[Prop],
+) -> dict[tuple[int, int], float]:
+    """Return match-specific win probabilities keyed by (player_id, match_id).
+
+    Joins matches with their latest prediction so we know p1_ensemble_prob, then
+    maps each player to their win probability for that specific match.
+    """
+    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
+    if not match_ids:
+        return {}
+
+    rows = await db.execute(
+        text("""
+            SELECT m.id, m.p1_id, m.p2_id, pred.p1_ensemble_prob
+            FROM matches m
+            LEFT JOIN LATERAL (
+                SELECT p1_ensemble_prob
+                FROM predictions
+                WHERE match_id = m.id
+                ORDER BY generated_at DESC
+                LIMIT 1
+            ) pred ON true
+            WHERE m.id = ANY(:mids)
+        """),
+        {"mids": match_ids},
+    )
+
+    result: dict[tuple[int, int], float] = {}
+    for match_id, p1_id, p2_id, p1_prob in rows.fetchall():
+        if p1_prob is None:
+            continue
+        result[(p1_id, match_id)] = float(p1_prob)
+        result[(p2_id, match_id)] = 1.0 - float(p1_prob)
+    return result
+
+
+async def get_market_win_probs(
+    db: AsyncSession,
+    props: Sequence[Prop],
+) -> dict[tuple[int, int], float]:
+    """Return moneyline-implied win probabilities keyed by (player_id, match_id)."""
+    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
+    if not match_ids:
+        return {}
+
+    rows = await db.execute(
+        text("""
+            SELECT DISTINCT ON (mo.match_id)
+                mo.match_id, m.p1_id, m.p2_id, mo.p1_odds, mo.p2_odds
+            FROM match_odds mo
+            JOIN matches m ON m.id = mo.match_id
+            WHERE mo.match_id = ANY(:mids)
+              AND mo.market = 'moneyline'
+              AND mo.p1_odds IS NOT NULL
+              AND mo.p2_odds IS NOT NULL
+            ORDER BY mo.match_id, mo.fetched_at DESC
+        """),
+        {"mids": match_ids},
+    )
+
+    result: dict[tuple[int, int], float] = {}
+    for match_id, p1_id, p2_id, p1_odds, p2_odds in rows.fetchall():
+        p1_prob, p2_prob = devig_two_way(american_to_prob(int(p1_odds)), american_to_prob(int(p2_odds)))
+        result[(p1_id, match_id)] = p1_prob
+        result[(p2_id, match_id)] = p2_prob
+    return result
+
+
+async def get_market_totals(
+    db: AsyncSession,
+    props: Sequence[Prop],
+) -> dict[int, MarketTotal]:
+    """Latest full-match total-games line with its prices, keyed by match_id."""
+    match_ids = list({p.match_id for p in props if p.match_id is not None})
+    if not match_ids:
+        return {}
+
+    rows = await db.execute(
+        text("""
+            SELECT DISTINCT ON (mo.match_id)
+                mo.match_id, mo.line, mo.p1_odds, mo.p2_odds
+            FROM match_odds mo
+            WHERE mo.match_id = ANY(:mids)
+              AND mo.market = 'total_games'
+              AND mo.line IS NOT NULL
+              AND mo.line >= 17
+            ORDER BY
+                mo.match_id,
+                -- Recency first: an old DraftKings total must not beat a fresh
+                -- FanDuel one. The book only settles rows from the same run.
+                mo.fetched_at DESC,
+                CASE
+                    WHEN LOWER(mo.book) = 'draftkings' THEN 0
+                    WHEN LOWER(mo.book) IN ('bet365', 'betonline.ag', 'betonline') THEN 1
+                    WHEN LOWER(mo.book) = 'fanduel' THEN 2
+                    ELSE 3
+                END
+        """),
+        {"mids": match_ids},
+    )
+
+    return {
+        int(match_id): MarketTotal(
+            float(line),
+            int(over) if over is not None else None,
+            int(under) if under is not None else None,
+        )
+        for match_id, line, over, under in rows.fetchall()
+    }
+
+
+async def get_opponent_ids(
+    db: AsyncSession,
+    props: Sequence[Prop],
+) -> dict[tuple[int, int], int]:
+    """Return opponent player IDs keyed by (player_id, match_id)."""
+    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
+    if not match_ids:
+        return {}
+
+    rows = await db.execute(
+        text("""
+            SELECT id, p1_id, p2_id
+            FROM matches
+            WHERE id = ANY(:mids)
+        """),
+        {"mids": match_ids},
+    )
+
+    result: dict[tuple[int, int], int] = {}
+    for match_id, p1_id, p2_id in rows.fetchall():
+        result[(p1_id, match_id)] = p2_id
+        result[(p2_id, match_id)] = p1_id
+    return result
+
+
+_COMPLETED_RESULTS_WHERE = "status = 'completed' AND winner_id IS NOT NULL"
+
+
+async def count_completed_results(db: AsyncSession) -> int:
+    row = await db.execute(text(f"SELECT COUNT(*) FROM matches WHERE {_COMPLETED_RESULTS_WHERE}"))
+    return row.scalar() or 0
+
+
+async def get_completed_results(db: AsyncSession) -> Sequence[Row]:
+    """Every decided match as (match_date, p1_id, p2_id, winner_id, surface), oldest first."""
+    rows = await db.execute(text(f"""
+        SELECT match_date, p1_id, p2_id, winner_id, surface
+        FROM matches
+        WHERE {_COMPLETED_RESULTS_WHERE}
+        ORDER BY match_date
+    """))
+    return rows.fetchall()

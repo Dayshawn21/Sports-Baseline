@@ -365,25 +365,6 @@ async def insert_game_odds_snapshot(
     return row.scalar_one()
 
 
-async def get_latest_game_odds(
-    db: AsyncSession, game_id: int, book: str, market: str
-) -> dict | None:
-    """Return the most recent stored snapshot for one NFL game market."""
-    row = await db.execute(
-        text("""
-            SELECT id, game_id, book, market, line, first_side, second_side,
-                   first_odds, second_odds, first_market_prob, second_market_prob, fetched_at
-            FROM sport_game_odds
-            WHERE sport = 'nfl' AND provider = 'the_odds_api_us' AND game_id = :game_id AND book = :book AND market = :market
-            ORDER BY fetched_at DESC, id DESC
-            LIMIT 1
-        """),
-        {"game_id": game_id, "book": book, "market": market},
-    )
-    result = row.mappings().first()
-    return dict(result) if result is not None else None
-
-
 async def insert_game_weather_snapshot(
     db: AsyncSession,
     game_id: int,
@@ -1096,27 +1077,6 @@ async def get_upcoming_games_needing_weather(db: AsyncSession, days_ahead: int) 
         {"game_id": row[0], "game_date": row[1], "start_utc": row[2], "home_team": row[3], "away_team": row[4]}
         for row in rows.fetchall()
     ]
-
-
-async def upsert_player_alias(
-    db: AsyncSession,
-    alias_name: str,
-    alias_name_norm: str,
-    player_id: int,
-    source: str = "manual",
-) -> None:
-    await db.execute(
-        text("""
-            INSERT INTO sport_player_aliases (sport, player_id, alias_name, alias_name_norm, source)
-            VALUES ('nfl', :player_id, :alias_name, :alias_norm, :source)
-            ON CONFLICT (sport, alias_name_norm) DO UPDATE SET
-                player_id = EXCLUDED.player_id,
-                alias_name = EXCLUDED.alias_name,
-                source = EXCLUDED.source
-        """),
-        {"player_id": player_id, "alias_name": alias_name,
-         "alias_norm": alias_name_norm, "source": source},
-    )
 
 
 async def get_games(db: AsyncSession, season: int, week: int) -> list[dict]:

@@ -3,6 +3,7 @@ and the per-match pick assembly, shared by the router and Ask Lineform (47a)."""
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import date, timedelta
 from typing import Optional
 
@@ -18,15 +19,18 @@ from app.repositories.props import get_today_match_odds_as_props, get_today_prop
 from app.schemas.tennis import BestPickSchema, BestPicksResponse, MatchBestPicksSchema
 from app.services.tennis.best_picks import BestPick, build_best_picks
 from app.services.tennis.live_odds_cache import TimedSingleFlight
+from app.services.tennis.live_odds_client import LiveOdds, fetch_live_tennis_odds
 from app.services.tennis.prediction_cache import cached_best_picks, cached_predictions
 from app.services.tennis.predictor import PredictionOutput
+
+logger = logging.getLogger(__name__)
 
 PREDICTIONS_UNAVAILABLE = "Tennis predictions are temporarily unavailable."
 
 # Odds move, but not so fast that a moneyline a few minutes old misleads a pick,
 # and a longer window is what keeps page loads inside the hourly API quota.
 _LIVE_ODDS_TTL_SECONDS = 15 * 60
-_LIVE_ODDS: TimedSingleFlight[dict] = TimedSingleFlight(_LIVE_ODDS_TTL_SECONDS)
+_LIVE_ODDS: TimedSingleFlight[LiveOdds] = TimedSingleFlight(_LIVE_ODDS_TTL_SECONDS)
 
 _ML_NAMES = {"ml", "h2h", "moneyline", "winner", "match winner", "match ml", "match result"}
 
@@ -71,13 +75,10 @@ async def overlay_live_moneyline(predictions: list[PredictionOutput]) -> None:
     if not needs:
         return
 
-    # Lazy import to avoid circular dependency at module load time
-    from app.routers.props import _fetch_live_tennis_odds
-
     bookmakers = settings.live_odds_bookmakers
     live_data = await _LIVE_ODDS.get(
         (bookmakers, 24),
-        lambda: _fetch_live_tennis_odds(bookmakers=bookmakers, hours_ahead=24),
+        lambda: fetch_live_tennis_odds(bookmakers=bookmakers, hours_ahead=24),
     )
     if not live_data:
         return
@@ -154,7 +155,7 @@ async def build_best_picks_response(
     try:
         await overlay_live_moneyline(predictions)
     except Exception:
-        pass
+        logger.warning("Best picks live moneyline overlay failed; using stored odds", exc_info=True)
 
     # 2. Get all props (all sources)
     player_props = await get_today_props(db)
@@ -164,8 +165,7 @@ async def build_best_picks_response(
     match_player_ids_map = {m.id: (m.p1_id, m.p2_id) for m in matches}
 
     # 3. Get rolling stats for all players in props + their opponents
-    from app.routers.props import _fetch_market_totals, _fetch_opponent_ids
-    opponent_ids_map = await _fetch_opponent_ids(db, all_props)
+    opponent_ids_map = await match_repo.get_opponent_ids(db, all_props)
     prop_player_ids = [p.player_id for p in all_props if p.player_id is not None]
     opponent_ids = list(opponent_ids_map.values())
     match_player_ids = [pid for pair in match_player_ids_map.values() for pid in pair]
@@ -173,7 +173,7 @@ async def build_best_picks_response(
     rolling_stats = await get_rolling_stats_batch_all_surfaces(db, all_player_ids) if all_player_ids else {}
 
     # 4. Get market totals
-    market_totals = await _fetch_market_totals(db, all_props)
+    market_totals = await match_repo.get_market_totals(db, all_props)
     market_total_games = {match_id: total.line for match_id, total in market_totals.items()}
 
     # 5. Build best picks per match, in a worker thread: pure CPU that would

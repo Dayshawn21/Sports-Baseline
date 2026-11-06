@@ -664,9 +664,6 @@ def _game(game_id: str = "2025_01_DAL_PHI") -> NflverseGame:
     (lambda db: nfl_repository.upsert_player(db, "00-0033873", "P. Mahomes", "QB", 1),
      "INSERT INTO sport_players (sport, source_player_id, name, position, team_id)",
      "ON CONFLICT (sport, source_player_id)"),
-    (lambda db: nfl_repository.upsert_player_alias(db, "Pat Mahomes", "pat mahomes", 7),
-     "INSERT INTO sport_player_aliases (sport, player_id, alias_name, alias_name_norm, source)",
-     "ON CONFLICT (sport, alias_name_norm)"),
     (lambda db: upsert_game(db, _game(), 1, 2),
      "INSERT INTO sport_games (", "ON CONFLICT (sport, source_game_id)"),
 ])
@@ -681,7 +678,7 @@ def test_shared_table_upserts_write_nfl_rows_on_the_sport_scoped_key(write, inse
     assert "nfl_" not in session.statement
 
 
-def test_game_odds_insert_and_latest_read_stay_on_nfl_rows() -> None:
+def test_game_odds_insert_stays_on_nfl_rows() -> None:
     session = _RecordingSession()
 
     asyncio.run(nfl_repository.insert_game_odds_snapshot(
@@ -689,27 +686,6 @@ def test_game_odds_insert_and_latest_read_stay_on_nfl_rows() -> None:
     ))
     assert "INSERT INTO sport_game_odds (\n                sport, game_id," in session.statement
     assert "'nfl', :game_id" in session.statement
-
-
-class _NoRow:
-    def first(self) -> None:
-        return None
-
-
-class _NoRowSession(_RecordingSession):
-    async def execute(self, statement: TextClause, params: dict[str, object] | None = None) -> "_NoRowSession":
-        await super().execute(statement, params)
-        return self
-
-    def mappings(self) -> _NoRow:
-        return _NoRow()
-
-
-def test_latest_game_odds_read_only_sees_nfl_rows() -> None:
-    session = _NoRowSession()
-
-    assert asyncio.run(nfl_repository.get_latest_game_odds(cast(AsyncSession, session), 9, "draftkings", "spread")) is None
-    assert "FROM sport_game_odds\n            WHERE sport = 'nfl' AND provider = 'the_odds_api_us' AND game_id = :game_id" in session.statement
 
 
 def test_game_line_games_share_the_elo_order_and_carry_nullable_closing_lines() -> None:

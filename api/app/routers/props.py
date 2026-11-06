@@ -1,15 +1,10 @@
 import logging
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Optional
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.core.odds import american_to_prob, devig_two_way
 from app.core.prop_ev import assess_prop
 from app.core.prop_probs import (
     games_won_probabilities,
@@ -43,18 +38,22 @@ from app.core.prop_projection import (
 )
 from app.core.rolling_stats import SMALL_SAMPLE_MATCHES, pick_stats_for_player
 from app.core.tennis_first_set import FIRST_SET_STATS, pmf_probabilities, stat_pmf
-from app.core.tennis_odds_events import odds_event_tour
 from app.db.pool import get_db
+from app.repositories.matches import (
+    MarketTotal,
+    get_market_totals,
+    get_market_win_probs,
+    get_opponent_ids,
+    get_prediction_win_probs,
+)
 from app.repositories.players import PlayerRollingStats, get_rolling_stats_batch_all_surfaces
 from app.repositories.props import Prop, get_today_match_odds_as_props, get_today_props
 from app.schemas.props import PropAudit, PropLine, PropsAuditResponse, PropsAuditSummary, PropsResponse
 from app.services.tennis import prop_adoption
-from app.services.tennis.live_odds_cache import LiveOddsRateLimited
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-ODDS_API_BASE = "https://api.odds-api.io/v3"
 
 # Default expected counts per match (used for Poisson when no player stats available)
 _DEFAULT_EXPECTED: dict[str, float] = {
@@ -83,21 +82,6 @@ def _deciding_set_probability(win_prob: Optional[float], best_of: int) -> Option
         return None
     p = _clamp(float(win_prob), 0.01, 0.99)
     return 2.0 * p * (1.0 - p)
-
-
-@dataclass(frozen=True)
-class MarketTotal:
-    """A book's main total-games line and its prices (over in p1_odds, under in p2_odds)."""
-
-    line: float
-    over_odds: Optional[int] = None
-    under_odds: Optional[int] = None
-
-    @property
-    def p_over(self) -> Optional[float]:
-        if self.over_odds is None or self.under_odds is None:
-            return None
-        return devig_two_way(american_to_prob(self.over_odds), american_to_prob(self.under_odds))[0]
 
 
 def _match_link_method(prop: Prop) -> Optional[str]:
@@ -490,154 +474,6 @@ def _enrich(
     )
 
 
-def _parse_dt(value: Any) -> Optional[datetime]:
-    if not value:
-        return None
-    txt = str(value).strip()
-    if not txt:
-        return None
-    if txt.endswith("Z"):
-        txt = txt.replace("Z", "+00:00")
-    try:
-        dt = datetime.fromisoformat(txt)
-    except ValueError:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
-
-
-def _extract_bookmakers(event: dict[str, Any]) -> list[tuple[str, list[dict[str, Any]]]]:
-    out: list[tuple[str, list[dict[str, Any]]]] = []
-    books = event.get("bookmakers") or {}
-    if isinstance(books, dict):
-        for name, markets in books.items():
-            if isinstance(markets, list):
-                out.append((str(name), markets))
-        return out
-    if isinstance(books, list):
-        for b in books:
-            if not isinstance(b, dict):
-                continue
-            name = str(b.get("name") or b.get("key") or "").strip()
-            markets = b.get("markets")
-            if name and isinstance(markets, list):
-                out.append((name, markets))
-    return out
-
-
-def _normalize_market(market: dict[str, Any]) -> dict[str, Any]:
-    odds = market.get("odds") if isinstance(market.get("odds"), list) else []
-    return {
-        "name": market.get("name"),
-        "selections": odds,
-    }
-
-
-def _provider_status_error(error: httpx.HTTPStatusError, label: str) -> HTTPException:
-    detail = f"{label}: {(error.response.text or '')[:260]}"
-    if error.response.status_code == 429:
-        return LiveOddsRateLimited(error.response.headers.get("x-ratelimit-reset"), detail)
-    return HTTPException(status_code=error.response.status_code, detail=detail)
-
-
-async def _fetch_live_tennis_odds(bookmakers: str, hours_ahead: int) -> dict[str, Any]:
-    api_key = (settings.odds_api_key or "").strip()
-    if not api_key:
-        raise HTTPException(status_code=500, detail="ODDS_API_KEY is missing in backend config.")
-
-    params = {"sport": "tennis", "apiKey": api_key}
-    now = datetime.now(UTC)
-    cutoff = now + timedelta(hours=hours_ahead)
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        try:
-            events_resp = await client.get(f"{ODDS_API_BASE}/events", params=params)
-            events_resp.raise_for_status()
-            events_data = events_resp.json()
-        except httpx.HTTPStatusError as e:
-            raise _provider_status_error(e, "Events fetch failed") from e
-        except httpx.HTTPError as e:
-            # The message can carry the request URL, and with it the apiKey parameter.
-            logger.warning("Odds-API.io events fetch failed: %s", type(e).__name__)
-            raise HTTPException(status_code=502, detail="Events fetch failed") from e
-
-        events = (events_data.get("data") or events_data.get("events") or []) if isinstance(events_data, dict) else (events_data or [])
-        filtered = []
-        for ev in events:
-            if not isinstance(ev, dict):
-                continue
-            league_name: str = (ev.get("league") or {}).get("name") or ""
-            tour = odds_event_tour(league_name)
-            if tour is None:
-                continue
-            start = _parse_dt(ev.get("start") or ev.get("date") or ev.get("commenceTime"))
-            if start is None or start < now or start > cutoff:
-                continue
-            ev_id = ev.get("id")
-            if ev_id is None:
-                continue
-            filtered.append({
-                "id": int(ev_id),
-                "home": ev.get("home"),
-                "away": ev.get("away"),
-                "start": start.isoformat(),
-                "tour": tour,
-                "league": league_name,
-            })
-
-        if not filtered:
-            return {"bookmakers": bookmakers, "count": 0, "events": []}
-
-        # Batch in groups of 10 (API limit), with a small delay between batches
-        import asyncio as _asyncio
-        odds_events_all: list[dict] = []
-        for i in range(0, len(filtered), 10):
-            if i > 0:
-                await _asyncio.sleep(0.2)
-            batch_ids = ",".join(str(e["id"]) for e in filtered[i:i + 10])
-            odds_params = {"eventIds": batch_ids, "bookmakers": bookmakers, "apiKey": api_key}
-            try:
-                odds_resp = await client.get(f"{ODDS_API_BASE}/odds/multi", params=odds_params)
-                odds_resp.raise_for_status()
-                odds_data = odds_resp.json()
-                batch_events = (odds_data.get("data") or odds_data.get("events") or []) if isinstance(odds_data, dict) else (odds_data or [])
-                odds_events_all.extend(batch_events)
-            except httpx.HTTPStatusError as e:
-                raise _provider_status_error(e, "Odds fetch failed") from e
-            except httpx.HTTPError as e:
-                logger.warning("Odds-API.io odds fetch failed: %s", type(e).__name__)
-                raise HTTPException(status_code=502, detail="Odds fetch failed") from e
-
-    odds_events = odds_events_all
-    odds_by_id: dict[int, dict[str, Any]] = {}
-    for ev in odds_events:
-        if isinstance(ev, dict) and ev.get("id") is not None:
-            odds_by_id[int(ev["id"])] = ev
-
-    merged = []
-    for ev in filtered:
-        raw = odds_by_id.get(ev["id"])
-        if not raw:
-            continue
-        books = []
-        for book_name, markets in _extract_bookmakers(raw):
-            books.append({
-                "bookmaker": book_name,
-                "marketCount": len(markets),
-                "markets": [_normalize_market(m) for m in markets if isinstance(m, dict)],
-            })
-        merged.append({
-            "eventId": ev["id"],
-            "home": ev["home"],
-            "away": ev["away"],
-            "start": ev["start"],
-            "tour": ev.get("tour"),
-            "league": ev.get("league"),
-            "bookmakers": books,
-        })
-
-    return {"bookmakers": bookmakers, "count": len(merged), "events": merged}
-
-
 def _pick_stats(
     prop: "Prop",
     all_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
@@ -645,160 +481,14 @@ def _pick_stats(
     return pick_stats_for_player(prop.player_id, prop.surface, all_stats)
 
 
-async def _fetch_win_probs(
-    db: AsyncSession,
-    props: list["Prop"],
-) -> dict[tuple[int, int], float]:
-    """Return match-specific win probabilities keyed by (player_id, match_id).
-
-    Joins matches with their latest prediction so we know p1_ensemble_prob, then
-    maps each player to their win probability for that specific match.
-    """
-    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
-    if not match_ids:
-        return {}
-
-    rows = await db.execute(
-        text("""
-            SELECT m.id, m.p1_id, m.p2_id, pred.p1_ensemble_prob
-            FROM matches m
-            LEFT JOIN LATERAL (
-                SELECT p1_ensemble_prob
-                FROM predictions
-                WHERE match_id = m.id
-                ORDER BY generated_at DESC
-                LIMIT 1
-            ) pred ON true
-            WHERE m.id = ANY(:mids)
-        """),
-        {"mids": match_ids},
-    )
-
-    result: dict[tuple[int, int], float] = {}
-    for match_id, p1_id, p2_id, p1_prob in rows.fetchall():
-        if p1_prob is None:
-            continue
-        result[(p1_id, match_id)] = float(p1_prob)
-        result[(p2_id, match_id)] = 1.0 - float(p1_prob)
-    return result
-
-
-async def _fetch_market_win_probs(
-    db: AsyncSession,
-    props: list["Prop"],
-) -> dict[tuple[int, int], float]:
-    """Return moneyline-implied win probabilities keyed by (player_id, match_id)."""
-    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
-    if not match_ids:
-        return {}
-
-    rows = await db.execute(
-        text("""
-            SELECT DISTINCT ON (mo.match_id)
-                mo.match_id, m.p1_id, m.p2_id, mo.p1_odds, mo.p2_odds
-            FROM match_odds mo
-            JOIN matches m ON m.id = mo.match_id
-            WHERE mo.match_id = ANY(:mids)
-              AND mo.market = 'moneyline'
-              AND mo.p1_odds IS NOT NULL
-              AND mo.p2_odds IS NOT NULL
-            ORDER BY mo.match_id, mo.fetched_at DESC
-        """),
-        {"mids": match_ids},
-    )
-
-    result: dict[tuple[int, int], float] = {}
-    for match_id, p1_id, p2_id, p1_odds, p2_odds in rows.fetchall():
-        p1_prob, p2_prob = devig_two_way(american_to_prob(int(p1_odds)), american_to_prob(int(p2_odds)))
-        result[(p1_id, match_id)] = p1_prob
-        result[(p2_id, match_id)] = p2_prob
-    return result
-
-
-async def _fetch_market_total_games(
-    db: AsyncSession,
-    props: list["Prop"],
-) -> dict[int, float]:
-    """Return latest full-match market total-games line keyed by match_id."""
-    return {match_id: total.line for match_id, total in (await _fetch_market_totals(db, props)).items()}
-
-
-async def _fetch_market_totals(
-    db: AsyncSession,
-    props: list["Prop"],
-) -> dict[int, MarketTotal]:
-    """Latest full-match total-games line with its prices, keyed by match_id."""
-    match_ids = list({p.match_id for p in props if p.match_id is not None})
-    if not match_ids:
-        return {}
-
-    rows = await db.execute(
-        text("""
-            SELECT DISTINCT ON (mo.match_id)
-                mo.match_id, mo.line, mo.p1_odds, mo.p2_odds
-            FROM match_odds mo
-            WHERE mo.match_id = ANY(:mids)
-              AND mo.market = 'total_games'
-              AND mo.line IS NOT NULL
-              AND mo.line >= 17
-            ORDER BY
-                mo.match_id,
-                -- Recency first: an old DraftKings total must not beat a fresh
-                -- FanDuel one. The book only settles rows from the same run.
-                mo.fetched_at DESC,
-                CASE
-                    WHEN LOWER(mo.book) = 'draftkings' THEN 0
-                    WHEN LOWER(mo.book) IN ('bet365', 'betonline.ag', 'betonline') THEN 1
-                    WHEN LOWER(mo.book) = 'fanduel' THEN 2
-                    ELSE 3
-                END
-        """),
-        {"mids": match_ids},
-    )
-
-    return {
-        int(match_id): MarketTotal(
-            float(line),
-            int(over) if over is not None else None,
-            int(under) if under is not None else None,
-        )
-        for match_id, line, over, under in rows.fetchall()
-    }
-
-
-async def _fetch_opponent_ids(
-    db: AsyncSession,
-    props: list["Prop"],
-) -> dict[tuple[int, int], int]:
-    """Return opponent player IDs keyed by (player_id, match_id)."""
-    match_ids = list({p.match_id for p in props if p.match_id is not None and p.player_id is not None})
-    if not match_ids:
-        return {}
-
-    rows = await db.execute(
-        text("""
-            SELECT id, p1_id, p2_id
-            FROM matches
-            WHERE id = ANY(:mids)
-        """),
-        {"mids": match_ids},
-    )
-
-    result: dict[tuple[int, int], int] = {}
-    for match_id, p1_id, p2_id in rows.fetchall():
-        result[(p1_id, match_id)] = p2_id
-        result[(p2_id, match_id)] = p1_id
-    return result
-
-
 async def _enrich_props(db: AsyncSession, props: list["Prop"]) -> list[PropLine]:
-    opponent_ids_map = await _fetch_opponent_ids(db, props)
+    opponent_ids_map = await get_opponent_ids(db, props)
     player_ids = {p.player_id for p in props if p.player_id is not None}
     opponent_ids = set(opponent_ids_map.values())
     rolling_stats = await get_rolling_stats_batch_all_surfaces(db, list(player_ids | opponent_ids))
-    prediction_probs = await _fetch_win_probs(db, props)
-    market_probs = await _fetch_market_win_probs(db, props)
-    market_totals = await _fetch_market_totals(db, props)
+    prediction_probs = await get_prediction_win_probs(db, props)
+    market_probs = await get_market_win_probs(db, props)
+    market_totals = await get_market_totals(db, props)
     return enrich_with(props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_totals)
 
 

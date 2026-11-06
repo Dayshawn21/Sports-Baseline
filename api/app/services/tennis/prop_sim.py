@@ -27,15 +27,15 @@ from app.core.tennis_match_chain import SET_EFFECT_SD, solve_holds
 from app.core.tennis_match_sim import ACE_RATE_SHAPE, DEFAULT_DRAWS, DF_RATE_SHAPE, MatchDraws, simulate_match
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.matches import (
+    MarketTotal,
+    get_market_totals,
+    get_market_win_probs,
+    get_opponent_ids,
+    get_prediction_win_probs,
+)
 from app.repositories.players import PlayerRollingStats, get_rolling_stats_batch_all_surfaces
 from app.repositories.props import Prop
-from app.routers.props import (
-    MarketTotal,
-    _fetch_market_totals,
-    _fetch_market_win_probs,
-    _fetch_opponent_ids,
-    _fetch_win_probs,
-)
 from app.schemas.props import PropLine
 
 _StatReader = Callable[[MatchDraws, int], np.ndarray]
@@ -295,14 +295,14 @@ def _sim_line(prop: Prop, line: PropLine, sim: MatchSim | None) -> PropLine:
 
 async def load_sim_inputs(db: AsyncSession, props: list[Prop]) -> SimInputs:
     """The inputs `enrich_props` loads, once, so v3 (`enrich_with`) and v4 read the same values."""
-    opponent_ids = await _fetch_opponent_ids(db, props)
+    opponent_ids = await get_opponent_ids(db, props)
     player_ids = {p.player_id for p in props if p.player_id is not None} | set(opponent_ids.values())
     return SimInputs(
         opponent_ids=opponent_ids,
         rolling_stats=await get_rolling_stats_batch_all_surfaces(db, list(player_ids)),
-        prediction_probs=await _fetch_win_probs(db, props),
-        market_probs=await _fetch_market_win_probs(db, props),
-        market_totals=await _fetch_market_totals(db, props),
+        prediction_probs=await get_prediction_win_probs(db, props),
+        market_probs=await get_market_win_probs(db, props),
+        market_totals=await get_market_totals(db, props),
     )
 
 

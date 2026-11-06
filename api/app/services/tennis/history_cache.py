@@ -16,23 +16,13 @@ import datetime as dt
 import logging
 from typing import Optional
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ml.asof_features import HistoryIndex, h2h_win_pct
 from app.ml.elo_history import EloIndex
-from app.repositories.matches import Match
+from app.repositories.matches import Match, count_completed_results, get_completed_results
 
 logger = logging.getLogger(__name__)
-
-_COMPLETED_SQL = """
-SELECT match_date, p1_id, p2_id, winner_id, surface
-FROM matches
-WHERE status = 'completed' AND winner_id IS NOT NULL
-ORDER BY match_date
-"""
-
-_COUNT_SQL = "SELECT COUNT(*) FROM matches WHERE status = 'completed' AND winner_id IS NOT NULL"
 
 
 class HistoryCache:
@@ -45,10 +35,10 @@ class HistoryCache:
         self._rebuild = asyncio.Lock()
 
     async def get(self, db: AsyncSession) -> tuple[HistoryIndex, EloIndex]:
-        count = (await db.execute(text(_COUNT_SQL))).scalar() or 0
+        count = await count_completed_results(db)
         async with self._rebuild:
             if self._history is None or self._elo is None or count != self._built_at_count:
-                rows = (await db.execute(text(_COMPLETED_SQL))).fetchall()
+                rows = await get_completed_results(db)
                 logger.info("Rebuilding history indexes from %d completed matches", len(rows))
                 self._history, self._elo = await asyncio.to_thread(
                     lambda: (HistoryIndex(rows), EloIndex(rows))

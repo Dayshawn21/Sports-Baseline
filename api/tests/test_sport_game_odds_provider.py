@@ -23,7 +23,7 @@ def _sql_strings() -> list[tuple[str, str]]:
 def test_the_guard_sees_every_known_reader() -> None:
     files = [path for path, _ in _sql_strings()]
 
-    assert files.count(str(Path("repositories/nfl.py"))) == 8
+    assert files.count(str(Path("repositories/nfl.py"))) == 7
     assert files.count(str(Path("repositories/nba.py"))) == 3
     assert files.count(str(Path("repositories/nhl.py"))) == 1
 
@@ -38,7 +38,7 @@ def test_pre_36_readers_stay_on_the_feed_item_28_was_written_against() -> None:
     historical_readers = {str(Path("repositories/nfl.py")), str(Path("repositories/nba.py"))}
     single_feed = [sql for path, sql in _sql_strings() if path in historical_readers and "provider IN" not in sql]
 
-    assert len(single_feed) == 10
+    assert len(single_feed) == 9
     assert all(f"provider = '{THE_ODDS_API_US}'" in sql for sql in single_feed)
 
 

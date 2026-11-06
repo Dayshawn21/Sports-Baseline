@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rolling_stats import SMALL_SAMPLE_MATCHES
 from app.db.pool import get_db
 from app.repositories import matches as match_repo
-from app.repositories.players import get_latest_elo, get_rolling_stats, get_rolling_stats_batch_all_surfaces, normalize_name
+from app.repositories.players import (
+    find_player_id_for_stats,
+    get_latest_elo,
+    get_rolling_stats,
+    get_rolling_stats_batch_all_surfaces,
+    normalize_name,
+)
 from app.schemas.tennis import (
     BankrollBuilderResponse,
     BankrollPickSchema,
@@ -411,53 +417,7 @@ async def get_player_stats(
     surface: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import text
-
-    norm = normalize_name(name)
-    if tour:
-        row = await db.execute(
-            text("SELECT id FROM players WHERE name_norm = :n AND tour = :t"),
-            {"n": norm, "t": tour.upper()},
-        )
-        r = row.fetchone()
-        player_id = r[0] if r else None
-        if player_id is None:
-            fallback_sql = """
-                SELECT id FROM players
-                WHERE name_norm = :n
-                ORDER BY
-                    CASE
-                        WHEN :t = 'CHALLENGER' AND tour = 'ATP' THEN 0
-                        WHEN :t = 'CHALLENGER' AND tour = 'WTA' THEN 1
-                        ELSE 2
-                    END,
-                    id
-                LIMIT 1
-            """
-            row = await db.execute(text(fallback_sql), {"n": norm, "t": tour.upper()})
-            r = row.fetchone()
-            player_id = r[0] if r else None
-    else:
-        row = await db.execute(
-            text("SELECT id FROM players WHERE name_norm = :n LIMIT 1"),
-            {"n": norm},
-        )
-        r = row.fetchone()
-        player_id = r[0] if r else None
-
-    if player_id is None:
-        # try aliases
-        row = await db.execute(
-            text("""
-                SELECT p.id FROM player_aliases a
-                JOIN players p ON p.id = a.canonical_player_id
-                WHERE a.alias_name_norm = :n LIMIT 1
-            """),
-            {"n": norm},
-        )
-        r = row.fetchone()
-        player_id = r[0] if r else None
-
+    player_id = await find_player_id_for_stats(db, normalize_name(name), tour)
     if player_id is None:
         return None
 
@@ -498,12 +458,6 @@ async def get_player_stats(
         elo_clay=elo_data.elo_clay if elo_data else None,
         elo_grass=elo_data.elo_grass if elo_data else None,
     )
-
-
-@router.get("/players/compare")
-async def compare_players(p1: str, p2: str, db: AsyncSession = Depends(get_db)):
-    # TODO: implement
-    return {}
 
 
 @router.get("/bankroll/today", response_model=BankrollBuilderResponse)

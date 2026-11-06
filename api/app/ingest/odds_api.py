@@ -715,10 +715,7 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
 
     bookmakers = bookmaker_scope_param(bookmakers or settings.live_odds_bookmakers)
 
-    api_key = settings.odds_api_key if hasattr(settings, "odds_api_key") else None
-    if not api_key:
-        import os
-        api_key = os.getenv("ODDS_API_KEY", "").strip()
+    api_key = (settings.odds_api_key or "").strip()
     if not api_key:
         raise RuntimeError("ODDS_API_KEY is required — set it in .env or environment")
 

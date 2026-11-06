@@ -6,8 +6,8 @@ from datetime import date
 from types import SimpleNamespace
 
 from app.repositories import matches as match_repo
+from app.repositories.matches import MarketTotal
 from app.routers import props as props_router
-from app.routers.props import MarketTotal
 from app.services.tennis import best_picks_response as target
 from app.services.tennis.best_picks import BestPick
 
@@ -79,8 +79,8 @@ def _stub_io(monkeypatch, calls: dict):
     monkeypatch.setattr(match_repo, "get_upcoming", upcoming)
     monkeypatch.setattr(target, "get_rolling_stats_batch_all_surfaces", rolling)
     monkeypatch.setattr(target, "build_best_picks", build)
-    monkeypatch.setattr(props_router, "_fetch_opponent_ids", opponents)
-    monkeypatch.setattr(props_router, "_fetch_market_totals", totals)
+    monkeypatch.setattr(match_repo, "get_opponent_ids", opponents)
+    monkeypatch.setattr(match_repo, "get_market_totals", totals)
     monkeypatch.setattr(props_router, "enrich_with", enrich)
 
 
@@ -98,3 +98,19 @@ def test_orchestration_output_is_unchanged(monkeypatch):
     # 48f: PrizePicks lines are never cards, so best picks no longer builds board rows.
     assert "enrich_args" not in calls
     assert calls["build"][0] == (1, [PLAYER_PROP, ODDS_PROP], (10, 11), {1: 21.5})
+
+
+def test_an_overlay_failure_is_logged_and_the_response_still_builds(monkeypatch, caplog):
+    calls: dict = {}
+    _stub_io(monkeypatch, calls)
+
+    async def failing_overlay(_predictions):
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(target, "overlay_live_moneyline", failing_overlay)
+    with caplog.at_level("WARNING", logger=target.__name__):
+        response = _run()
+
+    assert response.model_dump_json() == GOLDEN
+    [record] = [r for r in caplog.records if "overlay failed" in r.getMessage()]
+    assert record.exc_info is not None

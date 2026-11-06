@@ -48,10 +48,9 @@ from app.core.prop_settlement import actual_value, box_score_value, parse_sets
 from app.core.tennis_grading import is_completed_score
 from app.core.tennis_match_chain import mixed_match_distribution
 from app.core.tennis_sets import three_set_probability
-from app.repositories.matches import PreStartMarketMatch
+from app.repositories.matches import MarketTotal, PreStartMarketMatch
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import MarketTotal
 from app.services.tennis.prop_sim import MatchSim, SimInputs, build_match_sim, stat_values
 
 SET_GAP_STOP = 0.02

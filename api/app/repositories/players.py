@@ -214,14 +214,6 @@ async def upsert_player(
     return row.scalar_one()
 
 
-async def update_birth_date(db: AsyncSession, player_id: int, birth_date: date) -> None:
-    """Set birth_date for a player."""
-    await db.execute(
-        text("UPDATE players SET birth_date = :bd WHERE id = :id"),
-        {"bd": birth_date, "id": player_id},
-    )
-
-
 async def upsert_alias(db: AsyncSession, canonical_id: int, alias_name: str, source: str) -> None:
     norm = normalize_name(alias_name)
     await db.execute(
@@ -864,3 +856,51 @@ async def get_league_rate_rows(db: AsyncSession) -> list[LeagueRateRow]:
         LeagueRateRow(r[0], r[1], *(None if v is None else float(v) for v in r[2:]))
         for r in rows.fetchall()
     ]
+
+
+async def find_player_id_for_stats(db: AsyncSession, name_norm: str, tour: str | None) -> int | None:
+    """The player a stats lookup names: by tour when given (a Challenger name
+    prefers ATP, then WTA), else any tour, then by alias."""
+    player_id: int | None
+    if tour:
+        tour = tour.upper()
+        row = await db.execute(
+            text("SELECT id FROM players WHERE name_norm = :n AND tour = :t"),
+            {"n": name_norm, "t": tour},
+        )
+        player_id = row.scalar()
+        if player_id is None:
+            row = await db.execute(
+                text("""
+                    SELECT id FROM players
+                    WHERE name_norm = :n
+                    ORDER BY
+                        CASE
+                            WHEN :t = 'CHALLENGER' AND tour = 'ATP' THEN 0
+                            WHEN :t = 'CHALLENGER' AND tour = 'WTA' THEN 1
+                            ELSE 2
+                        END,
+                        id
+                    LIMIT 1
+                """),
+                {"n": name_norm, "t": tour},
+            )
+            player_id = row.scalar()
+    else:
+        row = await db.execute(
+            text("SELECT id FROM players WHERE name_norm = :n LIMIT 1"),
+            {"n": name_norm},
+        )
+        player_id = row.scalar()
+
+    if player_id is None:
+        row = await db.execute(
+            text("""
+                SELECT p.id FROM player_aliases a
+                JOIN players p ON p.id = a.canonical_player_id
+                WHERE a.alias_name_norm = :n LIMIT 1
+            """),
+            {"n": name_norm},
+        )
+        player_id = row.scalar()
+    return player_id
