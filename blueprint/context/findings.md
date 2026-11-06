@@ -320,14 +320,6 @@ reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
 
-### F-22 [P2] open - `nfl_odds` spends its credit before the floor check and with no games
-
-**File:** api/app/ingest/nfl_odds.py:72
-**Found:** 2026-11-06 by /audit (scope: full; lens: performance)
-**Why it matters:** `run` calls the paid `/odds` endpoint first and only then returns without storing when `remaining < min_requests_remaining`, so the floor never prevents a spend and every scheduled run below it burns a credit for nothing. With no upcoming games (offseason) it still calls, unlike `nba_odds.py:56-58`.
-**Suggested fix:** follow `nba_odds.py:37-63`: return early on no games, check the floor with the free `/sports` call, then fetch.
-**Resolution:**
-
 ### F-23 [P2] open - Bankroll Builder rebuilds every tennis prediction per request
 
 **File:** api/app/services/tennis/bankroll_builder.py:566

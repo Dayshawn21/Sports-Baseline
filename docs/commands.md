@@ -39,7 +39,10 @@ per command; read this file before running, scheduling or changing one.
 - NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve
   stored lines to players and games without spending a provider request)
 - NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14` (add `--dry-run`
-  to report matched and stored market counts without database writes)
+  to report matched and stored market counts without database writes; the dry
+  run still spends the paid `/odds` call). With no upcoming game it makes no
+  provider call, and it skips `/odds` unless the free `/sports` balance is at
+  least `--min-requests-remaining` (default 5).
 - ELO: `python -m app.ingest.elo --web`
 - Player stats: `python -m app.ingest.player_stats --today-only`
 - TennisMyLife box scores: `python -m app.ingest.tennismylife [--days-back 21]
