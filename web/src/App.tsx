@@ -121,6 +121,7 @@ function Nav() {
               <AskLauncher sport={nav.sports.find(sport => sport.active)?.code ?? null} />
               <Button
                 type="text"
+                className="shell-menu-button"
                 icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Open navigation menu"
