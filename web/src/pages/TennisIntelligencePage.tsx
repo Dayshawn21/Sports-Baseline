@@ -18,7 +18,7 @@ import {
   composeUnifiedMatches,
 } from '~/utils/unifiedTennis'
 import type { TourTab } from '~/utils/tennisSlate'
-import { featuredPicks, isGroupedSort, revealTab, slateRows, tennisDigest } from '~/utils/tennisSlate'
+import { featuredPicks, isGroupedSort, slateRows, tennisDigest } from '~/utils/tennisSlate'
 import { slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
 import '~/components/tennis/tennis-slate.css'
@@ -77,7 +77,6 @@ export default function TennisIntelligencePage() {
   const [chosenSource, setSource] = useState<PropSource>('prizepicks')
   // Visitors get PrizePicks only: the book switch and its health warning are owner diagnostics.
   const source: PropSource = adminView ? chosenSource : 'prizepicks'
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [tourTab, setTourTab] = useState<TourTab>('all')
   const { query } = useSlateCommand()
 
@@ -139,21 +138,6 @@ export default function TennisIntelligencePage() {
     const matchingKeys = new Set(matchingSlateCommandRows(commandRows, query).map(row => row.key))
     return rows.filter(row => matchingKeys.has(row.key))
   }, [commandActive, commandRows, query, rows])
-
-  function toggleRow(matchKey: string) {
-    setExpandedKey((open) => (open === matchKey ? null : matchKey))
-  }
-
-  // Only unlinked props need the digest's inline-detail fallback.
-  function openFromDigest(matchKey: string) {
-    setTourTab(revealTab(rows, matchKey, tourTab))
-    setExpandedKey(matchKey)
-    requestAnimationFrame(() => {
-      const toggle = document.querySelector<HTMLButtonElement>(`[data-match-key="${CSS.escape(matchKey)}"]`)
-      toggle?.focus({ preventScroll: true })
-      toggle?.closest('tr')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
 
   const propsHealth = useMemo(
     () => assessPropsHealth(propsQuery.data?.props ?? []),
@@ -251,12 +235,10 @@ export default function TennisIntelligencePage() {
           </div>
         ) : (
           <>
-          <TennisSlateDigest items={digest} selectedKey={expandedKey} onSelect={openFromDigest} />
+          <TennisSlateDigest items={digest} />
           <TennisSlateTable
             rows={filteredRows}
             grouped={isGroupedSort(sort)}
-            expandedKey={expandedKey}
-            onToggle={toggleRow}
             showFlags={adminView}
             tab={tourTab}
             onTabChange={setTourTab}

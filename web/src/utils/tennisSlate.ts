@@ -152,7 +152,7 @@ export function tableGroups(rows: SlateRow[], grouped: boolean): TournamentGroup
 /** One box of the tennis digest; display strings only. The EV is a priced best bet's, so the box shows it green. */
 export interface TennisDigestItem {
   matchKey: string
-  analysisPath: string | null
+  analysisPath: string
   pick: string
   what: string
   when: string
@@ -163,14 +163,17 @@ export interface TennisDigestItem {
   tone: TourTone | null
 }
 
+/** A pick whose match has no analysis page gets no box: the digest only links (F-43). */
 export function tennisDigest(featured: FeaturedPick[], now: number = Date.now()): TennisDigestItem[] {
-  return featured.map(({ match, pick }) => {
+  return featured.flatMap(({ match, pick }) => {
+    const analysisPath = matchAnalysisPath(match)
+    if (analysisPath == null) return []
     const prediction = unifiedMatchToPrediction(match)
     // fmtStartCT answers '' rather than null for a missing or unreadable time.
     const start = fmtStartCT(prediction?.startUtc, now) || 'Time TBA'
-    return {
+    return [{
       matchKey: match.key,
-      analysisPath: matchAnalysisPath(match),
+      analysisPath,
       pick: pick.pick,
       what: prediction ? `${pick.label} · ${prediction.p1Name} vs ${prediction.p2Name}` : pick.label,
       when: `${fmtTournament(prediction?.tournament ?? null)} · ${start}`,
@@ -179,14 +182,8 @@ export function tennisDigest(featured: FeaturedPick[], now: number = Date.now())
       tier: pick.confidence,
       tourLabel: prediction?.tourLabel ?? prediction?.tour ?? null,
       tone: tourTone(prediction?.tour, prediction?.tourLabel),
-    }
+    }]
   })
-}
-
-/** The tab to show so the row with `key` is visible: the current one when it already is, else All. */
-export function revealTab(rows: SlateRow[], key: string, tab: TourTab): TourTab {
-  if (!rows.some((row) => row.key === key)) return tab
-  return filterByTourTab(rows, tab).some((row) => row.key === key) ? tab : 'all'
 }
 
 export function featuredPicks(matches: UnifiedTennisMatch[], limit: number): FeaturedPick[] {

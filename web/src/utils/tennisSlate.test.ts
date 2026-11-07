@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, matchAnalysisPath, revealTab, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, matchAnalysisPath, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -90,9 +90,9 @@ describe('matchAnalysisPath', () => {
       .toBe('/tennis/match/91823')
   })
 
-  it('keeps unlinked props inline even when their key resembles a match ID', () => {
+  it('gives unlinked props no path, and no digest box, even when their key resembles a match ID', () => {
     expect(matchAnalysisPath(match({ matchId: null, key: 'm-91823', prediction: null }))).toBeNull()
-    expect(tennisDigest([{ match: match({ matchId: null }), pick: bestBet() }])[0].analysisPath).toBeNull()
+    expect(tennisDigest([{ match: match({ matchId: null, key: 'm-91823' }), pick: bestBet() }])).toEqual([])
   })
 })
 
@@ -307,26 +307,5 @@ describe('tennisDigest', () => {
 
   it('returns no boxes when there is no priced pick', () => {
     expect(tennisDigest([], NOW)).toEqual([])
-  })
-})
-
-describe('revealTab', () => {
-  const rows = slateRows([
-    match({ key: 'atp', prediction: prediction({ tour: 'ATP' }) }),
-    match({ key: 'w125', prediction: prediction({ tour: 'CHALLENGER', tourLabel: 'WTA 125' }) }),
-  ])
-
-  it('keeps the current tab when the row is already visible', () => {
-    expect(revealTab(rows, 'atp', 'ATP')).toBe('ATP')
-    expect(revealTab(rows, 'w125', 'WTA 125')).toBe('WTA 125')
-  })
-
-  it('falls back to All when the tab hides the row', () => {
-    expect(revealTab(rows, 'w125', 'CHALLENGER')).toBe('all')
-    expect(revealTab(rows, 'atp', 'WTA')).toBe('all')
-  })
-
-  it('keeps the tab for a key the table does not hold', () => {
-    expect(revealTab(rows, 'missing', 'ATP')).toBe('ATP')
   })
 })

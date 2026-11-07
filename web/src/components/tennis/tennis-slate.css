@@ -61,7 +61,6 @@
 
 /* The toolbar already spaces the strip from above; the table follows it directly, so space below. */
 .unified-tennis-page .slate-digest { margin: 0 0 var(--space-5); }
-.tennis-digest__play.is-selected { border-color: rgba(255, 255, 255, 0.35); }
 .tennis-digest__ev { color: var(--positive); }
 .tennis-digest__foot { display: flex; align-items: center; gap: var(--space-2); margin-top: 6px; }
 
@@ -159,8 +158,6 @@
 .tennis-slate-table__row {
   cursor: pointer;
   outline: none;
-  /* A digest pick scrolls its row to the top; keep it clear of the sticky top bar. */
-  scroll-margin-top: calc(var(--nav-height) + 12px);
 }
 
 .tennis-slate-table__row:hover td,
@@ -168,11 +165,7 @@
   background: var(--bg-card-hover);
 }
 
-.tennis-slate-table__row.is-open td {
-  background: var(--bg-raised);
-}
-
-/* Match links and unlinked-prop toggles share the same appearance. */
+/* The match link, and the plain names of a row with no analysis page. */
 .tennis-slate-table__toggle {
   display: block;
   padding: 0;
@@ -193,17 +186,6 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   border-radius: 4px;
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
-}
-
-/* The expansion's cell drops the table's mono, right-aligned, single-line cell styles. */
-.tennis-slate-table__detail > td {
-  padding: 0;
-  border-bottom: 1px solid var(--border-card);
-  background: var(--bg-raised);
-  font-family: var(--font-body);
-  font-size: 14px;
-  text-align: left;
-  white-space: normal;
 }
 
 .tennis-slate-table td.tennis-slate-table__time {
@@ -315,9 +297,7 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   }
 
   .tennis-slate-table__group,
-  .tennis-slate-table__group td,
-  .tennis-slate-table__detail,
-  .tennis-slate-table__detail > td {
+  .tennis-slate-table__group td {
     display: block;
   }
 
@@ -341,10 +321,6 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   .tennis-slate-table__row:hover,
   .tennis-slate-table__row:focus-visible {
     background: var(--bg-card-hover);
-  }
-
-  .tennis-slate-table__row.is-open {
-    background: var(--bg-raised);
   }
 
   .tennis-slate-table td.tennis-slate-table__time { grid-area: time; }

@@ -1,7 +1,5 @@
-import { Fragment } from 'react'
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import TennisMatchDetail from '~/components/tennis/TennisMatchDetail'
 import type { SlateRow, TourTab } from '~/utils/tennisSlate'
 import { TOUR_TABS, filterByTourTab, fmtEv, matchAnalysisPath, tableGroups } from '~/utils/tennisSlate'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
@@ -12,12 +10,8 @@ interface Props {
   rows: SlateRow[]
   /** Tournament headers; off for ranking sorts, where each row names its tournament. */
   grouped: boolean
-  /** The one row whose detail is open, or null. */
-  expandedKey: string | null
-  onToggle: (key: string) => void
   /** Quality flags are pipeline diagnostics: the owner's view only. */
   showFlags: boolean
-  /** Lifted to the page so a digest pick can switch to a tab that shows its row. */
   tab: TourTab
   onTabChange: (tab: TourTab) => void
   /** A command query searches the already-filtered slate across local tour tabs. */
@@ -63,11 +57,7 @@ function FlagsCell({ flags }: { flags: string[] }) {
   )
 }
 
-function detailId(key: string): string {
-  return `tennis-match-detail-${key}`
-}
-
-function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row: SlateRow; open: boolean; showTournament: boolean; showFlags: boolean; onToggle: () => void }) {
+function SlateTableRow({ row, showTournament, showFlags }: { row: SlateRow; showTournament: boolean; showFlags: boolean }) {
   const navigate = useNavigate()
   const analysisPath = matchAnalysisPath(row.match)
   const propPath = row.primaryProp ? propMatchPath(row.primaryProp) : null
@@ -78,32 +68,22 @@ function SlateTableRow({ row, open, showTournament, showFlags, onToggle }: { row
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
     if ((event.target as HTMLElement).closest('a, button')) return
     if (analysisPath) navigate(analysisPath)
-    else onToggle()
   }
   return (
-    <tr className={`tennis-slate-table__row${open ? ' is-open' : ''}`} onClick={onRowClick}>
+    <tr className="tennis-slate-table__row" onClick={onRowClick}>
       <StartCell startUtc={row.startUtc} />
       <td className="tennis-slate-table__players">
         {analysisPath ? <Link
           to={analysisPath}
           className="tennis-slate-table__toggle"
-          data-match-key={row.key}
           aria-label={`${matchup}, open match analysis`}
         >
           <span>{row.players[0]}</span>
           <span>{row.players[1] ?? ''}</span>
-        </Link> : <button
-          type="button"
-          className="tennis-slate-table__toggle"
-          data-match-key={row.key}
-          aria-expanded={open}
-          aria-controls={open ? detailId(row.key) : undefined}
-          aria-label={`${matchup}, show match detail`}
-          onClick={onToggle}
-        >
+        </Link> : <span className="tennis-slate-table__toggle">
           <span>{row.players[0]}</span>
           <span>{row.players[1] ?? ''}</span>
-        </button>}
+        </span>}
         {showTournament && <small>{fmtTournament(row.tournament)}</small>}
       </td>
       <PairCell pair={row.elo} format={pct} extra />
@@ -131,18 +111,8 @@ function TourTabs({ tab, onChange }: { tab: TourTab; onChange: (tab: TourTab) =>
   )
 }
 
-function DetailRow({ row, columns }: { row: SlateRow; columns: number }) {
-  return (
-    <tr className="tennis-slate-table__detail" id={detailId(row.key)}>
-      <td colSpan={columns}>
-        <div className="tennis-match-detail"><TennisMatchDetail match={row.match} /></div>
-      </td>
-    </tr>
-  )
-}
-
-/** Canonical matches link to analysis; unlinked props keep their inline detail. */
-export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
+/** Each canonical match links to its analysis page (F-43). */
+export default function TennisSlateTable({ rows, grouped, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
   const groups = tableGroups(searchAllTabs ? rows : filterByTourTab(rows, tab), grouped)
   const columns = showFlags ? 10 : 9
   return (
@@ -165,15 +135,9 @@ export default function TennisSlateTable({ rows, grouped, expandedKey, onToggle,
             {groups.map((group) => (
               <tbody key={group.tournament ?? 'ranked'}>
                 {group.tournament != null && <tr className="tennis-slate-table__group"><td colSpan={columns}>{fmtTournament(group.tournament)}</td></tr>}
-                {group.rows.map((row) => {
-                  const open = matchAnalysisPath(row.match) == null && row.key === expandedKey
-                  return (
-                    <Fragment key={row.key}>
-                      <SlateTableRow row={row} open={open} showTournament={!grouped} showFlags={showFlags} onToggle={() => onToggle(row.key)} />
-                      {open && <DetailRow row={row} columns={columns} />}
-                    </Fragment>
-                  )
-                })}
+                {group.rows.map((row) => (
+                  <SlateTableRow key={row.key} row={row} showTournament={!grouped} showFlags={showFlags} />
+                ))}
               </tbody>
             ))}
           </table>
