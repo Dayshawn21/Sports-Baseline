@@ -385,13 +385,11 @@ body {
 
 .props-audit--issues {
   border: 1px solid color-mix(in srgb, var(--caution) 28%, transparent);
-  border-left: 3px solid var(--caution);
   background: var(--caution-soft);
 }
 
 .props-audit--clean {
   border: 1px solid color-mix(in srgb, var(--positive) 22%, transparent);
-  border-left: 3px solid var(--positive);
   background: var(--positive-soft);
 }
 
@@ -563,6 +561,12 @@ body {
   margin: 0;
   color: var(--text-secondary);
   font: 500 16px var(--font-body);
+}
+
+.lf-page-head__link {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .lf-page-head__controls {
