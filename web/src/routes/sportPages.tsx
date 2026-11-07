@@ -1,25 +1,26 @@
-import type { ComponentType, ReactElement } from 'react'
-import TennisIntelligencePage from '~/pages/TennisIntelligencePage'
-import TennisPropBoardPage from '~/pages/TennisPropBoardPage'
-import TennisMatchPage from '~/pages/TennisMatchPage'
-import TennisModelPage from '~/pages/TennisModelPage'
-import TennisPlayerPage from '~/pages/TennisPlayerPage'
-import NflIntelligencePage from '~/pages/NflIntelligencePage'
-import NflPropBoardPage from '~/pages/NflPropBoardPage'
-import NflGamePage from '~/pages/NflGamePage'
-import NflModelPage from '~/pages/NflModelPage'
-import NflPlayerPage from '~/pages/NflPlayerPage'
-import NbaSlatePage from '~/pages/NbaSlatePage'
-import NbaGamePage from '~/pages/NbaGamePage'
-import NbaPlayerPage from '~/pages/NbaPlayerPage'
-import NbaModelPage from '~/pages/NbaModelPage'
-import NbaPropBoardPage from '~/pages/NbaPropBoardPage'
-import NhlSlatePage from '~/pages/NhlSlatePage'
-import NhlGamePage from '~/pages/NhlGamePage'
-import NhlPlayerPage from '~/pages/NhlPlayerPage'
-import NhlPropBoardPage from '~/pages/NhlPropBoardPage'
-import NhlModelPage from '~/pages/NhlModelPage'
+import { lazy, type ComponentType, type ReactElement } from 'react'
 import { SPORTS, sportViews, type Sport, type SportViewPaths } from '~/utils/sportNav'
+
+const TennisIntelligencePage = lazy(() => import('~/pages/TennisIntelligencePage'))
+const TennisPropBoardPage = lazy(() => import('~/pages/TennisPropBoardPage'))
+const TennisMatchPage = lazy(() => import('~/pages/TennisMatchPage'))
+const TennisModelPage = lazy(() => import('~/pages/TennisModelPage'))
+const TennisPlayerPage = lazy(() => import('~/pages/TennisPlayerPage'))
+const NflIntelligencePage = lazy(() => import('~/pages/NflIntelligencePage'))
+const NflPropBoardPage = lazy(() => import('~/pages/NflPropBoardPage'))
+const NflGamePage = lazy(() => import('~/pages/NflGamePage'))
+const NflModelPage = lazy(() => import('~/pages/NflModelPage'))
+const NflPlayerPage = lazy(() => import('~/pages/NflPlayerPage'))
+const NbaSlatePage = lazy(() => import('~/pages/NbaSlatePage'))
+const NbaGamePage = lazy(() => import('~/pages/NbaGamePage'))
+const NbaPlayerPage = lazy(() => import('~/pages/NbaPlayerPage'))
+const NbaModelPage = lazy(() => import('~/pages/NbaModelPage'))
+const NbaPropBoardPage = lazy(() => import('~/pages/NbaPropBoardPage'))
+const NhlSlatePage = lazy(() => import('~/pages/NhlSlatePage'))
+const NhlGamePage = lazy(() => import('~/pages/NhlGamePage'))
+const NhlPlayerPage = lazy(() => import('~/pages/NhlPlayerPage'))
+const NhlPropBoardPage = lazy(() => import('~/pages/NhlPropBoardPage'))
+const NhlModelPage = lazy(() => import('~/pages/NhlModelPage'))
 
 /** A detail page path sits under its sport's prefix, so the nav highlights the sport. */
 interface SportRoute {

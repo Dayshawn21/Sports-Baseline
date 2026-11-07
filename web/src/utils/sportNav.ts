@@ -11,14 +11,16 @@ interface SportDefinition {
   /** Detail pages (a match, a game, a player) sit under this prefix, so the nav highlights their sport. */
   prefix: string
   views: SportViewPaths
+  /** The kinds of detail page under the prefix (`/nfl/game/:id`); any other path there is not a page. */
+  details: readonly string[]
 }
 
 /** The sport registry: one entry per sport drives the top bar, the phone drawer and (with `SPORT_PAGES`) the routes. */
 export const SPORTS = [
-  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/tennis', props: '/tennis/board', model: '/tennis/model' } },
-  { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/board', model: '/nfl/model' } },
-  { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/board', model: '/nba/model' } },
-  { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl', props: '/nhl/board', model: '/nhl/model' } },
+  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/tennis', props: '/tennis/board', model: '/tennis/model' }, details: ['match', 'player'] },
+  { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/board', model: '/nfl/model' }, details: ['game', 'player'] },
+  { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/board', model: '/nba/model' }, details: ['game', 'player'] },
+  { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl', props: '/nhl/board', model: '/nhl/model' }, details: ['game', 'player'] },
 ] as const satisfies readonly SportDefinition[]
 
 export type Sport = typeof SPORTS[number]['code']
@@ -111,6 +113,6 @@ export function documentTitle(pathname: string): string {
   const detail = sport && !view ? pathname.slice(sport.prefix.length).split('/')[0] : ''
   const page = extra?.label
     ?? (sport && view ? `${sport.label} ${view}` : null)
-    ?? (sport && /^[a-z]+$/.test(detail) ? `${sport.label} ${detail}` : null)
+    ?? (sport && sport.details.includes(detail) ? `${sport.label} ${detail}` : null)
   return page ? `${page} · ${APP_NAME}` : APP_NAME
 }

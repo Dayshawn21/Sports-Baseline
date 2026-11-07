@@ -175,6 +175,12 @@ describe('documentTitle', () => {
     expect(documentTitle('/tennis/player/7')).toBe('Tennis player · Lineform')
   })
 
+  it('gives an unknown path under a sport no page title', () => {
+    expect(documentTitle('/nfl/props')).toBe('Lineform')
+    expect(documentTitle('/tennis/game/5')).toBe('Lineform')
+    expect(documentTitle('/nba/')).toBe('Lineform')
+  })
+
   it('names the other pages and falls back to the app name', () => {
     expect(documentTitle('/how-it-works')).toBe('How it works · Lineform')
     expect(documentTitle('/admin')).toBe('Admin · Lineform')
