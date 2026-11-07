@@ -38,3 +38,8 @@ export const APP_ANTD_THEME: ThemeConfig = {
     },
   },
 }
+
+/** The app theme with Ant Design's own transitions off when the visitor asks for reduced motion. */
+export function appAntdTheme(reducedMotion: boolean): ThemeConfig {
+  return reducedMotion ? { ...APP_ANTD_THEME, token: { ...APP_ANTD_THEME.token, motion: false } } : APP_ANTD_THEME
+}

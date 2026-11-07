@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import { describe, expect, it } from 'vitest'
-import type { ViewPages } from '~/routes/sportPages'
+import { SPORT_PAGES, type ViewPages } from '~/routes/sportPages'
+import { SPORTS } from '~/utils/sportNav'
 
 const Page: ComponentType = () => null
 
@@ -16,5 +17,14 @@ describe('ViewPages', () => {
     // @ts-expect-error a promised model view needs its page
     const missingModel: ViewPages<{ slate: string, props: string, model: string }> = { slate: Page, props: Page, details: [] }
     expect([full, slateOnly, missingProps, extraProps, missingModel]).toHaveLength(5)
+  })
+})
+
+describe('SPORT_PAGES details', () => {
+  it('routes exactly the detail kinds the registry names, so the tab title matches the routes', () => {
+    for (const sport of SPORTS) {
+      const kinds = SPORT_PAGES[sport.code].details.map(route => route.path.slice(sport.prefix.length).split('/')[0])
+      expect(kinds).toEqual([...sport.details])
+    }
   })
 })

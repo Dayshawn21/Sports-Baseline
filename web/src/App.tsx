@@ -1,20 +1,24 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { ConfigProvider, Layout, Menu, Drawer, Button, type MenuProps } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
 import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import ParlaysPage from '~/pages/ParlaysPage'
-import AdminPage from '~/pages/AdminPage'
-import HowItWorksPage from '~/pages/HowItWorksPage'
-import HomePage from '~/pages/HomePage'
 import { sportRoutes } from '~/routes/sportPages'
 import { useIsMobile } from '~/hooks/useIsMobile'
-import { APP_ANTD_THEME } from '~/theme/antdTheme'
+import { appAntdTheme } from '~/theme/antdTheme'
+import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
 import { menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
 import { SlateCommandProvider } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
 import AskLauncher from '~/components/ask/AskLauncher'
+import LoadingState from '~/components/shared/LoadingState'
+import NotFoundPage from '~/pages/NotFoundPage'
+
+const HomePage = lazy(() => import('~/pages/HomePage'))
+const ParlaysPage = lazy(() => import('~/pages/ParlaysPage'))
+const HowItWorksPage = lazy(() => import('~/pages/HowItWorksPage'))
+const AdminPage = lazy(() => import('~/pages/AdminPage'))
 
 const { Header, Content } = Layout
 
@@ -156,25 +160,29 @@ function Nav() {
 }
 
 export default function App() {
+  const reducedMotion = usePrefersReducedMotion()
   return (
-    <ConfigProvider theme={APP_ANTD_THEME}>
+    <ConfigProvider theme={appAntdTheme(reducedMotion)}>
       <HashRouter>
         <DocumentTitleProvider>
           <SlateCommandProvider>
             <Layout style={{ minHeight: '100vh' }}>
               <Nav />
               <Content style={{ background: 'transparent' }}>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
-                  <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
-                  <Route path="/props" element={<Navigate to="/" replace />} />
-                  <Route path="/live-odds" element={<Navigate to="/" replace />} />
-                  <Route path="/bets" element={<Navigate to="/" replace />} />
-                  <Route path="/parlays" element={<ParlaysPage />} />
-                  <Route path="/how-it-works" element={<HowItWorksPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
-                </Routes>
+                <Suspense fallback={<LoadingState />}>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
+                    <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
+                    <Route path="/props" element={<Navigate to="/" replace />} />
+                    <Route path="/live-odds" element={<Navigate to="/" replace />} />
+                    <Route path="/bets" element={<Navigate to="/" replace />} />
+                    <Route path="/parlays" element={<ParlaysPage />} />
+                    <Route path="/how-it-works" element={<HowItWorksPage />} />
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </Suspense>
               </Content>
             </Layout>
           </SlateCommandProvider>
