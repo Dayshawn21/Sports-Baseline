@@ -39,7 +39,7 @@ function BetTypeBadge({ betType }: { betType: string }) {
   return (
     <span style={{
       fontFamily: 'var(--font-display)',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 800,
       letterSpacing: '0.1em',
       textTransform: 'uppercase',
@@ -61,7 +61,7 @@ function ConfidenceBadge({ confidence }: { confidence: string }) {
   return (
     <span style={{
       fontFamily: 'var(--font-display)',
-      fontSize: 9,
+      fontSize: 11,
       fontWeight: 800,
       letterSpacing: '0.1em',
       textTransform: 'uppercase',
@@ -181,7 +181,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         </div>
         <div style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: 10,
+          fontSize: 11,
           color: 'var(--text-muted)',
         }}>
           {(pick.kellyFraction * 100).toFixed(1)}% stake (¼ Kelly)
@@ -351,7 +351,7 @@ function StatPill({ label, value, color }: { label: string; value: string; color
     <div style={{ textAlign: 'center' }}>
       <div style={{
         fontFamily: 'var(--font-display)',
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
@@ -584,7 +584,7 @@ function TourSection({ title, color, singles, parlays, isNarrow }: {
                 {['#', 'Type', 'Pick', 'Reasoning', 'Conf', 'Edge', 'Value', 'Odds'].map((h) => (
                   <span key={h} style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',

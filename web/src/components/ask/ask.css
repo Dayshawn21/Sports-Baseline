@@ -255,3 +255,9 @@
   font: 600 12px var(--font-body);
   cursor: pointer;
 }
+
+@media (max-width: 768px) {
+  .ask-trigger {
+    height: 44px;
+  }
+}

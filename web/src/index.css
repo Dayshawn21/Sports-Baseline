@@ -385,19 +385,17 @@ body {
 
 .props-audit--issues {
   border: 1px solid color-mix(in srgb, var(--caution) 28%, transparent);
-  border-left: 3px solid var(--caution);
   background: var(--caution-soft);
 }
 
 .props-audit--clean {
   border: 1px solid color-mix(in srgb, var(--positive) 22%, transparent);
-  border-left: 3px solid var(--positive);
   background: var(--positive-soft);
 }
 
 .props-audit__title {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -565,6 +563,12 @@ body {
   font: 500 16px var(--font-body);
 }
 
+.lf-page-head__link {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .lf-page-head__controls {
   display: flex;
   align-items: center;
@@ -631,6 +635,33 @@ body {
 
 .shell-views-row {
   margin: 10px 0 0 max(16px, env(safe-area-inset-left, 0px));
+}
+
+/* Phone taps: the shell's controls reach 44px, the views row spans the width with a gutter on both sides. */
+@media (max-width: 768px) {
+  .shell-views-row {
+    display: flex;
+    margin-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .shell-views-row a {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  .shell-menu-button.ant-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .lf-page-head__controls .ant-select,
+  .nfl-prop-filter-bar .ant-select {
+    height: 44px;
+  }
 }
 
 .shell-tabs a:focus-visible,
