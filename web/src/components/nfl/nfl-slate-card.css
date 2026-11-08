@@ -1,11 +1,10 @@
 /* The slate tables' tags and live marker (38b, 38c2), all that remains of the game card (item 33b).
-   Grayscale: only injury and QB tags take a warning color. */
+   Gray like every tag: red is for a result 2 SE below baseline, so Out stands out by weight and outline. */
 .nfl-slate-card__tag {
   padding: 1px 6px; border: 1px solid var(--border-card); border-radius: 3px;
   color: var(--text-secondary); font: 600 11px var(--font-body); white-space: nowrap;
 }
-.nfl-slate-card__tag.is-out { border-color: color-mix(in srgb, var(--negative) 40%, transparent); background: var(--negative-soft); color: var(--negative); }
-.nfl-slate-card__tag.is-caution { border-color: color-mix(in srgb, var(--caution) 40%, transparent); background: var(--caution-soft); color: var(--caution); }
+.nfl-slate-card__tag.is-out { border-color: var(--text-secondary); color: var(--text-primary); font-weight: 700; }
 .nfl-slate-card__live { color: var(--text-primary); font: 800 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; }
 .nfl-slate-card__live::before {
   content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px;
