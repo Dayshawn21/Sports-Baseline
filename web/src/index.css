@@ -32,6 +32,9 @@
   --chart-mid: #6b6b75;
   --chart-low: #3a3a42;
 
+  /* A hovered card lifting off the black ground. */
+  --shadow-lift: 0 8px 32px rgba(0, 0, 0, 0.45);
+
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;

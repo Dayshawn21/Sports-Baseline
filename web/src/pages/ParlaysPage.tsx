@@ -89,10 +89,10 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         gap: 12,
         alignItems: 'center',
         padding: '12px 18px',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        borderBottom: '1px solid var(--border-subtle)',
         transition: 'background 0.12s ease',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-hover)' }}
       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
     >
       {/* Rank */}
@@ -219,7 +219,7 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
     }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = withAlpha(conf.color, 0.314)
-        e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px ${withAlpha(conf.color, 0.082)}`
+        e.currentTarget.style.boxShadow = `var(--shadow-lift), 0 0 0 1px ${withAlpha(conf.color, 0.082)}`
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = 'var(--border-card)'
@@ -268,7 +268,7 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
         return (
           <div key={i} style={{
             padding: '10px 18px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
+            borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
@@ -328,7 +328,7 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
       {/* Footer: combined stats */}
       <div style={{
         padding: '10px 18px 14px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderTop: '1px solid var(--border-subtle)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -389,7 +389,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
     }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = withAlpha(conf.color, 0.314)
-        e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px ${withAlpha(conf.color, 0.082)}`
+        e.currentTarget.style.boxShadow = `var(--shadow-lift), 0 0 0 1px ${withAlpha(conf.color, 0.082)}`
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = 'var(--border-card)'
@@ -579,7 +579,7 @@ function TourSection({ title, color, singles, parlays, isNarrow }: {
                 gridTemplateColumns: SINGLES_COLS,
                 gap: 12,
                 padding: '10px 18px',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                borderBottom: '1px solid var(--border-card)',
               }}>
                 {['#', 'Type', 'Pick', 'Reasoning', 'Conf', 'Edge', 'Value', 'Odds'].map((h) => (
                   <span key={h} style={{
@@ -723,7 +723,7 @@ export default function ParlaysPage() {
               onClick={() => refetch()}
               style={{
                 padding: '6px 16px',
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: '1px solid var(--border-card)',
                 borderRadius: 6,
                 background: 'var(--bg-raised)',
                 color: 'var(--text-primary)',
