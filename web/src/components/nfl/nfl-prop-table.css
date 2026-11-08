@@ -19,7 +19,7 @@
 /* No edge means no side, so the dashes carry no signal color. */
 .nfl-prop-table__pick.is-none, .nfl-prop-table__share.is-none { color: var(--text-muted); }
 .nfl-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
-.nfl-prop-table small.is-thin { color: var(--caution); }
+.nfl-prop-table small.is-thin { color: var(--text-secondary); }
 .nfl-prop-table__books { white-space: normal; font-family: var(--font-body); }
 .nfl-prop-table.is-td td.nfl-prop-table__snap { white-space: normal; }
 

@@ -125,7 +125,7 @@
 .nfl-line-only-card { cursor: default; }
 .nfl-line-only-card__rungs { color: var(--text-secondary); font: 400 12px var(--font-mono); }
 .nfl-game-note.is-inline { padding: 0; }
-.nfl-game-note.is-qb-change { padding-bottom: 0; color: var(--caution); font-size: 12px; }
+.nfl-game-note.is-qb-change { padding-bottom: 0; color: var(--text-primary); font-size: 12px; }
 
 .nfl-game-side { display: grid; gap: 14px; align-content: start; }
 .nfl-game-side__availability { display: grid; gap: 14px; }
@@ -141,14 +141,13 @@
 .nfl-game-side__who b a { color: inherit; }
 .nfl-game-side__who b a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .nfl-game-side__who small { color: var(--text-muted); font-size: 11px; }
-.nfl-game-side__who small.is-short { color: var(--caution); }
+.nfl-game-side__who small.is-short { color: var(--text-secondary); }
 
 .nfl-game-tag {
   padding: 1px 6px; border: 1px solid var(--border-card); border-radius: 3px;
   color: var(--text-secondary); font: 600 11px var(--font-body); white-space: nowrap;
 }
-.nfl-game-tag.is-out { border-color: color-mix(in srgb, var(--negative) 40%, transparent); background: var(--negative-soft); color: var(--negative); }
-.nfl-game-tag.is-caution { border-color: color-mix(in srgb, var(--caution) 40%, transparent); background: var(--caution-soft); color: var(--caution); }
+.nfl-game-tag.is-out { border-color: var(--text-secondary); color: var(--text-primary); font-weight: 700; }
 
 .nfl-game-side__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; font-size: 12px; }
 .nfl-game-side__form ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: right; font: 400 11px var(--font-mono); }
