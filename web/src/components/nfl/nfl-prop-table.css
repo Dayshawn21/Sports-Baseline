@@ -1,4 +1,4 @@
-/* NFL prop rows (38d1). The pick and share read --nfl-green / --nfl-red, which .nfl-slate sets to the text color
+/* NFL prop rows (38d1). The pick and share read --nfl-edge-positive / --nfl-edge-negative, which .nfl-slate sets to the text color
    until 27h adopts a slice, so every NFL gap is gray. */
 .nfl-prop-table col.is-rank { width: 48px; }
 .nfl-prop-table col.is-player { width: auto; }
@@ -11,11 +11,11 @@
 .nfl-prop-table.is-td col.is-snap { width: 230px; }
 
 .nfl-prop-table td.nfl-prop-table__bars, .nfl-prop-table:not(.is-td) th:nth-child(6) { padding-left: 28px; }
-.nfl-prop-table__pick { color: var(--nfl-green); font: 700 11px var(--font-body); letter-spacing: 0.08em; }
-.nfl-prop-table__share { color: var(--nfl-green); font: 600 14px var(--font-mono); }
+.nfl-prop-table__pick { color: var(--nfl-edge-positive); font: 700 11px var(--font-body); letter-spacing: 0.08em; }
+.nfl-prop-table__share { color: var(--nfl-edge-positive); font: 600 14px var(--font-mono); }
 .nfl-prop-table__share.is-reference { color: var(--text-secondary); }
 .nfl-prop-table__reference-note { padding: var(--space-3) 0; color: var(--text-secondary); text-align: left; font-size: 13px; line-height: 1.5; }
-.nfl-prop-table__pick.is-negative, .nfl-prop-table__share.is-negative { color: var(--nfl-red); }
+.nfl-prop-table__pick.is-negative, .nfl-prop-table__share.is-negative { color: var(--nfl-edge-negative); }
 /* No edge means no side, so the dashes carry no signal color. */
 .nfl-prop-table__pick.is-none, .nfl-prop-table__share.is-none { color: var(--text-muted); }
 .nfl-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }

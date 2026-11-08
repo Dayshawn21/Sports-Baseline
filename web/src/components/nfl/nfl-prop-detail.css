@@ -1,5 +1,5 @@
 /* NFL prop detail (build-plan 31e), after prototypes/prop-detail.html. The shared evidence panel on
-   /nfl/board and the game page. The edge reads --nfl-green / --nfl-red, gray via .nfl-slate until 27j adopts a slice. */
+   /nfl/board and the game page. The edge reads --nfl-edge-positive / --nfl-edge-negative, gray via .nfl-slate until 27j adopts a slice. */
 
 .nfl-prop-detail {
   position: sticky;
@@ -48,11 +48,11 @@
 }
 
 .nfl-prop-detail__delta.is-over {
-  color: var(--nfl-green);
+  color: var(--nfl-edge-positive);
 }
 
 .nfl-prop-detail__delta.is-under {
-  color: var(--nfl-red);
+  color: var(--nfl-edge-negative);
 }
 
 .nfl-prop-detail__section {

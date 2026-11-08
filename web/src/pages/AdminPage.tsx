@@ -542,7 +542,7 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
                     return (
                       <div style={{
                         padding: '16px 18px',
-                        background: 'rgba(255,255,255,0.02)',
+                        background: 'var(--bg-card-hover)',
                         border: '1px solid var(--border-card)',
                         borderRadius: 8,
                         margin: '4px 0 8px',

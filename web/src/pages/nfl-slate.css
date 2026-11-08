@@ -1,6 +1,6 @@
 /* Shared by the NFL slate, prop board and game page. The prop detail panel grows with the viewport, holding
    360px at 1280. Edges and picks are gray on every NFL page until the ranking check (27j) adopts a slice. */
-.nfl-slate { --nfl-detail-width: clamp(360px, 28vw, 440px); --nfl-surface: var(--bg-card); --nfl-raised: var(--bg-raised); --nfl-line: var(--border-card); --nfl-blue: var(--text-primary); --nfl-green: var(--text-primary); --nfl-red: var(--text-primary); }
+.nfl-slate { --nfl-detail-width: clamp(360px, 28vw, 440px); --nfl-surface: var(--bg-card); --nfl-line: var(--border-card); --nfl-edge-positive: var(--text-primary); --nfl-edge-negative: var(--text-primary); }
 .nfl-empty { padding: 48px 0; color: var(--text-secondary); }
 .nfl-slate__stats .stat-chip__label { font-size: 11px; }
 .nfl-slate__stats .stat-chip:last-child .stat-chip__value { font: 500 18px/1.2 var(--font-mono); }

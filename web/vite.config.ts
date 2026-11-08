@@ -16,5 +16,17 @@ export default defineConfig({
       '/health': { target: API_TARGET, changeOrigin: true },
     },
   },
-  build: { outDir: 'build' },
+  build: {
+    outDir: 'build',
+    rollupOptions: {
+      output: {
+        // React and the router change only on upgrades, so a deploy of app code leaves this file cached.
+        // Ant Design stays with Rollup's own splitting: one antd chunk would pull every page's
+        // components (tables, forms, charts) into the first load.
+        manualChunks(id) {
+          if (/node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return 'react-vendor'
+        },
+      },
+    },
+  },
 })
