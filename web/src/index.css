@@ -662,6 +662,12 @@ body {
   .nfl-prop-filter-bar .ant-select {
     height: 44px;
   }
+
+  .page-head-period__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 .shell-tabs a:focus-visible,
