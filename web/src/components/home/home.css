@@ -374,3 +374,30 @@
   }
 
 }
+
+/* The card's view links are the first jump into a sport, so their hit area outgrows the 13px text. */
+.home-card__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+@media (max-width: 768px) {
+  .home-card__links {
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .home-card__links a {
+    min-height: 44px;
+    padding: 0 10px;
+  }
+
+  .home-card__links a:first-child {
+    margin-left: -10px;
+  }
+
+  .home-card__links button {
+    min-height: 44px;
+  }
+}

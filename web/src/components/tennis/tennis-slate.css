@@ -278,6 +278,13 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
 }
 
 @media (max-width: 768px) {
+  .tennis-slate-tabs button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
   /* Two filters a row, so the six head controls do not push the chips a screen down. */
   .unified-tennis-page .lf-page-head .unified-filters {
     display: grid;
