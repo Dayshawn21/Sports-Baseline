@@ -1,4 +1,6 @@
+import csv
 from datetime import date, datetime, timezone
+from io import StringIO
 from pathlib import Path
 
 import httpx
@@ -400,6 +402,32 @@ def test_a_blank_scoring_component_stays_unknown_and_so_do_prizepicks_points() -
     assert mahomes.interceptions is None
     assert mahomes.prizepicks_fantasy_points is None
     assert mahomes.passing_tds == 1
+
+
+def test_a_real_kicker_row_scores_prizepicks_kicking_points() -> None:
+    stats = parse_player_stats(_REAL_SAMPLE, 2025)
+    prater, allen = _by_name(stats, "Matt Prater"), _by_name(stats, "Keenan Allen")
+
+    # FGs from 20-29, 30-39 and 40-49 yards (3 + 3 + 4) and 2 PATs; PPR scores none of it.
+    assert prater.prizepicks_fantasy_points == 12.0
+    assert prater.fantasy_points == 0.0
+    assert allen.prizepicks_fantasy_points == allen.fantasy_points == 19.8
+
+
+def test_a_punter_with_a_pat_gains_its_point_and_a_blank_kicking_cell_is_unknown() -> None:
+    reader = csv.DictReader(StringIO(_REAL_SAMPLE))
+    prater = next(row for row in reader if row["player_display_name"] == "Matt Prater")
+    punter = prater | {column: "0" for column in ("fg_made", *KICKING_DISTANCE_COLUMNS)} | {"position": "P", "pat_made": "1"}
+    blank = punter | {"fg_made_50_59": ""}
+    out = StringIO()
+    writer = csv.DictWriter(out, fieldnames=reader.fieldnames or [])
+    writer.writeheader()
+    writer.writerows([punter, blank])
+
+    with_pat, unknown = parse_player_stats(out.getvalue(), 2025)
+
+    assert with_pat.prizepicks_fantasy_points == 1.0
+    assert unknown.prizepicks_fantasy_points is None
 
 
 def test_receiving_fields_read_non_zero_from_a_real_row() -> None:

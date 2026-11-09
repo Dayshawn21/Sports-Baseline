@@ -79,6 +79,13 @@ export default function NflModelPage() {
           (160 of the 2026 calls). They are left out until kicker scoring is modelled, which moved fantasy points
           from 56.2% to 50.6% and all calls from 51.1% to 49.5%.
         </p>
+        <p className="nfl-model-note">
+          Corrected 2026-11-08: kicker fantasy lines now settle on PrizePicks&apos; kicking points (field goals 3, 4
+          or 5 by distance, 1 per extra point), not 0. The 184 settled standard kicker lines went from all unders
+          to 90 overs and 91 unders, moving fantasy points / standard from 42.4% to 48.0% over. Model calls are
+          unchanged: kickers still carry no projection. A missed extra point may cost a point on PrizePicks; that
+          would change 3 of these lines.
+        </p>
         <Heading title="Game-line CLV">28 · does the close move toward the model from the entry line?</Heading>
         <ModelSection query={clv} loading="Grading game lines...">
           {(data) => <NflGameLineClv data={data} />}

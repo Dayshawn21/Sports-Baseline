@@ -22,6 +22,9 @@ from app.core.nfl_projection import (
     td_seasons_used, usage_adjustment_pct,
 )
 from app.core.nfl_availability import NflAvailability, availability_flags
+from app.core.nfl_kicker_projection import (
+    KICKER_PROJECTED, KICKER_PROJECTION_SERVED, NFL_KICKER_MODEL_VERSION, kicker_row,
+)
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION
 from app.core.nfl_game_lines import game_model_line
 from app.core.nfl_scoring_ratings import NFL_SCORING_V1, replay as replay_scoring
@@ -230,7 +233,9 @@ def _slate_line(
         wind_adjustment_pct=row.get("wind_adjustment_pct"),
         moneyline_scaled=market not in MONEYLINE_UNSCALED_MARKETS,
     )
-    scored = projects_line(market, row["position"])
+    # A kicker fantasy row is projected only when `kicker_row` prepared it (27l3); never from PPR's 0.
+    kicker = row.get(KICKER_PROJECTED, False)
+    scored = kicker or projects_line(market, row["position"])
     projection = model_projection(model_input) if has_baseline and scored else None
     comparable = edge_is_comparable(market, label_games, row["segment"], row["odds_type"])
     player_history = history or []
@@ -239,7 +244,10 @@ def _slate_line(
     ]
     snap = _snap_evidence(market, row, line_season)
     snap_flags = [SNAP_SHARE_UNAVAILABLE_FLAG] if snap is not None and snap.share is None else []
-    over = slate_over_probability(market.value, row["position"], row["segment"], label_games, projection, row["line"])
+    # The 27g fit describes v4's residuals, so a kicker line has no P(over).
+    over = None if kicker else slate_over_probability(
+        market.value, row["position"], row["segment"], label_games, projection, row["line"],
+    )
     return NflSlateLineSchema(
         line_id=row["id"], player_id=row["player_id"], player_name=row["player_name"],
         position=row["position"], opponent_team=row.get("opponent_team"),
@@ -260,7 +268,7 @@ def _slate_line(
         usage_adjustment_pct=usage_adjustment_pct(model_input),
         usage_sample_games=usage.games if usage is not None else None,
         provider=row["provider"], fetched_at=row["fetched_at"],
-        projection_model_version=NFL_PROJECTION_MODEL_VERSION,
+        projection_model_version=NFL_KICKER_MODEL_VERSION if kicker else NFL_PROJECTION_MODEL_VERSION,
         quality_flags=line_quality_flags(
             label_averages, label_season, line_season, row["segment"], row["odds_type"],
             row.get("current_season_games"),
@@ -336,6 +344,8 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
             row = apply_season_blend(apply_team_game_dvp(
                 row | team_game_inputs(team_game_totals, team_game_league, row.get("opponent_team_id"), row["position"]),
             ), season)
+            if KICKER_PROJECTION_SERVED:
+                row = kicker_row(row, season)
             home_market_prob, market_fetched_at = market_probabilities.get(row["game_id"], (None, None))
             book_odds = slate_book_odds(row["market"], row["segment"], prop_odds.get((row["game_id"], row["player_id"]), []))
             line = _slate_line(

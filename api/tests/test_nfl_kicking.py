@@ -8,6 +8,7 @@ from app.core.nfl_kicking import (
     KickingFormula,
     PRIZEPICKS_KICKING_FORMULA,
     kicking_points,
+    prizepicks_points_with_kicking,
 )
 from app.core.nfl_line_only import line_only_value
 from app.nfl.markets import NflLineOnlyMarket
@@ -82,3 +83,23 @@ def test_the_grid_is_sixteen_named_candidates_including_the_anchor() -> None:
 def test_the_pinned_formula_is_the_registered_distance_candidate() -> None:
     assert PRIZEPICKS_KICKING_FORMULA in CANDIDATE_FORMULAS
     assert PRIZEPICKS_KICKING_FORMULA == KickingFormula("distance_pat1_fgmiss0_patmiss0", True, 1, 0, 0)
+
+
+def test_prizepicks_points_add_kicking_under_the_pinned_formula() -> None:
+    # 23 by distance plus 3 PATs; the FG miss and PAT miss cost nothing under the pin.
+    assert prizepicks_points_with_kicking(0.0, ROW) == 26.0
+    assert prizepicks_points_with_kicking(1.5, ROW) == 27.5
+
+
+def test_a_player_with_no_kicking_keeps_the_offensive_points() -> None:
+    assert prizepicks_points_with_kicking(19.8, ZERO_ROW) == 19.8
+
+
+def test_a_single_pat_adds_one_point() -> None:
+    assert prizepicks_points_with_kicking(0.0, {**ZERO_ROW, "pat_made": 1}) == 1.0
+
+
+def test_unknown_kicking_or_unknown_offense_is_unknown_never_a_partial_sum() -> None:
+    assert prizepicks_points_with_kicking(19.8, {**ZERO_ROW, "fg_made_40_49": None}) is None
+    assert prizepicks_points_with_kicking(19.8, {**ZERO_ROW, "pat_made": None}) is None
+    assert prizepicks_points_with_kicking(None, ROW) is None
