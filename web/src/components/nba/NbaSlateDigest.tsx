@@ -13,10 +13,10 @@ interface Props {
 /** The day's largest reference-projection gaps; gray, never a pick until the ranking check adopts a slice. */
 export function NbaSlateDigest({ items, scope = 'today', playerPath }: Props) {
   if (items.length === 0) return null
-  return <SlateDigest label={`Largest gaps ${scope} · reference, not picks`} labelId="nba-digest-label">
+  return <SlateDigest label={`Largest prop gaps ${scope} · reference, not picks`} labelId="nba-digest-label">
     {items.map(item => {
       const body = <GapDigestBody playerName={item.playerName} market={item.market} matchup={item.matchup}
-        when={item.when} line={item.line} model={item.model} gap={item.gap} />
+        when={item.when} line={item.line} model={item.model} gap={item.gap} gapScale="then as % of the line" />
       return playerPath
         ? <Link key={item.key} className="slate-digest__play" to={playerPath(item)}
           aria-label={`${item.playerName}, ${item.market}, open player page`}>{body}</Link>
