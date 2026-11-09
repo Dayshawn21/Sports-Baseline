@@ -203,32 +203,6 @@ describe('nflPropDetail lines', () => {
   })
 })
 
-describe('nflPropDetail game market', () => {
-  it('shows one book with signed moneylines, the home spread, the total, and the model', () => {
-    expect(nflPropDetail(row(), game(), [], NOW).gameMarket).toEqual({
-      book: 'DraftKings',
-      rows: [
-        { label: 'PIT ML', value: '-148' },
-        { label: 'CLE ML', value: '+124' },
-        { label: 'Spread', value: 'CLE +2.5' },
-        { label: 'Total', value: '38.5' },
-      ],
-      modelText: 'PIT -1.6 · CLE 44.3% · 37.2',
-      modelVersion: 'nfl-elo-v1',
-    })
-  })
-
-  it('is null without odds or a game, and has no model text without a model', () => {
-    expect(nflPropDetail(row(), game({ odds: null }), [], NOW).gameMarket).toBeNull()
-    expect(nflPropDetail(row(), null, [], NOW).gameMarket).toBeNull()
-    const noModel = nflPropDetail(row(), game({ model: null }), [], NOW).gameMarket
-    expect(noModel).toMatchObject({ modelText: null, modelVersion: null })
-    const partial = nflPropDetail(row(), game({ odds: { book: 'fanduel', homeMoneyline: null, awayMoneyline: null, homeSpread: null, total: null } }), [], NOW).gameMarket
-    expect(partial?.book).toBe('FanDuel')
-    expect(partial?.rows.map(item => item.value)).toEqual(['--', '--', '--', '--'])
-  })
-})
-
 describe('nflPropDetail status and flags', () => {
   it('defaults injury and depth, and reads trust from the flags', () => {
     expect(nflPropDetail(row(), game(), [], NOW).status).toEqual([

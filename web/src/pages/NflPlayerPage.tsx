@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NflPlayerContext } from '~/components/nfl/NflPlayerContext'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
-import { NflPlayerLines } from '~/components/nfl/NflPlayerLines'
 import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
 import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerRecord'
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
@@ -88,13 +87,13 @@ export default function NflPlayerPage() {
     meta={<>{[player.position, player.team].filter(Boolean).join(' · ') || 'NFL'} · {player.season} season · Week {player.week}</>}>
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}
     <NflPlayerProps key={playerId} week={week} others={others} weekNumber={weekNumber ?? player.week} />
-    <h2 className="nfl-player-section-title">Supporting context</h2>
-    <div className="nfl-player-grid">
-      {!isNflSpecialist(player.position) && <NflPlayerUsage player={player} />}
-      <NflPlayerLines week={week} isLoading={slate.isLoading} isError={slate.isError} otherMarkets={others.data?.markets.map(item => item.market) ?? []} />
-    </div>
-    <NflPlayerContext week={week} showUsage={!isNflSpecialist(player.position)} />
+    {!isNflSpecialist(player.position) && <>
+      <h2 className="nfl-player-section-title">Season form <small>usage by week and recent vs season</small></h2>
+      <NflPlayerUsage player={player} />
+      <NflPlayerContext week={week} />
+    </>}
     <NflPlayerGameLog player={player} layoutSettled={!slate.isLoading} propMarkets={[...(week?.lines.map(item => item.row.market) ?? []), ...(others.data?.markets.map(item => item.market) ?? [])]} />
+    <h2 className="nfl-player-section-title">Model record <small>past PrizePicks lines, never colored</small></h2>
     <NflPlayerRecord player={player} />
     <NflPlayerFooter player={player} />
   </PlayerPageShell>

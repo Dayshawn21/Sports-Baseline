@@ -1,15 +1,11 @@
 import { useSearchParams } from 'react-router-dom'
 import { NflPlayerOtherMarketSection } from '~/components/nfl/NflPlayerOtherMarketSection'
 import { NflPlayerPropSection } from '~/components/nfl/NflPlayerPropSection'
-import { PlayerMarketTabs, TABS_ID } from '~/components/shared/PlayerMarketTabs'
+import { PlayerMarketTabs } from '~/components/shared/PlayerMarketTabs'
 import type { NflOtherMarkets } from '~/types/nfl'
 import { marketLabel } from '~/utils/nflLabels'
 import { playerSearch, propSectionIds, selectedPropMarket, type NflPlayerWeek } from '~/utils/nflPlayer'
 import { playerTabs } from '~/utils/nflOtherMarkets'
-
-export function scrollToPropTabs() {
-  document.getElementById(TABS_ID)?.scrollIntoView({ block: 'start' })
-}
 
 export interface OtherMarketsState {
   data: NflOtherMarkets | undefined
