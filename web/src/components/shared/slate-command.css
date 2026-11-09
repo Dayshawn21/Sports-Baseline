@@ -172,3 +172,18 @@
 .slate-command--mobile .slate-command__field {
   height: 44px;
 }
+
+/* Phones have no "/" key to press. */
+.slate-command--mobile kbd {
+  display: none;
+}
+
+/* Read to screen readers as results change; the visible count sits inside the popup. */
+.slate-command__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -9,7 +9,7 @@ import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
 import { menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
-import { SlateCommandProvider } from '~/components/shared/SlateCommandProvider'
+import { SlateCommandProvider, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
 import AskLauncher from '~/components/ask/AskLauncher'
 import LoadingState from '~/components/shared/LoadingState'
@@ -100,7 +100,9 @@ function Nav() {
   const [mobileCommandOpen, setMobileCommandOpen] = useState(false)
   const adminVisible = useAdminView()
   const nav = shellNav(pathname, adminVisible)
-  const mobileCommandActive = mobileCommandOpen && sportViewForPath(pathname) === 'slate'
+  const { scope: commandScope } = useSlateCommand()
+  // Same rule as the field: a slate, or a game page that registered its week's games.
+  const mobileCommandActive = mobileCommandOpen && (sportViewForPath(pathname) === 'slate' || commandScope !== null)
 
   useEffect(() => {
     setDrawerOpen(false)

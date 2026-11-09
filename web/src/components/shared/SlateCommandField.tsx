@@ -14,6 +14,22 @@ interface Props {
   onMobileExpandedChange?: (expanded: boolean) => void
 }
 
+function placeholder(pathname: string, ready: boolean): string {
+  if (!ready) return 'Slate search loading...'
+  if (sportViewForPath(pathname) !== 'slate') return 'Jump to another game or player...'
+  return pathname.startsWith('/nhl') ? 'Search teams or games...' : 'Jump to a match or player...'
+}
+
+function resultCount(count: number): string {
+  return `${count} slate result${count === 1 ? '' : 's'}`
+}
+
+/** A dead end names what the slate can find instead of only saying nothing matched. */
+function noMatch(query: string, pathname: string): string {
+  const hint = pathname.startsWith('/tennis') ? 'a player or tournament' : 'a team code, team name or player'
+  return `No match for "${query.trim()}". Try ${hint}.`
+}
+
 function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement
     && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'))
@@ -28,7 +44,8 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const active = sportViewForPath(pathname) === 'slate'
+  // Slates own the field; a game page shows it too once it registers its week's games.
+  const active = sportViewForPath(pathname) === 'slate' || scope !== null
   const normalizedQuery = normalizeSlateCommand(query)
   const targets = scope ? matchingSlateCommandTargets(scope.rows, query) : []
   const open = focused && normalizedQuery.length > 0
@@ -129,7 +146,7 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-activedescendant={open && selectedIndex >= 0 ? `${listId}-option-${selectedIndex}` : undefined}
-          placeholder={scope ? pathname === '/nhl' ? 'Search teams or games...' : 'Jump to a match or player...' : 'Slate search loading...'}
+          placeholder={placeholder(pathname, scope !== null)}
           disabled={!scope}
           value={query}
           onChange={event => setQuery(event.target.value)}
@@ -158,13 +175,14 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
             ))}
           </div>
           {targets.length > 0 && (
-            <div className="slate-command__status" role="status">
-              {targets.length} slate result{targets.length === 1 ? '' : 's'}
-            </div>
+            <div className="slate-command__status" aria-hidden="true">{resultCount(targets.length)}</div>
           )}
-          {targets.length === 0 && <div className="slate-command__empty" role="status">No slate matches</div>}
+          {targets.length === 0 && <div className="slate-command__empty" aria-hidden="true">{noMatch(query, pathname)}</div>}
         </div>
       )}
+      <div className="slate-command__live" role="status">
+        {open ? targets.length > 0 ? resultCount(targets.length) : noMatch(query, pathname) : ''}
+      </div>
     </div>
   )
 

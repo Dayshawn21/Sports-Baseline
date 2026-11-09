@@ -160,6 +160,24 @@ describe('nflSlateCommandRows', () => {
     expect(matchingSlateCommandTargets(rows, 'N. Collins').map(target => target.kind)).toEqual(['game', 'player'])
     expect(firstSlateCommandPath(rows, 'Nico')).toBe('/nfl/game/71')
   })
+
+  it('finds a team by nickname or city as well as its code', () => {
+    for (const query of ['jaguars', 'Jacksonville', 'houston texans']) {
+      expect(firstSlateCommandPath(rows, query)).toBe('/nfl/game/71')
+    }
+    expect(matchingSlateCommandTargets(rows, 'texans').find(target => target.kind === 'team')?.context).toBe('Houston Texans')
+  })
+
+  it('ranks the team with an exact code ahead of a player whose name contains it', () => {
+    const slate = nflSlateCommandRows([
+      { gameId: 90, awayTeam: 'CLE', homeTeam: 'NO', lines: [{ playerId: 5, playerName: 'KC Concepcion' }] },
+      { gameId: 91, awayTeam: 'NYJ', homeTeam: 'KC', lines: [] },
+    ])
+    expect(matchingSlateCommandRows(slate, 'KC').map(row => row.path)).toEqual(['/nfl/game/90', '/nfl/game/91'])
+    expect(firstSlateCommandPath(slate, 'KC')).toBe('/nfl/game/91')
+    expect(matchingSlateCommandTargets(slate, 'KC')[0].path).toBe('/nfl/game/91')
+    expect(firstSlateCommandPath(slate, 'concepcion')).toBe('/nfl/game/90')
+  })
 })
 
 describe('nbaSlateCommandRows', () => {

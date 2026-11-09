@@ -86,6 +86,12 @@ export function kickoffWindows(games: NflSlateGame[]): NflKickoffWindow[] {
   }))
 }
 
+/** A window narrowed by search keeps its label and says how many of its games are showing ("1 of 7 games"). */
+export function searchedKickoffWindow(window: NflKickoffWindow, games: NflSlateGame[]): NflKickoffWindow {
+  const total = gamesLabel(window.games.length)
+  return { ...window, games, subtitle: window.subtitle.replace(total, `${games.length} of ${total}`) }
+}
+
 function latestOddsFetch(notes: NflGameNotes[]): string | null {
   const times = notes.flatMap(game => game.lineMovement.map(move => Date.parse(move.currentFetchedAt)))
     .filter(time => !Number.isNaN(time))

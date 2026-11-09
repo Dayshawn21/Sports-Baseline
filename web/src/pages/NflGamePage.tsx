@@ -1,5 +1,5 @@
 import { Tabs } from 'antd'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NflBestLineCard } from '~/components/nfl/NflBestLineCard'
 import { NflDataGuide } from '~/components/nfl/NflDataGuide'
@@ -14,8 +14,11 @@ import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import { useNflGame, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
+import { useRegisterSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { isNotFound } from '~/utils/httpError'
 import { kickoffLabel, parseGameId } from '~/utils/nflGame'
+import { kickoffWindows } from '~/utils/nflSlate'
+import { nflSlateCommandRows } from '~/utils/slateCommand'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
 import './nfl-game.css'
@@ -42,6 +45,11 @@ export default function NflGamePage() {
   const slate = useNflSlate(detail.data?.season ?? null, detail.data?.week ?? null)
   const notes = useNflGameNotes(detail.data?.season ?? null, detail.data?.week ?? null)
   useRegisterDetailTitle(detail.isSuccess && gameId !== null ? `${detail.data.awayTeam} @ ${detail.data.homeTeam}` : null)
+  // The week's slate is already loaded for the market, so search can jump to any other game from here.
+  const commandScope = useMemo(() => detail.data && slate.data
+    ? { periodKey: `${detail.data.season}-${detail.data.week}`, rows: nflSlateCommandRows(kickoffWindows(slate.data.games).flatMap(window => window.games)) }
+    : null, [detail.data, slate.data])
+  useRegisterSlateCommand(commandScope)
   if (gameId === null || isNotFound(detail.error)) return <NotFound />
   if (detail.isLoading) return <GamePageState><LoadingState message="Loading game..." /></GamePageState>
   if (detail.isError || !detail.data) return <GamePageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></GamePageState>

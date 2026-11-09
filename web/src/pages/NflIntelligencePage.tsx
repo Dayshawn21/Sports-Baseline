@@ -13,7 +13,7 @@ import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS } from '~/utils/nflLabels'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, nflSlateRow, nflSlateSummary, slateDigest } from '~/utils/nflSlate'
+import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 import { matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import './nfl-slate.css'
 
@@ -83,7 +83,7 @@ export default function NflIntelligencePage() {
     const gameIds = new Set(matchingSlateCommandRows(commandRows, query).map(row => Number(row.path.split('/').at(-1))))
     return windows.flatMap(window => {
       const matchingGames = window.games.filter(game => gameIds.has(game.gameId))
-      return matchingGames.length > 0 ? [{ ...window, games: matchingGames }] : []
+      return matchingGames.length > 0 ? [searchedKickoffWindow(window, matchingGames)] : []
     })
   }, [commandActive, commandRows, query, windows])
 
