@@ -1,3 +1,5 @@
+import type { SlatePhase } from '~/utils/slateOrder'
+
 /** A proposed default, confirmed at the 57a spec review: odds older than this read as stale while games remain. */
 export const STALE_ODDS_MS = 6 * 60 * 60 * 1000
 
@@ -51,6 +53,15 @@ export function oddsAgeLabel(fetchedMs: number, now: number): string {
   const hours = Math.round(Math.max(0, now - fetchedMs) / HOUR_MS)
   if (hours < 24) return `${countPart(hours, 'hour')} old`
   return `${countPart(Math.round(hours / 24), 'day')} old`
+}
+
+/**
+ * A start window's odds note, "odds 6 days old", while the slate's odds are stale and the window holds a game not yet
+ * started: the head names the age once, but the bet is placed from the window. Finals and games in play never get it.
+ */
+export function windowOddsNote(staleSince: number | null, phases: readonly SlatePhase[], now: number): string | null {
+  if (staleSince === null || !phases.includes('upcoming')) return null
+  return `odds ${oddsAgeLabel(staleSince, now)}`
 }
 
 /** The odds part of the period line, or null when no odds are stored; `staleAge` is set only while the odds are stale. */
