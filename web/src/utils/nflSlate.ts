@@ -245,9 +245,11 @@ export interface NflSlateRowModel {
   model: { spread: string, total: string } | null
   /** Stored prop lines, counted as the summary strip counts them. */
   props: number
-  conditions: string
+  /** "Indoor" or the forecast; null until a forecast is published, so the row does not say so on every game. */
+  conditions: string | null
   /** Report statuses only; null while game notes are unavailable or once final. */
   injuries: { out: number, doubtful: number, questionable: number } | null
+  /** Only a team on a shorter week than its opponent; when both are, as on a Thursday, it says nothing. */
   shortWeek: string[]
   /** Teams whose QB differs from the one the muted model was built on. */
   qbChange: string[]
@@ -338,6 +340,11 @@ function closeTotal(notes: NflGameNotes | undefined): NflSlateRowCell {
   return { value: total.currentLine.toFixed(1), detail: totalResult(total.currentLine, notes.awayScore + notes.homeScore) }
 }
 
+function shortWeekTeams(notes: NflGameNotes | undefined): string[] {
+  const short = [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : [])
+  return short.length === 2 ? [] : short
+}
+
 function injuryCounts(notes: NflGameNotes | undefined): NflSlateRowModel['injuries'] {
   if (notes === undefined) return null
   const count = (status: string) => notes.injuries.filter(injury => injury.injuryStatus === status).length
@@ -376,9 +383,9 @@ export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined,
     moneyline: final ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
     model: modelLines(game),
     props: groupNflPropRows(game.lines).length,
-    conditions: conditionsLabel(game.weather),
+    conditions: game.weather.venueType !== 'dome' && !game.weather.forecastFor ? null : conditionsLabel(game.weather),
     injuries: ended ? null : injuryCounts(notes),
-    shortWeek: ended ? [] : [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : []),
+    shortWeek: ended ? [] : shortWeekTeams(notes),
     qbChange: ended ? [] : qbChanges(notes).map(change => change.team),
     oddsAge: staleSince !== null && !ended ? gameOddsAge(game, notes, staleSince, now) : null,
     scorePending: state === 'live' && (awayScore === null || homeScore === null),

@@ -7,6 +7,7 @@ import type {
 } from '~/types/slateCommand'
 import { nflTeamName } from '~/utils/nflTeams'
 import { type Sport, sportForPath, sportViewForPath } from '~/utils/sportNav'
+import { type MatchupSide, slateMatchup } from '~/utils/slateMatchup'
 
 const EVENT_NOUN: Record<Sport, string> = { tennis: 'match', nfl: 'game', nba: 'game', nhl: 'game' }
 
@@ -66,12 +67,11 @@ interface TeamCommandGameInput {
   commandContext?: string
 }
 
-interface CommandScore { code: string, score: number | null }
 
 /** A game result's context: its start or state ("Mon 7:15 PM CT", "Result pending"), with the score once final. */
-export function commandGameContext(label: string, final?: { away: CommandScore, home: CommandScore }): string {
+export function commandGameContext(label: string, final?: { away: MatchupSide, home: MatchupSide }): string {
   if (!final || final.away.score === null || final.home.score === null) return label
-  return `${label} · ${final.away.code} ${final.away.score}, ${final.home.code} ${final.home.score}`
+  return `${label} · ${slateMatchup(final.away, final.home)}`
 }
 
 interface NbaCommandGapInput {

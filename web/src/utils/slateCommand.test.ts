@@ -199,7 +199,7 @@ describe('nflSlateCommandRows', () => {
 
   it('ranks every Allen above the games, lists each game once, and leaves out games with no Allen', () => {
     const slate = nflSlateCommandRows([
-      { gameId: 1, awayTeam: 'BUF', homeTeam: 'MIA', lines: [{ playerId: 10, playerName: 'Josh Allen' }, { playerId: 11, playerName: 'Ray Davis' }], commandContext: 'Final · BUF 30, MIA 20' },
+      { gameId: 1, awayTeam: 'BUF', homeTeam: 'MIA', lines: [{ playerId: 10, playerName: 'Josh Allen' }, { playerId: 11, playerName: 'Ray Davis' }], commandContext: 'Final · BUF 30 @ MIA 20' },
       { gameId: 2, awayTeam: 'DAL', homeTeam: 'NYG', lines: [] },
       { gameId: 3, awayTeam: 'CHI', homeTeam: 'DET', lines: [{ playerId: 12, playerName: 'Keenan Allen' }, { playerId: 13, playerName: 'Allen Robinson' }] },
     ])
@@ -208,14 +208,14 @@ describe('nflSlateCommandRows', () => {
     ])
     expect(firstSlateCommandPath(slate, 'allen')).toBe('/nfl/player/10')
     expect(matchingSlateCommandTargets(slate, 'allen').filter(target => target.kind === 'game').map(target => target.context))
-      .toEqual(['Final · BUF 30, MIA 20', 'NFL game'])
+      .toEqual(['Final · BUF 30 @ MIA 20', 'NFL game'])
   })
 })
 
 describe('commandGameContext', () => {
   it('adds the score to a final and leaves a start time alone', () => {
     const final = { away: { code: 'TB', score: 24 }, home: { code: 'CHI', score: 27 } }
-    expect(commandGameContext('Final', final)).toBe('Final · TB 24, CHI 27')
+    expect(commandGameContext('Final', final)).toBe('Final · TB 24 @ CHI 27')
     expect(commandGameContext('Mon 7:15 PM CT')).toBe('Mon 7:15 PM CT')
     expect(commandGameContext('Final', { ...final, home: { code: 'CHI', score: null } })).toBe('Final')
   })
