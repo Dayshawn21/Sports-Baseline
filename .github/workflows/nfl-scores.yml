@@ -2,17 +2,21 @@ name: NFL Scores
 
 # Final scores and game status from the free NFLverse schedule asset, so a
 # finished game reads final on the slate the next morning instead of waiting
-# for Tuesday's nfl-ingest.yml. Daily rather than per game slot because it is
-# free and takes seconds, and catches Thursday, Saturday, Sunday and Monday games
-# alike. Schedule only: player stats still load Tuesday, so grading (27a, 27j)
+# for Tuesday's nfl-ingest.yml. Twice daily rather than per game slot because it
+# is free and takes seconds, and catches Thursday, Saturday, Sunday and Monday
+# games alike. Schedule only: player stats still load Tuesday, so grading (27a, 27j)
 # never settles a week early. Production serves stored slates, so the run ends
 # by storing the slate weeks again; without that, a final would keep its old status.
 #
 # September through February only, matching the NFL data ingest.
 on:
   # GitHub pauses schedules in a public repo after 60 days with no commit.
+  # 07:17 UTC lands after every night game ends (SNF and MNF finish by about
+  # 05:00 UTC, and NFLverse republished Week 9's finals overnight); 13:17 catches
+  # corrections. Both avoid the top of the hour, when GitHub queues scheduled
+  # runs longest: the old 13:00 run started 5 to 9 hours late in fall 2026.
   schedule:
-    - cron: "0 13 * 1,2,9-12 *"
+    - cron: "17 7,13 * 1,2,9-12 *"
   workflow_dispatch:
 
 permissions:
