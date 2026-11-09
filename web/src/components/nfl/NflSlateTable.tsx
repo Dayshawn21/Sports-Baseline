@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SlatePropsCell } from '~/components/shared/SlatePropsCell'
 import type { NflSlateRowCell, NflSlateRowModel } from '~/utils/nflSlate'
 import './nfl-slate-card.css'
 import './nfl-slate-table.css'
@@ -68,7 +69,7 @@ export function NflSlateTable({ rows, label, staleOdds = false }: { rows: NflSla
       <td className="nfl-slate-table__model is-muted" data-label="model">
         {row.model === null ? 'Unavailable' : <>{row.model.spread}<span className="nfl-slate-table__model-total"> · {row.model.total}</span></>}
       </td>
-      <td className="nfl-slate-table__props is-num">{row.props}<span className="nfl-slate-table__unit"> props</span></td>
+      <SlatePropsCell count={row.props} />
       <td className="nfl-slate-table__notes"><Notes row={row} /></td>
     </tr>)}</tbody>
   </table>

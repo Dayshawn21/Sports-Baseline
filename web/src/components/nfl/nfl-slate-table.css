@@ -31,6 +31,8 @@
 .nfl-slate-table__game .is-loser { color: var(--text-muted); }
 .nfl-slate-table__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: normal; }
 .nfl-slate-table__conditions { color: var(--text-muted); font: 400 11px var(--font-body); }
+.nfl-slate-table td.nfl-slate-table__props { color: var(--text-secondary); }
+.nfl-slate-table td.nfl-slate-table__props.is-empty { color: var(--text-muted); }
 .nfl-slate-table__unit { display: none; }
 /* Stale prices step down to the secondary gray (2026-11-09 critique, P2): still readable, no longer the loudest
    numbers on the row. The head says how old they are; a final's graded close is never stale. */
@@ -61,8 +63,9 @@
   .nfl-slate-table tr.is-pending .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
   .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
-  .nfl-slate-table__props { order: 2; color: var(--text-muted); }
+  .nfl-slate-table__props { order: 2; }
   .nfl-slate-table__unit { display: inline; }
+  .nfl-slate-table__props.is-empty { display: none; }
   .nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline, .nfl-slate-table__model { order: 4; }
   .nfl-slate-table td[data-label]::before { content: attr(data-label) ' '; color: var(--text-muted); font: 400 11px var(--font-body); }
   .nfl-slate-table .nfl-slate-table__spread small, .nfl-slate-table .nfl-slate-table__total small, .nfl-slate-table .nfl-slate-table__moneyline small { display: none; }
