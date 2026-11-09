@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerRung } from '~/types/nba'
 import { formEmptyText, formOptions, formSample, formShortNote } from '~/utils/nflFormWindow'
-import { nbaChartLine, nbaFormRow, nbaFormSample, nbaNotLoadedCount, nbaPercentText, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
+import { nbaChartLine, nbaFormRow, nbaFormSample, nbaHeadChips, nbaNotLoadedCount, nbaPercentText, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaProjectionHero, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'TOR'): NbaPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
 const rung = (line: number, oddsType: string | null): NbaPlayerRung => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, overProbabilityVersion: null, flags: [] })
@@ -157,5 +157,40 @@ describe('nbaChartLine', () => {
     expect(nbaChartLine(market())).toBe(4.5)
     expect(nbaChartLine(market({ market: 'double_double', lines: [rung(0.5, 'standard')] }))).toBeNull()
     expect(nbaChartLine(market({ lines: [rung(3.5, 'goblin')] }))).toBeNull()
+  })
+})
+
+describe('nbaProjectionHero', () => {
+  it('shows the projection against the standard line with the model, sample and minutes', () => {
+    const hero = nbaProjectionHero(market({ lines: [rung(3.5, 'goblin'), { ...rung(4.5, 'standard'), gap: 0.5 }] }), 'nba-reference-v1')
+    expect(hero).toEqual({
+      label: 'Projected assists', value: '5.0', delta: '+0.5 vs 4.5 line', reason: null,
+      facts: [{ label: 'Model', value: 'nba-reference-v1' }, { label: 'Sample', value: '20 games' }],
+    })
+  })
+
+  it('says why a modelled market has no number', () => {
+    const lowMinutes = market({ projection: null, priorMinutes: 16.4, gamesInSample: 28, lines: [{ ...rung(2.5, 'standard'), flags: ['low_minutes'] }] })
+    expect(nbaProjectionHero(lowMinutes, 'v1')?.reason).toBe('No projection: 16.4 minutes a game, under the 20-minute floor.')
+    expect(nbaProjectionHero(lowMinutes, 'v1')?.delta).toBeNull()
+    const fewGames = market({ projection: null, gamesInSample: 6, lines: [{ ...rung(2.5, 'standard'), flags: ['few_prior_games'] }] })
+    expect(nbaProjectionHero(fewGames, 'v1')?.reason).toBe('No projection: 6 earlier games, under the 10-game minimum.')
+  })
+
+  it('draws nothing for a line-only market', () => {
+    expect(nbaProjectionHero(market({ kind: 'line-only' }), 'v1')).toBeNull()
+  })
+})
+
+describe('nbaHeadChips', () => {
+  it('shows the sample, minutes and market count', () => {
+    expect(nbaHeadChips({ markets: [market({ kind: 'line-only', gamesInSample: null, priorMinutes: null }), market(), market()] })).toEqual([
+      { value: '20', label: 'Games in sample' }, { value: '32.0', label: 'Avg minutes' }, { value: '3', label: 'Prop markets' },
+    ])
+  })
+
+  it('keeps only the count when no market carries a sample, and nothing without markets', () => {
+    expect(nbaHeadChips({ markets: [market({ kind: 'line-only', gamesInSample: null, priorMinutes: null })] })).toEqual([{ value: '1', label: 'Prop market' }])
+    expect(nbaHeadChips({ markets: [] })).toEqual([])
   })
 })

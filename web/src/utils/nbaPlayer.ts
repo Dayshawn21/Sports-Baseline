@@ -1,6 +1,8 @@
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerProps, NbaPlayerRung } from '~/types/nba'
 import type { FormRow } from '~/utils/nflFormWindow'
-import { nbaPropFlagText } from '~/utils/nbaProps'
+import { nbaMarketLabel } from '~/utils/nbaLineOnly'
+import { nbaPropFlagText, signedGap } from '~/utils/nbaProps'
+import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
 
 export type NbaFormWindow = '5' | '10' | 'opp'
 
@@ -103,3 +105,49 @@ export function nbaFormRow(market: NbaPlayerMarket, opponent: string | null): Fo
 export function nbaChartLine(market: NbaPlayerMarket): number | null {
   return market.market === 'double_double' ? null : nbaStandardLine(market)
 }
+
+const NBA_MIN_PRIOR_GAMES = 10
+const NBA_MIN_PRIOR_MINUTES = 20
+
+function nbaMissingReason(market: NbaPlayerMarket): string {
+  const flags = new Set(market.lines.flatMap(rung => rung.flags))
+  if (flags.has('few_prior_games')) {
+    return `No projection: ${market.gamesInSample ?? 0} earlier games, under the ${NBA_MIN_PRIOR_GAMES}-game minimum.`
+  }
+  if (flags.has('low_minutes') && market.priorMinutes !== null) {
+    return `No projection: ${market.priorMinutes.toFixed(1)} minutes a game, under the ${NBA_MIN_PRIOR_MINUTES}-minute floor.`
+  }
+  return 'No projection for this market today.'
+}
+
+/** A modelled market's projection block; null for a line-only market, which has no model to show. */
+export function nbaProjectionHero(market: NbaPlayerMarket, modelVersion: string): PlayerProjectionHero | null {
+  if (market.kind !== 'modelled') return null
+  const value = market.projection === null ? null : market.projection.toFixed(1)
+  const line = mainLine(market.lines)
+  const facts = [
+    { label: 'Model', value: modelVersion },
+    { label: 'Sample', value: market.gamesInSample === null ? '--' : `${market.gamesInSample} games` },
+  ]
+  return {
+    label: `Projected ${nbaMarketLabel(market.market).toLowerCase()}`,
+    value,
+    delta: heroDelta(value, line && { line: String(line.line), gap: line.gap === null ? null : signedGap(line.gap), oddsType: line.oddsType }),
+    reason: value === null ? nbaMissingReason(market) : null,
+    facts,
+  }
+}
+
+/** The page head's chips: the model's sample and minutes (the same for every market), then how many markets have lines. */
+export function nbaHeadChips(player: Pick<NbaPlayerProps, 'markets'>): PlayerHeadChip[] {
+  if (player.markets.length === 0) return []
+  const sampled = player.markets.find(market => market.gamesInSample !== null)
+  return [
+    ...(sampled?.gamesInSample == null ? [] : [{ value: String(sampled.gamesInSample), label: 'Games in sample' }]),
+    ...(sampled?.priorMinutes == null ? [] : [{ value: sampled.priorMinutes.toFixed(1), label: 'Avg minutes' }]),
+    { value: String(player.markets.length), label: player.markets.length === 1 ? 'Prop market' : 'Prop markets' },
+  ]
+}
+
+/** Single-stat markets for the joined game log; combos and double-double repeat these. */
+export const NBA_LOG_MARKETS = ['points', 'rebounds', 'assists', 'threes_made', 'blocks'] as const

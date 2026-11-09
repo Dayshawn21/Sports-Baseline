@@ -3,8 +3,8 @@ import type { NhlPlayerGame, NhlPlayerInjury, NhlPlayerLine, NhlPlayerMarket } f
 import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, type FormRow } from '~/utils/nflFormWindow'
 import { nhlContextSource } from '~/utils/nhlContext'
 import {
-  NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlNotLoadedCount,
-  nhlPlayerInjuryReport, nhlPlayerPath, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
+  NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag,
+  nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
 } from '~/utils/nhlPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'WSH'): NhlPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
@@ -145,5 +145,70 @@ describe('nhlFormRow with the shared form helpers', () => {
     const now = new Date('2026-11-02T12:00:00Z')
     expect(formDateText(formHistoryDate('2026-04-10', now, NHL_SEASON_START_MONTH))).toBe(`Apr 10 '26`)
     expect(formDateText(formHistoryDate('2026-10-20', now, NHL_SEASON_START_MONTH))).toBe('Oct 20')
+  })
+})
+
+describe('nhlProjectionHero', () => {
+  it('shows the 20-game number against the standard line', () => {
+    const hero = nhlProjectionHero(market({
+      lines: [rung(2.5, 'goblin'), { ...rung(3.5, 'standard'), gap: -0.6 }],
+      projection: { modelVersion: 'nhl-reference-v1', value: 2.9, gamesInSample: 20, gap: null, pOver: null, flags: [] },
+    }))
+    expect(hero).toEqual({
+      label: 'Projected shots on goal', value: '2.9', delta: '-0.6 vs 3.5 line', reason: null,
+      facts: [{ label: 'Model', value: 'nhl-reference-v1' }, { label: 'Sample', value: '20 games' }],
+    })
+  })
+
+  it('names the flag when there is no number', () => {
+    expect(nhlProjectionHero(market())).toMatchObject({ value: null, delta: null, reason: 'No projection: too few games.' })
+  })
+})
+
+describe('nhlHeadChips', () => {
+  it('shows the largest sample, average TOI from a time-on-ice line, and the market count', () => {
+    const toi = market({ market: 'time_on_ice', recent: [game(30, 20), game(29, null), game(28, 18)] })
+    const sampled = market({ projection: { modelVersion: 'v1', value: 2, gamesInSample: 20, gap: null, pOver: null, flags: [] } })
+    expect(nhlHeadChips({ markets: [toi, sampled] })).toEqual([
+      { value: '20', label: 'Games in sample' }, { value: '19.0', label: 'Avg TOI, last 2' }, { value: '2', label: 'Prop markets' },
+    ])
+  })
+
+  it('drops a zero sample and a missing TOI line', () => {
+    expect(nhlHeadChips({ markets: [market()] })).toEqual([{ value: '1', label: 'Prop market' }])
+    expect(nhlHeadChips({ markets: [] })).toEqual([])
+  })
+})
+
+describe('nhlOpposingGoalieTag', () => {
+  const NOW = new Date('2026-11-09T20:00:00Z')
+  const game = { gameId: 1, awayTeam: 'NYR', homeTeam: 'EDM', startUtc: '2026-11-10T00:00:00Z', status: 'scheduled', gameType: 'REG' as const }
+  const side = (team: string, playerName: string | null, status: 'confirmed' | 'expected' | 'not_reported') => ({
+    team, espnAthleteId: null, playerId: playerName ? 7 : null, playerName, status, rawStatus: null, linkReason: null,
+  })
+  const goalies = (fetchedAt: string) => ({
+    source: 'ESPN' as const, fetchedAt, sourceTimestamp: fetchedAt, freshness: 'fresh' as const,
+    away: side('NYR', 'Igor Example', 'confirmed'), home: side('EDM', 'Stuart Example', 'expected'),
+  })
+
+  it('names the other team starter and its status', () => {
+    expect(nhlOpposingGoalieTag({ goalies: goalies('2026-11-09T19:00:00Z'), opponent: 'EDM', game }, NOW)).toBe('EDM goalie: Stuart Example, Expected')
+  })
+
+  it('marks an old report stale and drops an unavailable one', () => {
+    expect(nhlOpposingGoalieTag({ goalies: goalies('2026-11-09T10:00:00Z'), opponent: 'EDM', game }, NOW)).toBe('EDM goalie: Stuart Example, Expected (stale)')
+    expect(nhlOpposingGoalieTag({ goalies: null, opponent: 'EDM', game }, NOW)).toBeNull()
+    expect(nhlOpposingGoalieTag({ goalies: goalies('2026-11-09T19:00:00Z'), opponent: null, game }, NOW)).toBeNull()
+  })
+})
+
+describe('nhlLogValue and nhlLogLabel', () => {
+  it('formats TOI, signs plus/minus and dashes a missing value', () => {
+    expect(nhlLogValue('time_on_ice', 18.53)).toBe('18.5')
+    expect(nhlLogValue('plus_minus', 2)).toBe('+2')
+    expect(nhlLogValue('plus_minus', -1)).toBe('-1')
+    expect(nhlLogValue('goals', null)).toBe('--')
+    expect(nhlLogLabel('shots_on_goal')).toBe('Shots on Goal')
+    expect(nhlLogLabel('unknown_market')).toBe('unknown_market')
   })
 })

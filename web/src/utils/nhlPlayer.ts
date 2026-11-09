@@ -1,6 +1,10 @@
 import type { NhlPlayerGame, NhlPlayerInjury, NhlPlayerMarket, NhlPlayerProps } from '~/types/nhl'
 import type { NhlContextSource } from '~/types/nhlContext'
 import type { FormRow, FormWindow } from '~/utils/nflFormWindow'
+import { nhlMarketLabel, nhlPropLineLabel } from '~/utils/nhlLineOnly'
+import { nhlGapLabel, nhlProjectionNote } from '~/utils/nhlProjection'
+import { nhlContextSource, nhlGoalieLabel } from '~/utils/nhlContext'
+import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
 
 export interface NhlFormSample {
   average: number | null
@@ -86,4 +90,71 @@ export function nhlPlayerStatus(player: Pick<NhlPlayerProps, 'position' | 'team'
 /** The injury report as the shared context helpers take it; the player endpoint's block has no source field of its own. */
 export function nhlPlayerInjuryReport(injury: NhlPlayerInjury): NhlContextSource {
   return { source: 'ESPN', fetchedAt: injury.fetchedAt, sourceTimestamp: injury.sourceTimestamp, freshness: injury.freshness }
+}
+
+/** A market's projection block: the 20-game reference number, or the reason it is missing. */
+export function nhlProjectionHero(market: NhlPlayerMarket): PlayerProjectionHero {
+  const { projection } = market
+  const value = projection.value === null ? null : projection.value.toFixed(1)
+  const line = mainLine(market.lines)
+  const note = nhlProjectionNote(projection)
+  return {
+    label: `Projected ${nhlMarketLabel(market.market).toLowerCase()}`,
+    value,
+    delta: heroDelta(value, line && { line: nhlPropLineLabel(market.market, line.line), gap: line.gap === null ? null : nhlGapLabel(line.gap), oddsType: line.oddsType }),
+    reason: value === null ? `No projection: ${note === null ? 'not served for this market today' : note.charAt(0).toLowerCase() + note.slice(1)}.` : note,
+    facts: [
+      { label: 'Model', value: projection.modelVersion },
+      { label: 'Sample', value: `${projection.gamesInSample} games` },
+    ],
+  }
+}
+
+const TOI_GAMES = 10
+
+/** The page head's chips: the 20-game sample, average TOI when a time-on-ice line carries the player's recent games, then the market count. */
+export function nhlHeadChips(player: Pick<NhlPlayerProps, 'markets'>): PlayerHeadChip[] {
+  if (player.markets.length === 0) return []
+  const games = Math.max(...player.markets.map(market => market.projection.gamesInSample))
+  const toi = player.markets.find(market => market.market === 'time_on_ice')?.recent
+    .slice(0, TOI_GAMES).flatMap(game => game.value === null ? [] : [game.value]) ?? []
+  return [
+    ...(games > 0 ? [{ value: String(games), label: 'Games in sample' }] : []),
+    ...(toi.length > 0 ? [{ value: (toi.reduce((sum, value) => sum + value, 0) / toi.length).toFixed(1), label: `Avg TOI, last ${toi.length}` }] : []),
+    { value: String(player.markets.length), label: player.markets.length === 1 ? 'Prop market' : 'Prop markets' },
+  ]
+}
+
+/** "BOS goalie: Name, Confirmed" for the other team's starter; null when the report is unavailable or the opponent is unknown. */
+export function nhlOpposingGoalieTag(player: Pick<NhlPlayerProps, 'goalies' | 'opponent' | 'game'>, now: Date): string | null {
+  const goalies = player.goalies
+  if (goalies === null || player.opponent === null) return null
+  const freshness = nhlContextSource(goalies, player.game?.startUtc ?? null, now).freshness
+  if (freshness === 'unavailable') return null
+  const side = goalies.away.team === player.opponent ? goalies.away : goalies.home.team === player.opponent ? goalies.home : null
+  if (side === null) return null
+  const label = nhlGoalieLabel(side, true)
+  return `${side.team} goalie: ${label.name ? `${label.name}, ` : ''}${label.status}${freshness === 'stale' ? ' (stale)' : ''}`
+}
+
+/** Skater stats first, then goalie stats, for the joined game log. */
+export const NHL_LOG_MARKETS = [
+  'goals', 'assists', 'points', 'shots_on_goal', 'power_play_points', 'blocked_shots', 'hits', 'faceoffs_won', 'plus_minus',
+  'time_on_ice', 'goalie_saves', 'goals_allowed',
+] as const
+
+function isLogMarket(market: string): market is (typeof NHL_LOG_MARKETS)[number] {
+  return (NHL_LOG_MARKETS as readonly string[]).includes(market)
+}
+
+export function nhlLogLabel(market: string): string {
+  return isLogMarket(market) ? nhlMarketLabel(market) : market
+}
+
+/** A game log cell: TOI to one decimal, plus/minus signed, else the count. */
+export function nhlLogValue(market: string, value: number | null): string {
+  if (value === null) return '--'
+  if (market === 'time_on_ice') return value.toFixed(1)
+  if (market === 'plus_minus' && value > 0) return `+${value}`
+  return String(value)
 }
