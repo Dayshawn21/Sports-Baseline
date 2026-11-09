@@ -218,6 +218,10 @@ Things that are easy to get wrong:
   Keep any new heavy report off the request path the same way. In dev a
   stored copy also wins over a live build.
 - **Ingest** stays on GitHub Actions; Render runs no cron jobs.
+- **Render installs `api/requirements-api.txt`**, not `requirements.txt`, which
+  adds scikit-learn (about 49 MB at startup, since LightGBM imports it) and
+  pytest. A new runtime dependency goes in `requirements-api.txt`;
+  `tests/test_api_install.py` fails if the app needs scikit-learn to start.
 - **Migrations are manual and run one command at a time** against the shared
   Neon database. `alembic.ini` is untracked, so pass one with `-c`: it needs
   `[alembic] script_location = <repo>/api/app/db/migrations` plus logging

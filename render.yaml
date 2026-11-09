@@ -14,7 +14,9 @@ services:
     # Beside Neon's us-east-1; from Oregon each slate query crossed the country.
     region: virginia
     rootDir: api
-    buildCommand: pip install -r requirements.txt
+    # Not requirements.txt: scikit-learn there costs about 49 MB at startup
+    # and nothing on the request path uses it.
+    buildCommand: pip install -r requirements-api.txt
     # Render does not publish its proxy addresses, so every hop is trusted;
     # without --proxy-headers all visitors would share one rate-limit bucket.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'
