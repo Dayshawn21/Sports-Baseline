@@ -369,6 +369,26 @@ export interface NflSlateResponse {
   unmatched: NflUnmatchedLine[]
 }
 
+type NflSampleField = 'recentForm' | 'recentFormLong' | 'opponentHistory' | 'opponentAllowedHistory'
+
+/** A slate line as `/nfl/slate` sends it: each history sample is an index into `NflSlateWire.samples`. */
+export interface NflSlateWireLine extends Omit<NflSlateLine, NflSampleField> {
+  recentForm: number
+  opponentHistory: number
+  opponentAllowedHistory: number
+  recentFormLong?: number | null
+}
+
+export interface NflSlateWireGame extends Omit<NflSlateGame, 'lines'> {
+  lines: NflSlateWireLine[]
+}
+
+/** The `/nfl/slate` body, with each history sample written once; `expandNflSlate` turns it back into `NflSlateResponse`. */
+export interface NflSlateWire extends Omit<NflSlateResponse, 'games'> {
+  games: NflSlateWireGame[]
+  samples: NflHistorySample[]
+}
+
 export interface NflNoteInjury {
   playerId: number
   playerName: string

@@ -127,6 +127,7 @@ def _projection_value(market: NflPropMarket, row: dict, season: int, averages: N
     return anytime_td(row, season, row.get("position_td_rate", 0.0))[0]
 
 
+# The body is the stored compact wire shape, sent unvalidated; the model only documents the expanded slate.
 @router.get("/slate", response_model=NflSlateResponse)
 async def get_slate(
     season: int,

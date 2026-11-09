@@ -207,6 +207,10 @@ Things that are easy to get wrong:
     current and next week, bounded to weeks 1-18; `--weeks all` backfills).
     The four NFL workflows that write slate inputs run it as their last step,
     so any new slate input's writer must refresh it too.
+    The stored body writes each history sample once (`app/core/nfl_slate_wire.py`)
+    and `fetchNflSlate` expands it, which halved a 25 MB week. To change that
+    shape, ship a web that reads both shapes first, deploy it, and only then
+    rewrite the stored weeks.
   - `/nfl/model/prop-lines`: `python -m app.ingest.nfl_model_snapshot`, run
     by `nfl-ingest.yml`.
   - `/nfl/model/ranking`: `python -m app.ingest.nfl_ranking_snapshot`, all

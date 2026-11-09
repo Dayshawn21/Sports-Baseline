@@ -4,15 +4,18 @@ One week's build peaked at 381 to 466 MB locally, and a second cold build in
 the same process ran the hosted demo out of its 512 MB (37d). So production
 serves the copy `nfl_slate_snapshot` stores and never builds; dev builds live
 when no copy is stored. Loads run one at a time across every week, and each
-result is shared until it expires.
+result is shared until it expires. The body is the compact wire shape
+(`app.core.nfl_slate_wire`), which the web expands.
 """
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nfl_slate_wire import compact_slate
 from app.core.report_snapshot_source import ReportSource, report_source
 from app.repositories import report_snapshots
 from app.schemas.nfl import NflSlateResponse
@@ -22,8 +25,9 @@ from app.services.serial_build_cache import SerialBuildCache
 # Short, so a cron's refreshed copy shows within minutes.
 CACHE_TTL_SECONDS = 5 * 60
 FAILURE_TTL_SECONDS = 10
-# The current week and its neighbours; older weeks rebuild on demand.
-MAX_ENTRIES = 4
+# A stored week grew to 27 MB by week 9 of 2026, so only the current week and one
+# neighbour stay cached; production reads any other week's stored copy on demand.
+MAX_ENTRIES = 2
 
 SLATE_REPORT_PREFIX = "nfl_slate_week_"
 
@@ -38,8 +42,9 @@ def slate_report(week: int) -> str:
 
 
 def slate_json(slate: NflSlateResponse) -> bytes:
-    """The body FastAPI would send for `slate` under its camelCase response model."""
-    return slate.model_dump_json(by_alias=True).encode()
+    """The camelCase body of `slate`, with each history sample written once."""
+    body = compact_slate(slate.model_dump(mode="json", by_alias=True))
+    return json.dumps(body, separators=(",", ":"), allow_nan=False).encode()
 
 
 async def load_slate_json(db: AsyncSession, season: int, week: int, production: bool) -> Optional[bytes]:

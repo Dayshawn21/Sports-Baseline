@@ -11,6 +11,7 @@ from app.schemas.nfl import NflSlateResponse
 from app.services.nfl.slate_cache import slate_json
 from app.services.serial_build_cache import SerialBuildCache
 from tests.helpers.nfl_prop_predictions import NOW, _game, _line, _slate
+from tests.helpers.nfl_slate_wire import expand_slate
 
 TTL = 900
 FAILURE_TTL = 10
@@ -116,7 +117,7 @@ def test_the_oldest_week_is_dropped_past_the_limit(clock):
     assert builds.keys == [(2026, 4), (2026, 5), (2026, 6), (2026, 4)]
 
 
-def test_cached_bytes_match_what_the_response_model_sent():
+def test_cached_bytes_expand_to_what_the_response_model_sent():
     slate = _slate(
         _game(1, NOW + timedelta(hours=2), [_line(10), _line(11, p_over=None)]),
         _game(2, None, []),
@@ -135,5 +136,5 @@ def test_cached_bytes_match_what_the_response_model_sent():
     expected, served = client.get("/model"), client.get("/bytes")
 
     assert served.headers["content-type"] == "application/json"
-    assert served.json() == expected.json()
+    assert expand_slate(served.json()) == expected.json()
     assert "lineCount" in served.json()
