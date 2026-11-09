@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SlatePropsCell } from '~/components/shared/SlatePropsCell'
 import type { NbaSlateRowCell, NbaSlateRowModel } from '~/utils/nbaSlate'
 import '~/components/nfl/nfl-slate-card.css'
 import '~/components/nfl/nfl-slate-table.css'
@@ -47,7 +48,7 @@ export function NbaSlateTable({ rows, label = 'Games', staleOdds = false }: { ro
       <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>
       <td className="nfl-slate-table__moneyline" data-label="ML"><Value cell={row.moneyline} /></td>
       <td className="nba-slate-table__win is-muted" data-label="win">{row.win ?? '--'}</td>
-      <td className="nfl-slate-table__props is-num">{row.props}<span className="nfl-slate-table__unit"> props</span></td>
+      <SlatePropsCell count={row.props} />
       <td className="nfl-slate-table__notes"><span className="nfl-slate-table__tags">
         {row.tags.map(tag => <span key={tag} className="nfl-slate-card__tag">{tag}</span>)}
         {row.note !== null && <span className="nfl-slate-table__conditions">{row.note}</span>}
