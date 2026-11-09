@@ -27,7 +27,7 @@ function PastLines({ player }: { player: NflPlayerDetail }) {
           </span>
           <b>{count.overs} of {count.decided}</b>
         </div>)}
-        <p className="nfl-player-note">Overs hit against each stored line; the white tick is the {pct(player.breakEven)} Power break-even. A handful of games is anecdote, so nothing here is colored. The model&apos;s graded record belongs on the Model view (33d).</p>
+        <p className="nfl-player-note">Overs hit against each stored line; the white tick is the {pct(player.breakEven)} Power break-even. A handful of games is anecdote, so nothing here is colored. The model&apos;s graded record is on the Model view.</p>
       </div>}
   </section>
 }

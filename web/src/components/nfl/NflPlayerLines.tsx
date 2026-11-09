@@ -47,7 +47,7 @@ export function NflPlayerLines({ week, isLoading, isError, otherMarkets }: { wee
       </div>
       {week.lines.map((item, index) => <LineRow key={item.row.lineId} item={item} selected={index === selectedIndex} params={params}
         onJump={scrollToPropTabs} />)}
-      <p className="nfl-player-note">Ranks and edges are read against the week's prop board. Edges are gray until the forward ranking check (27j) adopts a slice. Anytime TD shows the model beside the books, with no edge.</p>
+      <p className="nfl-player-note">Ranks and edges are read against the week's prop board. Edges are gray until a forward check on later games passes for that kind of prop. Anytime TD shows the model beside the books, with no edge.</p>
     </div>}
   </section>
 }

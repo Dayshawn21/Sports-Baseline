@@ -23,8 +23,8 @@ function Notes({ row }: { row: NflSlateRowModel }) {
   const { injuries } = row
   return <span className="nfl-slate-table__tags">
     {injuries !== null && injuries.out > 0 && <span className="nfl-slate-card__tag is-out">{injuries.out} Out</span>}
-    {injuries !== null && injuries.doubtful > 0 && <span className="nfl-slate-card__tag is-caution">{injuries.doubtful} D</span>}
-    {injuries !== null && injuries.questionable > 0 && <span className="nfl-slate-card__tag is-caution">{injuries.questionable} Q</span>}
+    {injuries !== null && injuries.doubtful > 0 && <span className="nfl-slate-card__tag is-caution" title={`${injuries.doubtful} doubtful`} aria-label={`${injuries.doubtful} doubtful`}>{injuries.doubtful} D</span>}
+    {injuries !== null && injuries.questionable > 0 && <span className="nfl-slate-card__tag is-caution" title={`${injuries.questionable} questionable`} aria-label={`${injuries.questionable} questionable`}>{injuries.questionable} Q</span>}
     {row.qbChange.map(team => <span key={`qb-${team}`} className="nfl-slate-card__tag is-caution">QB change: {team}</span>)}
     {row.shortWeek.map(team => <span key={team} className="nfl-slate-card__tag">Short week: {team}</span>)}
     {row.state !== 'final' && <span className="nfl-slate-table__conditions">{row.conditions}</span>}

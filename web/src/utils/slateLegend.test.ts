@@ -24,6 +24,18 @@ describe('SLATE_LEGENDS', () => {
     for (const code of noPicks) expect(SLATE_LEGENDS[code].pick[0]).toMatch(/^No .*picks/)
   })
 
+  it('keeps internal plan codes such as "(27j)" out of the copy', () => {
+    const text = [...SPORTS.flatMap(sport => legendText(SLATE_LEGENDS[sport.code])), ...legendText(tennisLegend('DraftKings'))]
+    expect(text.filter(line => /\(\d+[a-z]\d*\)/.test(line))).toEqual([])
+  })
+
+  it('defines the NFL prop gap as model minus line, scaled by a typical line, and as reference only', () => {
+    const pick = SLATE_LEGENDS.nfl.pick.join(' ')
+    expect(pick).toMatch(/prop gap is the model's projection minus the prop line, as a share of a typical line/)
+    expect(pick).toMatch(/Gaps are reference only/)
+    expect(pick).toMatch(/Q and D count questionable and doubtful/)
+  })
+
   it('names the NHL book order once, since the slate cells no longer show a book', () => {
     const text = legendText(SLATE_LEGENDS.nhl).join(' ')
     for (const book of ['DraftKings', 'FanDuel', 'bet365']) expect(text.split(book)).toHaveLength(2)
