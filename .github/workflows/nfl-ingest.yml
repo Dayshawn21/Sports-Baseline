@@ -161,6 +161,13 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The same three ranking checks, stored for the hosted demo's model page:
+      # the v4 build adds about 90 MB, and the page asks for all three at once.
+      - name: Store the model page's ranking checks
+        run: |
+          cd api
+          python -m app.ingest.nfl_ranking_snapshot
+
       # Last, and even after a failed step: the hosted demo serves stored slates
       # and never builds one inside its 512 MB (37d). Needs migration 0045.
       - name: Store the current NFL slates

@@ -6,14 +6,16 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.nba_slate_gaps import DIGEST_LIMIT, SLATE_GAPS_MAX
+from app.core.production_settings import is_production
 from app.db.pool import get_db
 from app.schemas.nba import (
     NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
     NbaPlayerPropsResponse, NbaPropBoardResponse, NbaSlateResponse,
 )
 from app.season_query import optional_model_season
-from app.services.nba import track_record
+from app.services.nba import ranking_snapshot, track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
 from app.services.nba.prop_board_cache import cached_prop_board_json
@@ -86,12 +88,12 @@ async def get_player_props(
 async def get_model_ranking(
     season: int | None = Depends(optional_model_season), db: AsyncSession = Depends(get_db),
 ) -> NbaModelRankingResponse:
-    # Resolved before the cache, so the cache is always keyed by a concrete season.
+    # Resolved before the read, so the stored copy and the cache are always keyed by a concrete season.
     if season is None:
         season = await track_record.nba_season(db, dt.datetime.now(dt.UTC))
     if season is None:
         raise HTTPException(status_code=404, detail="No NBA regular-season games are loaded")
-    record = await track_record.get_ranking_record(db, season)
-    if record is None:
+    response = await ranking_snapshot.get_ranking_response(db, season, is_production(settings.api_env))
+    if response is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
-    return NbaModelRankingResponse.model_validate(record)
+    return response

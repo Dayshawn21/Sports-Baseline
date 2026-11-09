@@ -1,10 +1,22 @@
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.db.pool import get_db
+from app.repositories import report_snapshots
 from app.routers import nba as nba_router
 from app.services.nba import track_record
 from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
+
+
+@pytest.fixture(autouse=True)
+def no_snapshot_in_dev(monkeypatch):
+    async def no_snapshot(_db, _report, _season):
+        return None
+
+    monkeypatch.setattr(report_snapshots, "get_snapshot", no_snapshot)
+    monkeypatch.setattr(settings, "api_env", "dev")
 
 
 def _client() -> TestClient:

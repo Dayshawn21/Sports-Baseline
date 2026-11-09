@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.config import settings
 from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION as V4
 from app.db.pool import get_db
+from app.repositories import report_snapshots
 from app.routers import nfl as nfl_router
 from app.schemas.nfl import NflModelRankingResponse
 from app.services.nfl import track_record, volume_ranking
@@ -17,6 +18,10 @@ from tests.helpers.nfl_volume_ranking_service import FINISHED, _fresh_caches, _p
 
 @pytest.fixture(autouse=True)
 def dev_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def no_snapshot(_db, _report, _season):
+        return None
+
+    monkeypatch.setattr(report_snapshots, "get_snapshot", no_snapshot)
     monkeypatch.setattr(settings, "api_env", "dev")
 
 

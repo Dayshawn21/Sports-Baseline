@@ -63,3 +63,10 @@ jobs:
             cat ranking_check_report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The same grading, stored for the hosted demo's model page: a live build
+      # adds about 100 MB to the API's 512 MB. Needs migration 0045.
+      - name: Store the model page's ranking check
+        run: |
+          cd api
+          python -m app.ingest.nba_ranking_snapshot

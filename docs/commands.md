@@ -43,6 +43,11 @@ per command; read this file before running, scheduling or changing one.
   run still spends the paid `/odds` call). With no upcoming game it makes no
   provider call, and it skips `/odds` unless the free `/sports` balance is at
   least `--min-requests-remaining` (default 5).
+- NFL ranking snapshots: `python -m app.ingest.nfl_ranking_snapshot
+  [--season 2026] [--dry-run]` (stores all three `/nfl/model/ranking` versions
+  in `report_snapshots` as `nfl_model_ranking_<version>`; run by the Tuesday
+  `nfl-ingest.yml`; a real run writes to the shared database, the dry run
+  writes nothing)
 - ELO: `python -m app.ingest.elo --web`
 - Player stats: `python -m app.ingest.player_stats --today-only`
 - TennisMyLife box scores: `python -m app.ingest.tennismylife [--days-back 21]
@@ -115,6 +120,10 @@ per command; read this file before running, scheduling or changing one.
   [--min-credits 100] [--dry-run]` (3 The Odds API credits a run, dry run
   included; skips the paid call below the credit floor or with no game in the
   window)
+- NBA ranking snapshot: `python -m app.ingest.nba_ranking_snapshot
+  [--season N] [--dry-run]` (stores `/nba/model/ranking` as
+  `nba_model_ranking`; no `--season` means the season the page shows by
+  default; run by the daily `nba-ingest.yml` after its ranking check)
 - NHL schedule + box scores: `python -m app.ingest.nhl_api [--season 2025]
   [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
   REG/PST schedule plus box scores from 3 days ago through today;
