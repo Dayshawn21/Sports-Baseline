@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -2699,9 +2700,16 @@ def _closing_game_lines(spread_line: float | None, total_line: float | None) -> 
     return {"home_spread_margin": float(spread_line), "total": float(total_line)}
 
 
-async def get_replay_rows(db: AsyncSession, season: int, week: int) -> list[ReplayRow]:
-    """Every rated position's player-game this week, projected as the slate would, with the result."""
-    pairs = [(position, market) for position, markets in REPLAY_MARKETS_BY_POSITION.items() for market in markets]
+async def get_replay_rows(
+    db: AsyncSession, season: int, week: int,
+    markets_by_position: Mapping[str, Sequence[str]] = REPLAY_MARKETS_BY_POSITION,
+) -> list[ReplayRow]:
+    """Every rated position's player-game this week, projected as the slate would, with the result.
+
+    `markets_by_position` lets the kicker replay (27l3) load K rows without adding
+    K to the shared map that 27e and 49 also read.
+    """
+    pairs = [(position, market) for position, markets in markets_by_position.items() for market in markets]
     rows = await _slate_line_rows(db, season, week, _REPLAY_LINES_CTE, {
         "replay_positions": [position for position, _ in pairs],
         "replay_markets": [market for _, market in pairs],
@@ -2736,6 +2744,21 @@ async def get_replay_rows(db: AsyncSession, season: int, week: int) -> list[Repl
         ))
     return replay
 
+
+
+async def get_kicker_pat_misses(db: AsyncSession, season: int) -> dict[tuple[int, int], int]:
+    """Missed PATs per K player-game in a season's REG games, for 27l3's PAT-miss sensitivity line."""
+    rows = await db.execute(
+        text("""
+            SELECT s.player_id, s.game_id, s.pat_missed
+            FROM nfl_player_weekly_stats s
+            JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+            JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
+            WHERE g.season = :season AND g.game_type = 'REG' AND p.position = 'K' AND s.pat_missed IS NOT NULL
+        """),
+        {"season": season},
+    )
+    return {(row["player_id"], row["game_id"]): row["pat_missed"] for row in rows.mappings()}
 
 async def get_player_profile(db: AsyncSession, player_id: int, season: int, week: int) -> dict | None:
     """One player's identity as of the week: team by the roster rule, depth, injury, aliases, stats loaded."""
