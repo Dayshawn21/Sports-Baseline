@@ -13,6 +13,12 @@
 .nfl-slate__legend .slate-legend__pick a { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
 @media (max-width: 767px) {
   .nfl-slate__legend .slate-legend__pick summary { min-height: 44px; }
+  /* Rows, not cards: a phone drops each window's box, and the legend follows the games. */
+  .nfl-slate .nfl-slate-window { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
+  .nfl-slate .nfl-slate-window__title { margin-bottom: 4px; }
+  .is-game-slate .nfl-slate__legend { margin-top: 18px; }
+  /* The same sentence sat in every gap box; the slate legend's "What's a pick?" says it once. */
+  .is-game-slate .slate-digest__basis { display: none; }
 }
 .nfl-slate-window {
   min-width: 0;

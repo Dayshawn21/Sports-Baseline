@@ -261,12 +261,43 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
 }
 
 @media (max-width: 768px) {
+  .unified-notices:empty { display: none; }
+  .unified-tennis-page .slate-digest { margin-bottom: var(--space-3); }
+
+  /* Rows, not cards: the match list drops its box, and the tour tabs hold one row. */
+  .tennis-slate-table {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .tennis-slate-table__head { padding: 0; }
+
+  .tennis-slate-table__head .tennis-slate-section {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tennis-slate-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
   .tennis-slate-tabs button {
     display: inline-flex;
+    flex: none;
     align-items: center;
     min-height: 44px;
     padding: 0 14px;
   }
+
+  .tennis-slate-table__empty { padding-inline: 0; }
 
   /* Table rows become two lines: time and players, then the model lean. */
   .tennis-slate-table thead,
@@ -284,6 +315,8 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
     display: block;
   }
 
+  .tennis-slate-table__group td { padding-inline: 0; }
+
   .tennis-slate-table__row {
     display: grid;
     grid-template-areas:
@@ -291,7 +324,7 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
       "pick pick";
     grid-template-columns: 92px minmax(0, 1fr);
     column-gap: var(--space-3);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--border-subtle);
   }
 

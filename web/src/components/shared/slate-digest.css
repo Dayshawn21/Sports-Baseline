@@ -31,5 +31,7 @@ button.slate-digest__play { font: inherit; text-align: left; cursor: pointer; }
     grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 70%;
     overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: 4px;
   }
-  .slate-digest__play { scroll-snap-align: start; }
+  .slate-digest { margin-top: 14px; }
+  .slate-digest__play { padding: 10px 12px; scroll-snap-align: start; }
+  .slate-digest__num { margin-top: 4px; }
 }
