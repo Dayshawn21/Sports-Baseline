@@ -1529,3 +1529,46 @@ def test_week_line_only_props_preserve_sport_week_market_and_snapshot_boundaries
     assert "DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)" in sql
     assert "ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
     assert line["game_id"] == 49 and line["line"] == 1.5
+
+
+def _kicker_row(**overrides: object) -> dict[str, object]:
+    stats: dict[str, object] = {column: 0 for column in nfl_repository.KICKER_SCORING_STAT_COLUMNS}
+    return {
+        "player_id": 9, "game_id": 3, "week": 4,
+        "fantasy_line": Decimal("8.5"), "fantasy_fetched_at": datetime(2026, 10, 4, 15, 0, tzinfo=UTC),
+        "kicking_line": Decimal("7.5"), "kicking_fetched_at": datetime(2026, 10, 4, 16, 0, tzinfo=UTC),
+        "has_stat_row": True, **stats, "fg_made": 2, "pat_made": 3,
+    } | overrides
+
+
+def test_kicker_scoring_rows_pair_each_kickers_two_standard_full_game_lines() -> None:
+    session = _MappingSession([_kicker_row()])
+
+    [row] = asyncio.run(nfl_repository.get_kicker_scoring_rows(cast(AsyncSession, session), 2026, 8))
+
+    [(sql, params)] = session.calls
+    assert params == {"season": 2026, "through_week": 8, "fantasy_market": "fantasy_points", "kicking_market": "kicking_points"}
+    assert "p.position = 'K'" in sql
+    assert "l.odds_type = 'standard' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc" in sql
+    assert "g.game_type = 'REG' AND g.status = 'completed'" in sql
+    assert "g.week <= :through_week" in sql
+    assert "DISTINCT ON (l.provider, l.provider_prop_id)" in sql
+    assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
+    # A second prop in the same market on one player-game: the later snapshot wins.
+    assert "DISTINCT ON (player_id, game_id, market)" in sql
+    assert "ORDER BY player_id, game_id, market, fetched_at DESC, id DESC" in sql
+    assert "LEFT JOIN per_market f ON" in sql and "LEFT JOIN per_market k ON" in sql
+    assert "LEFT JOIN nfl_player_weekly_stats s ON s.player_id = kg.player_id AND s.game_id = kg.game_id" in sql
+    for column in KICKING_DISTANCE_COLUMNS:
+        assert f"s.{column}" in sql
+    assert (row.fantasy_line, row.kicking_line, row.week) == (8.5, 7.5, 4)
+    assert row.stats is not None and (row.stats["fg_made"], row.stats["pat_made"]) == (2, 3)
+
+
+def test_a_kicker_game_with_one_line_and_no_stat_row_keeps_its_gaps() -> None:
+    session = _MappingSession([_kicker_row(kicking_line=None, kicking_fetched_at=None, has_stat_row=False)])
+
+    [row] = asyncio.run(nfl_repository.get_kicker_scoring_rows(cast(AsyncSession, session), 2026, 8))
+
+    assert row.kicking_line is None and row.kicking_fetched_at is None
+    assert row.stats is None

@@ -2477,6 +2477,79 @@ def _gradeable_line(row: RowMapping) -> GradeableLine:
     )
 
 
+KICKER_SCORING_STAT_COLUMNS: tuple[str, ...] = ("fg_made", "pat_made", *KICKING_DISTANCE_COLUMNS)
+
+
+@dataclass(frozen=True)
+class KickerGameLines:
+    """A kicker-game's standard full-game fantasy and kicking-points lines (27l2); either may be missing."""
+
+    player_id: int
+    game_id: int
+    week: int
+    fantasy_line: float | None
+    fantasy_fetched_at: datetime | None
+    kicking_line: float | None
+    kicking_fetched_at: datetime | None
+    # None: the kicker has no weekly stat row for the game.
+    stats: dict[str, int | None] | None
+
+
+async def get_kicker_scoring_rows(db: AsyncSession, season: int, through_week: int) -> list[KickerGameLines]:
+    """Every K player-game on a completed regular-season game through `through_week` with either line.
+
+    Each prop is read at its last snapshot before kickoff, as 27a grades. When a
+    market has two props on one player-game, the later snapshot wins.
+    """
+    stat_columns = ", ".join(f"s.{column}" for column in KICKER_SCORING_STAT_COLUMNS)
+    rows = await db.execute(
+        text(f"""
+            WITH latest AS (
+                SELECT DISTINCT ON (l.provider, l.provider_prop_id)
+                       l.id, l.market, l.line, l.fetched_at, l.player_id, l.game_id, g.week
+                FROM sport_prop_lines l
+                JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
+                JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
+                WHERE l.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
+                  AND g.week <= :through_week AND p.position = 'K' AND l.provider_prop_id IS NOT NULL
+                  AND l.odds_type = 'standard' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc
+                  AND l.market IN (:fantasy_market, :kicking_market)
+                ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+            ),
+            per_market AS (
+                SELECT DISTINCT ON (player_id, game_id, market) player_id, game_id, week, market, line, fetched_at
+                FROM latest
+                ORDER BY player_id, game_id, market, fetched_at DESC, id DESC
+            ),
+            kicker_games AS (SELECT DISTINCT player_id, game_id, week FROM per_market)
+            SELECT kg.player_id, kg.game_id, kg.week,
+                   f.line AS fantasy_line, f.fetched_at AS fantasy_fetched_at,
+                   k.line AS kicking_line, k.fetched_at AS kicking_fetched_at,
+                   s.player_id IS NOT NULL AS has_stat_row, {stat_columns}
+            FROM kicker_games kg
+            LEFT JOIN per_market f ON f.player_id = kg.player_id AND f.game_id = kg.game_id AND f.market = :fantasy_market
+            LEFT JOIN per_market k ON k.player_id = kg.player_id AND k.game_id = kg.game_id AND k.market = :kicking_market
+            LEFT JOIN nfl_player_weekly_stats s ON s.player_id = kg.player_id AND s.game_id = kg.game_id
+            ORDER BY kg.week, kg.game_id, kg.player_id
+        """),
+        {"season": season, "through_week": through_week,
+         "fantasy_market": NflPropMarket.FANTASY_POINTS.value, "kicking_market": NflLineOnlyMarket.KICKING_POINTS.value},
+    )
+    return [_kicker_game_lines(row) for row in rows.mappings()]
+
+
+def _kicker_game_lines(row: RowMapping) -> KickerGameLines:
+    def line(key: str) -> float | None:
+        return float(row[key]) if row[key] is not None else None
+
+    stats = {column: row[column] for column in KICKER_SCORING_STAT_COLUMNS} if row["has_stat_row"] else None
+    return KickerGameLines(
+        player_id=row["player_id"], game_id=row["game_id"], week=row["week"],
+        fantasy_line=line("fantasy_line"), fantasy_fetched_at=row["fantasy_fetched_at"],
+        kicking_line=line("kicking_line"), kicking_fetched_at=row["kicking_fetched_at"], stats=stats,
+    )
+
+
 async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[FrozenLine]:
     """The latest frozen pre-kickoff prediction of every linked PrizePicks prop on a completed game.
 
