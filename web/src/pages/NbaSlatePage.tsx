@@ -9,6 +9,7 @@ import SlateLegend from '~/components/shared/SlateLegend'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
+import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
@@ -29,6 +30,7 @@ export default function NbaSlatePage() {
   // A failed digest only hides the strip; the games still render.
   const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
   const { query } = useSlateCommand()
+  const phone = usePhoneLayout()
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
   const commandRows = useMemo(
     () => nbaSlateCommandRows(games, gaps.isError ? [] : gaps.data?.items ?? []),
@@ -54,7 +56,7 @@ export default function NbaSlatePage() {
   const { date, previousDate, nextDate } = slate.data
   const datePath = (target: string | null) => target && `/nba?date=${target}`
   const line = gameSlateLine(slateDateLabel(date), nbaSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())
-  return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
+  return <div className="page-shell nfl-slate nba-slate is-game-slate"><div className="page-container is-wide">
     <PageHead
       title="NBA slate"
       meta={line}
@@ -70,13 +72,14 @@ export default function NbaSlatePage() {
       {nextDate && <Link className="nfl-empty__next" to={`/nba?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
       <NbaSlateDigest items={digest} />
-      <SlateLegend {...SLATE_LEGENDS.nba} />
+      {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
       <section className="nfl-slate-window" aria-label="Games">
         <h2 className="nfl-slate-window__title">All games <small>{tableCountPart(filteredRows.length, rows.length, commandActive, 'game')}</small></h2>
         {commandActive && filteredRows.length === 0
           ? <div className="nfl-empty">No games found for this slate search.</div>
           : <NbaSlateTable rows={filteredRows} />}
       </section>
+      {phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
     </>}
   </div></div>
 }

@@ -571,9 +571,20 @@ body {
 }
 
 @media (max-width: 768px) {
+  /* Phones: a tighter head so a slate's first rows reach the first screen. */
+  .lf-page-head {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .lf-page-head .unified-page-title {
+    font-size: 28px;
+  }
+
   .lf-page-head__row {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .lf-page-head__controls {

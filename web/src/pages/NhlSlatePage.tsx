@@ -8,6 +8,7 @@ import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import SlateLegend from '~/components/shared/SlateLegend'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNhlSlate } from '~/hooks/useNhl'
+import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import { nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
 import { matchingSlateCommandRows, nhlSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
@@ -20,6 +21,7 @@ export default function NhlSlatePage() {
   const navigate = useNavigate()
   const slate = useNhlSlate(parseSlateDate(searchParams.get('date')))
   const { query } = useSlateCommand()
+  const phone = usePhoneLayout()
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
   const rows = useMemo(() => {
     const now = new Date()
@@ -44,7 +46,7 @@ export default function NhlSlatePage() {
   const { date, previousDate, nextDate } = slate.data
   const line = gameSlateLine(slateDateLabel(date), nhlSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())
   const datePath = (target: string | null) => target === null ? null : `/nhl?date=${target}`
-  return <div className="page-shell nfl-slate nhl-slate"><div className="page-container is-wide">
+  return <div className="page-shell nfl-slate nhl-slate is-game-slate"><div className="page-container is-wide">
     <PageHead title="NHL slate" meta={line}
       period={{
         label: 'Slate date', previous: datePath(previousDate), next: datePath(nextDate),
@@ -54,11 +56,12 @@ export default function NhlSlatePage() {
       No NHL games on {slateDateLabel(date)}.{' '}
       {nextDate && <Link className="nfl-empty__next" to={`/nhl?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
-      <SlateLegend {...SLATE_LEGENDS.nhl} />
+      {!phone && <SlateLegend {...SLATE_LEGENDS.nhl} />}
       <section className="nfl-slate-window" aria-label="Games">
         <h2 className="nfl-slate-window__title">All games <small>{tableCountPart(filtered.length, rows.length, searchActive, 'game')}</small></h2>
         {searchActive && filtered.length === 0 ? <div className="nfl-empty">No games found for this slate search.</div> : <NhlSlateTable rows={filtered} />}
       </section>
+      {phone && <SlateLegend {...SLATE_LEGENDS.nhl} />}
     </>}
   </div></div>
 }

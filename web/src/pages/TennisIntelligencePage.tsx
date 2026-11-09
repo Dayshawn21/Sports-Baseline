@@ -5,6 +5,7 @@ import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
@@ -84,6 +85,7 @@ export default function TennisIntelligencePage() {
   const source: PropSource = adminView ? chosenSource : 'prizepicks'
   const [tourTab, setTourTab] = useState<TourTab>('all')
   const { query } = useSlateCommand()
+  const phone = usePhoneLayout()
 
   const predictionsQuery = useTennisToday({ date, days: candidateDays })
   const bestPicksQuery = useBestPicks({ date, days: candidateDays })
@@ -203,7 +205,7 @@ export default function TennisIntelligencePage() {
         ) : (
           <>
           <TennisSlateDigest priced={digest} leans={leans} />
-          <SlateLegend parts={legendParts} pick={legend.pick} />
+          {!phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
           <TennisSlateTable
             rows={filteredRows}
             grouped={isGroupedSort(SLATE_SORT)}
@@ -214,6 +216,7 @@ export default function TennisIntelligencePage() {
             total={rows.length}
             emptyMessage={commandActive ? 'No matches found for this slate search.' : undefined}
           />
+          {phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
           </>
         )}
       </div>
