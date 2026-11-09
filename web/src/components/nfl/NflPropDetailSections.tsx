@@ -3,7 +3,6 @@ import type { CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflHistorySample, NflSlateLine } from '~/types/nfl'
 import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, formTitle, parseFormWindow, resolveFormWindow, type FormRow, type FormWindow } from '~/utils/nflFormWindow'
-import { NFL_GAME_MODEL_CAVEAT } from '~/utils/nflGameModel'
 import { formatProjection } from '~/utils/nflLabels'
 import { formBars, type NflRecentBar } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
@@ -145,17 +144,6 @@ export function DetailSportsbook({ detail }: { detail: NflPropDetailModel }) {
   return <section className="nfl-prop-detail__section">
     <SectionHead title="Sportsbooks" aside={detail.sportsbook.summary} />
     <p className="nfl-prop-detail__list">{detail.sportsbook.comparison}</p>
-  </section>
-}
-
-export function DetailGameMarket({ detail }: { detail: NflPropDetailModel }) {
-  const market = detail.gameMarket
-  return <section className="nfl-prop-detail__section">
-    <SectionHead title="Game market" aside={market?.book} />
-    {market === null ? <p className="nfl-prop-detail__list">No game market</p> : <>
-      <dl className="nfl-prop-detail__kv">{market.rows.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
-      {market.modelText && <Tooltip title={NFL_GAME_MODEL_CAVEAT}><p className="nfl-prop-detail__model"><span>Model · not a pick</span><span>{market.modelText}</span></p></Tooltip>}
-    </>}
   </section>
 }
 

@@ -3,6 +3,7 @@ import {
   DetailVolume,
 } from '~/components/nfl/NflPropDetailSections'
 import { NflOpponentAllowed } from '~/components/nfl/NflEvidenceContext'
+import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
 import type { NflSlateGame } from '~/types/nfl'
 import { formatProjection, marketLabel } from '~/utils/nflLabels'
 import { nflPropDetail } from '~/utils/nflPropDetail'
@@ -32,14 +33,16 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
     <div className="nfl-player-prop__body">
       <DetailProjection detail={detail} />
       <DetailGameLog row={row} />
-      <NflOpponentAllowed row={row} game={game} />
-      <DetailContext detail={detail} />
-      <DetailBreakdown detail={detail} />
-      <DetailVolume row={row} />
       <DetailLines detail={detail} />
-      <DetailSportsbook detail={detail} />
-      <DetailStatus detail={detail} />
-      <DetailFlags detail={detail} />
+      <PlayerEvidence contents="Opponent allowed, history, how it is built, sportsbooks, status">
+        <NflOpponentAllowed row={row} game={game} />
+        <DetailContext detail={detail} />
+        <DetailBreakdown detail={detail} />
+        <DetailVolume row={row} />
+        <DetailSportsbook detail={detail} />
+        <DetailStatus detail={detail} />
+        <DetailFlags detail={detail} />
+      </PlayerEvidence>
     </div>
   </section>
 }

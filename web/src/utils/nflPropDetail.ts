@@ -1,8 +1,6 @@
-import type { NflGameOdds, NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { bookLabel } from '~/utils/matchOdds'
+import type { NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { depthLabel, injuryLabel } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence, type NflBookOddsEvidence } from '~/utils/nflBookOdds'
-import { nflGameModelSummary } from '~/utils/nflGameModel'
 import {
   BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_COLORS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
   formatProjection, marketLabel, matchupAllowedLabel, segmentLabel,
@@ -36,13 +34,6 @@ export interface NflDetailLine {
   selected: boolean
 }
 
-export interface NflDetailGameMarket {
-  book: string
-  rows: { label: string, value: string }[]
-  modelText: string | null
-  modelVersion: string | null
-}
-
 export interface NflPropDetailModel {
   badge: string
   playerName: string
@@ -60,17 +51,12 @@ export interface NflPropDetailModel {
   pOverNote: string | null
   referenceNote?: string
   sportsbook: NflBookOddsEvidence | null
-  gameMarket: NflDetailGameMarket | null
   status: NflDetailRow[]
   flags: { key: string, label: string, tooltip: string }[]
 }
 
 function signedPct(value: number): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
-}
-
-function signed(value: number, digits: number): string {
-  return `${value > 0 ? '+' : ''}${value.toFixed(digits)}`
 }
 
 function typeLabel(oddsType: string | null, fallback: string): string {
@@ -143,27 +129,6 @@ function lines(row: NflSlateLine, alternates: NflSlateLine[]): NflDetailLine[] {
   return [item(row, true), ...alternates.map(line => item(line, false))]
 }
 
-function moneyline(value: number | null): string {
-  return value === null ? '--' : signed(value, 0)
-}
-
-function gameMarket(game: NflSlateGame | null): NflDetailGameMarket | null {
-  const odds: NflGameOdds | null = game?.odds ?? null
-  if (game === null || odds === null) return null
-  const model = nflGameModelSummary(game.model, odds, game.homeTeam, game.awayTeam)
-  return {
-    book: bookLabel(odds.book),
-    rows: [
-      { label: `${game.awayTeam} ML`, value: moneyline(odds.awayMoneyline) },
-      { label: `${game.homeTeam} ML`, value: moneyline(odds.homeMoneyline) },
-      { label: 'Spread', value: odds.homeSpread === null ? '--' : `${game.homeTeam} ${signed(odds.homeSpread, 1)}` },
-      { label: 'Total', value: odds.total?.toFixed(1) ?? '--' },
-    ],
-    modelText: model ? `${model.spread.model} · ${model.winProbability.model} · ${model.total.model}` : null,
-    modelVersion: game.model?.modelVersion ?? null,
-  }
-}
-
 function status(row: NflSlateLine): NflDetailRow[] {
   return [
     { label: 'Line shape', value: `${typeLabel(row.oddsType, 'Standard')} · ${segmentLabel(row.segment)}`, note: null },
@@ -205,7 +170,6 @@ export function nflPropDetail(row: NflSlateLine, game: NflSlateGame | null, alte
     pOverNote: reference ? null : overProbabilityLabel(row),
     ...(reference ? { referenceNote: TARGETS_PROBABILITY_NOTE } : {}),
     sportsbook: nflBookOddsEvidence(row, now),
-    gameMarket: gameMarket(game),
     status: status(row),
     flags: row.qualityFlags
       .filter(flag => flag !== 'historical_baseline')
