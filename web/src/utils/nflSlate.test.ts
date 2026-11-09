@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameNotes, NflLineMove, NflNoteInjury, NflSlateGame, NflSlateLine, NflTeamStat, NflTeamStats } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, nflSlateRow, nflSlateSummary, slateDigest } from '~/utils/nflSlate'
+import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NO_STAT: NflTeamStat = { value: null, rank: null }
@@ -89,6 +89,16 @@ describe('kickoffWindows', () => {
 
     expect(prime?.games.map(item => item.gameId)).toEqual([7, 1, 9])
     expect(prime?.subtitle).toBe('SNF and MNF · 3 games')
+  })
+
+  it('says how many of a window\'s games a search leaves showing', () => {
+    const windows = kickoffWindows(WEEK)
+    const prime = windows.find(window => window.title === 'Prime time')!
+    const narrowed = searchedKickoffWindow(prime, prime.games.slice(0, 1))
+
+    expect(narrowed.subtitle).toBe('SNF and MNF · 1 of 3 games')
+    expect(narrowed.games).toHaveLength(1)
+    expect(searchedKickoffWindow(windows[0], windows[0].games).subtitle).toBe(`${windows[0].games.length} of ${windows[0].subtitle}`)
   })
 
   it('names only the nights a prime-time window holds', () => {

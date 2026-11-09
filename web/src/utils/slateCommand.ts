@@ -5,6 +5,7 @@ import type {
   SlateCommandTarget,
   SlateCommandTargetInput,
 } from '~/types/slateCommand'
+import { nflTeamName } from '~/utils/nflTeams'
 
 export interface SlateCommandState {
   routeKey: string
@@ -175,15 +176,18 @@ export function nflSlateCommandRows(games: readonly NflCommandGameInput[]): Slat
         players.set(line.playerId, { label: line.playerName, aliases: [line.playerName] })
       }
     }
-    const terms = [game.awayTeam, game.homeTeam, ...[...players.values()].flatMap(player => player.aliases)]
+    const awayName = nflTeamName(game.awayTeam)
+    const homeName = nflTeamName(game.homeTeam)
+    const teamTerms = [game.awayTeam, game.homeTeam, awayName ?? '', homeName ?? '']
+    const terms = [...teamTerms, ...[...players.values()].flatMap(player => player.aliases)]
     return [slateCommandRow({
       key: `nfl-${game.gameId}`,
       path,
       searchTerms: terms,
       targets: [
         { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: 'NFL game', path, searchTerms: terms },
-        { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: matchup, path },
-        { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: matchup, path },
+        { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: awayName ?? matchup, path, searchTerms: awayName ? [awayName] : [] },
+        { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: homeName ?? matchup, path, searchTerms: homeName ? [homeName] : [] },
         ...[...players].map(([playerId, player]) => ({
           key: `player-${playerId}`,
           kind: 'player' as const,
@@ -274,6 +278,45 @@ function includesEveryToken(value: string, queryTokens: readonly string[]): bool
   return queryTokens.every(token => value.includes(token))
 }
 
+const EXACT_LABEL = 0
+const WHOLE_WORDS = 1
+const WORD_PREFIXES = 2
+const SUBSTRINGS = 3
+const ROW_ONLY = 4
+
+function words(value: string): string[] {
+  return value.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+}
+
+/** How directly a target answers the query: "KC" is the Chiefs' exact code, but only a word in "KC Concepcion". */
+function targetScore(target: SlateCommandTarget, query: string, queryTokens: readonly string[]): number {
+  if (normalizeSlateCommand(target.label) === query) return EXACT_LABEL
+  const targetWords = words(target.searchText)
+  if (queryTokens.every(token => targetWords.includes(token))) return WHOLE_WORDS
+  if (queryTokens.every(token => targetWords.some(word => word.startsWith(token)))) return WORD_PREFIXES
+  return SUBSTRINGS
+}
+
+interface RankedRow {
+  row: SlateCommandRow
+  targets: SlateCommandTarget[]
+  score: number
+}
+
+/** Matching rows, best match first; ties keep the slate's order and each row keeps its own target order. */
+function rankedSlateCommandRows(rows: readonly SlateCommandRow[], query: string): RankedRow[] {
+  const queryTokens = tokens(query)
+  if (queryTokens.length === 0) return []
+  const normalized = normalizeSlateCommand(query)
+  return matchingSlateCommandRows(rows, query)
+    .map(row => {
+      const direct = row.targets.filter(target => includesEveryToken(target.searchText, queryTokens))
+      const score = Math.min(ROW_ONLY, ...direct.map(target => targetScore(target, normalized, queryTokens)))
+      return { row, targets: direct.length > 0 ? direct : row.targets.slice(0, 1), score }
+    })
+    .sort((left, right) => left.score - right.score)
+}
+
 /** Filter without sorting, so the slate's existing row order remains authoritative. */
 export function matchingSlateCommandRows(rows: readonly SlateCommandRow[], query: string): SlateCommandRow[] {
   const queryTokens = tokens(query)
@@ -281,18 +324,14 @@ export function matchingSlateCommandRows(rows: readonly SlateCommandRow[], query
   return rows.filter(row => includesEveryToken(row.searchText, queryTokens))
 }
 
-/** Return matching jump targets in row order; a row-only match falls back to its first target. */
+/** Matching jump targets, rows ranked by their best match; a row-only match falls back to its first target. */
 export function matchingSlateCommandTargets(rows: readonly SlateCommandRow[], query: string): SlateCommandTarget[] {
-  const queryTokens = tokens(query)
-  if (queryTokens.length === 0) return []
-  return matchingSlateCommandRows(rows, query).flatMap(row => {
-    const direct = row.targets.filter(target => includesEveryToken(target.searchText, queryTokens))
-    return direct.length > 0 ? direct : row.targets.slice(0, 1)
-  })
+  return rankedSlateCommandRows(rows, query).flatMap(ranked => ranked.targets)
 }
 
+/** Enter opens the best-matching row's page (the game or match, never a player page). */
 export function firstSlateCommandPath(rows: readonly SlateCommandRow[], query: string): string | null {
-  return matchingSlateCommandRows(rows, query)[0]?.path ?? null
+  return rankedSlateCommandRows(rows, query)[0]?.row.path ?? null
 }
 
 export function initialSlateCommandState(routeKey: string): SlateCommandState {
