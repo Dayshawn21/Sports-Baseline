@@ -9,6 +9,7 @@ import PageHead from '~/components/shared/PageHead'
 import SlateLegend from '~/components/shared/SlateLegend'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
+import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
@@ -64,6 +65,7 @@ export default function NflIntelligencePage() {
   const digest = useMemo(() => slateDigest(buildNflPropBoard(games, 'all', new Date())), [games])
   const windows = useMemo(() => kickoffWindows(games), [games])
   const { query } = useSlateCommand()
+  const phone = usePhoneLayout()
   const orderedGames = useMemo(() => windows.flatMap(window => window.games), [windows])
   const commandRows = useMemo(() => nflSlateCommandRows(orderedGames), [orderedGames])
   const commandScope = useMemo(() => activeSeason === null || activeWeek === null || slate.isLoading || slate.isError
@@ -87,7 +89,7 @@ export default function NflIntelligencePage() {
   if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL slate..." />
   const active = { season: activeSeason, week: activeWeek }
   const { previous, next } = nflWeekNeighbors(active)
-  return <div className="page-shell nfl-slate"><div className="page-container is-wide">
+  return <div className="page-shell nfl-slate is-game-slate"><div className="page-container is-wide">
     <PageHead
       title="NFL slate"
       meta={periodLine(activeWeek, slate.isSuccess ? games : [], notes)}
@@ -106,12 +108,14 @@ export default function NflIntelligencePage() {
         {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
       </div> : <>
         <NflSlateDigest items={digest} />
-        <SlateLegend {...SLATE_LEGENDS.nfl} />
+        {!phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
         {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
         {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
           <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
           <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />
         </section>)}
+        {/* Phones put the source legend after the games, so the first rows reach the first screen. */}
+        {phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
       </>}
   </div></div>
 }
