@@ -280,6 +280,18 @@ describe('nflSlateRow', () => {
     expect(row.qbChange).toEqual(['A1', 'H1'])
   })
 
+  it('leaves conditions out until a forecast is published, and keeps Indoor', () => {
+    const outdoor = { ...DOME, venueType: 'outdoor' as const }
+    expect(nflSlateRow(game(1, null, { weather: outdoor }), undefined, BEFORE).conditions).toBeNull()
+    expect(nflSlateRow(game(1, null, { weather: DOME }), undefined, BEFORE).conditions).toBe('Indoor')
+  })
+
+  it('tags a short week only when one team has it, not both', () => {
+    const form = (team: string, shortWeek: boolean) => ({ team, restDays: shortWeek ? 3 : 7, shortWeek, recent: [] })
+    expect(nflSlateRow(game(1, null), notes(1, { awayForm: form('A1', true), homeForm: form('H1', true) }), BEFORE).shortWeek).toEqual([])
+    expect(nflSlateRow(game(1, null), notes(1, { awayForm: form('A1', true), homeForm: form('H1', false) }), BEFORE).shortWeek).toEqual(['A1'])
+  })
+
   it('builds an upcoming row from the market, its moves, the muted model and the prop count', () => {
     const upcoming = game(1, '2026-10-04T17:00:00Z', {
       odds: ODDS, model: MODEL, weather: DOME, lines: [line(11), line(12, { playerId: 11, oddsType: 'goblin', line: 45 }), line(13, { market: 'rushing_yards' })],

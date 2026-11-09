@@ -15,7 +15,7 @@ function Game({ row }: { row: NbaSlateRowModel }) {
   const scored = away.score !== null && home.score !== null
   return <Link to={`/nba/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
     {scored
-      ? <><span className={away.lost ? 'is-loser' : ''}>{away.code} {away.score}</span> · <span className={home.lost ? 'is-loser' : ''}>{home.code} {home.score}</span></>
+      ? <><span className={away.lost ? 'is-loser' : ''}>{away.code} {away.score}</span> @ <span className={home.lost ? 'is-loser' : ''}>{home.code} {home.score}</span></>
       : `${away.code} @ ${home.code}`}
     <small>{away.record} · {home.record}</small>
   </Link>

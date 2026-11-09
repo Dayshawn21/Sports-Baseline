@@ -14,7 +14,7 @@ function Game({ row }: { row: NflSlateRowModel }) {
   const scored = away.score !== null && home.score !== null
   return <Link to={`/nfl/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
     {scored
-      ? <><span className={away.lost ? 'is-loser' : ''}>{away.code} {away.score}</span> · <span className={home.lost ? 'is-loser' : ''}>{home.code} {home.score}</span></>
+      ? <><span className={away.lost ? 'is-loser' : ''}>{away.code} {away.score}</span> @ <span className={home.lost ? 'is-loser' : ''}>{home.code} {home.score}</span></>
       : `${away.code} @ ${home.code}`}
     <small>{away.record} · {home.record}</small>
   </Link>
@@ -28,7 +28,7 @@ function Notes({ row }: { row: NflSlateRowModel }) {
     {injuries !== null && injuries.questionable > 0 && <span className="nfl-slate-card__tag is-caution" title={`${injuries.questionable} questionable`} aria-label={`${injuries.questionable} questionable`}>{injuries.questionable} Q</span>}
     {row.qbChange.map(team => <span key={`qb-${team}`} className="nfl-slate-card__tag is-caution">QB change: {team}</span>)}
     {row.shortWeek.map(team => <span key={team} className="nfl-slate-card__tag">Short week: {team}</span>)}
-    {row.state !== 'final' && row.state !== 'pending' && <span className="nfl-slate-table__conditions">{row.conditions}</span>}
+    {row.state !== 'final' && row.state !== 'pending' && row.conditions !== null && <span className="nfl-slate-table__conditions">{row.conditions}</span>}
   </span>
 }
 
