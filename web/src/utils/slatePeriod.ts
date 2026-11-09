@@ -18,6 +18,18 @@ export function countPart(count: number, singular: string, plural = `${singular}
   return `${count} ${count === 1 ? singular : plural}`
 }
 
+/** A slate table's count: "7 games", or "1 of 7 games" while a search filters it. */
+export function tableCountPart(shown: number, total: number, searching: boolean, singular: string, plural = `${singular}s`): string {
+  const all = countPart(total, singular, plural)
+  return searching ? `${shown} of ${all}` : all
+}
+
+/** Note tags that fit one phone line, and the rest, which a "+N" stands in for. */
+export function splitTags<T>(tags: readonly T[], limit: number): { shown: T[], hidden: T[] } {
+  const cut = Math.max(0, limit)
+  return { shown: tags.slice(0, cut), hidden: tags.slice(cut) }
+}
+
 /** Parseable start times, for the stale-odds check. */
 export function startTimes(starts: readonly (string | null | undefined)[]): number[] {
   return starts.flatMap(start => {

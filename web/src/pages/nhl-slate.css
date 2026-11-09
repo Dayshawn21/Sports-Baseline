@@ -1,11 +1,19 @@
 ﻿/* The NHL slate as rows (57c), on the NFL table's classes with NBA's columns. Widths fit "Sun 12:00 PM CT",
-   "BOS -1.5 (+180)" and "Over +105 / Under -125"; the wider total keeps its prices from truncating. */
+   "BOS -1.5 (+180)", "Over +105 / Under -125" and "BOS 56.4%"; Notes fits both goalie tags and "+N". */
 .nfl-slate-table.nhl-slate-table col.is-kickoff { width: 132px; }
-.nfl-slate-table.nhl-slate-table col.is-spread { width: 144px; }
-.nfl-slate-table.nhl-slate-table col.is-total { width: 176px; }
-.nfl-slate-table.nhl-slate-table col.is-win { width: 100px; }
-.nfl-slate-table.nhl-slate-table col.is-notes { width: 264px; }
+.nfl-slate-table.nhl-slate-table col.is-spread { width: 140px; }
+.nfl-slate-table.nhl-slate-table col.is-total { width: 168px; }
+.nfl-slate-table.nhl-slate-table col.is-win { width: 92px; }
+.nfl-slate-table.nhl-slate-table col.is-notes { width: 284px; }
 .nhl-slate-table .nfl-slate-table__game small { overflow: hidden; text-overflow: ellipsis; }
+/* Notes stay one line at every width, so NHL rows match the other slates' height: the two goalies, then
+   "+N" for the rest, which keep their text for a screen reader and sit on the game page in full. */
+.nhl-slate-table .nfl-slate-table__tags { flex-wrap: nowrap; overflow: hidden; }
+.nhl-slate-table .nfl-slate-card__tag { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.nhl-slate-table .nfl-slate-card__tag.is-more { flex: none; }
+.nhl-slate-table .nfl-slate-card__tag.is-overflow {
+  position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%);
+}
 
 @media (max-width: 1100px) {
   .nhl-slate-table__win { order: 4; }
@@ -15,4 +23,12 @@
   .nfl-slate-table.nhl-slate-table tr.is-final .nfl-slate-table__moneyline { display: block; }
   .nhl-slate-table tr.is-final .nhl-slate-table__win,
   .nhl-slate-table tr.is-off .nhl-slate-table__win { display: none; }
+  /* Once the puck drops, the state takes the time's place, so line 1 keeps the game and its props. */
+  .nhl-slate-table tr:not(.is-upcoming) .nhl-slate-table__time { display: none; }
+  .nfl-slate-table.nhl-slate-table .nfl-slate-table__kickoff small { margin-left: 0; }
+}
+
+/* A puck line carries its price, so line 2 is full without the win share, which restates the moneyline. */
+@media (max-width: 480px) {
+  .nhl-slate-table .nhl-slate-table__win { display: none; }
 }

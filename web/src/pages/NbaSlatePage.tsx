@@ -13,7 +13,7 @@ import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
-import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
+import { gameSlateLine, startTimes, tableCountPart } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
 export default function NbaSlatePage() {
@@ -48,8 +48,11 @@ export default function NbaSlatePage() {
     return rows.filter(row => gameIds.has(row.gameId))
   }, [commandActive, commandRows, query, rows])
 
-  if (slate.isLoading) return <LoadingState message="Loading NBA slate..." />
-  if (slate.isError || !slate.data) return <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />
+  // The title stays put while the slate loads or fails, as NFL's and tennis's do.
+  if (slate.isLoading || slate.isError || !slate.data) return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
+    <PageHead title="NBA slate" />
+    {slate.isLoading ? <LoadingState message="Loading NBA slate..." /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
+  </div></div>
   const { date, previousDate, nextDate } = slate.data
   const datePath = (target: string | null) => target && `/nba?date=${target}`
   const line = gameSlateLine(slateDateLabel(date), nbaSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())
@@ -71,6 +74,7 @@ export default function NbaSlatePage() {
       <NbaSlateDigest items={digest} />
       {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
       <section className="nfl-slate-window" aria-label="Games">
+        <h2 className="nfl-slate-window__title">All games <small>{tableCountPart(filteredRows.length, rows.length, commandActive, 'game')}</small></h2>
         {commandActive && filteredRows.length === 0
           ? <div className="nfl-empty">No games found for this slate search.</div>
           : <NbaSlateTable rows={filteredRows} />}

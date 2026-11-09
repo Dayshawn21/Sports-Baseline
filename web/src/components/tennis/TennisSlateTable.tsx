@@ -4,6 +4,9 @@ import type { SlateRow, TourTab } from '~/utils/tennisSlate'
 import { TOUR_TABS, filterByTourTab, matchAnalysisPath, modelLeanCell, slateDayTime, tableGroups } from '~/utils/tennisSlate'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
 import { fmtTournament } from '~/utils/format'
+import { tableCountPart } from '~/utils/slatePeriod'
+// The table title is the game slates' window title.
+import '~/pages/nfl-slate.css'
 
 interface Props {
   rows: SlateRow[]
@@ -15,6 +18,8 @@ interface Props {
   onTabChange: (tab: TourTab) => void
   /** A command query searches the already-filtered slate across local tour tabs. */
   searchAllTabs?: boolean
+  /** Every match on the day, before a search: the "of" in "3 of 20 matches". */
+  total?: number
   emptyMessage?: string
 }
 
@@ -113,13 +118,15 @@ function TourTabs({ tab, onChange }: { tab: TourTab; onChange: (tab: TourTab) =>
 }
 
 /** Each canonical match links to its analysis page (F-43). */
-export default function TennisSlateTable({ rows, grouped, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
+export default function TennisSlateTable({ rows, grouped, showFlags, tab, onTabChange, searchAllTabs = false, total, emptyMessage = 'No matches in this group.' }: Props) {
   const groups = tableGroups(searchAllTabs ? rows : filterByTourTab(rows, tab), grouped)
   const columns = showFlags ? 9 : 8
+  const shown = groups.reduce((sum, group) => sum + group.rows.length, 0)
+  const count = tableCountPart(shown, searchAllTabs ? total ?? shown : shown, searchAllTabs, 'match', 'matches')
   return (
     <section className="tennis-slate-table" aria-label="Today's tennis matches">
       <div className="tennis-slate-table__head">
-        <h2 className="tennis-slate-section">All matches</h2>
+        <h2 className="nfl-slate-window__title tennis-slate-table__title">All matches <small>{count}</small></h2>
         <TourTabs tab={tab} onChange={onTabChange} />
       </div>
       {groups.length === 0 ? (

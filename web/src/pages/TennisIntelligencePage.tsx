@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Select } from 'antd'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
@@ -197,11 +197,10 @@ export default function TennisIntelligencePage() {
         {primaryLoading ? (
           <LoadingState message="Loading tennis slate..." />
         ) : matches.length === 0 ? (
-          <div className="unified-empty-state">
-            <div className="unified-empty-title">
-              {`No tennis matches on ${slateDateLabel(day)}.`}
-            </div>
-            <p>Try another date{adminView ? ' or switch the prop source' : ''}.</p>
+          <div className="nfl-empty">
+            No tennis matches on {slateDateLabel(day)}.{' '}
+            {adminView && 'Try switching the prop source. '}
+            {neighbors.next && <Link className="nfl-empty__next" to={datePath(neighbors.next)}>Next slate: {slateDateLabel(neighbors.next)} →</Link>}
           </div>
         ) : (
           <>
@@ -214,6 +213,7 @@ export default function TennisIntelligencePage() {
             tab={tourTab}
             onTabChange={setTourTab}
             searchAllTabs={commandActive}
+            total={rows.length}
             emptyMessage={commandActive ? 'No matches found for this slate search.' : undefined}
           />
           {phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
