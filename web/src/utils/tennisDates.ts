@@ -1,3 +1,5 @@
+import { ctDayKey } from '~/utils/format'
+
 /**
  * The stored `match_date` values that can hold a Central-time day's matches.
  *
@@ -24,11 +26,20 @@ function shiftDate(date: string, days: number): string {
 }
 
 /**
- * The arrows' targets. The two-day view (no date) steps to yesterday and the day after
- * tomorrow, past the two days it already shows; a one-day view steps one day.
+ * The Central day the slate opens on with no date picked: today while any of
+ * today's matches is still to start, then tomorrow. Tennis runs overnight, so a
+ * CT evening's remaining play is mostly on tomorrow's date.
  */
-export function tennisDateNeighbors(date: string | null, today: string): { previous: string, next: string } {
-  return date === null
-    ? { previous: shiftDate(today, -1), next: shiftDate(today, 2) }
-    : { previous: shiftDate(date, -1), next: shiftDate(date, 1) }
+export function defaultTennisDay(startTimes: readonly (string | null)[], now: number): string {
+  const today = ctDayKey(now)
+  const startsLaterToday = startTimes.some((value) => {
+    const start = Date.parse(value ?? '')
+    return Number.isFinite(start) && start > now && ctDayKey(start) === today
+  })
+  return startsLaterToday ? today : shiftDate(today, 1)
+}
+
+/** The arrows' targets: the slate always shows one day, so they step one day. */
+export function tennisDateNeighbors(date: string): { previous: string, next: string } {
+  return { previous: shiftDate(date, -1), next: shiftDate(date, 1) }
 }

@@ -20,7 +20,7 @@ import { ctDayKey } from '~/utils/format'
 import { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 import { tennisLegend } from '~/utils/slateLegend'
 import { countPart, slatePeriodLine } from '~/utils/slatePeriod'
-import { tennisDateNeighbors } from '~/utils/tennisDates'
+import { defaultTennisDay, tennisDateNeighbors } from '~/utils/tennisDates'
 import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
 import '~/components/tennis/tennis-slate.css'
 
@@ -74,8 +74,10 @@ function PropsHealthNotice({ label, health }: { label: string; health: PropsHeal
 export default function TennisIntelligencePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  // No date, or an invalid one, is the default today-and-tomorrow view.
   const date = parseSlateDate(searchParams.get('date')) ?? undefined
+  // No date (or an invalid one) loads today and tomorrow CT, then opens on one of them.
+  const today = ctDayKey(Date.now())
+  const candidateDays = date ? undefined : [today, tennisDateNeighbors(today).next]
   const adminView = useAdminView()
   const [chosenSource, setSource] = useState<PropSource>('prizepicks')
   // Visitors get PrizePicks only: the book switch and its health warning are owner diagnostics.
@@ -83,25 +85,29 @@ export default function TennisIntelligencePage() {
   const [tourTab, setTourTab] = useState<TourTab>('all')
   const { query } = useSlateCommand()
 
-  const predictionsQuery = useTennisToday({ date })
-  const bestPicksQuery = useBestPicks({ date })
+  const predictionsQuery = useTennisToday({ date, days: candidateDays })
+  const bestPicksQuery = useBestPicks({ date, days: candidateDays })
   const prizePicksQuery = usePrizePicksProps()
   const draftKingsQuery = useDKProps(source === 'dk')
   const propsQuery = source === 'dk' ? draftKingsQuery : prizePicksQuery
   const sourceLabel = SOURCE_OPTIONS.find((option) => option.value === source)?.label ?? 'Props'
 
-  // Every lean shows (57d). Only the default today-and-tomorrow view drops started
-  // matches; a picked date, past ones included, lists its whole day.
+  const day = useMemo(() => date ?? defaultTennisDay([
+    ...(predictionsQuery.data?.matches ?? []),
+    ...(bestPicksQuery.data?.matches ?? []),
+  ].map(match => match.startUtc), Date.now()), [bestPicksQuery.data?.matches, date, predictionsQuery.data?.matches])
+
+  // Every lean shows (57d), and the day lists all its matches, started ones included, as NBA and NHL do.
   const matches = useMemo(() => composeUnifiedMatches(
     predictionsQuery.data?.matches ?? [],
     bestPicksQuery.data?.matches ?? [],
     propsQuery.data?.props ?? [],
-    { showLeans: true, upcomingOnly: date === undefined, date, sort: SLATE_SORT },
+    { showLeans: true, upcomingOnly: false, date: day, sort: SLATE_SORT },
   ), [
     predictionsQuery.data?.matches,
     bestPicksQuery.data?.matches,
     propsQuery.data?.props,
-    date,
+    day,
   ])
 
   const propCount = useMemo(() => matches.reduce((sum, match) => sum + match.props.length, 0), [matches])
@@ -115,9 +121,9 @@ export default function TennisIntelligencePage() {
   const primaryLoading = predictionsQuery.isLoading || bestPicksQuery.isLoading
   const commandRows = useMemo(() => tennisSlateCommandRows(rows), [rows])
   const commandScope = useMemo(() => primaryLoading ? null : ({
-    periodKey: JSON.stringify({ date, source }),
+    periodKey: JSON.stringify({ day, source }),
     rows: commandRows,
-  }), [commandRows, date, primaryLoading, source])
+  }), [commandRows, day, primaryLoading, source])
   useRegisterSlateCommand(commandScope)
 
   const commandActive = normalizeSlateCommand(query).length > 0
@@ -149,8 +155,8 @@ export default function TennisIntelligencePage() {
     })
     : legend.parts
 
-  const periodLabel = date ? slateDateLabel(date) : 'Today and tomorrow'
-  const neighbors = tennisDateNeighbors(date ?? null, ctDayKey(Date.now()))
+  const periodLabel = slateDateLabel(day)
+  const neighbors = tennisDateNeighbors(day)
   const datePath = (target: string | null) => target ? `/tennis?date=${target}` : '/tennis'
 
   return (
@@ -168,9 +174,7 @@ export default function TennisIntelligencePage() {
             previous: datePath(neighbors.previous),
             next: datePath(neighbors.next),
             picker: <SlateDatePicker
-              date={date ?? null}
-              allowClear
-              placeholder="Today & tomorrow"
+              date={day}
               onPick={picked => navigate(datePath(picked))}
             />,
           }}
@@ -193,7 +197,7 @@ export default function TennisIntelligencePage() {
         ) : matches.length === 0 ? (
           <div className="unified-empty-state">
             <div className="unified-empty-title">
-              {date ? `No tennis matches on ${slateDateLabel(date)}.` : 'No tennis matches today or tomorrow.'}
+              {`No tennis matches on ${slateDateLabel(day)}.`}
             </div>
             <p>Try another date{adminView ? ' or switch the prop source' : ''}.</p>
           </div>
