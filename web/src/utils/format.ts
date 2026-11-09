@@ -54,7 +54,7 @@ const CT_DAY_KEY_FMT = new Intl.DateTimeFormat('en-CA', {
 })
 
 /** YYYY-MM-DD for the CT calendar day a timestamp falls on. */
-function ctDayKey(ts: number): string {
+export function ctDayKey(ts: number): string {
   return CT_DAY_KEY_FMT.format(new Date(ts))
 }
 

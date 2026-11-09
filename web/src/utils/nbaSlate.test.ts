@@ -122,7 +122,7 @@ describe('nbaSlateSummary', () => {
       game({ gameId: 2, propLineCount: 65, total: { book: 'draftkings', line: 230.5, overOdds: -105, underOdds: -115, fetchedAt: LATER } }),
       game({ gameId: 3, status: 'completed', propLineCount: 0, moneyline: null, spread: null, total: null }),
     ]
-    expect(nbaSlateSummary(games)).toEqual({ games: 3, propLines: 126, finals: 1, oddsUpdated: 'Wed 5:30 PM CT' })
+    expect(nbaSlateSummary(games)).toEqual({ games: 3, propLines: 126, finals: 1, oddsUpdated: 'Wed 5:30 PM CT', oddsUpdatedMs: expect.any(Number) })
   })
 
   it('has no odds time without a market', () => {

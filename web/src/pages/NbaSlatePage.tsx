@@ -1,29 +1,17 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { NbaSlateDigest } from '~/components/nba/NbaSlateDigest'
 import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
-import StatChip from '~/components/shared/StatChip'
+import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
-import type { NbaSlateGame } from '~/types/nba'
 import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
 import './nfl-slate.css'
-
-const MISSING = '--'
-
-function Summary({ games }: { games: NbaSlateGame[] }) {
-  const summary = nbaSlateSummary(games)
-  return <section className="page-head__stats nfl-slate__stats" aria-label="Day summary">
-    <StatChip value={summary.games} label="Games" />
-    <StatChip value={summary.propLines} label="Prop lines" />
-    <StatChip value={`${summary.finals} / ${summary.games}`} label="Final" />
-    <StatChip value={summary.oddsUpdated ?? MISSING} label="Odds updated" />
-  </section>
-}
 
 function Legend() {
   return <p className="nfl-slate__legend">
@@ -35,6 +23,7 @@ function Legend() {
 
 export default function NbaSlatePage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   // A malformed link falls back to the API's choice rather than an error page.
   const requested = parseSlateDate(searchParams.get('date'))
   const slate = useNbaSlate(requested)
@@ -67,14 +56,22 @@ export default function NbaSlatePage() {
   if (slate.isError || !slate.data) return <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />
   const { date, previousDate, nextDate } = slate.data
   const datePath = (target: string | null) => target && `/nba?date=${target}`
+  const line = gameSlateLine(slateDateLabel(date), nbaSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())
   return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
     <PageHead
       title="NBA slate"
-      meta={slateDateLabel(date)}
-      period={{ label: 'Slate date', previous: datePath(previousDate), next: datePath(nextDate) }}
-      stats={games.length > 0 && <Summary games={games} />}
+      meta={line}
+      period={{
+        label: 'Slate date',
+        previous: datePath(previousDate),
+        next: datePath(nextDate),
+        picker: <SlateDatePicker date={date} onPick={picked => { if (picked) navigate(`/nba?date=${picked}`) }} />,
+      }}
     />
-    {games.length === 0 ? <div className="nfl-empty">No NBA games on this date.</div> : <>
+    {games.length === 0 ? <div className="nfl-empty">
+      No NBA games on {slateDateLabel(date)}.{' '}
+      {nextDate && <Link className="nfl-empty__next" to={`/nba?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
+    </div> : <>
       <NbaSlateDigest items={digest} />
       <Legend />
       <section className="nfl-slate-window" aria-label="Games">

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { DatePicker, Select } from 'antd'
+import { Select } from 'antd'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
-import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
+import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import TennisSlateDigest from '~/components/tennis/TennisSlateDigest'
 import TennisSlateTable from '~/components/tennis/TennisSlateTable'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
@@ -14,12 +15,14 @@ import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
 import {
   UNIFIED_SORT_OPTIONS,
   assessPropsHealth,
-  bestBetPicks,
   composeUnifiedMatches,
 } from '~/utils/unifiedTennis'
 import type { TourTab } from '~/utils/tennisSlate'
 import { featuredPicks, isGroupedSort, slateRows, tennisDigest } from '~/utils/tennisSlate'
-import { slateDateLabel } from '~/utils/nbaSlate'
+import { ctDayKey } from '~/utils/format'
+import { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
+import { countPart, slatePeriodLine } from '~/utils/slatePeriod'
+import { tennisDateNeighbors } from '~/utils/tennisDates'
 import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
 import '~/components/tennis/tennis-slate.css'
 
@@ -68,8 +71,11 @@ function PropsHealthNotice({ label, health }: { label: string; health: PropsHeal
 }
 
 export default function TennisIntelligencePage() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  // No date, or an invalid one, is the default today-and-tomorrow view.
+  const date = parseSlateDate(searchParams.get('date')) ?? undefined
   const [tour, setTour] = useState<string | undefined>()
-  const [date, setDate] = useState<string | undefined>()
   const [sort, setSort] = useState<UnifiedSort>('opportunity')
   const [upcomingOnly, setUpcomingOnly] = useState(true)
   const [showLeans, setShowLeans] = useState(false)
@@ -103,21 +109,7 @@ export default function TennisIntelligencePage() {
     sort,
   ])
 
-  const counts = useMemo(() => {
-    let props = 0
-    let locks = 0
-    let strongOrBetter = 0
-    for (const match of matches) {
-      const picks = bestBetPicks(match)
-      props += match.props.length
-      // Tier counts are priced best bets only: tennis props carry no tier (48f).
-      for (const item of picks) {
-        if (item.confidence === 'LOCK') locks += 1
-        if (item.confidence === 'LOCK' || item.confidence === 'STRONG') strongOrBetter += 1
-      }
-    }
-    return { props, locks, strongOrBetter }
-  }, [matches])
+  const propCount = useMemo(() => matches.reduce((sum, match) => sum + match.props.length, 0), [matches])
 
   const digest = useMemo(() => tennisDigest(featuredPicks(matches, 4)), [matches])
   const rows = useMemo(() => slateRows(matches), [matches])
@@ -144,12 +136,31 @@ export default function TennisIntelligencePage() {
     [propsQuery.data?.props],
   )
 
+  const periodLabel = date ? slateDateLabel(date) : 'Today and tomorrow'
+  const neighbors = tennisDateNeighbors(date ?? null, ctDayKey(Date.now()))
+  const datePath = (target: string | null) => target ? `/tennis?date=${target}` : '/tennis'
+
   return (
     <div className="page-shell">
       <div className="page-container is-wide unified-tennis-page">
         <PageHead
           title="Tennis slate"
-          meta={date ? slateDateLabel(date) : 'Today and tomorrow'}
+          meta={primaryLoading ? periodLabel : slatePeriodLine([
+            periodLabel,
+            countPart(matches.length, 'match', 'matches'),
+            countPart(propCount, 'player prop'),
+          ])}
+          period={{
+            label: 'Slate date',
+            previous: datePath(neighbors.previous),
+            next: datePath(neighbors.next),
+            picker: <SlateDatePicker
+              date={date ?? null}
+              allowClear
+              placeholder="Today & tomorrow"
+              onPick={picked => navigate(datePath(picked))}
+            />,
+          }}
           actions={
             <div className="filter-bar-responsive unified-filters">
               <button
@@ -171,12 +182,6 @@ export default function TennisIntelligencePage() {
                   { value: 'CHALLENGER', label: 'Challenger' },
                 ]}
                 onChange={setTour}
-              />
-              <DatePicker
-                aria-label="Match date"
-                placeholder="Today & tomorrow"
-                allowClear
-                onChange={(_, value) => setDate((value as string) || undefined)}
               />
               <Select
                 aria-label="Sort by"
@@ -203,14 +208,6 @@ export default function TennisIntelligencePage() {
               </button>
             </div>
           }
-          stats={!primaryLoading && (
-            <TennisSlateSummary
-              matches={matches.length}
-              props={counts.props}
-              locks={counts.locks}
-              strongOrBetter={counts.strongOrBetter}
-            />
-          )}
         />
 
         <div className="unified-notices">

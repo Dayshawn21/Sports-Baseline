@@ -132,7 +132,7 @@ describe('nflSlateSummary', () => {
   ]
 
   it('leaves the notes-backed stats null while notes are unavailable', () => {
-    expect(nflSlateSummary(games, undefined)).toEqual({ games: 2, propLines: 3, finals: 1, outOrDoubtful: null, oddsUpdated: null })
+    expect(nflSlateSummary(games, undefined)).toEqual({ games: 2, propLines: 3, finals: 1, outOrDoubtful: null, oddsUpdated: null, oddsUpdatedMs: null })
   })
 
   it('counts Out and Doubtful report statuses only, and reads the latest odds fetch in CT', () => {
@@ -146,6 +146,7 @@ describe('nflSlateSummary', () => {
 
     expect(summary.outOrDoubtful).toBe(2)
     expect(summary.oddsUpdated).toBe('Wed 9:05 AM CT')
+    expect(summary.oddsUpdatedMs).toBe(Date.parse('2026-09-30T14:05:00Z'))
   })
 
   it('has no odds time when notes hold no movement', () => {

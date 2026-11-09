@@ -589,7 +589,19 @@ body {
 
 .page-head-period {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.page-head-period__picker {
+  display: flex;
+  min-width: 0;
+}
+
+.page-head-period__picker .ant-select,
+.page-head-period__picker .ant-picker {
+  width: 100%;
+  min-width: 168px;
 }
 
 .page-head-period__link {
@@ -670,6 +682,26 @@ body {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+  }
+
+  /* One row on phones: the arrows keep their width and the picker takes what is left. */
+  .page-head-period {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .page-head-period__link {
+    padding: 0 10px;
+  }
+
+  .page-head-period__picker {
+    flex: 1;
+  }
+
+  .page-head-period__picker .ant-select,
+  .page-head-period__picker .ant-picker {
+    min-width: 0;
+    height: 44px;
   }
 }
 

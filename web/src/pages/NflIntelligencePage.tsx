@@ -1,42 +1,44 @@
 import { Select } from 'antd'
-import { useMemo, useRef, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { useMemo } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
-import StatChip from '~/components/shared/StatChip'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
-import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS } from '~/utils/nflLabels'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
+import { type NflWeek, nflWeekKey, nflWeekNeighbors, nflWeekPath, nflWeekPickerOptions, parseNflWeekKey, readNflWeekLink } from '~/utils/nflWeekPeriod'
 import { matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
-const MISSING = '--'
+const WEEK_OPTIONS = nflWeekPickerOptions()
 
-/** Seeds the week from a link; an unparseable value falls back to the current week. */
-function readWeekLink(params: URLSearchParams) {
-  const number = (key: string) => {
-    const value = Number(params.get(key))
-    return params.has(key) && Number.isInteger(value) ? value : null
-  }
-  return { season: number('season'), week: number('week') }
+function periodLine(week: number, games: NflSlateGame[], notes: NflGameNotes[] | undefined): string {
+  return gameSlateLine(`Week ${week}`, nflSlateSummary(games, notes), startTimes(games.map(game => game.startUtc)), Date.now())
 }
 
-function Summary({ games, notes }: { games: NflSlateGame[], notes: NflGameNotes[] | undefined }) {
-  const summary = nflSlateSummary(games, notes)
-  return <section className="page-head__stats nfl-slate__stats" aria-label="Week summary">
-    <StatChip value={summary.games} label="Games" />
-    <StatChip value={summary.propLines} label="Prop lines" />
-    <StatChip value={`${summary.finals} / ${summary.games}`} label="Final" />
-    <StatChip value={summary.outOrDoubtful ?? MISSING} label="Out or doubtful" />
-    <StatChip value={summary.oddsUpdated ?? MISSING} label="Odds updated" />
-  </section>
+function WeekPicker({ active }: { active: NflWeek }) {
+  const navigate = useNavigate()
+  return <Select
+    aria-label="Week"
+    value={nflWeekKey(active)}
+    options={WEEK_OPTIONS}
+    labelRender={() => `${active.season} · Week ${active.week}`}
+    onChange={(key: string) => {
+      const picked = parseNflWeekKey(key)
+      if (picked) navigate(nflWeekPath(picked))
+    }}
+  />
+}
+
+function nextWeekLabel(active: NflWeek, next: NflWeek): string {
+  return next.season === active.season ? `Week ${next.week}` : `${next.season} Week ${next.week}`
 }
 
 function Legend() {
@@ -50,10 +52,8 @@ function Legend() {
 export default function NflIntelligencePage() {
   const [searchParams] = useSearchParams()
   const legacyGameId = parseGameId(searchParams.get('gameId') ?? undefined)
-  const seeded = useRef(readWeekLink(searchParams)).current
-  // Null follows the current week; a link or a user's pick pins it.
-  const [season, setSeason] = useState<number | null>(seeded.season)
-  const [week, setWeek] = useState<number | null>(seeded.week)
+  // A missing or invalid value follows the current week.
+  const { season, week } = readNflWeekLink(searchParams)
   const currentWeek = useNflCurrentWeek()
   const activeSeason = season ?? currentWeek.data?.season ?? null
   const activeWeek = week ?? currentWeek.data?.week ?? null
@@ -90,26 +90,34 @@ export default function NflIntelligencePage() {
   // The old slate opened one game from ?gameId=; that game now has its own page.
   if (legacyGameId !== null) return <Navigate to={`/nfl/game/${legacyGameId}`} replace />
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
-  if (activeSeason === null || activeWeek === null || slate.isLoading) return <LoadingState message="Loading NFL slate..." />
-  if (slate.isError) return <ErrorState error={slate.error} onRetry={() => slate.refetch()} />
+  if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL slate..." />
+  const active = { season: activeSeason, week: activeWeek }
+  const { previous, next } = nflWeekNeighbors(active)
   return <div className="page-shell nfl-slate"><div className="page-container is-wide">
     <PageHead
       title="NFL slate"
-      meta={`${activeSeason} · Week ${activeWeek}`}
-      actions={<>
-        <Select aria-label="Season" value={activeSeason} onChange={value => { setSeason(value); setWeek(activeWeek) }} options={NFL_SEASON_OPTIONS} />
-        <Select aria-label="Week" value={activeWeek} onChange={value => { setSeason(activeSeason); setWeek(value) }} options={NFL_WEEK_OPTIONS} />
-      </>}
-      stats={games.length > 0 && <Summary games={games} notes={notes} />}
+      meta={periodLine(activeWeek, slate.isSuccess ? games : [], notes)}
+      period={{
+        label: 'NFL week',
+        previous: previous && nflWeekPath(previous),
+        next: next && nflWeekPath(next),
+        picker: <WeekPicker active={active} />,
+      }}
     />
-    {games.length === 0 ? <div className="nfl-empty">No games loaded for this season and week.</div> : <>
-      <NflSlateDigest items={digest} />
-      <Legend />
-      {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
-      {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
-        <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
-        <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />
-      </section>)}
-    </>}
+    {/* A stored-snapshot miss (503 in production) keeps the page head, so Previous and Next still work. */}
+    {slate.isLoading ? <LoadingState message="Loading NFL slate..." />
+      : slate.isError ? <ErrorState error={slate.error} onRetry={() => slate.refetch()} />
+      : games.length === 0 ? <div className="nfl-empty">
+        No NFL games loaded for week {activeWeek}.{' '}
+        {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
+      </div> : <>
+        <NflSlateDigest items={digest} />
+        <Legend />
+        {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
+        {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
+          <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
+          <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />
+        </section>)}
+      </>}
   </div></div>
 }

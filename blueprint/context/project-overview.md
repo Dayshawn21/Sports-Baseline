@@ -222,6 +222,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 52 | NFL other markets in the prop tabs | Complete 2026-11-02 |
 | 53 | NBA, NHL and tennis player pages | In progress; 53a, 53b, 53d and 53g complete; 53b2, 53c, 53d2, 53e, 53f and 53h open |
 | 56 | NHL prop board and model | 56a complete 2026-11-04 (`/nhl/board`, line-only, not deployed); 56b complete 2026-11-04 (backtest harness, rule pre-registered in `237c2bcc`, 2025-26 holdout unread); 56c-56d not yet specced |
+| 57 | One slate shape for every sport | Planned 2026-11-08; 57a-57d open (from the 2026-11-08 Impeccable critique of the slate) |
 
 23 leaf items remain, with these gates:
 
@@ -244,6 +245,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 53a-53h | NBA, NHL and tennis player pages | NBA (53a-53c, plus 53b2 for the form chart), NHL (53d-53f) and tennis (53g-53h) are independent branches; the shared form chart helpers (53d2) come before 53b2 and 53e; display only where a market has no model, with no projection, edge, rank or color for it; 53a, 53b, 53d and 53g complete |
 | 55 | Home page | Completed 2026-11-03 (not deployed): `/` becomes a one-screen cross-sport home (reworked 2026-11-04): a card per sport with slate counts, first start, next games and Slate, Props and Model links, a gray table of the largest gaps across sports, and each sport's published model record linked ("Accruing" where no rule has adopted); the tennis slate moves to `/tennis`; built from data the existing slate and record hooks load, no new endpoints, no model or rule changes; `/props`, `/live-odds` and `/bets` keep redirecting to `/` |
 | 56a-56d | NHL prop board and model | 56a: `GET /nhl/props` and `/nhl/board`, stored PrizePicks lines only, gray and unranked, registers the `props` view. 56b: projection backtest harness (2024-25 development, 2025-26 holdout scored once, rule pre-registered; nothing served). 56c: serve and freeze (`NhlPropSource` joins `PROP_SOURCES`). 56d: forward ranking check and `/nhl/model`, registering the `model` view; none registered before 56d, and the forward check starts Accruing because NHL lines begin October 2026 |
+| 57a-57d | One slate shape for every sport | Display only and all gray. 57a (period control and period line) and 57b (legend) first; 57c (NHL rows) needs 57b's legend for NHL's source line; 57d (tennis wording and filters) last |
 | 44b | 2026-27 confirmation | Waiting. Scores 44a's frozen fit once, after 2026-27 weeks 1-4 are fully played with box scores (about 2026-11-17); stops as accruing before then |
 | 44c | Serve and freeze | Only for markets 44b shows; own P(over) version and sample |
 | 21 | WNBA support | Choose schedule/stats sources when specifying it |
@@ -1536,6 +1538,38 @@ same "backtest before adoption" rule as items 19j to 19n, 24 and 25.
 26e. **Box-score join key** *(shipped)* - store opponent and round on `player_match_stats` so aces, double-fault and break-point props join to exactly one box score, then settle those stats through 26b's report.
 26f. **Prop projection snapshots** *(shipped; evidence accrues daily from 2026-09-25)* - store the projection, hit probability and confidence tier when a prop is fetched, so calibration by tier is graded forward on pre-match predictions only.
 
+**Planned: One slate shape for every sport (item 57, added 2026-11-08)**
+
+Follows item 38. The 2026-11-08 Impeccable critique of the slate (22/40;
+snapshot `.impeccable/critique/2026-11-08T17-40-11Z__web-src-pages-nflintelligencepage-tsx.md`)
+found NHL and tennis on different page shapes and tennis using pick wording
+("Best pick", "EV", LOCKS / STRONG+) while tennis moneyline picks are off.
+**Display only:** no probability, edge, rank, sort or pick changes, no new API
+fields, everything gray, 11px floor, `CT` times, 44px phone targets. Production
+NFL slates are served from `report_snapshots`, so the shape uses the existing
+responses.
+
+- **57a. Shared period control and period line.** `PageHead` carries
+  `← Previous · period picker · Next →` on all four slates: an NFL week picker
+  that includes the season (replacing the Season and Week selects), a date picker
+  for NBA, NHL and tennis. The stat tiles fold into the period line
+  ("Week 9 · 15 games · odds 3:12 PM CT"), with a stale-odds marker. An empty
+  slate names the next period.
+- **57b. Shared legend.** One line on every slate with a "What's a pick?"
+  disclosure and the source and freshness stated once.
+- **57c. NHL rows.** One dense row per game: no per-cell source or timestamp, no
+  expanded context row; goalies and injuries as gray note tags; full context on
+  the game page. NHL shows no digest.
+- **57d. Tennis wording and filters.** "Best pick" becomes a gray "Model lean";
+  the EV column, LOCKS and STRONG+ tiles, priced-picks digest (replaced by gray
+  leans) and "Show Leans" go while picks are off; six filter controls become
+  search plus one tour control, the prop-source choice moves into the legend;
+  default sort by start time; a day label on every row.
+
+Out of scope: game, player, props and model pages; the NFL gap label wording
+(a later `/impeccable clarify`, after the kicker zero-projection fix); search
+(shipped in #15).
+
 **Complete: WTA 125 blend group (item 40, verdict 2026-10-19: keep pooled)**
 
 40a. **WTA 125 blend backtest** - tested the WTA coefficients and a 125-only fit against 26d's pooled Challenger blend. On 970 verified 2026 WTA 125 cases, both candidates failed G1 (beat the incumbent) and passed G2 (no worse than the close). Keep the pooled group.
@@ -2512,6 +2546,12 @@ by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
 expand inline instead of a side panel), and props shown as table rows instead
 of cards. Feature 38 is complete. NBA still has no standalone Props board;
 its prop tables live on game pages. The theme above is unchanged.
+
+**Slate shape (item 57, planned 2026-11):** NHL and tennis move fully onto the
+shared slate: one period control (Previous, period picker, Next) with the stat
+tiles folded into the period line, and a one-line legend on every sport; NHL's
+goalie and injury context becomes gray note tags; tennis's pick wording becomes a
+gray model lean while its picks are off.
 
 Mobile is a real target: `useIsMobile` swaps the nav to a drawer.
 

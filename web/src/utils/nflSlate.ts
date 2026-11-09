@@ -35,6 +35,8 @@ export interface NflSlateSummary {
   outOrDoubtful: number | null
   /** Latest pre-kickoff odds fetch in CT; null without notes or stored movement. */
   oddsUpdated: string | null
+  /** The same fetch as epoch milliseconds, for the stale-odds check. */
+  oddsUpdatedMs: number | null
 }
 
 function kickoffTime(game: Pick<NflSlateGame, 'startUtc'>): number | null {
@@ -92,21 +94,23 @@ export function searchedKickoffWindow(window: NflKickoffWindow, games: NflSlateG
   return { ...window, games, subtitle: window.subtitle.replace(total, `${games.length} of ${total}`) }
 }
 
-function latestOddsFetch(notes: NflGameNotes[]): string | null {
-  const times = notes.flatMap(game => game.lineMovement.map(move => Date.parse(move.currentFetchedAt)))
+function latestOddsFetch(notes: NflGameNotes[] | undefined): number | null {
+  const times = (notes ?? []).flatMap(game => game.lineMovement.map(move => Date.parse(move.currentFetchedAt)))
     .filter(time => !Number.isNaN(time))
-  return times.length ? `${UPDATED.format(Math.max(...times))} CT` : null
+  return times.length ? Math.max(...times) : null
 }
 
 /** The slate's summary strip. `notes` is undefined until game notes load, or when they fail. */
 export function nflSlateSummary(games: NflSlateGame[], notes: NflGameNotes[] | undefined): NflSlateSummary {
+  const oddsUpdatedMs = latestOddsFetch(notes)
   return {
     games: games.length,
     propLines: groupNflPropRows(games.flatMap(game => game.lines)).length,
     finals: games.filter(game => game.status === 'completed').length,
     outOrDoubtful: notes === undefined ? null : notes.flatMap(game => game.injuries)
       .filter(injury => injury.injuryStatus === 'Out' || injury.injuryStatus === 'Doubtful').length,
-    oddsUpdated: notes === undefined ? null : latestOddsFetch(notes),
+    oddsUpdated: oddsUpdatedMs === null ? null : `${UPDATED.format(oddsUpdatedMs)} CT`,
+    oddsUpdatedMs,
   }
 }
 

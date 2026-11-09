@@ -111,11 +111,11 @@ describe('NHL slate derivations', () => {
     expect(nhlSlateRow(game({ status: 'completed' }), NOW).away.score).toBeNull()
   })
   it('reports empty days and the latest stored fetch, without altering input order', () => {
-    expect(nhlSlateSummary([])).toEqual({ games: 0, propLines: 0, finals: 0, oddsUpdated: null })
+    expect(nhlSlateSummary([])).toEqual({ games: 0, propLines: 0, finals: 0, oddsUpdated: null, oddsUpdatedMs: null })
     const first = game({ gameId: 2 })
     const second = game({ status: 'completed', propLineCount: 4, moneyline: { ...first.moneyline!, fetchedAt: '2026-10-23T14:00:00Z' } })
     const games = Object.freeze([first, second])
-    expect(nhlSlateSummary(games)).toEqual({ games: 2, propLines: 7, finals: 1, oddsUpdated: 'Oct 23, 2026, 9:00 AM CT' })
+    expect(nhlSlateSummary(games)).toEqual({ games: 2, propLines: 7, finals: 1, oddsUpdated: 'Fri 9:00 AM CT', oddsUpdatedMs: expect.any(Number) })
     expect(games.map(item => item.gameId)).toEqual([2, 57029])
     expect(nhlSlateSummary([game({ moneyline: null, spread: null, total: null })]).oddsUpdated).toBeNull()
   })

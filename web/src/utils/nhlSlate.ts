@@ -20,10 +20,12 @@ export function nhlSlateSummary(games: readonly NhlSlateGame[]) {
   const times = games.flatMap(game => [game.moneyline, game.spread, game.total])
     .flatMap(market => market === null ? [] : [Date.parse(market.fetchedAt)])
     .filter(Number.isFinite)
+  const oddsUpdatedMs = times.length ? Math.max(...times) : null
   return {
     games: games.length,
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
     finals: games.filter(game => game.status === 'completed').length,
-    oddsUpdated: times.length ? nhlTimeLabel(new Date(Math.max(...times)).toISOString(), true) : null,
+    oddsUpdated: oddsUpdatedMs === null ? null : nhlTimeLabel(new Date(oddsUpdatedMs).toISOString()),
+    oddsUpdatedMs,
   }
 }

@@ -51,6 +51,8 @@ export interface NbaSlateSummary {
   finals: number
   /** Latest stored market fetch in CT; null when no game has a market. */
   oddsUpdated: string | null
+  /** The same fetch as epoch milliseconds, for the stale-odds check. */
+  oddsUpdatedMs: number | null
 }
 
 function tipLabel(startUtc: string | null): string {
@@ -173,11 +175,13 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
   const times = games.flatMap(game => [game.moneyline, game.spread, game.total])
     .flatMap(market => market === null ? [] : [Date.parse(market.fetchedAt)])
     .filter(time => !Number.isNaN(time))
+  const oddsUpdatedMs = times.length ? Math.max(...times) : null
   return {
     games: games.length,
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
     finals: games.filter(game => game.status === 'completed').length,
-    oddsUpdated: times.length ? `${CENTRAL_TIME.format(Math.max(...times))} CT` : null,
+    oddsUpdated: oddsUpdatedMs === null ? null : `${CENTRAL_TIME.format(oddsUpdatedMs)} CT`,
+    oddsUpdatedMs,
   }
 }
 

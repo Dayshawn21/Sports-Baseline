@@ -16,3 +16,19 @@ export function utcDatesForCentralDay(date: string): [string, string] {
 export function defaultSlateDates(now: Date): [string, string] {
   return utcDatesForCentralDay(now.toISOString().slice(0, 10))
 }
+
+function shiftDate(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`)
+  shifted.setUTCDate(shifted.getUTCDate() + days)
+  return shifted.toISOString().slice(0, 10)
+}
+
+/**
+ * The arrows' targets. The two-day view (no date) steps to yesterday and the day after
+ * tomorrow, past the two days it already shows; a one-day view steps one day.
+ */
+export function tennisDateNeighbors(date: string | null, today: string): { previous: string, next: string } {
+  return date === null
+    ? { previous: shiftDate(today, -1), next: shiftDate(today, 2) }
+    : { previous: shiftDate(date, -1), next: shiftDate(date, 1) }
+}

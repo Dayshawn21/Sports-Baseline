@@ -344,6 +344,10 @@ one command-bar shell across every page (sport tabs, Slate / Props / Model, a
 by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
 expand inline instead of a side panel), and props shown as table rows instead
 of cards. The palette, fonts and signal rules above are unchanged.
+In 2026-11 (item 57) NHL and tennis moved fully onto that slate: one period
+control (Previous, period picker, Next) and a one-line legend on every sport,
+NHL's goalie and injury context as gray note tags, and tennis's pick wording
+replaced by a gray model lean while its picks are off.
 
 Typography is deliberately three-part: Barlow Condensed for display, DM Sans for
 body, JetBrains Mono for numbers. Numeric alignment matters here because the whole
