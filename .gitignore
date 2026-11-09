@@ -62,6 +62,7 @@ api/data/ask-evals/
 
 # Per-machine Claude Code settings (can hold local connection strings)
 .claude/settings.local.json
+.claude/launch.json
 
 # Scratch output
 output/
