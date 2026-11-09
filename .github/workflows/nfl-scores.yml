@@ -5,7 +5,8 @@ name: NFL Scores
 # for Tuesday's nfl-ingest.yml. Daily rather than per game slot because it is
 # free and takes seconds, and catches Thursday, Saturday, Sunday and Monday games
 # alike. Schedule only: player stats still load Tuesday, so grading (27a, 27j)
-# never settles a week early.
+# never settles a week early. Production serves stored slates, so the run ends
+# by storing the slate weeks again; without that, a final would keep its old status.
 #
 # September through February only, matching the NFL data ingest.
 on:
@@ -44,3 +45,13 @@ jobs:
         run: |
           cd api
           python -m app.ingest.nflverse --schedule-only
+
+      # Last, and even after a failed step: the hosted demo serves stored slates
+      # and never builds one inside its 512 MB (37d), so a new final reaches the
+      # slate only once its week is stored again. The default weeks (previous,
+      # current, next) cover the week a Sunday or Monday night game closes.
+      - name: Store the current NFL slates
+        if: ${{ !cancelled() }}
+        run: |
+          cd api
+          python -m app.ingest.nfl_slate_snapshot
