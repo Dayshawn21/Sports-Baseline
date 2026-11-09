@@ -132,6 +132,8 @@ export default function NflIntelligencePage() {
     }
   }, [commandActive, commandRows, finals, query, windows])
   const tableRows = (list: NflSlateGame[]) => list.flatMap(game => rows.get(game.gameId) ?? [])
+  // One table now holds every window, so the stale-odds age names itself once, on the first window with an unplayed game.
+  const firstOddsNoteIndex = filteredWindows.findIndex(window => windowOddsNote(staleSince, window.games.map(phaseOf), nowMs) !== null)
 
   // The old slate opened one game from ?gameId=; that game now has its own page.
   if (legacyGameId !== null) return <Navigate to={`/nfl/game/${legacyGameId}`} replace />
@@ -165,16 +167,20 @@ export default function NflIntelligencePage() {
         {commandActive && filteredWindows.length === 0 && filteredFinals.length === 0 && <section className="nfl-slate-window" aria-label="Games">
           <div className="nfl-empty">No games found for this slate search.</div>
         </section>}
-        {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
-          <h2 className="nfl-slate-window__title">{window.title} <small>{slatePeriodLine([window.subtitle, windowOddsNote(staleSince, window.games.map(phaseOf), nowMs)])}</small></h2>
-          <NflSlateTable label={`${window.title} games`} rows={tableRows(window.games)} staleOdds={staleOdds} />
-        </section>)}
+        {filteredWindows.length > 0 && <section className="nfl-slate-window" aria-label="Games">
+          <NflSlateTable label="Games by kickoff" staleOdds={staleOdds} groups={filteredWindows.map((window, index) => ({
+            key: window.key,
+            title: window.title,
+            note: slatePeriodLine([window.subtitle, index === firstOddsNoteIndex ? windowOddsNote(staleSince, window.games.map(phaseOf), nowMs) : null]),
+            rows: tableRows(window.games),
+          }))} />
+        </section>}
         {filteredFinals.length > 0 && <SlateFinalsWindow
           key={`${activeSeason}-${activeWeek}-${commandActive}`}
           subtitle={tableCountPart(filteredFinals.length, finals.length, commandActive, 'game')}
           startOpen={finalsStartOpen(windows.length, commandActive)}
         >
-          <NflSlateTable label="Final games" rows={tableRows(filteredFinals)} />
+          <NflSlateTable label="Final games" groups={[{ key: 'final', title: null, rows: tableRows(filteredFinals) }]} />
         </SlateFinalsWindow>}
         {/* Phones put the source legend after the games, so the first rows reach the first screen. */}
         {phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
