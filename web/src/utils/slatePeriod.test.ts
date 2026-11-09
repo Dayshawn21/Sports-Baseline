@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, oddsPart, slatePeriodLine, startTimes } from '~/utils/slatePeriod'
+import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, oddsPart, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
 
 const NOW = Date.parse('2026-11-08T22:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -82,5 +82,32 @@ describe('oddsPart', () => {
 
   it('is left out when no odds are stored', () => {
     expect(oddsPart(null, true)).toBeNull()
+  })
+})
+
+describe('tableCountPart', () => {
+  it('counts the whole table when no search is active', () => {
+    expect(tableCountPart(7, 7, false, 'game')).toBe('7 games')
+    expect(tableCountPart(1, 1, false, 'match', 'matches')).toBe('1 match')
+  })
+
+  it('shows the matches out of the whole table while searching, even when all match', () => {
+    expect(tableCountPart(1, 7, true, 'game')).toBe('1 of 7 games')
+    expect(tableCountPart(20, 20, true, 'match', 'matches')).toBe('20 of 20 matches')
+  })
+})
+
+describe('splitTags', () => {
+  it('keeps the first tags in order and holds the rest back', () => {
+    expect(splitTags(['a', 'b', 'c', 'd'], 2)).toEqual({ shown: ['a', 'b'], hidden: ['c', 'd'] })
+  })
+
+  it('hides nothing when the tags fit', () => {
+    expect(splitTags(['a'], 2)).toEqual({ shown: ['a'], hidden: [] })
+    expect(splitTags([], 2)).toEqual({ shown: [], hidden: [] })
+  })
+
+  it('treats a negative limit as zero', () => {
+    expect(splitTags(['a', 'b'], -1)).toEqual({ shown: [], hidden: ['a', 'b'] })
   })
 })

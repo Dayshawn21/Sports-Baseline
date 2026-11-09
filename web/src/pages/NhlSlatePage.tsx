@@ -11,7 +11,7 @@ import { useNhlSlate } from '~/hooks/useNhl'
 import { nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
 import { matchingSlateCommandRows, nhlSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
-import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
+import { gameSlateLine, startTimes, tableCountPart } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 import './nhl-slate.css'
 
@@ -37,8 +37,10 @@ export default function NhlSlatePage() {
     return rows.filter(row => ids.has(row.gameId))
   }, [commandRows, query, rows, searchActive])
 
-  if (slate.isLoading) return <LoadingState message="Loading NHL slate..." />
-  if (slate.isError || !slate.data) return <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />
+  if (slate.isLoading || slate.isError || !slate.data) return <div className="page-shell nfl-slate nhl-slate"><div className="page-container is-wide">
+    <PageHead title="NHL slate" />
+    {slate.isLoading ? <LoadingState message="Loading NHL slate..." /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
+  </div></div>
   const { date, previousDate, nextDate } = slate.data
   const line = gameSlateLine(slateDateLabel(date), nhlSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())
   const datePath = (target: string | null) => target === null ? null : `/nhl?date=${target}`
@@ -54,6 +56,7 @@ export default function NhlSlatePage() {
     </div> : <>
       <SlateLegend {...SLATE_LEGENDS.nhl} />
       <section className="nfl-slate-window" aria-label="Games">
+        <h2 className="nfl-slate-window__title">All games <small>{tableCountPart(filtered.length, rows.length, searchActive, 'game')}</small></h2>
         {searchActive && filtered.length === 0 ? <div className="nfl-empty">No games found for this slate search.</div> : <NhlSlateTable rows={filtered} />}
       </section>
     </>}

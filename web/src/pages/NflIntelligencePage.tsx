@@ -107,7 +107,9 @@ export default function NflIntelligencePage() {
       </div> : <>
         <NflSlateDigest items={digest} />
         <SlateLegend {...SLATE_LEGENDS.nfl} />
-        {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
+        {commandActive && filteredWindows.length === 0 && <section className="nfl-slate-window" aria-label="Games">
+          <div className="nfl-empty">No games found for this slate search.</div>
+        </section>}
         {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
           <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
           <NflSlateTable label={`${window.title} games`} rows={window.games.flatMap(game => rows.get(game.gameId) ?? [])} />

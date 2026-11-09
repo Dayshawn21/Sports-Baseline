@@ -37,7 +37,10 @@ export function NbaSlateTable({ rows }: { rows: NbaSlateRowModel[] }) {
       <th>Win <small>market</small></th><th className="is-num">Props</th><th>Notes</th>
     </tr></thead>
     <tbody>{rows.map(row => <tr key={row.gameId} className={`is-${row.state}`} onClick={event => open(event, row.gameId)}>
-      <td className="nfl-slate-table__kickoff">{row.tip}</td>
+      <td className="nfl-slate-table__kickoff">
+        <span className="nba-slate-table__time">{row.tip}</span>
+        {row.state === 'started' && <small className="nba-slate-table__state">Tipped off</small>}
+      </td>
       <td className="nfl-slate-table__game"><Game row={row} /></td>
       <td className="nfl-slate-table__spread"><Value cell={row.spread} /></td>
       <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>

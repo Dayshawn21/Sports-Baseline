@@ -6,6 +6,8 @@
 .nfl-slate__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; color: var(--text-muted); font-size: 11px; }
 .nfl-slate__legend b { color: var(--text-secondary); font-weight: 600; }
 .nfl-slate__legend.slate-legend { align-items: baseline; }
+/* With no digest strip the legend opens the page, at the strip's distance from the head. */
+.lf-page-head + .nfl-slate__legend { margin-top: 22px; }
 .nfl-slate__legend .slate-legend__pick[open] { flex-basis: 100%; }
 .nfl-slate__legend .slate-legend__pick summary { display: inline-flex; align-items: center; color: var(--text-secondary); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .nfl-slate__legend .slate-legend__pick summary:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 2px; }

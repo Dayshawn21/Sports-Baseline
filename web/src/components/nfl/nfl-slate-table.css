@@ -48,6 +48,8 @@
   .nfl-slate-table tbody tr:hover { background: var(--bg-card-hover); }
   .nfl-slate-table__kickoff { order: 1; }
   .nfl-slate-table .nfl-slate-table__kickoff small { display: inline; margin-left: 6px; }
+  /* Once a game is live, "Live" stands in for the kickoff time, as a final's "Final" does, so line 1 never wraps. */
+  .nfl-slate-table tr.is-live .nfl-slate-table__kickoff small { display: none; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
   .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
   .nfl-slate-table__props { order: 2; color: var(--text-muted); }
