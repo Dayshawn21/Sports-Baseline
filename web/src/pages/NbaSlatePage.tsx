@@ -26,7 +26,8 @@ function gapLink(item: NbaSlateDigestItem) {
     playerName: item.playerName,
     market: item.market,
     gap: item.gap,
-    ariaLabel: `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gap}, open game page`,
+    share: item.gapShare,
+    ariaLabel: [`${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gap}`, item.gapScaled, 'open game page'].filter(Boolean).join(', '),
   }
 }
 
@@ -101,7 +102,10 @@ export default function NbaSlatePage() {
       No NBA games on {slateDateLabel(date)}.{' '}
       {nextDate && <Link className="nfl-empty__next" to={`/nba?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
-      <SlateNoPicks sport="nba" remaining={remaining} gaps={digest.map(gapLink)} />
+      <SlateNoPicks
+        sport="nba" remaining={remaining} gaps={digest.map(gapLink)}
+        gapsLabel="Largest gaps" gapsOrder="by share of the line"
+      />
       {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
       {(shown.open.length > 0 || (commandActive && filteredRows.length === 0)) && <section className="nfl-slate-window" aria-label="Games">
         <h2 className="nfl-slate-window__title">{openWindowTitle(split.finals.length)} <small>{tableCountPart(shown.open.length, split.open.length, commandActive, 'game')}</small></h2>

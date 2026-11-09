@@ -29,9 +29,11 @@ describe('SLATE_LEGENDS', () => {
     expect(text.filter(line => /\(\d+[a-z]\d*\)/.test(line))).toEqual([])
   })
 
-  it('defines the NFL prop gap as model minus line, scaled by a typical line, and as reference only', () => {
+  it('defines the NFL prop gap in units, its percentage against a typical line, the strip order, and reference only', () => {
     const pick = SLATE_LEGENDS.nfl.pick.join(' ')
-    expect(pick).toMatch(/prop gap is the model's projection minus the prop line, as a share of a typical line/)
+    expect(pick).toMatch(/prop gap is the model's projection minus the prop line, in the stat's units/)
+    expect(pick).toMatch(/percentage beside it sizes that gap against a typical line/)
+    expect(pick).toMatch(/Top gaps lists one line per player: lines with 8 or more games of history first, then the largest percentage/)
     expect(pick).toMatch(/Gaps are reference only/)
     expect(pick).toMatch(/Q and D count questionable and doubtful/)
   })

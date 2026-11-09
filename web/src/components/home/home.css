@@ -179,6 +179,10 @@
   color: var(--text-secondary);
 }
 
+.home-gaps__share {
+  color: var(--text-muted);
+}
+
 .home-gaps__kinds {
   display: flex;
   gap: 6px;

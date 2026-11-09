@@ -182,8 +182,15 @@ describe('slateDigest', () => {
   it('carries display strings for a box', () => {
     const [first, second] = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(first).toEqual({ lineId: 21, gameId: 2, playerId: 21, playerName: 'Player 21', market: 'Receiving yards', marketKey: 'receiving_yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%', gapUnits: '+40.0 yds', gapScaled: '67% of a typical line' })
+    expect(first).toEqual({ lineId: 21, gameId: 2, playerId: 21, playerName: 'Player 21', market: 'Receiving yards', marketKey: 'receiving_yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%', gapUnits: '+40.0 yds', gapScaled: '67% of a typical line', gapShare: '67%', shortSample: null })
     expect([second.matchup, second.market, second.gap, second.gapUnits, second.gapScaled]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%', '+30.0 yds', '60% of a typical line'])
+  })
+
+  it('names a short sample, which is why a larger share can rank below a smaller one', () => {
+    const short = [game(1, '2026-10-04T17:00:00Z', { lines: [line(11, { edge: 10 }), line(15, { ...rushing, playerId: 13, playerName: 'Player 13', edge: 30, gamesInSample: 7 })] })]
+    const digest = slateDigest(buildNflPropBoard(short, 'all', NOW))
+
+    expect(digest.map(item => [item.lineId, item.gapShare, item.shortSample])).toEqual([[11, '17%', null], [15, '60%', '7 games']])
   })
 
   it('leads a gap with model minus line in the market units, so it matches the two numbers beside it', () => {

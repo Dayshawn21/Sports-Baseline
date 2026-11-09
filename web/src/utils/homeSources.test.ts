@@ -66,13 +66,13 @@ describe('nbaSource', () => {
   it('shows at most the hero limit of gaps, keeping the digest order and strings', () => {
     const item = (n: number): NbaSlateDigestItem => ({
       key: `k${n}`, gameId: n, playerId: n, playerName: `Player ${n}`, marketKey: 'points', market: 'Points', matchup: 'A @ B',
-      when: 'x', line: '20.5', model: '22.0', gap: '+1.5 pts', gapScaled: null,
+      when: 'x', line: '20.5', model: '22.0', gap: '+1.5 pts', gapScaled: null, gapShare: '7%',
     })
     const source = nbaSource([], Array.from({ length: 11 }, (_, n) => item(n + 1)), '2026-11-04', NOW)
     expect(source.gaps.map(gap => gap.key)).toEqual(Array.from({ length: 10 }, (_, n) => `k${n + 1}`))
     expect(source.gaps).toHaveLength(GAPS_PER_SPORT)
     expect(source.gaps[0]).toEqual({
-      key: 'k1', sport: 'nba', playerName: 'Player 1', market: 'Points', matchup: 'A @ B', when: 'x', line: '20.5', model: '22.0', gap: '+1.5 pts',
+      key: 'k1', sport: 'nba', playerName: 'Player 1', market: 'Points', matchup: 'A @ B', when: 'x', line: '20.5', model: '22.0', gap: '+1.5 pts', share: '7%',
       path: '/nba/player/1?date=2026-11-04&market=points',
     })
   })
@@ -131,13 +131,13 @@ describe('nflSource', () => {
 describe('gap rows across sports', () => {
   const digestItem = (n: number, gap: string) => ({
     lineId: 100 + n, gameId: n, playerId: n, playerName: `P${n}`, market: 'Rushing yards', marketKey: 'rushing_yards',
-    matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap, gapUnits: '+9.6 yds', gapScaled: null,
+    matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap, gapUnits: '+9.6 yds', gapScaled: null, gapShare: '104%', shortSample: null,
   })
 
   it('carries the sport, the gap in units as the slate shows it, and a player link that keeps the market and week', () => {
     const source = nflSource({ season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse, [digestItem(7, '+104.6%')], NOW)
     expect(source.gaps).toEqual([{
-      key: '107', sport: 'nfl', playerName: 'P7', market: 'Rushing yards', matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap: '+9.6 yds',
+      key: '107', sport: 'nfl', playerName: 'P7', market: 'Rushing yards', matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap: '+9.6 yds', share: '104%',
       path: '/nfl/player/7?market=rushing_yards&season=2026&week=9',
     }])
   })
@@ -165,9 +165,9 @@ describe('tennisGapRows', () => {
     expect(rows.map(row => row.key)).toEqual(['2', '3'])
     expect(rows[0]).toEqual({
       key: '2', sport: 'tennis', playerName: 'P1', market: 'Double faults', matchup: 'P1 vs Q1', when: '2:00 PM CT', line: '2.5',
-      model: '1.0', gap: '-1.5', path: expect.stringContaining('/tennis/player/10?'),
+      model: '1.0', gap: '-1.5', share: '45%', path: expect.stringContaining('/tennis/player/10?'),
     })
-    expect(rows[1].gap).toBe('+1.5')
+    expect([rows[1].gap, rows[1].share]).toEqual(['+1.5', '30%'])
   })
 
   it('keeps standard rateable lines for matches still to come and leaves the rest out', () => {

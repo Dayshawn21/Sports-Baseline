@@ -5,10 +5,10 @@ import { marketLabel } from '~/utils/nflLabels'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
-import { signedGapUnits } from '~/utils/gapUnits'
+import { gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
 import { isResultPending } from '~/utils/slateOrder'
 import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
-import { compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
+import { CONFIDENT_SAMPLE_GAMES, compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
 const CENTRAL = 'America/Chicago'
@@ -162,6 +162,10 @@ export interface NflSlateDigestItem {
   gapUnits: string
   /** The same edge sized against a typical line ("107% of a typical line"); unsigned, so it never reads as a change. */
   gapScaled: string | null
+  /** That size alone ("107%"), which the strip ranks by after the sample tier. */
+  gapShare: string | null
+  /** "7 games" for a line under the confident sample, which the strip ranks after every line with one; else null. */
+  shortSample: string | null
 }
 
 const MARKET_UNITS: Record<string, string> = {
@@ -203,6 +207,8 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
     gap: edgePctLabel(share),
     gapUnits: gapUnitsLabel(row.edge, row.market),
     gapScaled: gapScaledLabel(share),
+    gapShare: gapSharePercent(share),
+    shortSample: row.gamesInSample < CONFIDENT_SAMPLE_GAMES ? `${row.gamesInSample} game${row.gamesInSample === 1 ? '' : 's'}` : null,
   }))
 }
 

@@ -23,6 +23,8 @@ export interface HomeGap {
   model: string
   /** Model minus line in the stat's units, as the slates show it: "+32.6 yds". */
   gap: string
+  /** The share each sport orders its rows by ("104%"), shown beside the gap so the order reads true. */
+  share: string | null
   /** The digest's own Central start text, such as `Thu 7:15 PM CT`. */
   when: string
   /** The player page this row opens, with the market tab it came from. */
@@ -140,11 +142,11 @@ function teamGames(games: (NflSlateGame | NbaSlateGame | NhlSlateGame)[]): Sched
 
 function gapOf(
   sport: HomeGap['sport'],
-  item: { playerName: string, market: string, matchup: string, when: string, line: string, model: string, gap: string },
+  item: { playerName: string, market: string, matchup: string, when: string, line: string, model: string, gap: string, gapShare: string | null },
   key: string,
   path: string,
 ): HomeGap {
-  return { key, sport, playerName: item.playerName, market: item.market, matchup: item.matchup, when: item.when, line: item.line, model: item.model, gap: item.gap, path }
+  return { key, sport, playerName: item.playerName, market: item.market, matchup: item.matchup, when: item.when, line: item.line, model: item.model, gap: item.gap, share: item.gapShare, path }
 }
 
 const pct = (probability: number) => `${(probability * 100).toFixed(1)}%`
@@ -263,7 +265,8 @@ export function tennisGapRows(props: PropLine[], matches: MatchPrediction[], now
     rows.push({
       key: String(line.id), sport: 'tennis', playerName: line.playerName ?? 'Unknown player', market: marketTitle(line.statType),
       matchup: line.matchup ?? '', when: `${startLabel(start, now)} CT`, line: Number(line.line).toFixed(1),
-      model: (line.statAvg as number).toFixed(1), gap: signedGapUnits((line.statAvg as number) - Number(line.line)), path,
+      model: (line.statAvg as number).toFixed(1), gap: signedGapUnits((line.statAvg as number) - Number(line.line)),
+      share: `${Math.round(Math.abs(edge))}%`, path,
     })
     if (rows.length === GAPS_PER_SPORT) break
   }

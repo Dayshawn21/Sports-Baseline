@@ -4,7 +4,7 @@ import { hasKickedOff } from '~/utils/nflGame'
 import { isResultPending } from '~/utils/slateOrder'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
-import { gapShareOfLine, signedGapUnits } from '~/utils/gapUnits'
+import { gapShareOfLine, gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
 import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
 
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
@@ -211,6 +211,8 @@ export interface NbaSlateDigestItem {
   gap: string
   /** The same gap as a share of the line: "10% of the line". */
   gapScaled: string | null
+  /** That share alone ("10%"), which the strip ranks by. */
+  gapShare: string | null
 }
 
 export interface NbaGapGame {
@@ -261,6 +263,7 @@ export function nbaSlateDigest(items: NbaSlateGap[]): NbaSlateDigestItem[] {
     model: item.projection.toFixed(1),
     gap: signedGapUnits(item.gap, NBA_UNITS[item.market]),
     gapScaled: gapShareOfLine(item.gapShare),
+    gapShare: gapSharePercent(item.gapShare),
   }))
 }
 

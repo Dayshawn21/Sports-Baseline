@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gapShareOfLine, signedGapUnits } from '~/utils/gapUnits'
+import { gapShareOfLine, gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
 
 describe('signedGapUnits', () => {
   it('signs model minus line to one decimal, with the unit when there is one', () => {
@@ -19,5 +19,13 @@ describe('gapShareOfLine', () => {
   it('sizes the gap against the line without a sign', () => {
     expect(gapShareOfLine(-0.143)).toBe('14% of the line')
     expect(gapShareOfLine(null)).toBeNull()
+  })
+})
+
+describe('gapSharePercent', () => {
+  it('writes the share a strip ranks by as a bare percentage', () => {
+    expect(gapSharePercent(1.036)).toBe('104%')
+    expect(gapSharePercent(-0.14)).toBe('14%')
+    expect(gapSharePercent(null)).toBeNull()
   })
 })

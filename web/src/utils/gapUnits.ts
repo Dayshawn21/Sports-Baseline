@@ -12,3 +12,8 @@ export function signedGapUnits(gap: number | null, unit?: string): string {
 export function gapShareOfLine(share: number | null): string | null {
   return share === null || !Number.isFinite(share) ? null : `${Math.round(Math.abs(share) * 100)}% of the line`
 }
+
+/** The share a gap strip ranks by, as a bare percentage: "104%". */
+export function gapSharePercent(share: number | null): string | null {
+  return share === null || !Number.isFinite(share) ? null : `${Math.round(Math.abs(share) * 100)}%`
+}

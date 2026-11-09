@@ -155,7 +155,7 @@ describe('nbaSlateDigest', () => {
   it('formats line and model to one decimal with a signed gap in units and its share of the line', () => {
     expect(nbaSlateDigest([gap()])).toEqual([{
       key: '21319-7-points', gameId: 21319, playerId: 7, playerName: 'Jaylen Brown', marketKey: 'points', market: 'Points', matchup: 'PHI @ NY',
-      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 pts', gapScaled: '40% of the line',
+      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 pts', gapScaled: '40% of the line', gapShare: '40%',
     }])
   })
 

@@ -107,7 +107,7 @@ describe('homeCard', () => {
 
 describe('gaps tabs', () => {
   const gap = (sport: HomeGap['sport'], key: string): HomeGap => ({
-    key, sport, playerName: key, market: 'm', matchup: 'A @ B', when: 'w', line: '1', model: '2', gap: 'g', path: `/p/${key}`,
+    key, sport, playerName: key, market: 'm', matchup: 'A @ B', when: 'w', line: '1', model: '2', gap: 'g', share: null, path: `/p/${key}`,
   })
   const view = (sport: HomeSportData['sport'], hours: number[], overrides: Partial<HomeSource> = {}, data: Partial<HomeSportData> = {}): HomeSportView => ({
     data: sportData(sport, hours, data), source: source({ gameCount: hours.length, ...overrides }),
