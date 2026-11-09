@@ -6,6 +6,7 @@ from app.core.nfl_kicking import (
     KICKING_DISTANCE_BANDS,
     KICKING_DISTANCE_COLUMNS,
     KickingFormula,
+    PRIZEPICKS_KICKING_FORMULA,
     kicking_points,
 )
 from app.core.nfl_line_only import line_only_value
@@ -76,3 +77,8 @@ def test_the_grid_is_sixteen_named_candidates_including_the_anchor() -> None:
     assert FLAT_KICKING in CANDIDATE_FORMULAS
     assert FLAT_KICKING.name == "flat_pat1_fgmiss0_patmiss0"
     assert "distance_pat1_fgmiss1_patmiss1" in names
+
+
+def test_the_pinned_formula_is_the_registered_distance_candidate() -> None:
+    assert PRIZEPICKS_KICKING_FORMULA in CANDIDATE_FORMULAS
+    assert PRIZEPICKS_KICKING_FORMULA == KickingFormula("distance_pat1_fgmiss0_patmiss0", True, 1, 0, 0)

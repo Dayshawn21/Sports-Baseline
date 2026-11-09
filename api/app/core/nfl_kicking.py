@@ -66,3 +66,7 @@ CANDIDATE_FORMULAS: tuple[KickingFormula, ...] = tuple(
     _formula(by_distance, pat, fg_miss, pat_miss)
     for by_distance, pat, fg_miss, pat_miss in product((False, True), (1, 0), (0, -1), (0, -1))
 )
+
+# Pinned by 27l2's pre-registered check (commit 14b36ea5, run 2026-11-08). A -1 PAT-miss
+# penalty was equally consistent with the lines; parsimony leaves it out (about 0.11 points a game).
+PRIZEPICKS_KICKING_FORMULA = next(f for f in CANDIDATE_FORMULAS if f.name == "distance_pat1_fgmiss0_patmiss0")
