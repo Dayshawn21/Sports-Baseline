@@ -39,6 +39,6 @@ export function NhlGameMarket({ game }: { game: NhlGameDetail }) {
     {missing && <p className="nfl-game-note">No book odds stored for this game.</p>}
     <dl className="nhl-market-grid">{nhlMarketCells(game).map(cell => <MarketCell key={cell.label} cell={cell} />)}</dl>
     <dl className="nhl-market-probability"><MarketCell cell={probability} /></dl>
-    {nhlGameState(game, new Date()).state === 'started' && <p className="nfl-game-note">Scores update after the game.</p>}
+    {['started', 'pending'].includes(nhlGameState(game, new Date()).state) && <p className="nfl-game-note">Scores update after the game.</p>}
   </section>
 }

@@ -1,10 +1,9 @@
 ﻿/* The NHL slate as rows (57c), on the NFL table's classes with NBA's columns. Widths fit "Sun 12:00 PM CT",
    "BOS -1.5 (+180)", "Over +105 / Under -125" and "BOS 56.4%"; Notes fits both goalie tags and "+N". */
-.nfl-slate-table.nhl-slate-table col.is-kickoff { width: 132px; }
 .nfl-slate-table.nhl-slate-table col.is-spread { width: 140px; }
 .nfl-slate-table.nhl-slate-table col.is-total { width: 168px; }
 .nfl-slate-table.nhl-slate-table col.is-win { width: 92px; }
-.nfl-slate-table.nhl-slate-table col.is-notes { width: 284px; }
+.nfl-slate-table.nhl-slate-table col.is-notes { width: 276px; }
 .nhl-slate-table .nfl-slate-table__game small { overflow: hidden; text-overflow: ellipsis; }
 /* Notes stay one line at every width, so NHL rows match the other slates' height: the two goalies, then
    "+N" for the rest, which keep their text for a screen reader and sit on the game page in full. */

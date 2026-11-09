@@ -1,31 +1,55 @@
 import { Select } from 'antd'
 import { useCallback, useMemo } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
 import SlateLegend from '~/components/shared/SlateLegend'
+import { SlateNoPicks } from '~/components/shared/SlateNoPicks'
+import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
+import { openedRowKey } from '~/utils/nflOpenedRow'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
+import { kickoffWindows, type NflSlateDigestItem, type NflSlateRowModel, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 import { type NflWeek, nflWeekKey, nflWeekNeighbors, nflWeekPath, nflWeekPickerOptions, parseNflWeekKey, readNflWeekLink } from '~/utils/nflWeekPeriod'
-import { matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { commandGameContext, matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { slateRemainingLine } from '~/utils/slateHeadline'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { finalsStartOpen, orderWindowsByPhase, slatePhase, splitFinals } from '~/utils/slateOrder'
-import { gameSlateLine, isOddsStale, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { gameSlateLine, staleOddsSince, startTimes, tableCountPart } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
 const WEEK_OPTIONS = nflWeekPickerOptions()
 
 function periodLine(week: number, games: NflSlateGame[], notes: NflGameNotes[] | undefined): string {
   return gameSlateLine(`Week ${week}`, nflSlateSummary(games, notes), startTimes(games.map(game => game.startUtc)), Date.now())
+}
+
+function gapLink(item: NflSlateDigestItem) {
+  return {
+    key: String(item.lineId),
+    to: `/nfl/game/${item.gameId}`,
+    playerName: item.playerName,
+    market: item.market,
+    gap: item.gapUnits,
+    ariaLabel: `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gapUnits}, open game page`,
+    openKey: openedRowKey('digest', item.lineId),
+    onOpen: () => rememberOpened('digest', item.lineId),
+  }
+}
+
+const STATE_LABEL: Partial<Record<NflSlateRowModel['state'], string>> = { final: 'Final', pending: 'Result pending', live: 'Live' }
+
+/** A search result's second line: kickoff, state, or the final score. */
+function commandContext(row: NflSlateRowModel | undefined): string | undefined {
+  if (!row) return undefined
+  return commandGameContext(STATE_LABEL[row.state] ?? row.kickoff, row.state === 'final' ? row : undefined)
 }
 
 function WeekPicker({ active }: { active: NflWeek }) {
@@ -58,15 +82,16 @@ export default function NflIntelligencePage() {
   const gameNotes = useNflGameNotes(activeSeason, activeWeek)
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
   const notes = gameNotes.data?.games
-  const rows = useMemo(() => {
+  const { rows, staleOdds } = useMemo(() => {
     const now = new Date()
     const notesById = new Map((notes ?? []).map(item => [item.gameId, item]))
-    // The period line's own check, so a row shows its odds age exactly when the head says "(stale)".
-    const stale = isOddsStale(nflSlateSummary(games, notes).oddsUpdatedMs, startTimes(games.map(game => game.startUtc)), now.getTime())
-    return new Map(games.map(game => [game.gameId, nflSlateRow(game, notesById.get(game.gameId), now, stale)]))
+    // The period line's own check: while the odds are stale, a row shows its age only when it differs from the head's.
+    const stale = staleOddsSince(nflSlateSummary(games, notes).oddsUpdatedMs, startTimes(games.map(game => game.startUtc)), now.getTime())
+    return { rows: new Map(games.map(game => [game.gameId, nflSlateRow(game, notesById.get(game.gameId), now, stale)])), staleOdds: stale !== null }
   }, [games, notes])
   // As of now, so only games not yet kicked off can reach the digest.
   const digest = useMemo(() => slateDigest(buildNflPropBoard(games, 'all', new Date())), [games])
+  const remaining = useMemo(() => slateRemainingLine(games.map(game => ({ state: rows.get(game.gameId)?.state ?? 'upcoming', startUtc: game.startUtc })), Date.now()), [games, rows])
   const phaseOf = useCallback((game: NflSlateGame) => slatePhase(rows.get(game.gameId)?.state ?? 'upcoming'), [rows])
   // Display order only: windows with a live game lead, and every final goes to one closed window at the end.
   const { windows, finals } = useMemo(() => {
@@ -79,7 +104,10 @@ export default function NflIntelligencePage() {
   const { query } = useSlateCommand()
   const phone = usePhoneLayout()
   const orderedGames = useMemo(() => [...windows.flatMap(window => window.games), ...finals], [windows, finals])
-  const commandRows = useMemo(() => nflSlateCommandRows(orderedGames), [orderedGames])
+  const commandRows = useMemo(
+    () => nflSlateCommandRows(orderedGames.map(game => ({ ...game, commandContext: commandContext(rows.get(game.gameId)) }))),
+    [orderedGames, rows],
+  )
   const commandScope = useMemo(() => activeSeason === null || activeWeek === null || slate.isLoading || slate.isError
     ? null
     : { periodKey: `${activeSeason}-${activeWeek}`, rows: commandRows },
@@ -123,14 +151,14 @@ export default function NflIntelligencePage() {
         No NFL games loaded for week {activeWeek}.{' '}
         {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
       </div> : <>
-        <NflSlateDigest items={digest} />
+        <SlateNoPicks sport="nfl" remaining={remaining} gaps={digest.map(gapLink)} />
         {!phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
         {commandActive && filteredWindows.length === 0 && filteredFinals.length === 0 && <section className="nfl-slate-window" aria-label="Games">
           <div className="nfl-empty">No games found for this slate search.</div>
         </section>}
         {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
           <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
-          <NflSlateTable label={`${window.title} games`} rows={tableRows(window.games)} />
+          <NflSlateTable label={`${window.title} games`} rows={tableRows(window.games)} staleOdds={staleOdds} />
         </section>)}
         {filteredFinals.length > 0 && <SlateFinalsWindow
           key={`${activeSeason}-${activeWeek}-${commandActive}`}

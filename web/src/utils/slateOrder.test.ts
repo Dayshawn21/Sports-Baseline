@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { finalsStartOpen, openWindowTitle, orderByPhase, type SlatePhase, slatePhase, orderWindowsByPhase, splitFinals } from '~/utils/slateOrder'
+import { finalsStartOpen, isResultPending, openWindowTitle, orderByPhase, type SlatePhase, slatePhase, orderWindowsByPhase, splitFinals } from '~/utils/slateOrder'
 
 interface Game { id: string, phase: SlatePhase }
 interface Window { key: string, games: Game[] }
@@ -15,6 +15,35 @@ describe('slatePhase', () => {
     expect(slatePhase('live')).toBe('live')
     expect(slatePhase('off')).toBe('off')
     expect(slatePhase('final')).toBe('final')
+  })
+
+  it('sorts a game whose result is pending with the finals', () => {
+    expect(slatePhase('pending')).toBe('final')
+  })
+})
+
+describe('isResultPending', () => {
+  const SNF = '2026-11-09T01:20:00Z'
+
+  it('is true only once a game is over five hours past its start', () => {
+    expect(isResultPending(SNF, new Date('2026-11-09T04:20:00Z'))).toBe(false)
+    expect(isResultPending(SNF, new Date('2026-11-09T06:20:00Z'))).toBe(false)
+    expect(isResultPending(SNF, new Date('2026-11-09T06:21:00Z'))).toBe(true)
+    expect(isResultPending(SNF, new Date('2026-11-09T14:20:00Z'))).toBe(true)
+  })
+
+  it('is false without a parseable start', () => {
+    expect(isResultPending(null, new Date('2026-11-09T14:20:00Z'))).toBe(false)
+    expect(isResultPending('not a time', new Date('2026-11-09T14:20:00Z'))).toBe(false)
+  })
+})
+
+describe('a Monday morning slate', () => {
+  it('moves a Sunday night game with no score out of the lead and in with the finals', () => {
+    const states = { thu: 'final', snf: 'pending', mnf: 'upcoming' } as const
+    const games = [g('thu', slatePhase(states.thu)), g('snf', slatePhase(states.snf)), g('mnf', slatePhase(states.mnf))]
+    const { open, finals } = splitFinals(games, phaseOf)
+    expect([ids(open), ids(finals)]).toEqual([['mnf'], ['thu', 'snf']])
   })
 })
 

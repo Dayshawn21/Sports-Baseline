@@ -39,14 +39,14 @@ function PuckDrop({ row }: { row: NhlSlateRowModel }) {
 const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'win', 'props', 'notes']
 
 /** One date's games, one row each; a row opens its game page. Display only, every tag gray. */
-export function NhlSlateTable({ rows, label = 'Games' }: { rows: NhlSlateRowModel[], label?: string }) {
+export function NhlSlateTable({ rows, label = 'Games', staleOdds = false }: { rows: NhlSlateRowModel[], label?: string, staleOdds?: boolean }) {
   const navigate = useNavigate()
   const open = (event: MouseEvent, gameId: number) => {
     // The Game link handles its own clicks, so a click on it never navigates twice.
     if (event.target instanceof Element && event.target.closest('a')) return
     navigate(`/nhl/game/${gameId}`)
   }
-  return <table className="nfl-slate-table nhl-slate-table" aria-label={label}>
+  return <table className={`nfl-slate-table nhl-slate-table${staleOdds ? ' has-stale-odds' : ''}`} aria-label={label}>
     <colgroup>{COLUMNS.map(column => <col key={column} className={`is-${column}`} />)}</colgroup>
     <thead><tr>
       <th>Puck drop</th><th>Game</th><th>Puck line</th><th>Total</th><th>Moneyline</th>

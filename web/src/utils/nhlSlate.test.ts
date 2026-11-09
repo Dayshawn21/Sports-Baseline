@@ -9,6 +9,8 @@ const NOW = new Date('2026-10-23T18:00:00Z')
 const START = '2026-10-24T00:00:00Z'
 const FRESH = '2026-10-23T15:00:00Z'
 const STALE = '2026-10-23T10:00:00Z'
+// The slate's newest fetch, from a later run than a game fetched at FRESH.
+const LATER_RUN = Date.parse('2026-10-23T17:30:00Z')
 
 function goalie(team: string, overrides: Partial<NhlGoalieSide> = {}): NhlGoalieSide {
   return {
@@ -136,10 +138,11 @@ describe('nhlSlateRow', () => {
   })
   it('gives a row its odds age only while the slate odds are stale and the game is not settled', () => {
     // NOW is Fri Oct 23, 1:00 PM CT; the moneyline was fetched at 10:00 AM.
-    expect(nhlSlateRow(game(0.564), NOW, true).oddsAge).toBe('as of 10:00 AM')
+    expect(nhlSlateRow(game(0.564), NOW, LATER_RUN).oddsAge).toBe('as of 10:00 AM')
     expect(nhlSlateRow(game(0.564), NOW).oddsAge).toBeNull()
-    expect(nhlSlateRow(game(null), NOW, true).oddsAge).toBeNull()
-    expect(nhlSlateRow({ ...game(0.564), status: 'completed', awayScore: 2, homeScore: 3 }, NOW, true).oddsAge).toBeNull()
+    expect(nhlSlateRow(game(0.564), NOW, Date.parse('2026-10-23T15:30:00Z')).oddsAge).toBeNull()
+    expect(nhlSlateRow(game(null), NOW, LATER_RUN).oddsAge).toBeNull()
+    expect(nhlSlateRow({ ...game(0.564), status: 'completed', awayScore: 2, homeScore: 3 }, NOW, LATER_RUN).oddsAge).toBeNull()
   })
   it('drops the win label and tags once final, keeping the score', () => {
     const row = nhlSlateRow({ ...game(0.564), context: context(), status: 'completed', awayScore: 2, homeScore: 3 }, NOW)

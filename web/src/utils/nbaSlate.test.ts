@@ -4,6 +4,8 @@ import { nbaGameGaps, nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary
 
 const NOW = new Date('2026-10-06T15:00:00Z')
 const FETCHED = '2026-10-06T14:34:47Z'
+// A slate fetch from a later run than this game's, so the row's own age differs from the head's.
+const LATER_RUN = Date.parse('2026-10-06T14:55:00Z') + 60 * 60 * 1000
 const LATER = '2026-10-07T22:30:00Z'
 
 function game(overrides: Partial<NbaSlateGame> = {}): NbaSlateGame {
@@ -150,17 +152,17 @@ describe('nbaSlateDigest', () => {
     line: 20.5, projection: 28.75, gap: 8.25, gapShare: 8.25 / 20.5, ...overrides,
   })
 
-  it('formats line and model to one decimal with a signed gap and share', () => {
+  it('formats line and model to one decimal with a signed gap in units and its share of the line', () => {
     expect(nbaSlateDigest([gap()])).toEqual([{
       key: '21319-7-points', gameId: 21319, playerId: 7, playerName: 'Jaylen Brown', marketKey: 'points', market: 'Points', matchup: 'PHI @ NY',
-      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 · +40%',
+      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 pts', gapScaled: '40% of the line',
     }])
   })
 
   it('signs an under gap negative and labels combo markets', () => {
     const [item] = nbaSlateDigest([gap({ market: 'points_rebounds_assists', line: 27.5, projection: 23.55, gap: -3.95, gapShare: 3.95 / 27.5 })])
     expect(item.market).toBe('Pts + reb + ast')
-    expect(item.gap).toBe('-4.0 · -14%')
+    expect([item.gap, item.gapScaled]).toEqual(['-4.0', '14% of the line'])
   })
 
   it('keeps the API order and gives an empty strip for no items', () => {
@@ -181,16 +183,17 @@ describe('nbaSlateRow', () => {
     expect(row.away).toMatchObject({ code: 'BOS', record: 'No games yet', score: null })
   })
 
-  it('gives a row its odds age and drops "no move" only while the slate odds are stale', () => {
+  it('gives a row its odds age when it differs from the slate newest fetch, and drops "no move" only while the slate odds are stale', () => {
     // NOW is Tue Oct 6, 10:00 AM CT; the fetch was 9:34 AM the same day.
     const flat = game({ lineMovement: [moved('total', 221.5, 221.5)] })
-    expect(nbaSlateRow(flat, NOW, true)).toMatchObject({ oddsAge: 'as of 9:34 AM', total: { detail: null } })
+    expect(nbaSlateRow(flat, NOW, LATER_RUN)).toMatchObject({ oddsAge: 'as of 9:34 AM', total: { detail: null } })
     expect(nbaSlateRow(flat, NOW)).toMatchObject({ oddsAge: null, total: { detail: 'no move' } })
+    expect(nbaSlateRow(flat, NOW, Date.parse(FETCHED))).toMatchObject({ oddsAge: null, total: { detail: null } })
   })
 
   it('gives no odds age to a final or a game with no market', () => {
-    expect(nbaSlateRow(game({ status: 'completed', awayScore: 100, homeScore: 101 }), NOW, true).oddsAge).toBeNull()
-    expect(nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW, true).oddsAge).toBeNull()
+    expect(nbaSlateRow(game({ status: 'completed', awayScore: 100, homeScore: 101 }), NOW, LATER_RUN).oddsAge).toBeNull()
+    expect(nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW, LATER_RUN).oddsAge).toBeNull()
   })
 
   it('tags a tipped-off game and keeps its latest market', () => {
@@ -198,6 +201,12 @@ describe('nbaSlateRow', () => {
     expect(row.state).toBe('started')
     expect(row.tags).toEqual(['Tipped off'])
     expect(row.note).toBe('Scores load the morning after')
+    expect(row.spread.value).toBe('DET -2.5')
+  })
+
+  it('reads a game five hours past tip-off with no final as result pending, with no odds age', () => {
+    const row = nbaSlateRow(game(), new Date('2026-10-21T05:00:00Z'), LATER_RUN)
+    expect([row.state, row.tags, row.note, row.oddsAge]).toEqual(['pending', ['Result pending'], 'Scores load the morning after', null])
     expect(row.spread.value).toBe('DET -2.5')
   })
 

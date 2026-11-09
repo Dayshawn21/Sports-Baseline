@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSlateCommand } from '~/components/shared/SlateCommandProvider'
-import { firstSlateCommandPath, matchingSlateCommandTargets, normalizeSlateCommand } from '~/utils/slateCommand'
+import { firstSlateCommandPath, matchingSlateCommandTargets, normalizeSlateCommand, slateCommandPlaceholder } from '~/utils/slateCommand'
 import { sportViewForPath } from '~/utils/sportNav'
 import '~/components/shared/slate-command.css'
 
@@ -12,12 +12,6 @@ interface Props {
   mobile?: boolean
   mobileExpanded?: boolean
   onMobileExpandedChange?: (expanded: boolean) => void
-}
-
-function placeholder(pathname: string, ready: boolean): string {
-  if (!ready) return 'Slate search loading...'
-  if (sportViewForPath(pathname) !== 'slate') return 'Jump to another game or player...'
-  return pathname.startsWith('/nhl') ? 'Search teams or games...' : 'Jump to a match or player...'
 }
 
 function resultCount(count: number): string {
@@ -146,7 +140,7 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-activedescendant={open && selectedIndex >= 0 ? `${listId}-option-${selectedIndex}` : undefined}
-          placeholder={placeholder(pathname, scope !== null)}
+          placeholder={slateCommandPlaceholder(pathname, scope !== null)}
           disabled={!scope}
           value={query}
           onChange={event => setQuery(event.target.value)}

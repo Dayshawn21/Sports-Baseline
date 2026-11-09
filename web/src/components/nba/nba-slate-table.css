@@ -1,7 +1,7 @@
 /* The NBA slate as rows (38c2), on the NFL table's classes: Tip takes the kickoff column, and the muted
    market win probability takes the model's place. */
 .nba-slate-table col.is-win { width: 100px; }
-.nba-slate-table col.is-notes { width: 264px; }
+.nba-slate-table col.is-notes { width: 240px; }
 /* Notes already say "Tipped off" here; a phone, which hides the notes, shows it in the tip's place. */
 .nba-slate-table .nba-slate-table__state { display: none; }
 
@@ -13,7 +13,7 @@
   .nba-slate-table tr.is-final .nba-slate-table__win,
   .nba-slate-table tr.is-off .nfl-slate-table__moneyline,
   .nba-slate-table tr.is-off .nba-slate-table__win { display: none; }
-  .nba-slate-table tr.is-started .nba-slate-table__time { display: none; }
-  .nfl-slate-table.nba-slate-table tr.is-started .nba-slate-table__state { display: inline; margin-left: 0; }
+  .nba-slate-table tr:is(.is-started, .is-pending) .nba-slate-table__time { display: none; }
+  .nfl-slate-table.nba-slate-table tr:is(.is-started, .is-pending) .nba-slate-table__state { display: inline; margin-left: 0; }
   .nba-slate-table .nfl-slate-table__notes { display: none; }
 }

@@ -217,6 +217,8 @@ describe('slateDigest', () => {
 describe('nflSlateRow', () => {
   const BEFORE = new Date('2026-10-04T12:00:00Z')
   const DURING = new Date('2026-10-04T18:00:00Z')
+  // The slate's newest fetch, from a later run than the notes' 2026-10-03 14:00 fetch.
+  const LATER_RUN = Date.parse('2026-10-03T20:00:00Z')
   const ODDS = { book: 'draftkings', homeMoneyline: -142, awayMoneyline: 120, homeSpread: -2.5, total: 48.5 }
   const MODEL = { modelVersion: 'nfl-elo-v1', homeElo: 1550, awayElo: 1500, homeWinProbability: 0.57, homeSpread: -1, total: 46.9, marketHomeWinProbability: 0.58 }
   const DOME = { venueType: 'dome' as const, forecastFor: null, temperatureF: null, windMph: null, windGustMph: null, precipitationProbability: null, fetchedAt: null }
@@ -284,7 +286,7 @@ describe('nflSlateRow', () => {
 
     const row = nflSlateRow(upcoming, gameNotes, BEFORE)
 
-    expect([row.state, row.kickoff, row.away.record, row.home.record]).toEqual(['upcoming', 'Sun 12:00 PM', '2-1', 'No games yet'])
+    expect([row.state, row.kickoff, row.away.record, row.home.record]).toEqual(['upcoming', 'Sun 12:00 PM CT', '2-1', 'No games yet'])
     expect([row.spread, row.total, row.moneyline]).toEqual([
       { value: 'H1 -2.5', detail: 'opened H1 -1.5' }, { value: '48.5', detail: 'no move' }, { value: 'H1 -142', detail: 'A1 +120' },
     ])
@@ -293,25 +295,26 @@ describe('nflSlateRow', () => {
     expect([row.conditions, row.injuries, row.shortWeek, row.qbChange]).toEqual(['Indoor', { out: 1, doubtful: 0, questionable: 1 }, ['A1'], []])
   })
 
-  it('shows each row its own odds age and drops "no move" while the slate odds are stale', () => {
+  it('shows a row its own odds age only when it differs from the slate newest fetch, and drops "no move" while the slate odds are stale', () => {
     const upcoming = game(1, '2026-10-04T17:00:00Z', { odds: ODDS })
     const gameNotes = notes(1, { lineMovement: [lineMove('spread', -1.5, -2.5, -1), lineMove('total', 48.5, 48.5, 0)] })
 
-    const row = nflSlateRow(upcoming, gameNotes, BEFORE, true)
+    const row = nflSlateRow(upcoming, gameNotes, BEFORE, LATER_RUN)
 
     expect(row.oddsAge).toBe('as of Sat')
     expect([row.spread.detail, row.total.detail]).toEqual(['opened H1 -1.5', null])
-    expect(nflSlateRow(upcoming, gameNotes, BEFORE, false).oddsAge).toBeNull()
+    expect(nflSlateRow(upcoming, gameNotes, BEFORE).oddsAge).toBeNull()
+    expect(nflSlateRow(upcoming, gameNotes, BEFORE, Date.parse('2026-10-03T14:20:00Z')).oddsAge).toBeNull()
   })
 
   it('says a stale row fetch time is not stored rather than guessing, and gives no age to a row without odds', () => {
-    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z', { odds: ODDS }), undefined, BEFORE, true).oddsAge).toBe('odds time not stored')
-    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z'), undefined, BEFORE, true).oddsAge).toBeNull()
+    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z', { odds: ODDS }), undefined, BEFORE, LATER_RUN).oddsAge).toBe('odds time not stored')
+    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z'), undefined, BEFORE, LATER_RUN).oddsAge).toBeNull()
   })
 
   it('gives a final no odds age even on a stale slate', () => {
     const played = game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS })
-    expect(nflSlateRow(played, notes(1, { awayScore: 17, homeScore: 24 }), DURING, true).oddsAge).toBeNull()
+    expect(nflSlateRow(played, notes(1, { awayScore: 17, homeScore: 24 }), DURING, LATER_RUN).oddsAge).toBeNull()
   })
 
   it('marks a live game with no stored score as score pending, and one with a score as not', () => {
@@ -321,10 +324,22 @@ describe('nflSlateRow', () => {
     expect(nflSlateRow(live, notes(1), BEFORE).scorePending).toBe(false)
   })
 
+  it('reads a game five hours past kickoff with no final as result pending: no tags or odds age, market kept', () => {
+    const snf = game(1, '2026-10-04T17:00:00Z', { odds: ODDS })
+    const gameNotes = notes(1, { injuries: [injury('Out')], lineMovement: [lineMove('spread', -1.5, -2.5, -1), lineMove('total', 48.5, 48.5, 0)] })
+    const morning = new Date('2026-10-05T03:00:00Z')
+
+    const row = nflSlateRow(snf, gameNotes, morning, LATER_RUN)
+
+    expect([row.state, row.kickoff, row.spread.value, row.scorePending]).toEqual(['pending', 'Sun 12:00 PM CT', 'H1 -2.5', false])
+    expect([row.injuries, row.oddsAge, row.total.detail]).toEqual([null, null, null])
+    expect(nflSlateRow(snf, gameNotes, new Date('2026-10-04T21:59:00Z')).state).toBe('live')
+  })
+
   it('marks a kicked-off game live and keeps its market', () => {
     const row = nflSlateRow(game(1, '2026-10-04T17:00:00Z', { odds: ODDS }), undefined, DURING)
 
-    expect([row.state, row.kickoff, row.spread.value]).toEqual(['live', 'Sun 12:00 PM', 'H1 -2.5'])
+    expect([row.state, row.kickoff, row.spread.value]).toEqual(['live', 'Sun 12:00 PM CT', 'H1 -2.5'])
   })
 
   it('grades a final against its close and drops the pre-game tags', () => {

@@ -74,6 +74,12 @@ function activeSport(pathname: string): SportDefinition | null {
   return sportViewEntry(pathname)?.sport ?? SPORTS.find(sport => pathname.startsWith(sport.prefix)) ?? null
 }
 
+/** The sport code a path belongs to, as `activeSport` reads it; null outside every sport. */
+export function sportForPath(pathname: string): Sport | null {
+  const code = activeSport(pathname)?.code
+  return SPORTS.find(sport => sport.code === code)?.code ?? null
+}
+
 export interface ShellSportTab { code: Sport, label: string, path: string, active: boolean }
 export interface ShellViewTab { view: SportView, label: string, path: string, active: boolean }
 export interface ShellLink { key: string, label: string, active: boolean }

@@ -169,7 +169,7 @@ export default function TennisIntelligencePage() {
           meta={primaryLoading ? periodLabel : slatePeriodLine([
             periodLabel,
             countPart(matches.length, 'match', 'matches'),
-            countPart(propCount, 'player prop'),
+            propCount > 0 && countPart(propCount, 'player prop'),
           ])}
           period={{
             label: 'Slate date',
