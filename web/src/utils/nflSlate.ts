@@ -5,6 +5,7 @@ import { marketLabel } from '~/utils/nflLabels'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
+import { latestTime, oddsAsOf } from '~/utils/slatePeriod'
 import { compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 
@@ -155,8 +156,32 @@ export interface NflSlateDigestItem {
   line: string
   model: string
   modelLabel?: string
-  /** Signed edge share against the category's reference line, as on the prop cards. */
+  /** Signed edge share against the category's reference line, as on the prop cards (the home page's gaps table). */
   gap: string
+  /** The digest box's lead: model minus line in the market's units ("+32.6 yds"). */
+  gapUnits: string
+  /** The same edge sized against a typical line ("107% of a typical line"); unsigned, so it never reads as a change. */
+  gapScaled: string | null
+}
+
+const MARKET_UNITS: Record<string, string> = {
+  passing_yards: 'yds', rushing_yards: 'yds', receiving_yards: 'yds', rushing_receiving_yards: 'yds', passing_rushing_yards: 'yds',
+  passing_attempts: 'att', rushing_attempts: 'att', passing_completions: 'comp', receptions: 'rec', receiving_targets: 'tgt',
+  passing_touchdowns: 'TD', passing_rushing_receiving_touchdowns: 'TD', interceptions: 'INT', fantasy_points: 'pts',
+  kicking_points: 'pts', field_goals_made: 'FG', punts: 'punts',
+}
+
+/** Model minus line in the market's own units: "+32.6 yds", "-2.8 comp"; a market with no unit shows the number alone. */
+export function gapUnitsLabel(edge: number | null, market: string): string {
+  if (edge === null) return MISSING
+  const sign = edge > 0 ? '+' : edge < 0 ? '-' : ''
+  const unit = MARKET_UNITS[market]
+  return `${sign}${Math.abs(edge).toFixed(1)}${unit ? ` ${unit}` : ''}`
+}
+
+/** The edge share as a size, not a change: "107% of a typical line". */
+export function gapScaledLabel(share: number | null): string | null {
+  return share === null ? null : `${Math.round(Math.abs(share) * 100)}% of a typical line`
 }
 
 function digestKickoff(startUtc: string | null): string {
@@ -179,6 +204,8 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
     model: row.projection?.toFixed(1) ?? MISSING,
     ...(isTargetsReference(row.market) ? { modelLabel: 'reference' } : {}),
     gap: edgePctLabel(share),
+    gapUnits: gapUnitsLabel(row.edge, row.market),
+    gapScaled: gapScaledLabel(share),
   }))
 }
 
@@ -220,6 +247,10 @@ export interface NflSlateRowModel {
   shortWeek: string[]
   /** Teams whose QB differs from the one the muted model was built on. */
   qbChange: string[]
+  /** "as of Tue" while the slate's odds are stale and the game is not final; else null. */
+  oddsAge: string | null
+  /** Live with no stored score; the score loads after the game. */
+  scorePending: boolean
 }
 
 const NO_CELL: NflSlateRowCell = { value: MISSING, detail: null }
@@ -237,10 +268,11 @@ function lineMove(notes: NflGameNotes | undefined, market: NflLineMove['market']
   return notes?.lineMovement.find(move => move.market === market) ?? null
 }
 
-/** "opened BUF -1.5", "no move", or null when only one line is stored. */
-function openedLabel(move: NflLineMove | null, format: (line: number) => string): string | null {
+/** "opened BUF -1.5", "no move", or null when only one line is stored. Stale odds never claim "no move": the line was not checked since. */
+function openedLabel(move: NflLineMove | null, format: (line: number) => string, stale: boolean): string | null {
   if (move === null || move.move === null) return null
-  return move.move === 0 ? 'no move' : `opened ${format(move.openLine)}`
+  if (move.move === 0) return stale ? null : 'no move'
+  return `opened ${format(move.openLine)}`
 }
 
 function moneylineCell(odds: NflGameOdds | null, homeTeam: string, awayTeam: string): NflSlateRowCell {
@@ -254,15 +286,21 @@ function moneylineCell(odds: NflGameOdds | null, homeTeam: string, awayTeam: str
   return { value: favorite, detail: other }
 }
 
-function marketSpread(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+function marketSpread(game: NflSlateGame, notes: NflGameNotes | undefined, stale: boolean): NflSlateRowCell {
   if (game.odds === null) return NO_CELL
   const spread = (line: number) => spreadLabel(line, game.homeTeam, game.awayTeam)
-  return { value: game.odds.homeSpread === null ? MISSING : spread(game.odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread) }
+  return { value: game.odds.homeSpread === null ? MISSING : spread(game.odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread, stale) }
 }
 
-function marketTotal(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+function marketTotal(game: NflSlateGame, notes: NflGameNotes | undefined, stale: boolean): NflSlateRowCell {
   if (game.odds === null) return NO_CELL
-  return { value: game.odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1)) }
+  return { value: game.odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1), stale) }
+}
+
+/** The game's newest pre-kickoff fetch; the slate's odds carry no time of their own, so this reads the line movement. */
+function rowOddsAge(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date): string | null {
+  if (game.odds === null) return null
+  return oddsAsOf(latestTime((notes?.lineMovement ?? []).map(move => move.currentFetchedAt)), now.getTime())
 }
 
 /** Home spread in book sign: the home side covers when its margin plus the line is positive. */
@@ -312,10 +350,11 @@ function rowKickoff(game: NflSlateGame): string {
   return time === null ? MISSING : DAY_CLOCK.format(time).replace(',', '')
 }
 
-/** One slate row, from the slate game and its game notes. */
-export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date): NflSlateRowModel {
+/** One slate row, from the slate game and its game notes. `oddsStale` is the period line's stale-odds check. */
+export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date, oddsStale = false): NflSlateRowModel {
   const state = rowState(game, now)
   const final = state === 'final'
+  const stale = oddsStale && !final
   const awayScore = notes?.awayScore ?? null
   const homeScore = notes?.homeScore ?? null
   return {
@@ -324,8 +363,8 @@ export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined,
     kickoff: final ? 'Final' : rowKickoff(game),
     away: rowTeam(game.awayTeam, game.awayContext, awayScore, homeScore),
     home: rowTeam(game.homeTeam, game.homeContext, homeScore, awayScore),
-    spread: final ? closeSpread(game, notes) : marketSpread(game, notes),
-    total: final ? closeTotal(notes) : marketTotal(game, notes),
+    spread: final ? closeSpread(game, notes) : marketSpread(game, notes, stale),
+    total: final ? closeTotal(notes) : marketTotal(game, notes, stale),
     moneyline: final ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
     model: modelLines(game),
     props: groupNflPropRows(game.lines).length,
@@ -333,5 +372,7 @@ export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined,
     injuries: final ? null : injuryCounts(notes),
     shortWeek: final ? [] : [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : []),
     qbChange: final ? [] : qbChanges(notes).map(change => change.team),
+    oddsAge: stale ? rowOddsAge(game, notes, now) : null,
+    scorePending: state === 'live' && (awayScore === null || homeScore === null),
   }
 }

@@ -39,14 +39,14 @@ function PuckDrop({ row }: { row: NhlSlateRowModel }) {
 const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'win', 'props', 'notes']
 
 /** One date's games, one row each; a row opens its game page. Display only, every tag gray. */
-export function NhlSlateTable({ rows }: { rows: NhlSlateRowModel[] }) {
+export function NhlSlateTable({ rows, label = 'Games' }: { rows: NhlSlateRowModel[], label?: string }) {
   const navigate = useNavigate()
   const open = (event: MouseEvent, gameId: number) => {
     // The Game link handles its own clicks, so a click on it never navigates twice.
     if (event.target instanceof Element && event.target.closest('a')) return
     navigate(`/nhl/game/${gameId}`)
   }
-  return <table className="nfl-slate-table nhl-slate-table" aria-label="Games">
+  return <table className="nfl-slate-table nhl-slate-table" aria-label={label}>
     <colgroup>{COLUMNS.map(column => <col key={column} className={`is-${column}`} />)}</colgroup>
     <thead><tr>
       <th>Puck drop</th><th>Game</th><th>Puck line</th><th>Total</th><th>Moneyline</th>
@@ -55,7 +55,7 @@ export function NhlSlateTable({ rows }: { rows: NhlSlateRowModel[] }) {
     <tbody>{rows.map(row => <tr key={row.gameId} className={`is-${row.state}`} onClick={event => open(event, row.gameId)}>
       <td className="nfl-slate-table__kickoff"><PuckDrop row={row} /></td>
       <td className="nfl-slate-table__game"><Game row={row} /></td>
-      <td className="nfl-slate-table__spread"><Value cell={row.puckLine} /></td>
+      <td className="nfl-slate-table__spread"><Value cell={row.puckLine} />{row.oddsAge !== null && <small className="nfl-slate-table__age">{row.oddsAge}</small>}</td>
       <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>
       <td className="nfl-slate-table__moneyline" data-label="ML"><Value cell={row.moneyline} /></td>
       <td className="nhl-slate-table__win is-muted" data-label="win">{row.win ?? '--'}</td>

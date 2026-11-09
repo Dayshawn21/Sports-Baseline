@@ -4,6 +4,8 @@ import {
   nhlGameState, nhlMarketCells, nhlPuckDropLabel, nhlTimeLabel, type NhlGameState,
 } from '~/utils/nhlGame'
 
+import { latestTime, oddsAsOf } from '~/utils/slatePeriod'
+
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 
 type NhlSlateContextView = ReturnType<typeof nhlSlateContext>
@@ -67,10 +69,13 @@ export interface NhlSlateRowModel {
   win: string | null
   props: number
   tags: string[]
+  /** "as of Tue" while the slate's odds are stale, for a game with a market that is not settled; else null. */
+  oddsAge: string | null
 }
 
 /** One game as a slate row: book and fetch time stay on the game page, named once in the legend. */
-export function nhlSlateRow(game: NhlSlateGame, now: Date): NhlSlateRowModel {
+/** `oddsStale` is the period line's stale-odds check. */
+export function nhlSlateRow(game: NhlSlateGame, now: Date, oddsStale = false): NhlSlateRowModel {
   const { state, label } = nhlGameState(game, now)
   const [puckLine, total, moneyline] = nhlMarketCells(game).map(({ value, detail }) => ({ value, detail }))
   const context = nhlSlateContext(game.context, game.awayTeam, game.homeTeam, game.startUtc, now)
@@ -80,6 +85,9 @@ export function nhlSlateRow(game: NhlSlateGame, now: Date): NhlSlateRowModel {
     home: { code: game.homeTeam, name: game.homeTeamName, score: state === 'final' ? game.homeScore : null },
     puckLine, total, moneyline, win: nhlWinLabel(game, state), props: game.propLineCount,
     tags: nhlNoteTags(context, state, game.awayTeam, game.homeTeam),
+    oddsAge: oddsStale && !settled(state) && (game.spread || game.total || game.moneyline)
+      ? oddsAsOf(latestTime([game.spread?.fetchedAt, game.total?.fetchedAt, game.moneyline?.fetchedAt]), now.getTime())
+      : null,
   }
 }
 

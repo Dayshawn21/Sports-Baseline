@@ -61,3 +61,27 @@ export function gameSlateLine(period: string, counts: SlateCounts, startsMs: rea
     oddsPart(counts.oddsUpdated, isOddsStale(counts.oddsUpdatedMs, startsMs, now)),
   ])
 }
+
+const CENTRAL = 'America/Chicago'
+const AGE_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: CENTRAL, year: 'numeric', month: '2-digit', day: '2-digit' })
+const AGE_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
+const AGE_WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short' })
+const AGE_DATE = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, month: 'short', day: 'numeric' })
+// Under six days a weekday names one day only; past that it could mean two.
+const WEEKDAY_SPAN_MS = 6 * 24 * 60 * 60 * 1000
+
+/** The newest parseable time, as epoch milliseconds; null when none parse. */
+export function latestTime(times: readonly (string | null | undefined)[]): number | null {
+  const parsed = startTimes(times)
+  return parsed.length ? Math.max(...parsed) : null
+}
+
+/**
+ * A row's odds age, shown only while the slate's odds are stale: "as of 9:05 AM" the same Central day, "as of Tue"
+ * within six days, else "as of Oct 27". A row with prices but no stored fetch time says so rather than guessing.
+ */
+export function oddsAsOf(fetchedMs: number | null, now: number): string {
+  if (fetchedMs === null || !Number.isFinite(fetchedMs)) return 'odds time not stored'
+  if (AGE_DAY.format(fetchedMs) === AGE_DAY.format(now)) return `as of ${AGE_CLOCK.format(fetchedMs)}`
+  return `as of ${now - fetchedMs < WEEKDAY_SPAN_MS ? AGE_WEEKDAY.format(fetchedMs) : AGE_DATE.format(fetchedMs)}`
+}

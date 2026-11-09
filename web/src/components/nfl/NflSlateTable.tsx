@@ -32,8 +32,14 @@ function Notes({ row }: { row: NflSlateRowModel }) {
 }
 
 function Kickoff({ row }: { row: NflSlateRowModel }) {
-  if (row.state === 'live') return <><span className="nfl-slate-card__live">Live</span><small>{row.kickoff}</small></>
-  return <>{row.kickoff}</>
+  if (row.state !== 'live') return <>{row.kickoff}</>
+  return <><span className="nfl-slate-card__live">Live</span>{row.scorePending
+    ? <small className="nfl-slate-table__pending">score pending</small>
+    : <small>{row.kickoff}</small>}</>
+}
+
+function Spread({ row }: { row: NflSlateRowModel }) {
+  return <><Value cell={row.spread} />{row.oddsAge !== null && <small className="nfl-slate-table__age">{row.oddsAge}</small>}</>
 }
 
 const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'model', 'props', 'notes']
@@ -55,7 +61,7 @@ export function NflSlateTable({ rows, label }: { rows: NflSlateRowModel[], label
     <tbody>{rows.map(row => <tr key={row.gameId} className={`is-${row.state}`} onClick={event => open(event, row.gameId)}>
       <td className="nfl-slate-table__kickoff"><Kickoff row={row} /></td>
       <td className="nfl-slate-table__game"><Game row={row} /></td>
-      <td className="nfl-slate-table__spread"><Value cell={row.spread} /></td>
+      <td className="nfl-slate-table__spread"><Spread row={row} /></td>
       <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>
       <td className="nfl-slate-table__moneyline" data-label="ML"><Value cell={row.moneyline} /></td>
       <td className="nfl-slate-table__model is-muted" data-label="model">

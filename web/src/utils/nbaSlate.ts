@@ -3,6 +3,7 @@ import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { hasKickedOff } from '~/utils/nflGame'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
+import { latestTime, oddsAsOf } from '~/utils/slatePeriod'
 
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 
@@ -83,10 +84,11 @@ function move(game: NbaSlateGame, market: NbaLineMove['market']): NbaLineMove | 
   return game.lineMovement.find(item => item.market === market) ?? null
 }
 
-/** "opened DET -1.5", "no move", or null while only one row is stored. */
-function openedLabel(item: NbaLineMove | null, format: (line: number) => string): string | null {
+/** "opened DET -1.5", "no move", or null while only one row is stored. Stale odds never claim "no move": the line was not checked since. */
+function openedLabel(item: NbaLineMove | null, format: (line: number) => string, stale: boolean): string | null {
   if (item === null || item.openFetchedAt === item.currentFetchedAt) return null
-  return item.openLine === item.currentLine ? 'no move' : `opened ${format(item.openLine)}`
+  if (item.openLine === item.currentLine) return stale ? null : 'no move'
+  return `opened ${format(item.openLine)}`
 }
 
 function moneylineCell(game: NbaSlateGame): NbaSlateCardCell {
@@ -99,13 +101,13 @@ function moneylineCell(game: NbaSlateGame): NbaSlateCardCell {
   return { label: 'Moneyline', value: favorite, detail: other }
 }
 
-function marketCells(game: NbaSlateGame): NbaSlateCardCell[] | null {
+function marketCells(game: NbaSlateGame, stale: boolean): NbaSlateCardCell[] | null {
   if (game.moneyline === null && game.spread === null && game.total === null) return null
   const spread = (line: number) => spreadLabel(line, game.homeTeam, game.awayTeam)
   const total = (line: number) => line.toFixed(1)
   return [
-    { label: 'Spread', value: game.spread === null ? MISSING : spread(game.spread.homeLine), detail: openedLabel(move(game, 'spread'), spread) },
-    { label: 'Total', value: game.total === null ? MISSING : total(game.total.line), detail: openedLabel(move(game, 'total'), total) },
+    { label: 'Spread', value: game.spread === null ? MISSING : spread(game.spread.homeLine), detail: openedLabel(move(game, 'spread'), spread, stale) },
+    { label: 'Total', value: game.total === null ? MISSING : total(game.total.line), detail: openedLabel(move(game, 'total'), total, stale) },
     moneylineCell(game),
   ]
 }
@@ -154,7 +156,8 @@ function propsLabel(count: number): string {
   return count === 1 ? '1 prop line' : `${count} prop lines`
 }
 
-export function nbaSlateCard(game: NbaSlateGame, now: Date): NbaSlateCardModel {
+/** `oddsStale` is the slate's stale-odds check; the game page leaves it off. */
+export function nbaSlateCard(game: NbaSlateGame, now: Date, oddsStale = false): NbaSlateCardModel {
   const { state, label } = cardState(game, now)
   const final = state === 'final'
   return {
@@ -165,7 +168,7 @@ export function nbaSlateCard(game: NbaSlateGame, now: Date): NbaSlateCardModel {
     away: cardTeam(game.awayTeam, game.awayTeamName, game.awayRecord, game.awayScore, game.homeScore, final),
     home: cardTeam(game.homeTeam, game.homeTeamName, game.homeRecord, game.homeScore, game.awayScore, final),
     winBar: state === 'off' ? null : winBar(game),
-    market: state === 'off' ? null : marketCells(game),
+    market: state === 'off' ? null : marketCells(game, oddsStale && state !== 'final'),
     final: final ? finalCells(game) : null,
     props: propsLabel(game.propLineCount),
   }
@@ -278,6 +281,8 @@ export interface NbaSlateRowModel {
   props: number
   tags: string[]
   note: string | null
+  /** "as of Tue" while the slate's odds are stale, for a game with a market that is not final or off; else null. */
+  oddsAge: string | null
 }
 
 const NO_CELL: NbaSlateRowCell = { value: MISSING, detail: null }
@@ -293,8 +298,8 @@ function winLabel(card: NbaSlateCardModel): string | null {
   return home >= away ? `${card.home.code} ${home}%` : `${card.away.code} ${away}%`
 }
 
-export function nbaSlateRow(game: NbaSlateGame, now: Date): NbaSlateRowModel {
-  const card = nbaSlateCard(game, now)
+export function nbaSlateRow(game: NbaSlateGame, now: Date, oddsStale = false): NbaSlateRowModel {
+  const card = nbaSlateCard(game, now, oddsStale)
   const final = card.state === 'final'
   const off = card.state === 'off'
   const started = card.state === 'started'
@@ -311,5 +316,8 @@ export function nbaSlateRow(game: NbaSlateGame, now: Date): NbaSlateRowModel {
     props: game.propLineCount,
     tags: started ? ['Tipped off'] : [],
     note: started ? 'Scores load the morning after' : null,
+    oddsAge: oddsStale && !final && !off && card.market !== null
+      ? oddsAsOf(latestTime([game.spread?.fetchedAt, game.total?.fetchedAt, game.moneyline?.fetchedAt]), now.getTime())
+      : null,
   }
 }

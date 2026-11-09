@@ -37,3 +37,17 @@
 }
 .nfl-slate-window__title::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
 .nfl-slate-window__title small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+/* Finished games sit last in one window that starts closed (P1, 2026-11-09 critique); its title is the toggle. */
+.slate-finals:not(.is-open) .nfl-slate-window__title { margin-bottom: 0; }
+.slate-finals__toggle {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 32px; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
+}
+.slate-finals__toggle:hover { color: var(--text-primary); }
+.slate-finals__toggle:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 2px; }
+.slate-finals__chevron { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms ease-out; }
+.slate-finals.is-open .slate-finals__chevron { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .slate-finals__chevron { transition: none; } }
+@media (max-width: 767px) { .slate-finals__toggle { min-height: 44px; } }
+/* Closed, the window is one line; full card padding would make it look like an empty table. */
+@media (min-width: 768px) { .slate-finals:not(.is-open) { padding-block: 8px; } }

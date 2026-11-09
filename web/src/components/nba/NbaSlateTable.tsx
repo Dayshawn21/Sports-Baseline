@@ -23,14 +23,14 @@ function Game({ row }: { row: NbaSlateRowModel }) {
 const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'win', 'props', 'notes']
 
 /** One date's games, one row each; a row opens its game page. Display only, never green. */
-export function NbaSlateTable({ rows }: { rows: NbaSlateRowModel[] }) {
+export function NbaSlateTable({ rows, label = 'Games' }: { rows: NbaSlateRowModel[], label?: string }) {
   const navigate = useNavigate()
   const open = (event: MouseEvent, gameId: number) => {
     // The Game link handles its own clicks, so a click on it never navigates twice.
     if (event.target instanceof Element && event.target.closest('a')) return
     navigate(`/nba/game/${gameId}`)
   }
-  return <table className="nfl-slate-table nba-slate-table" aria-label="Games">
+  return <table className="nfl-slate-table nba-slate-table" aria-label={label}>
     <colgroup>{COLUMNS.map(column => <col key={column} className={`is-${column}`} />)}</colgroup>
     <thead><tr>
       <th>Tip</th><th>Game</th><th>Spread</th><th>Total</th><th>Moneyline</th>
@@ -42,7 +42,7 @@ export function NbaSlateTable({ rows }: { rows: NbaSlateRowModel[] }) {
         {row.state === 'started' && <small className="nba-slate-table__state">Tipped off</small>}
       </td>
       <td className="nfl-slate-table__game"><Game row={row} /></td>
-      <td className="nfl-slate-table__spread"><Value cell={row.spread} /></td>
+      <td className="nfl-slate-table__spread"><Value cell={row.spread} />{row.oddsAge !== null && <small className="nfl-slate-table__age">{row.oddsAge}</small>}</td>
       <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>
       <td className="nfl-slate-table__moneyline" data-label="ML"><Value cell={row.moneyline} /></td>
       <td className="nba-slate-table__win is-muted" data-label="win">{row.win ?? '--'}</td>
