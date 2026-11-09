@@ -11,7 +11,7 @@ remote verification. It does not reduce API usage or change provider limits.
 | Tennis Game Odds | `tennis-odds.yml` | Every four hours at :10 | Run directly; next 14 hours |
 | Tennis Total Games | `tennis-totals.yml` | Daily 12:45 | Run directly; next 24 hours |
 | Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 | Run directly |
-| Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30 | `predictions` or `tennis-elo-comparison` |
+| Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30; shadow freeze also after each successful Tennis Game Odds run, once that day's candidate ELO is cached | `predictions` or `tennis-elo-comparison` |
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
 | Tennis Player Stats | `tennis-player-stats.yml` | Daily 10:00 | Run directly |
 | Tennis Prop Adoption | `tennis-prop-adoption.yml` | None (manual, 48g) | `version`, `dry_run` (default true) |
