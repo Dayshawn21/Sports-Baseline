@@ -38,7 +38,8 @@ export const SLATE_LEGENDS: Record<Sport, SlateLegendContent> = {
     ],
     pick: [
       'No NHL picks or projections.',
-      'Prices are stored book prices; win probability is de-vigged per book, and props are line-only.',
+      'Prices are stored book prices: DraftKings, else the latest of FanDuel and bet365.',
+      'Win probability is de-vigged per book, and props are line-only.',
       'Goalies and injuries are ESPN reports, which may miss late changes.',
     ],
   },

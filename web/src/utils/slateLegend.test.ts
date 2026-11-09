@@ -23,6 +23,11 @@ describe('SLATE_LEGENDS', () => {
     expect(noPicks).toEqual(['nfl', 'nba', 'nhl'])
     for (const code of noPicks) expect(SLATE_LEGENDS[code].pick[0]).toMatch(/^No .*picks/)
   })
+
+  it('names the NHL book order once, since the slate cells no longer show a book', () => {
+    const text = legendText(SLATE_LEGENDS.nhl).join(' ')
+    for (const book of ['DraftKings', 'FanDuel', 'bet365']) expect(text.split(book)).toHaveLength(2)
+  })
 })
 
 describe('tennisLegend', () => {

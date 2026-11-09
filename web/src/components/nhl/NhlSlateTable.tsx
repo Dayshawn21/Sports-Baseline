@@ -1,42 +1,51 @@
-import { Fragment, type MouseEvent } from 'react'
+import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { NhlSlateContext } from '~/components/nhl/NhlSlateContext'
-import { nhlBookLabel, nhlTimeLabel, type NhlMarketCell } from '~/utils/nhlGame'
-import type { nhlSlateRow } from '~/utils/nhlSlate'
+import type { NhlSlateRowCell, NhlSlateRowModel } from '~/utils/nhlSlate'
+import '~/components/nfl/nfl-slate-card.css'
+import '~/components/nfl/nfl-slate-table.css'
 
-type SlateRow = ReturnType<typeof nhlSlateRow>
-
-function Market({ cell }: { cell: NhlMarketCell }) {
-  return <><span>{cell.value}</span><small>{cell.detail}</small>
-    {cell.book !== null && <small className="nhl-slate-source">{nhlBookLabel(cell.book)}
-      {cell.fetchedAt !== null && <time dateTime={cell.fetchedAt}>{nhlTimeLabel(cell.fetchedAt, true)}</time>}
-    </small>}
-  </>
+function Value({ cell }: { cell: NhlSlateRowCell }) {
+  return <>{cell.value}{cell.detail !== null && <small>{cell.detail}</small>}</>
 }
 
-export function NhlSlateTable({ rows }: { rows: SlateRow[] }) {
+function Game({ row }: { row: NhlSlateRowModel }) {
+  const { away, home } = row
+  const names = `${away.name} · ${home.name}`
+  return <Link to={`/nhl/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
+    {away.score !== null && home.score !== null
+      ? `${away.code} ${away.score} · ${home.code} ${home.score}`
+      : `${away.code} @ ${home.code}`}
+    <small title={names}>{names}</small>
+  </Link>
+}
+
+const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'win', 'props', 'notes']
+
+/** One date's games, one row each; a row opens its game page. Display only, every tag gray. */
+export function NhlSlateTable({ rows }: { rows: NhlSlateRowModel[] }) {
   const navigate = useNavigate()
   const open = (event: MouseEvent, gameId: number) => {
+    // The Game link handles its own clicks, so a click on it never navigates twice.
     if (event.target instanceof Element && event.target.closest('a')) return
     navigate(`/nhl/game/${gameId}`)
   }
-  return <table className="nhl-slate-table" aria-label="Games">
-    <thead><tr><th scope="col">Puck drop (CT)</th><th scope="col">Game</th><th scope="col">Puck line</th>
-      <th scope="col">Total</th><th scope="col">Moneyline</th><th scope="col">Win probability <small>market</small></th><th scope="col">Props</th></tr></thead>
-    <tbody>{rows.map(row => <Fragment key={row.gameId}><tr onClick={event => open(event, row.gameId)}>
-      <td className="nhl-slate-when">{row.puckDrop}<small>{row.stateLabel}</small></td>
-      <td className="nhl-slate-game"><Link to={`/nhl/game/${row.gameId}`} aria-label={`${row.away.code} at ${row.home.code}, open game page`}>
-        {row.away.score !== null && row.home.score !== null
-          ? `${row.away.code} ${row.away.score} / ${row.home.code} ${row.home.score}`
-          : `${row.away.code} @ ${row.home.code}`}
-      </Link><small>{row.away.name}<br />{row.home.name}</small></td>
-      <td data-label="Puck line"><Market cell={row.puckLine} /></td>
-      <td data-label="Total"><Market cell={row.total} /></td>
-      <td data-label="Moneyline"><Market cell={row.moneyline} /></td>
-      <td data-label="Market win probability"><Market cell={row.probability} /></td>
-      <td className="nhl-slate-props" data-label="Props">{row.props}</td>
-    </tr><tr className="nhl-slate-context-row" onClick={event => open(event, row.gameId)}><td colSpan={7}>
-      <NhlSlateContext context={row.context} away={row.away.code} home={row.home.code} />
-    </td></tr></Fragment>)}</tbody>
+  return <table className="nfl-slate-table nhl-slate-table" aria-label="Games">
+    <colgroup>{COLUMNS.map(column => <col key={column} className={`is-${column}`} />)}</colgroup>
+    <thead><tr>
+      <th>Puck drop</th><th>Game</th><th>Puck line</th><th>Total</th><th>Moneyline</th>
+      <th>Win <small>market</small></th><th className="is-num">Props</th><th>Notes</th>
+    </tr></thead>
+    <tbody>{rows.map(row => <tr key={row.gameId} className={`is-${row.state}`} onClick={event => open(event, row.gameId)}>
+      <td className="nfl-slate-table__kickoff">{row.puckDrop}<small>{row.stateLabel}</small></td>
+      <td className="nfl-slate-table__game"><Game row={row} /></td>
+      <td className="nfl-slate-table__spread"><Value cell={row.puckLine} /></td>
+      <td className="nfl-slate-table__total" data-label="o/u"><Value cell={row.total} /></td>
+      <td className="nfl-slate-table__moneyline" data-label="ML"><Value cell={row.moneyline} /></td>
+      <td className="nhl-slate-table__win is-muted" data-label="win">{row.win ?? '--'}</td>
+      <td className="nfl-slate-table__props is-num">{row.props}<span className="nfl-slate-table__unit"> props</span></td>
+      <td className="nfl-slate-table__notes"><span className="nfl-slate-table__tags">
+        {row.tags.map(tag => <span key={tag} className="nfl-slate-card__tag">{tag}</span>)}
+      </span></td>
+    </tr>)}</tbody>
   </table>
 }
