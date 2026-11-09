@@ -1,0 +1,16 @@
+/* Shared by the NBA and NHL player panels (NFL keeps its own block for now). Gray only: a projection is never a pick. */
+.player-projection { display: grid; gap: var(--space-1); padding: var(--space-4); }
+.player-projection__label { color: var(--text-secondary); font-size: 13px; }
+.player-projection__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-6); }
+.player-projection__row strong {
+  color: var(--text-primary); font: 500 48px/1 var(--font-mono); letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+}
+.player-projection__row strong.is-none { color: var(--text-muted); font-size: 28px; letter-spacing: -0.01em; }
+.player-projection__facts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); margin: 0 0 4px; }
+.player-projection__facts dt { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.player-projection__facts dd { margin: 2px 0 0; color: var(--text-secondary); font: 400 13px var(--font-mono); }
+.player-projection__delta { margin: var(--space-1) 0 0; color: var(--text-secondary); font: 400 14px var(--font-mono); }
+.player-projection__reason { max-width: 68ch; margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: 13px; }
+@media (max-width: 767px) {
+  .player-projection__row strong { font-size: 40px; }
+}

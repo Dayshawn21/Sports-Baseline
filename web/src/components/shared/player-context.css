@@ -1,0 +1,4 @@
+.player-form-averages { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); margin: 0; padding: 14px 16px; }
+.player-form-averages dt { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.player-form-averages dd { margin: 3px 0 0; color: var(--text-primary); font: 500 16px var(--font-mono); font-variant-numeric: tabular-nums; }
+.player-form-averages dd small { color: var(--text-muted); font-size: 11px; }

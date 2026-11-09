@@ -3,19 +3,13 @@ import { Fragment } from 'react'
 import { NbaInjuryEvidence } from '~/components/nba/NbaInjury'
 import { NbaOpponentEvidence } from '~/components/nba/NbaOpponentEvidence'
 import { NbaPlayerFormSection } from '~/components/nba/NbaPlayerFormSection'
+import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
+import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import type { NbaPlayerMarket, NbaPlayerProps } from '~/types/nba'
 import { ODDS_TYPE_LABELS } from '~/utils/nflLabels'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
-import { nbaPercentText, nbaRungNotes } from '~/utils/nbaPlayer'
+import { nbaPercentText, nbaProjectionHero, nbaRungNotes } from '~/utils/nbaPlayer'
 import { signedGap } from '~/utils/nbaProps'
-
-function Facts({ market }: { market: NbaPlayerMarket }) {
-  return <dl className="nba-player-facts">
-    <div><dt>Projection</dt><dd>{market.projection === null ? '--' : market.projection.toFixed(1)}</dd></div>
-    <div><dt>Games</dt><dd>{market.gamesInSample ?? '--'}</dd></div>
-    <div><dt>Avg minutes</dt><dd>{market.priorMinutes === null ? '--' : market.priorMinutes.toFixed(1)}</dd></div>
-  </dl>
-}
 
 function Rungs({ market }: { market: NbaPlayerMarket }) {
   const modelled = market.kind === 'modelled'
@@ -46,9 +40,10 @@ function Rungs({ market }: { market: NbaPlayerMarket }) {
   </section>
 }
 
-/** One market's tab on the player page: its lines, the gray reference projection when modelled, and the injury and opponent evidence. */
+/** One market's tab on the player page: the gray reference projection when modelled, recent form, its lines, then the injury and opponent evidence, closed. */
 export function NbaPlayerMarketSection({ id, player, market }: { id: string, player: NbaPlayerProps, market: NbaPlayerMarket }) {
   const modelled = market.kind === 'modelled'
+  const hero = nbaProjectionHero(market, player.modelVersion)
   return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
       <h3 id={`${id}-title`} className="nfl-player-prop__title">{nbaMarketLabel(market.market)}{!modelled && <small>reference</small>}</h3>
@@ -57,14 +52,13 @@ export function NbaPlayerMarketSection({ id, player, market }: { id: string, pla
       </span>
     </div>
     <div className="nfl-player-prop__body">
-      {modelled && <>
-        <Facts market={market} />
-        <p className="nba-player-sample">Model {player.modelVersion}</p>
-      </>}
+      {hero && <PlayerProjectionHero hero={hero} />}
       <NbaPlayerFormSection market={market} opponent={player.opponent} />
       <Rungs market={market} />
-      <NbaInjuryEvidence injury={player.injury} report={player.injuryReport} startUtc={player.game?.startUtc ?? null} now={new Date()} />
-      <NbaOpponentEvidence context={player.teamStats} team={player.team} market={market.market} />
+      <PlayerEvidence contents="Injury report, opponent allowed">
+        <NbaInjuryEvidence injury={player.injury} report={player.injuryReport} startUtc={player.game?.startUtc ?? null} now={new Date()} />
+        <NbaOpponentEvidence context={player.teamStats} team={player.team} market={market.market} />
+      </PlayerEvidence>
     </div>
   </section>
 }
