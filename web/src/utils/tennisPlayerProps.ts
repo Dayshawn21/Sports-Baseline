@@ -1,6 +1,8 @@
 import type { MatchPrediction, PlayerMatchLogRow, RecentMatchResult } from '~/types/tennis'
 import { playerSearch } from '~/utils/nflPlayer'
-import { marketKey, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
+import type { PlayerProjectionHero } from '~/utils/playerProjection'
+import { isMoneyline, isWinASet, marketKey, marketLabel, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
+import { propCard } from '~/utils/tennisPropCards'
 
 export type TennisFormWindow = '5' | '10' | 'opp'
 
@@ -169,4 +171,38 @@ export function playerPageOrigin(state: unknown): PlayerPageOrigin | null {
   if (typeof from !== 'string') return null
   const origin = ORIGINS.find(([pattern]) => pattern.test(from))
   return origin ? { path: from, label: origin[1] } : null
+}
+
+const MISSING_PROJECTION: Record<string, string> = {
+  missing_stats: 'no recent stats for this player',
+  missing_player: 'the player is not matched yet',
+  missing_match: 'the match is not linked yet',
+  unsupported_stat: 'this market is not modelled',
+}
+
+function opponentAllows(row: TennisBoardLine): string {
+  if (row.opponentStatAvg == null) return 'Unavailable'
+  return `${row.opponentStatAvg.toFixed(1)} avg${row.opponentMatchesCount ? ` · ${row.opponentMatchesCount} matches` : ''}`
+}
+
+/** The market panel's projection block, read from its first line: a stat projection against that line, or the model's win chance on a priced market. */
+export function tennisMarketHero(rows: readonly TennisBoardLine[]): PlayerProjectionHero | null {
+  const main = rows[0]
+  if (!main) return null
+  const card = propCard(main)
+  const priced = isMoneyline(main) || isWinASet(main)
+  const value = main.statAvg == null ? null : card.projectionText
+  const facts = priced ? [{ label: 'Source', value: card.source }] : [
+    { label: 'Basis', value: main.projectionSource?.replaceAll('_', ' ') ?? 'Rolling player stats' },
+    { label: 'Opp allows', value: opponentAllows(main) },
+    { label: 'Sample', value: main.matchesCount == null ? '--' : `${main.matchesCount} matches` },
+  ]
+  const why = MISSING_PROJECTION[main.projectionStatus ?? ''] ?? 'not available for this line'
+  return {
+    label: priced ? 'Model win chance' : `Projected ${marketLabel(main.statType).toLowerCase()}`,
+    value,
+    delta: value !== null && card.gapText !== null ? `${card.gapText} vs ${card.valueText} line` : null,
+    reason: value === null ? `No projection: ${why}.` : null,
+    facts,
+  }
 }
