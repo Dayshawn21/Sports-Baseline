@@ -438,6 +438,9 @@ body {
 /* ── App shell ── */
 
 .app-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: 20px;
@@ -445,6 +448,9 @@ body {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+
+.app-wordmark:hover, .app-wordmark:focus-visible { color: var(--text-primary); }
+.app-wordmark:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; border-radius: 2px; }
 
 .app-wordmark b {
   color: var(--positive);
