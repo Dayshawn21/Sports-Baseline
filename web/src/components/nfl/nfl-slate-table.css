@@ -50,6 +50,9 @@
   .nfl-slate-table .nfl-slate-table__kickoff small { display: inline; margin-left: 6px; }
   /* Once a game is live, "Live" stands in for the kickoff time, as a final's "Final" does, so line 1 never wraps. */
   .nfl-slate-table tr.is-live .nfl-slate-table__kickoff small { display: none; }
+  /* A live game with no stored score says so beside "Live", in place of the kickoff time. */
+  .nfl-slate-table tr.is-live .nfl-slate-table__kickoff .nfl-slate-table__pending { display: inline; }
+  .nfl-slate-table__pending::before { content: '· '; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
   .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
   .nfl-slate-table__props { order: 2; color: var(--text-muted); }
@@ -57,6 +60,8 @@
   .nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline, .nfl-slate-table__model { order: 4; }
   .nfl-slate-table td[data-label]::before { content: attr(data-label) ' '; color: var(--text-muted); font: 400 11px var(--font-body); }
   .nfl-slate-table .nfl-slate-table__spread small, .nfl-slate-table .nfl-slate-table__total small, .nfl-slate-table .nfl-slate-table__moneyline small { display: none; }
+  /* Stale odds keep their age beside the spread, the first price on line 2, so it reads as the row's age. */
+  .nfl-slate-table .nfl-slate-table__spread .nfl-slate-table__age { display: inline; margin-left: 6px; }
   .nfl-slate-table__notes { order: 5; flex-basis: 100%; }
   .nfl-slate-table__notes:not(:has(.nfl-slate-card__tag)) { display: none; }
   .nfl-slate-table__conditions { display: none; }

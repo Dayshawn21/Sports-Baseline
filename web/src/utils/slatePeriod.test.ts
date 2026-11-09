@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, oddsPart, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAsOf, oddsPart, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
 
 const NOW = Date.parse('2026-11-08T22:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -109,5 +109,33 @@ describe('splitTags', () => {
 
   it('treats a negative limit as zero', () => {
     expect(splitTags(['a', 'b'], -1)).toEqual({ shown: [], hidden: ['a', 'b'] })
+  })
+})
+
+describe('latestTime', () => {
+  it('returns the newest parseable time, or null', () => {
+    expect(latestTime(['2026-11-03T21:12:00Z', null, 'junk', '2026-11-01T00:00:00Z'])).toBe(Date.parse('2026-11-03T21:12:00Z'))
+    expect(latestTime([null, undefined])).toBeNull()
+  })
+})
+
+describe('oddsAsOf', () => {
+  // NOW is Sun Nov 8, 4:00 PM CT.
+  it('gives the clock for a fetch earlier the same Central day', () => {
+    expect(oddsAsOf(Date.parse('2026-11-08T15:05:00Z'), NOW)).toBe('as of 9:05 AM')
+  })
+
+  it('gives the weekday within six days', () => {
+    expect(oddsAsOf(Date.parse('2026-11-03T21:12:00Z'), NOW)).toBe('as of Tue')
+    expect(oddsAsOf(Date.parse('2026-11-08T03:00:00Z'), NOW)).toBe('as of Sat')
+  })
+
+  it('gives the date once a weekday could mean two days', () => {
+    expect(oddsAsOf(Date.parse('2026-10-27T20:08:00Z'), NOW)).toBe('as of Oct 27')
+  })
+
+  it('says so when the fetch time is not stored', () => {
+    expect(oddsAsOf(null, NOW)).toBe('odds time not stored')
+    expect(oddsAsOf(Number.NaN, NOW)).toBe('odds time not stored')
   })
 })

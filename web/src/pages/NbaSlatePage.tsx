@@ -5,6 +5,7 @@ import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
+import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
 import SlateLegend from '~/components/shared/SlateLegend'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
@@ -13,7 +14,8 @@ import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
-import { gameSlateLine, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { finalsStartOpen, openWindowTitle, slatePhase, splitFinals } from '~/utils/slateOrder'
+import { gameSlateLine, isOddsStale, startTimes, tableCountPart } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
 export default function NbaSlatePage() {
@@ -24,7 +26,10 @@ export default function NbaSlatePage() {
   const slate = useNbaSlate(requested)
   const rows = useMemo(() => {
     const now = new Date()
-    return (slate.data?.games ?? []).map(game => nbaSlateRow(game, now))
+    const all = slate.data?.games ?? []
+    // The period line's own check, so a row shows its odds age exactly when the head says "(stale)".
+    const stale = isOddsStale(nbaSlateSummary(all).oddsUpdatedMs, startTimes(all.map(game => game.startUtc)), now.getTime())
+    return all.map(game => nbaSlateRow(game, now, stale))
   }, [slate.data])
   const gaps = useNbaSlateGaps(slate.data?.date ?? null)
   // A failed digest only hides the strip; the games still render.
@@ -47,6 +52,9 @@ export default function NbaSlatePage() {
     const gameIds = new Set(matchingSlateCommandRows(commandRows, query).map(row => Number(row.path.split('/').at(-1))))
     return rows.filter(row => gameIds.has(row.gameId))
   }, [commandActive, commandRows, query, rows])
+  // Display order only: games in play, then upcoming, then postponed; finals go to one closed window at the end.
+  const split = useMemo(() => splitFinals(rows, row => slatePhase(row.state)), [rows])
+  const shown = useMemo(() => splitFinals(filteredRows, row => slatePhase(row.state)), [filteredRows])
 
   // The title stays put while the slate loads or fails, as NFL's and tennis's do.
   if (slate.isLoading || slate.isError || !slate.data) return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
@@ -73,12 +81,19 @@ export default function NbaSlatePage() {
     </div> : <>
       <NbaSlateDigest items={digest} />
       {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
-      <section className="nfl-slate-window" aria-label="Games">
-        <h2 className="nfl-slate-window__title">All games <small>{tableCountPart(filteredRows.length, rows.length, commandActive, 'game')}</small></h2>
+      {(shown.open.length > 0 || (commandActive && filteredRows.length === 0)) && <section className="nfl-slate-window" aria-label="Games">
+        <h2 className="nfl-slate-window__title">{openWindowTitle(split.finals.length)} <small>{tableCountPart(shown.open.length, split.open.length, commandActive, 'game')}</small></h2>
         {commandActive && filteredRows.length === 0
           ? <div className="nfl-empty">No games found for this slate search.</div>
-          : <NbaSlateTable rows={filteredRows} />}
-      </section>
+          : shown.open.length > 0 && <NbaSlateTable rows={shown.open} />}
+      </section>}
+      {shown.finals.length > 0 && <SlateFinalsWindow
+        key={`${date}-${commandActive}`}
+        subtitle={tableCountPart(shown.finals.length, split.finals.length, commandActive, 'game')}
+        startOpen={finalsStartOpen(split.open.length, commandActive)}
+      >
+        <NbaSlateTable label="Final games" rows={shown.finals} />
+      </SlateFinalsWindow>}
       {phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
     </>}
   </div></div>

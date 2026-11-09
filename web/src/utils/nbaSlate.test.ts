@@ -181,6 +181,18 @@ describe('nbaSlateRow', () => {
     expect(row.away).toMatchObject({ code: 'BOS', record: 'No games yet', score: null })
   })
 
+  it('gives a row its odds age and drops "no move" only while the slate odds are stale', () => {
+    // NOW is Tue Oct 6, 10:00 AM CT; the fetch was 9:34 AM the same day.
+    const flat = game({ lineMovement: [moved('total', 221.5, 221.5)] })
+    expect(nbaSlateRow(flat, NOW, true)).toMatchObject({ oddsAge: 'as of 9:34 AM', total: { detail: null } })
+    expect(nbaSlateRow(flat, NOW)).toMatchObject({ oddsAge: null, total: { detail: 'no move' } })
+  })
+
+  it('gives no odds age to a final or a game with no market', () => {
+    expect(nbaSlateRow(game({ status: 'completed', awayScore: 100, homeScore: 101 }), NOW, true).oddsAge).toBeNull()
+    expect(nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW, true).oddsAge).toBeNull()
+  })
+
   it('tags a tipped-off game and keeps its latest market', () => {
     const row = nbaSlateRow(game(), new Date('2026-10-20T23:30:00Z'))
     expect(row.state).toBe('started')

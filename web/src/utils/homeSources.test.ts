@@ -131,7 +131,7 @@ describe('nflSource', () => {
 describe('gap rows across sports', () => {
   const digestItem = (n: number, gap: string) => ({
     lineId: 100 + n, gameId: n, playerId: n, playerName: `P${n}`, market: 'Rushing yards', marketKey: 'rushing_yards',
-    matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap,
+    matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap, gapUnits: '+9.6 yds', gapScaled: null,
   })
 
   it('carries the sport, the model value and a player link that keeps the market and week', () => {

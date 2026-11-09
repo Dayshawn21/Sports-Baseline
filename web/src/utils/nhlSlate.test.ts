@@ -134,6 +134,13 @@ describe('nhlSlateRow', () => {
     expect(row.win).toBe('BOS 56.4%')
     expect(row.tags).toEqual(['FLA G Markstrom exp.', 'BOS G Swayman exp.', 'BOS 3 inj.'])
   })
+  it('gives a row its odds age only while the slate odds are stale and the game is not settled', () => {
+    // NOW is Fri Oct 23, 1:00 PM CT; the moneyline was fetched at 10:00 AM.
+    expect(nhlSlateRow(game(0.564), NOW, true).oddsAge).toBe('as of 10:00 AM')
+    expect(nhlSlateRow(game(0.564), NOW).oddsAge).toBeNull()
+    expect(nhlSlateRow(game(null), NOW, true).oddsAge).toBeNull()
+    expect(nhlSlateRow({ ...game(0.564), status: 'completed', awayScore: 2, homeScore: 3 }, NOW, true).oddsAge).toBeNull()
+  })
   it('drops the win label and tags once final, keeping the score', () => {
     const row = nhlSlateRow({ ...game(0.564), context: context(), status: 'completed', awayScore: 2, homeScore: 3 }, NOW)
     expect(row).toMatchObject({ state: 'final', win: null, tags: [], away: { score: 2 }, home: { score: 3 } })

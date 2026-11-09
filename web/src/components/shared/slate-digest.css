@@ -20,6 +20,7 @@ button.slate-digest__play { font: inherit; text-align: left; cursor: pointer; }
 .slate-digest__num { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font: 500 15px var(--font-mono); }
 .slate-digest__arrow { margin: 0 6px; color: var(--text-muted); }
 .slate-digest__gap { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.slate-digest__gap-detail { align-self: flex-end; color: var(--text-muted); font: 400 11px var(--font-body); }
 .slate-digest__basis { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
 .slate-digest__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 1100px) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameNotes, NflLineMove, NflNoteInjury, NflSlateGame, NflSlateLine, NflTeamStat, NflTeamStats } from '~/types/nfl'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
+import { gapScaledLabel, gapUnitsLabel, kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NO_STAT: NflTeamStat = { value: null, rank: null }
@@ -182,8 +182,22 @@ describe('slateDigest', () => {
   it('carries display strings for a box', () => {
     const [first, second] = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
-    expect(first).toEqual({ lineId: 21, gameId: 2, playerId: 21, playerName: 'Player 21', market: 'Receiving yards', marketKey: 'receiving_yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%' })
-    expect([second.matchup, second.market, second.gap]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%'])
+    expect(first).toEqual({ lineId: 21, gameId: 2, playerId: 21, playerName: 'Player 21', market: 'Receiving yards', marketKey: 'receiving_yards', matchup: 'A2 @ H2', when: 'Sun 3:25 PM CT', line: '60.0', model: '100.0', gap: '+66.7%', gapUnits: '+40.0 yds', gapScaled: '67% of a typical line' })
+    expect([second.matchup, second.market, second.gap, second.gapUnits, second.gapScaled]).toEqual(['A1 @ H1', 'Rushing yards', '+60.0%', '+30.0 yds', '60% of a typical line'])
+  })
+
+  it('leads a gap with model minus line in the market units, so it matches the two numbers beside it', () => {
+    expect(gapUnitsLabel(32.6, 'rushing_yards')).toBe('+32.6 yds')
+    expect(gapUnitsLabel(-2.8, 'passing_completions')).toBe('-2.8 comp')
+    expect(gapUnitsLabel(0, 'receptions')).toBe('0.0 rec')
+    expect(gapUnitsLabel(1.5, 'some_new_market')).toBe('+1.5')
+    expect(gapUnitsLabel(null, 'receptions')).toBe('--')
+  })
+
+  it('sizes a gap against a typical line without a sign, so it never reads as a change', () => {
+    expect(gapScaledLabel(1.068)).toBe('107% of a typical line')
+    expect(gapScaledLabel(-1.033)).toBe('103% of a typical line')
+    expect(gapScaledLabel(null)).toBeNull()
   })
 
   it('keeps the raw market for a Rec Targets reference box while the label says reference', () => {
@@ -277,6 +291,34 @@ describe('nflSlateRow', () => {
     expect(row.model).toEqual({ spread: 'H1 -1.0', total: '46.9' })
     expect(row.props).toBe(2)
     expect([row.conditions, row.injuries, row.shortWeek, row.qbChange]).toEqual(['Indoor', { out: 1, doubtful: 0, questionable: 1 }, ['A1'], []])
+  })
+
+  it('shows each row its own odds age and drops "no move" while the slate odds are stale', () => {
+    const upcoming = game(1, '2026-10-04T17:00:00Z', { odds: ODDS })
+    const gameNotes = notes(1, { lineMovement: [lineMove('spread', -1.5, -2.5, -1), lineMove('total', 48.5, 48.5, 0)] })
+
+    const row = nflSlateRow(upcoming, gameNotes, BEFORE, true)
+
+    expect(row.oddsAge).toBe('as of Sat')
+    expect([row.spread.detail, row.total.detail]).toEqual(['opened H1 -1.5', null])
+    expect(nflSlateRow(upcoming, gameNotes, BEFORE, false).oddsAge).toBeNull()
+  })
+
+  it('says a stale row fetch time is not stored rather than guessing, and gives no age to a row without odds', () => {
+    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z', { odds: ODDS }), undefined, BEFORE, true).oddsAge).toBe('odds time not stored')
+    expect(nflSlateRow(game(1, '2026-10-04T17:00:00Z'), undefined, BEFORE, true).oddsAge).toBeNull()
+  })
+
+  it('gives a final no odds age even on a stale slate', () => {
+    const played = game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS })
+    expect(nflSlateRow(played, notes(1, { awayScore: 17, homeScore: 24 }), DURING, true).oddsAge).toBeNull()
+  })
+
+  it('marks a live game with no stored score as score pending, and one with a score as not', () => {
+    const live = game(1, '2026-10-04T17:00:00Z', { odds: ODDS })
+    expect(nflSlateRow(live, notes(1), DURING).scorePending).toBe(true)
+    expect(nflSlateRow(live, notes(1, { awayScore: 7, homeScore: 3 }), DURING).scorePending).toBe(false)
+    expect(nflSlateRow(live, notes(1), BEFORE).scorePending).toBe(false)
   })
 
   it('marks a kicked-off game live and keeps its market', () => {
