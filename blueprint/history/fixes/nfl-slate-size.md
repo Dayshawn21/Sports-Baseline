@@ -2,7 +2,7 @@
 
 **Type:** Fix
 **Branch:** `fix/nfl-slate-size` (worktree `.claude/worktrees/fix-nfl-slate-size`, cut from `origin/master` at `d3185d91`)
-**Status:** code completed 2026-11-08; step 4 (rewrite the stored weeks) runs after the deploy is confirmed
+**Status:** completed 2026-11-08 (code, deploy, and the stored weeks rewritten)
 
 ## The problem
 
@@ -119,7 +119,12 @@ once the web is deployed.
 
   *Done when:* Verify passes.
 
-- [ ] **Step 4 - After deploy: rewrite the stored weeks.** Only after the
+- [x] **Step 4 - After deploy: rewrite the stored weeks.** Done 2026-11-08,
+  after Render showed `fadd07b` live on the API and the web bundle carried
+  `expandNflSlate`: `--weeks all` stored 18 weeks (weeks 2-9 at 11.4-13.9 MB,
+  weeks 10-18 no lines yet). Live week 9 went from 27.6 to 15.1 MB (3,818
+  samples); the live Josh Allen page's histories matched word for word, the
+  slate and BUF @ MIN pages rendered (73 prop rows), no console errors. Only after the
   push and a confirmed live web and API deploy, and a separate yes:
   `nfl_slate_snapshot --weeks all`. Then check on the live site that
   `/nfl/slate` for the current week is about half its old size and the NFL
