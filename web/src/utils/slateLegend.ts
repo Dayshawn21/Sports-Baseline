@@ -18,7 +18,8 @@ export const SLATE_LEGENDS: Record<Sport, SlateLegendContent> = {
     ],
     pick: [
       'No NFL picks.',
-      'A prop gap is the model\'s projection minus the prop line, as a share of a typical line for that stat this week.',
+      "A prop gap is the model's projection minus the prop line, in the stat's units; the percentage beside it sizes that gap against a typical line for the stat this week.",
+      'Top gaps lists one line per player: lines with 8 or more games of history first, then the largest percentage.',
       FORWARD_CHECK_GAPS,
       'The Model column is nfl-elo-v1\'s spread and total, for context only: the closing line beat it on 2022-25 games held out of its fitting.',
       'In Notes, Q and D count questionable and doubtful players on the injury report.',
@@ -31,7 +32,8 @@ export const SLATE_LEGENDS: Record<Sport, SlateLegendContent> = {
     ],
     pick: [
       'No NBA picks.',
-      'A prop gap is the reference projection minus the prop line, in units and as a share of that line.',
+      "A prop gap is the reference projection minus the prop line, in the stat's units; the percentage beside it is that gap as a share of the line.",
+      'Largest gaps lists one line per player, by that percentage.',
       FORWARD_CHECK_GAPS,
     ],
   },

@@ -38,7 +38,12 @@ function gapLink(item: NflSlateDigestItem) {
     playerName: item.playerName,
     market: item.market,
     gap: item.gapUnits,
-    ariaLabel: `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gapUnits}, open game page`,
+    share: item.gapShare,
+    note: item.shortSample,
+    ariaLabel: [
+      `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gapUnits}`,
+      item.gapScaled, item.shortSample && `only ${item.shortSample} of history`, 'open game page',
+    ].filter(Boolean).join(', '),
     openKey: openedRowKey('digest', item.lineId),
     onOpen: () => rememberOpened('digest', item.lineId),
   }
@@ -151,7 +156,10 @@ export default function NflIntelligencePage() {
         No NFL games loaded for week {activeWeek}.{' '}
         {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
       </div> : <>
-        <SlateNoPicks sport="nfl" remaining={remaining} gaps={digest.map(gapLink)} />
+        <SlateNoPicks
+          sport="nfl" remaining={remaining} gaps={digest.map(gapLink)}
+          gapsLabel="Top gaps" gapsOrder="8+ games of history first, then by share of a typical line"
+        />
         {!phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
         {commandActive && filteredWindows.length === 0 && filteredFinals.length === 0 && <section className="nfl-slate-window" aria-label="Games">
           <div className="nfl-empty">No games found for this slate search.</div>

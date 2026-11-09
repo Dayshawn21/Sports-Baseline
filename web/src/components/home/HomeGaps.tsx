@@ -30,7 +30,7 @@ function GapRows({ rows, showSport }: { rows: HomeGap[], showSport: boolean }) {
         <td className="is-gray is-nowrap">{gap.when}</td>
         <td className="is-num is-mono col-line">{gap.line}</td>
         <td className="is-num is-mono col-model">{gap.model}</td>
-        <td className="is-num is-mono is-gray">{gap.gap}</td>
+        <td className="is-num is-mono is-gray">{gap.gap}{gap.share && <span className="home-gaps__share"> · {gap.share}</span>}</td>
       </tr>)}
     </tbody>
   </table>
@@ -92,6 +92,9 @@ function Body({ body, selected }: { body: GapsBody, selected: GapTabKey }) {
   }
   return <>
     {body.rows.length === 0 ? <p className="home-gaps__empty">{body.empty}</p> : <GapRows rows={body.rows} showSport={selected === 'all'} />}
+    {body.rows.length > 0 && <p className="home-gaps__footer">
+      Gap is model minus line in the stat&apos;s units. Each sport orders its rows by the percentage beside it; NFL lists lines with 8+ games of history first.
+    </p>}
     {selected === 'all' && <p className="home-gaps__footer">NHL props have no projection, so it has no gap rows; see its tab for next games.</p>}
     {body.footer && <Footer footer={body.footer} />}
   </>
