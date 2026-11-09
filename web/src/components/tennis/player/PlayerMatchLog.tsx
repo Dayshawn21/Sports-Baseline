@@ -7,7 +7,7 @@ import { ratio, shortDate } from '~/utils/tennisPlayer'
 const dash = (value: number | null) => (value == null ? '—' : value)
 
 export default function PlayerMatchLog({ query }: { query: UseQueryResult<PlayerMatches> }) {
-  const heading = <h2 className="tennis-match-section">Match log</h2>
+  const heading = <h2 className="nfl-player-section-title">Game log <small>match log</small></h2>
   if (query.isLoading) return <>{heading}<div className="tennis-match-empty">Loading matches...</div></>
   if (query.isError || !query.data) return <>{heading}<ErrorState error={query.error} onRetry={() => void query.refetch()} /></>
 

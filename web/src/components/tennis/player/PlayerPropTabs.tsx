@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PlayerMarketTabs } from '~/components/shared/PlayerMarketTabs'
-import { TennisPropEvidenceBody, TennisRecentBars } from '~/components/tennis/TennisPropEvidenceBody'
+import { TennisMarketPanel } from '~/components/tennis/player/TennisMarketPanel'
+import { TennisRecentBars } from '~/components/tennis/TennisPropEvidenceBody'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { usePlayerMatches } from '~/hooks/useTennisPlayer'
@@ -106,26 +107,20 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
   const inMatch = (row: TennisBoardLine) => row.matchId === (option?.matchId ?? null)
   const windowOptions = formWindowOptions(log.data?.log ?? [], option?.opponentId ?? null, option?.opponentName ?? null)
   const window = resolveFormWindow(windowOptions, parseTennisFormWindow(params))
-  const sections = [
-    { key: 'rated', label: null, lines: tab.rated.filter(inMatch) },
-    { key: 'review', label: 'Lines for review', lines: tab.review.filter(inMatch) },
-  ].filter(section => section.lines.length > 0)
+  const rated = tab.rated.filter(inMatch)
+  const review = tab.review.filter(inMatch)
+  const firstLine = rated[0] ?? review[0] ?? null
 
   return <section className="tennis-player-props" aria-label={`${playerName} props`}>
     <PlayerMarketTabs heading="Today's props" tabs={tabs.map(item => ({ key: item.market, label: marketTitle(item.market) }))}
       selectedIndex={tabs.indexOf(tab)} hrefFor={key => tennisTabSearch(params, key, tabs[0].market)}>
-    <div className="tennis-player-props__controls">
-      {matches.length > 1 && <Segment label="Match" value={String(option?.matchId)} options={matches.map(item => ({ value: String(item.matchId), label: item.opponentName ? `vs ${item.opponentName}` : item.matchup ?? 'Match' }))} onChange={value => update(MATCH_PARAM, value === String(matches[0].matchId) ? null : value)} />}
-      <Segment label="Form window" value={window} options={windowChoices(windowOptions)} onChange={value => update(FORM_PARAM, value === '5' ? null : value)} />
-    </div>
-    {sections.map(section => <div key={section.key} className="tennis-player-props__group">
-      {section.label && <h3 className="tennis-player-props__label">{section.label}</h3>}
-      {section.lines.map(row => <div key={`${row.source}-${row.id}`} data-prop-id={row.id} className={`tennis-player-props__line${String(row.id) === propId ? ' is-selected' : ''}`}>
-        <TennisPropEvidenceBody row={row}>
-          <FormChart row={row} log={log} window={window} option={option} />
-        </TennisPropEvidenceBody>
-      </div>)}
-    </div>)}
+    <TennisMarketPanel market={tab.market} rated={rated} review={review} selectedId={propId} form={<>
+      <div className="tennis-player-props__controls">
+        {matches.length > 1 && <Segment label="Match" value={String(option?.matchId)} options={matches.map(item => ({ value: String(item.matchId), label: item.opponentName ? `vs ${item.opponentName}` : item.matchup ?? 'Match' }))} onChange={value => update(MATCH_PARAM, value === String(matches[0].matchId) ? null : value)} />}
+        <Segment label="Form window" value={window} options={windowChoices(windowOptions)} onChange={value => update(FORM_PARAM, value === '5' ? null : value)} />
+      </div>
+      {firstLine && <FormChart row={firstLine} log={log} window={window} option={option} />}
+    </>} />
     </PlayerMarketTabs>
   </section>
 }

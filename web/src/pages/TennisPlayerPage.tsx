@@ -8,7 +8,7 @@ import { playerHead } from '~/components/tennis/player/PlayerHeader'
 import PlayerPropTabs from '~/components/tennis/player/PlayerPropTabs'
 import PlayerMatchLog from '~/components/tennis/player/PlayerMatchLog'
 import PlayerServeReturn from '~/components/tennis/player/PlayerServeReturn'
-import PlayerSidebar from '~/components/tennis/player/PlayerSidebar'
+import PlayerModelRecord, { PlayerIdentityFooter } from '~/components/tennis/player/PlayerSidebar'
 import { usePlayerDetail, usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import { isNotFound } from '~/utils/httpError'
@@ -46,15 +46,13 @@ export default function TennisPlayerPage() {
   return (
     <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title={head.title} meta={head.meta} actions={head.actions}>
       <PlayerPropTabs playerId={detail.data.playerId} playerName={detail.data.name} />
-      <h2 className="nfl-player-section-title">Supporting context</h2>
-      <div className="tennis-player-layout">
-        <section className="tennis-player-main">
-          <PlayerEloCard player={detail.data} />
-          <PlayerServeReturn playerId={detail.data.playerId} nextSurface={detail.data.nextMatch?.surface} />
-          <PlayerMatchLog query={matches} />
-        </section>
-        <PlayerSidebar player={detail.data} matches={matches} />
-      </div>
+      <h2 className="nfl-player-section-title">Season form <small>ELO, serve and return</small></h2>
+      <PlayerEloCard player={detail.data} />
+      <PlayerServeReturn playerId={detail.data.playerId} nextSurface={detail.data.nextMatch?.surface} />
+      <PlayerMatchLog query={matches} />
+      <h2 className="nfl-player-section-title">Model record <small>52-week record and settled props</small></h2>
+      <PlayerModelRecord player={detail.data} matches={matches} />
+      <PlayerIdentityFooter player={detail.data} />
     </PlayerPageShell>
   )
 }

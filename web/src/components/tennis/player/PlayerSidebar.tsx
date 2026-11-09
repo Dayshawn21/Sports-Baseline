@@ -97,23 +97,19 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
   )
 }
 
-function IdentityCard({ player }: { player: PlayerDetail }) {
-  const computed = player.statsComputedAt ? `${fmtDateCT(player.statsComputedAt)} ${fmtTimeCT(player.statsComputedAt)}` : '—'
-  return (
-    <Card title="Identity">
-      <Row label="Aliases" value={player.aliases.length ? player.aliases.join(', ') : 'None'} />
-      <Row label="ELO as of" value={player.elo.asOf ? shortDate(player.elo.asOf) : '—'} />
-      <Row label="Stats computed" value={computed} />
-    </Card>
-  )
+/** Data freshness and aliases, one line under the page like the NFL player footer. */
+export function PlayerIdentityFooter({ player }: { player: PlayerDetail }) {
+  const computed = player.statsComputedAt ? `${fmtDateCT(player.statsComputedAt)} ${fmtTimeCT(player.statsComputedAt)}` : '--'
+  return <p className="nfl-player-note nfl-player-footer">
+    ELO as of {player.elo.asOf ? shortDate(player.elo.asOf) : '--'} · Stats computed {computed}
+    {player.aliases.length > 0 && ` · Also listed as ${player.aliases.join(', ')}`}
+  </p>
 }
 
-export default function PlayerSidebar({ player, matches }: { player: PlayerDetail, matches: UseQueryResult<PlayerMatches> }) {
-  return (
-    <aside className="tennis-player-side">
-      <RecordCard query={matches} />
-      <PropsCard playerId={player.playerId} name={player.name} />
-      <IdentityCard player={player} />
-    </aside>
-  )
+/** The record and settled props, side by side as the NFL Model record section lays them out. */
+export default function PlayerModelRecord({ player, matches }: { player: PlayerDetail, matches: UseQueryResult<PlayerMatches> }) {
+  return <div className="nfl-player-grid is-record">
+    <RecordCard query={matches} />
+    <PropsCard playerId={player.playerId} name={player.name} />
+  </div>
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchPrediction, PlayerMatchLogRow } from '~/types/tennis'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { recentStatBars } from '~/utils/tennisPropCards'
-import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisTabSearch } from '~/utils/tennisPlayerProps'
+import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisMarketHero, tennisTabSearch } from '~/utils/tennisPlayerProps'
 
 function line(id: number, overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
   return { id, playerId: 7, playerName: 'Coco Gauff', matchId: 10, statType: 'aces', matchup: 'Coco Gauff vs Iga Swiatek', startTime: '2026-09-21T16:00:00Z', ...overrides } as TennisBoardLine
@@ -185,4 +185,29 @@ describe('playerPageOrigin', () => {
     ['another page', { from: '/tennis/model' }],
     ['a script in the query', { from: '/tennis/match/1?tab=props&x=<script>' }],
   ])('ignores %s', (_label, state) => expect(playerPageOrigin(state)).toBeNull())
+})
+
+describe('tennisMarketHero', () => {
+  const ace = (overrides: Partial<TennisBoardLine> = {}) => line(1, {
+    source: 'prizepicks', line: '14.5', oddsType: 'demon', statAvg: 8.2, projectionSource: 'model_total',
+    opponentStatAvg: 3.1, opponentMatchesCount: 23, matchesCount: 45, projectionStatus: 'ok', ...overrides,
+  })
+
+  it('reads the first line: projection, basis, opponent and sample, and the gap to its line', () => {
+    expect(tennisMarketHero([ace(), ace({ line: '12.5' })])).toEqual({
+      label: 'Projected aces', value: '8.2', delta: '-6.3 vs 14.5 line', reason: null,
+      facts: [{ label: 'Basis', value: 'model total' }, { label: 'Opp allows', value: '3.1 avg · 23 matches' }, { label: 'Sample', value: '45 matches' }],
+    })
+  })
+
+  it('says why there is no projection', () => {
+    expect(tennisMarketHero([ace({ statAvg: null, projectionStatus: 'missing_stats' })])).toMatchObject({
+      value: null, delta: null, reason: 'No projection: no recent stats for this player.',
+    })
+    expect(tennisMarketHero([ace({ statAvg: null, projectionStatus: 'odd' })])?.reason).toBe('No projection: not available for this line.')
+  })
+
+  it('is null without lines', () => {
+    expect(tennisMarketHero([])).toBeNull()
+  })
 })
