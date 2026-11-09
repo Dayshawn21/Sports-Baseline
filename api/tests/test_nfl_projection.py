@@ -8,7 +8,7 @@ from app.core.nfl_projection import (
     NFL_PROJECTION_MODEL_VERSION,
     NflHistoricalAverages, NflSeasonTouchdowns, anytime_td_probability, baseline_projection, edge, edge_is_comparable, line_quality_flags,
     model_projection, model_quality_flags, moneyline_is_stale, NflProjectionInput, NflUsageInput, opponent_adjustment_pct,
-    quality_flags, slate_line_rank, usage_adjustment_pct,
+    projects_line, quality_flags, slate_line_rank, usage_adjustment_pct,
 )
 from app.core.nfl_season_blend import apply_season_blend
 from app.core.nfl_snap_share import NflSnapSeason, production_anytime_td_probability, season_snap_share
@@ -531,6 +531,43 @@ def test_slate_line_leaves_non_receiving_markets_without_usage_fields() -> None:
 
     assert (result.usage_adjustment_pct, result.usage_sample_games) == (None, None)
     assert not any(flag.startswith("usage_") for flag in result.quality_flags)
+
+
+@pytest.mark.parametrize("position", ["QB", "RB", "WR", "TE", "CB", None])
+def test_fantasy_is_projected_outside_kickers_and_punters(position: str | None) -> None:
+    assert projects_line(NflPropMarket.FANTASY_POINTS, position)
+
+
+@pytest.mark.parametrize("position", ["K", "P"])
+def test_fantasy_is_not_projected_where_scoring_has_no_terms(position: str) -> None:
+    assert not projects_line(NflPropMarket.FANTASY_POINTS, position)
+
+
+def test_other_markets_are_projected_for_any_position() -> None:
+    assert projects_line(NflPropMarket.RECEIVING_YARDS, "K")
+
+
+def test_slate_line_withholds_the_model_from_a_kicker_fantasy_line() -> None:
+    averages = _average_dict(8, 0) | {"fantasy_points": 0.0}
+    row = _usage_row("fantasy_points") | {
+        "position": "K", "line": 8.5, "averages": averages, "position_averages": averages,
+    }
+
+    result = _slate_line(row, 2026, None)
+
+    assert (result.projection, result.edge, result.p_over, result.over_probability_version) == (None, None, None, None)
+    assert "position_not_scored" in result.quality_flags
+    assert result.line == 8.5
+
+
+def test_slate_line_still_projects_a_receiver_fantasy_line() -> None:
+    averages = _average_dict(8, 0) | {"fantasy_points": 12.0}
+    row = _usage_row("fantasy_points") | {"line": 10.5, "averages": averages, "position_averages": averages}
+
+    result = _slate_line(row, 2026, None)
+
+    assert result.projection is not None and result.edge is not None
+    assert "position_not_scored" not in result.quality_flags
 
 
 def _td_row(td_seasons: list[dict[str, float | int]], position: str = "WR") -> dict:

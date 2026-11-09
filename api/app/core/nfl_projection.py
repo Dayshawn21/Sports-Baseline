@@ -48,6 +48,15 @@ SEASON_BLEND_MARKETS = frozenset({
 MONEYLINE_UNSCALED_MARKETS = frozenset({
     NflPropMarket.PASSING_ATTEMPTS, NflPropMarket.PASSING_COMPLETIONS, NflPropMarket.PASSING_YARDS,
 })
+# Fantasy points are scored from offensive stats only, so a kicker or punter
+# averages 0.0 against a real line until 27l3 adds kicking terms. A denylist,
+# because two-way players listed at CB do score offensive fantasy points.
+FANTASY_UNSCORED_POSITIONS = frozenset({"K", "P"})
+POSITION_NOT_SCORED_FLAG = "position_not_scored"
+
+
+def projects_line(market: NflPropMarket, position: str | None) -> bool:
+    return market is not NflPropMarket.FANTASY_POINTS or position not in FANTASY_UNSCORED_POSITIONS
 
 
 @dataclass(frozen=True)

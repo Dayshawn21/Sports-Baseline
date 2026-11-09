@@ -10,6 +10,7 @@ from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
 from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
 from app.core.nfl_matchup_context import ContextCutoff, HistoryGame, PlayerUsageGame, TeamAllowedGame
 from app.core.nfl_best_line import Quote
@@ -488,6 +489,11 @@ async def upsert_player(
     return row.scalar_one()
 
 
+_KICKING_INSERT_COLUMNS = ", ".join(KICKING_DISTANCE_COLUMNS)
+_KICKING_INSERT_VALUES = ", ".join(f":{column}" for column in KICKING_DISTANCE_COLUMNS)
+_KICKING_UPDATES = ", ".join(f"{column} = EXCLUDED.{column}" for column in KICKING_DISTANCE_COLUMNS)
+
+
 async def upsert_weekly_stat(
     db: AsyncSession,
     stat: NflversePlayerWeek,
@@ -497,21 +503,23 @@ async def upsert_weekly_stat(
     opponent_team_id: int | None,
 ) -> None:
     await db.execute(
-        text("""
+        text(f"""
             INSERT INTO nfl_player_weekly_stats (
                 player_id, game_id, team_id, opponent_team_id, season, week,
                 passing_yards, passing_attempts, passing_completions, rushing_yards,
                 rushing_attempts, receiving_yards, receptions, targets, target_share,
                 air_yards_share, wopr, touchdowns, fantasy_points,
                 passing_tds, interceptions, fumbles_lost, two_point_conversions,
-                return_tds, fumble_recovery_tds, prizepicks_fantasy_points, fg_made, pat_made
+                return_tds, fumble_recovery_tds, prizepicks_fantasy_points, fg_made, pat_made,
+                {_KICKING_INSERT_COLUMNS}
             ) VALUES (
                 :player_id, :game_id, :team_id, :opponent_team_id, :season, :week,
                 :passing_yards, :passing_attempts, :passing_completions, :rushing_yards,
                 :rushing_attempts, :receiving_yards, :receptions, :targets, :target_share,
                 :air_yards_share, :wopr, :touchdowns, :fantasy_points,
                 :passing_tds, :interceptions, :fumbles_lost, :two_point_conversions,
-                :return_tds, :fumble_recovery_tds, :prizepicks_fantasy_points, :fg_made, :pat_made
+                :return_tds, :fumble_recovery_tds, :prizepicks_fantasy_points, :fg_made, :pat_made,
+                {_KICKING_INSERT_VALUES}
             )
             ON CONFLICT (player_id, game_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id,
@@ -538,6 +546,7 @@ async def upsert_weekly_stat(
                 prizepicks_fantasy_points = EXCLUDED.prizepicks_fantasy_points,
                 fg_made = EXCLUDED.fg_made,
                 pat_made = EXCLUDED.pat_made,
+                {_KICKING_UPDATES},
                 updated_at = now()
         """),
         {
@@ -555,6 +564,7 @@ async def upsert_weekly_stat(
             "return_tds": stat.return_tds, "fumble_recovery_tds": stat.fumble_recovery_tds,
             "prizepicks_fantasy_points": stat.prizepicks_fantasy_points,
             "fg_made": stat.fg_made, "pat_made": stat.pat_made,
+            **{column: stat.kicking_by_distance.get(column) for column in KICKING_DISTANCE_COLUMNS},
         },
     )
 

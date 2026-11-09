@@ -17,8 +17,8 @@ from app.core.nfl_over_probability_fit import FIT_PROJECTION_MODEL_VERSION, QUAN
 from app.core.nfl_projection import (
     NflHistoricalAverages, NflSeasonTouchdowns, baseline_projection, edge, edge_is_comparable, line_quality_flags,
     model_projection, model_quality_flags, moneyline_is_stale, MONEYLINE_UNSCALED_MARKETS, NflProjectionInput,
-    NFL_PROJECTION_MODEL_VERSION,
-    NflUsageInput, opponent_adjustment_pct, slate_line_rank, USAGE_ADJUSTED_MARKETS,
+    NFL_PROJECTION_MODEL_VERSION, POSITION_NOT_SCORED_FLAG,
+    NflUsageInput, opponent_adjustment_pct, projects_line, slate_line_rank, USAGE_ADJUSTED_MARKETS,
     td_seasons_used, usage_adjustment_pct,
 )
 from app.core.nfl_availability import NflAvailability, availability_flags
@@ -230,7 +230,8 @@ def _slate_line(
         wind_adjustment_pct=row.get("wind_adjustment_pct"),
         moneyline_scaled=market not in MONEYLINE_UNSCALED_MARKETS,
     )
-    projection = model_projection(model_input) if has_baseline else None
+    scored = projects_line(market, row["position"])
+    projection = model_projection(model_input) if has_baseline and scored else None
     comparable = edge_is_comparable(market, label_games, row["segment"], row["odds_type"])
     player_history = history or []
     opponent_history = [
@@ -263,7 +264,8 @@ def _slate_line(
         quality_flags=line_quality_flags(
             label_averages, label_season, line_season, row["segment"], row["odds_type"],
             row.get("current_season_games"),
-        ) + model_quality_flags(model_input) + _team_flags(row) + availability_flags(_availability(row)) + snap_flags,
+        ) + model_quality_flags(model_input) + _team_flags(row) + availability_flags(_availability(row)) + snap_flags
+        + ([] if scored else [POSITION_NOT_SCORED_FLAG]),
         book_probability=book_odds.probability if book_odds else None,
         book_count=book_odds.book_count if book_odds else None,
         book_includes_margin=book_odds.includes_margin if book_odds else None,

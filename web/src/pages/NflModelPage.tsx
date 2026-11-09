@@ -73,6 +73,12 @@ export default function NflModelPage() {
         <ModelSection query={lines} loading="Replaying the slate for every graded week; the first load can take up to a minute...">
           {(data) => <NflLineGrading data={data} />}
         </ModelSection>
+        <p className="nfl-model-note">
+          Corrected 2026-11-08: kicker fantasy lines were counted as calls before then. Fantasy scoring has no
+          kicking terms, so kickers projected 0 and settled at 0, and every one graded as a winning under
+          (160 of the 2026 calls). They are left out until kicker scoring is modelled, which moved fantasy points
+          from 56.2% to 50.6% and all calls from 51.1% to 49.5%.
+        </p>
         <Heading title="Game-line CLV">28 · does the close move toward the model from the entry line?</Heading>
         <ModelSection query={clv} loading="Grading game lines...">
           {(data) => <NflGameLineClv data={data} />}

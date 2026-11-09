@@ -50,6 +50,7 @@ export const FLAG_LABELS: Record<string, string> = {
   partial_season_baseline: 'This season is still being played, so the average will move',
   segment_mismatch: 'Whole-game average cannot be compared to this segment',
   non_standard_line: 'Alternate line with an adjusted payout, not the market price',
+  position_not_scored: 'Fantasy scoring for this position is not modelled yet',
   team_not_in_game: "Player's current roster team is not in this game, so opponent and home/away are unknown",
   injury_out: 'Ruled out on this week\'s final injury report',
   injury_doubtful: 'Listed doubtful on this week\'s injury report',

@@ -11,8 +11,8 @@ import argparse
 import asyncio
 import logging
 import sys
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from io import StringIO
 from math import isfinite
@@ -22,6 +22,7 @@ import httpx
 from tenacity import AsyncRetrying, RetryCallState, retry_if_exception_type, retry_if_result, stop_after_attempt, wait_exponential
 
 from app.core.nfl_fantasy import NflFantasyComponents, prizepicks_fantasy_points
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,8 @@ class NflversePlayerWeek:
     prizepicks_fantasy_points: float | None = None
     fg_made: int | None = None
     pat_made: int | None = None
+    # Keyed by KICKING_DISTANCE_COLUMNS; a missing key means not loaded.
+    kicking_by_distance: Mapping[str, int | None] = field(default_factory=dict)
 
 
 def current_nfl_season(today: date) -> int:
@@ -300,6 +303,7 @@ def parse_player_stats(csv_text: str, season: int) -> list[NflversePlayerWeek]:
                 **_fantasy_components(row),
                 fg_made=_as_optional_int(row.get("fg_made")),
                 pat_made=_as_optional_int(row.get("pat_made")),
+                kicking_by_distance={column: _as_optional_int(row.get(column)) for column in KICKING_DISTANCE_COLUMNS},
             )
         )
     return stats

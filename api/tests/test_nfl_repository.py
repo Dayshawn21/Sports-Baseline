@@ -22,6 +22,7 @@ from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
 from app.core.nfl_game_line_clv import ClvGame, OddsCandidate
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_lines import NflGameLineGame
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
 from app.nfl.markets import NflLineOnlyMarket, NflPropMarket
 from app.core.nfl_td_backtest import NflSnapRow
@@ -830,6 +831,26 @@ def test_weekly_stat_upsert_writes_kicking_but_leaves_punts_to_the_play_by_play_
     assert "fg_made = EXCLUDED.fg_made" in session.statement
     assert "pat_made = EXCLUDED.pat_made" in session.statement
     assert "punts" not in session.statement
+
+
+def test_weekly_stat_upsert_writes_and_updates_kicking_by_distance() -> None:
+    session = _RecordingSession()
+    stat = NflversePlayerWeek(
+        player_id="00-0035000", player_name="Kicker", position="K", team="CHI",
+        opponent="DET", game_id="2026_01_DET_CHI", season=2026, week=1,
+        passing_yards=0, passing_attempts=0, passing_completions=0, rushing_yards=0,
+        rushing_attempts=0, receiving_yards=0, receptions=0, targets=None,
+        target_share=None, air_yards_share=None, wopr=None, touchdowns=0, fantasy_points=9.0,
+        fg_made=3, pat_made=2, kicking_by_distance={"fg_made_50_59": 1, "pat_missed": 0},
+    )
+
+    asyncio.run(upsert_weekly_stat(cast(AsyncSession, session), stat, 1, 2, 3, 4))
+
+    assert (session.params["fg_made_50_59"], session.params["pat_missed"]) == (1, 0)
+    assert session.params["fg_made_0_19"] is None
+    for column in KICKING_DISTANCE_COLUMNS:
+        assert f":{column}" in session.statement
+        assert f"{column} = EXCLUDED.{column}" in session.statement
 
 
 def test_weekly_stat_upsert_keeps_usage_values_nullable_and_updates_them() -> None:
