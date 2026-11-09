@@ -53,7 +53,8 @@ export function tennisLegend(sourceLabel: string): SlateLegendContent {
       { label: 'Odds', text: 'stored book prices' },
     ],
     pick: [
-      'Total Games and Game Spread picks carry their expected value.',
+      'Model lean is the model\'s view of each match, shown gray.',
+      'A Total Games or Game Spread pick shows its expected value only when a book price is stored.',
       'Moneyline picks are off: the model\'s moneyline disagreements lost money against the closing line.',
       'PrizePicks lines stay gray and unranked unless their forward check adopts the slice.',
     ],

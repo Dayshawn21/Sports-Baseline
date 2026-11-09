@@ -31,6 +31,13 @@ describe('SLATE_LEGENDS', () => {
 })
 
 describe('tennisLegend', () => {
+  it('says EV appears only with a stored book price, never that every pick carries one', () => {
+    const pick = tennisLegend('PrizePicks').pick.join(' ')
+    expect(pick).not.toMatch(/carry their expected value/)
+    expect(pick).toMatch(/expected value only when a book price is stored/)
+    expect(pick).toMatch(/Model lean .* gray/)
+  })
+
   it('names the active prop source', () => {
     expect(tennisLegend('DraftKings').parts[0]).toEqual({ label: 'Props', text: 'DraftKings' })
     expect(SLATE_LEGENDS.tennis.parts[0].text).toBe('PrizePicks')

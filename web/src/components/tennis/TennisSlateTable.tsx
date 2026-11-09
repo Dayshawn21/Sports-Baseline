@@ -1,10 +1,9 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { SlateRow, TourTab } from '~/utils/tennisSlate'
-import { TOUR_TABS, filterByTourTab, fmtEv, matchAnalysisPath, tableGroups } from '~/utils/tennisSlate'
+import { TOUR_TABS, filterByTourTab, matchAnalysisPath, modelLeanCell, slateDayTime, tableGroups } from '~/utils/tennisSlate'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
-import { fmtStartCT, fmtTournament } from '~/utils/format'
-import { propMatchPath } from '~/utils/tennisMatchView'
+import { fmtTournament } from '~/utils/format'
 
 interface Props {
   rows: SlateRow[]
@@ -31,18 +30,23 @@ function PairCell({ pair, format, extra = false }: { pair: [number | null, numbe
   )
 }
 
-function bestPickText(row: SlateRow): string {
-  if (row.primaryPick) return row.primaryPick.pick
-  if (row.primaryProp) return `${row.primaryProp.playerName ?? 'Player'} · ${row.primaryProp.statType}`
-  return '—'
-}
-
 function StartCell({ startUtc }: { startUtc: string | null }) {
-  const [day, time] = (fmtStartCT(startUtc) ?? 'TBA').split(' · ')
+  const { day, time } = slateDayTime(startUtc, Date.now())
   return (
     <td className="tennis-slate-table__time">
-      <span>{time ? day : ''}</span>
-      <span>{time ?? day}</span>
+      <span>{day}</span>
+      <span>{time}</span>
+    </td>
+  )
+}
+
+/** Gray; only a priced best bet's EV is colored, as the EV column was. */
+function LeanCell({ row }: { row: SlateRow }) {
+  const { text, ev, link } = modelLeanCell(row)
+  return (
+    <td className="tennis-slate-table__pick">
+      <span title={text}>{link ? <Link to={link}>{text}</Link> : text}</span>
+      {ev !== null && <span className="tennis-slate-table__lean-ev">{ev} EV</span>}
     </td>
   )
 }
@@ -60,7 +64,6 @@ function FlagsCell({ flags }: { flags: string[] }) {
 function SlateTableRow({ row, showTournament, showFlags }: { row: SlateRow; showTournament: boolean; showFlags: boolean }) {
   const navigate = useNavigate()
   const analysisPath = matchAnalysisPath(row.match)
-  const propPath = row.primaryProp ? propMatchPath(row.primaryProp) : null
   const pct = (value: number | null) => fmtPct(value)
   const matchup = row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0]
   // Links keep native keyboard and modified-click behavior.
@@ -90,9 +93,7 @@ function SlateTableRow({ row, showTournament, showFlags }: { row: SlateRow; show
       <PairCell pair={row.ml} format={pct} extra />
       <PairCell pair={row.market} format={pct} />
       <PairCell pair={row.model} format={pct} />
-      <td className="tennis-slate-table__pick"><span>{!row.primaryPick && propPath
-        ? <Link to={propPath}>{bestPickText(row)}</Link> : bestPickText(row)}</span></td>
-      <td className={`tennis-slate-table__ev${row.primaryIsBestBet ? ' is-play' : ''}`}>{fmtEv(row.primaryPick?.evPct)}</td>
+      <LeanCell row={row} />
       <PairCell pair={row.odds} format={(value) => fmtAmerican(value)} extra />
       {showFlags && <FlagsCell flags={row.flags} />}
     </tr>
@@ -114,7 +115,7 @@ function TourTabs({ tab, onChange }: { tab: TourTab; onChange: (tab: TourTab) =>
 /** Each canonical match links to its analysis page (F-43). */
 export default function TennisSlateTable({ rows, grouped, showFlags, tab, onTabChange, searchAllTabs = false, emptyMessage = 'No matches in this group.' }: Props) {
   const groups = tableGroups(searchAllTabs ? rows : filterByTourTab(rows, tab), grouped)
-  const columns = showFlags ? 10 : 9
+  const columns = showFlags ? 9 : 8
   return (
     <section className="tennis-slate-table" aria-label="Today's tennis matches">
       <div className="tennis-slate-table__head">
@@ -129,7 +130,7 @@ export default function TennisSlateTable({ rows, grouped, showFlags, tab, onTabC
             <thead>
               <tr>
                 <th>Time</th><th>Match</th><th className="is-extra">ELO</th><th className="is-extra">ML</th><th>Market</th><th>Model</th>
-                <th>Best pick</th><th>EV</th><th className="is-extra">Odds</th>{showFlags && <th>Flags</th>}
+                <th>Model lean</th><th className="is-extra">Odds</th>{showFlags && <th>Flags</th>}
               </tr>
             </thead>
             {groups.map((group) => (

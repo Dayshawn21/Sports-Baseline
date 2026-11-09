@@ -1,16 +1,19 @@
 import { SlateDigest } from '~/components/shared/SlateDigest'
 import { Link } from 'react-router-dom'
-import type { TennisDigestItem } from '~/utils/tennisSlate'
+import type { TennisDigestItem, TennisLeanDigestItem } from '~/utils/tennisSlate'
 
 interface Props {
-  items: TennisDigestItem[]
+  priced: TennisDigestItem[]
+  leans: TennisLeanDigestItem[]
 }
 
-/** The slate's priced best picks: the only green on a tennis digest box is a priced best bet's EV. */
-export default function TennisSlateDigest({ items }: Props) {
-  if (items.length === 0) return null
-  return <SlateDigest label="Best picks · priced" labelId="tennis-digest-label">
-    {items.map((item) => {
+/**
+ * A slate with a priced best bet shows those picks, the only green on the digest (their EV).
+ * Otherwise it shows the next matches' model leans, gray and unranked (57d); with neither, nothing.
+ */
+export default function TennisSlateDigest({ priced, leans }: Props) {
+  if (priced.length > 0) return <SlateDigest label="Best picks · priced" labelId="tennis-digest-label">
+    {priced.map((item) => {
       return <Link key={item.matchKey} to={item.analysisPath} className="slate-digest__play tennis-digest__play">
         <strong>{item.pick}</strong>
         <span className="slate-digest__what">{item.what}</span>
@@ -22,5 +25,13 @@ export default function TennisSlateDigest({ items }: Props) {
         </span>
       </Link>
     })}
+  </SlateDigest>
+  if (leans.length === 0) return null
+  return <SlateDigest label="Model leans · reference" labelId="tennis-digest-label">
+    {leans.map((item) => <Link key={item.matchKey} to={item.analysisPath} className="slate-digest__play tennis-digest__lean">
+      <strong>{item.lean}</strong>
+      <span className="slate-digest__what">{item.what}</span>
+      <span className="slate-digest__what">{item.when}</span>
+    </Link>)}
   </SlateDigest>
 }

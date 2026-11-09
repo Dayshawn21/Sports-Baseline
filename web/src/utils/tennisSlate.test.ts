@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, matchAnalysisPath, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, leanDigest, matchAnalysisPath, modelLeanCell, tableGroups, groupByTournament, slateDayTime, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -307,5 +307,78 @@ describe('tennisDigest', () => {
 
   it('returns no boxes when there is no priced pick', () => {
     expect(tennisDigest([], NOW)).toEqual([])
+  })
+})
+
+// Noon CT on Tue, Aug 25, 2026.
+const NOW_MS = Date.parse('2026-08-25T17:00:00Z')
+
+describe('slateDayTime', () => {
+  it('names today, which fmtStartCT leaves off', () => {
+    expect(slateDayTime('2026-08-25T22:30:00Z', NOW_MS)).toEqual({ day: 'Today', time: '5:30 PM CT' })
+  })
+  it('names tomorrow and later dates', () => {
+    expect(slateDayTime('2026-08-26T15:00:00Z', NOW_MS)).toEqual({ day: 'Tomorrow', time: '10:00 AM CT' })
+    expect(slateDayTime('2026-08-27T15:00:00Z', NOW_MS)).toEqual({ day: 'Thu, Aug 27', time: '10:00 AM CT' })
+  })
+  it('splits days on the CT calendar, not a 24-hour offset', () => {
+    expect(slateDayTime('2026-08-26T04:30:00Z', NOW_MS).day).toBe('Today')
+    expect(slateDayTime('2026-08-26T05:30:00Z', NOW_MS).day).toBe('Tomorrow')
+  })
+  it.each([null, 'not a date'])('shows TBA with no day for %s', value => {
+    expect(slateDayTime(value, NOW_MS)).toEqual({ day: '', time: 'TBA' })
+  })
+})
+
+describe('modelLeanCell', () => {
+  it('shows a priced best bet with its EV', () => {
+    expect(modelLeanCell(slateRow(match({ bestPicks: [bestBet()] }))))
+      .toEqual({ text: 'Mensik ML (+128)', ev: '+14.2%', link: null })
+  })
+  it('shows an unpriced lean with no EV', () => {
+    expect(modelLeanCell(slateRow(match({ bestPicks: [angle()] }))))
+      .toEqual({ text: 'Set score 2-0', ev: null, link: null })
+  })
+  it('falls back to the first prop, linked to its match props', () => {
+    const cell = modelLeanCell(slateRow(match({ props: [prop({ matchId: 77 })] })))
+    expect(cell.text).toBe('Jakub Mensik · aces')
+    expect(cell.ev).toBeNull()
+    expect(cell.link).toMatch(/^\/tennis\/match\/77\?/)
+  })
+  it('shows the dash placeholder for a row with nothing to show', () => {
+    expect(modelLeanCell(slateRow(match()))).toEqual({ text: fmtEv(null), ev: null, link: null })
+  })
+})
+
+describe('leanDigest', () => {
+  const leanRow = (id: number, startUtc: string, over: Partial<UnifiedTennisMatch> = {}) => slateRow(match({
+    key: `m${id}`, matchId: id, bestPicks: [angle({ pick: `Lean ${id}` })],
+    prediction: prediction({ matchId: id, startUtc, p1Name: `A${id}`, p2Name: `B${id}`, tournament: 'Paris' }), ...over,
+  }))
+
+  it('lists upcoming leans in start order, up to the limit', () => {
+    const rows = [
+      leanRow(3, '2026-08-26T15:00:00Z'), leanRow(1, '2026-08-25T18:00:00Z'),
+      leanRow(2, '2026-08-25T20:00:00Z'), leanRow(4, '2026-08-27T15:00:00Z'),
+    ]
+    const items = leanDigest(rows, NOW_MS, 3)
+    expect(items.map(item => item.lean)).toEqual(['Lean 1', 'Lean 2', 'Lean 3'])
+    expect(items[0]).toEqual({
+      matchKey: 'm1', analysisPath: '/tennis/match/1', lean: 'Lean 1', what: 'A1 vs B1', when: 'Paris · 1:00 PM CT',
+    })
+    expect(items[2].when).toBe('Paris · Tomorrow · 10:00 AM CT')
+  })
+  it('skips started matches, rows without a lean, without a page, or without a time', () => {
+    const rows = [
+      leanRow(1, '2026-08-25T16:00:00Z'),
+      leanRow(2, '2026-08-25T18:00:00Z', { bestPicks: [] }),
+      leanRow(3, '2026-08-25T18:00:00Z', { matchId: null }),
+      leanRow(4, 'not a date'),
+      leanRow(5, '2026-08-25T19:00:00Z'),
+    ]
+    expect(leanDigest(rows, NOW_MS, 4).map(item => item.matchKey)).toEqual(['m5'])
+  })
+  it('is empty for an empty slate', () => {
+    expect(leanDigest([], NOW_MS, 4)).toEqual([])
   })
 })

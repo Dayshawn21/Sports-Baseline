@@ -312,48 +312,6 @@ body {
   text-transform: uppercase;
 }
 
-.unified-filters {
-  justify-content: flex-end;
-}
-
-.unified-filters .ant-select {
-  min-width: 138px;
-}
-
-.unified-filters .ant-picker {
-  min-width: 158px;
-}
-
-.unified-filter-button {
-  min-height: 32px;
-  padding: 5px 12px;
-  border: 1px solid var(--border-card);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.unified-filter-button:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--text-primary);
-}
-
-.unified-filter-button.is-active {
-  border-color: rgba(255, 255, 255, 0.35);
-  background: var(--bg-raised);
-  color: var(--text-primary);
-}
-
-.unified-filter-button.is-lean {
-  border-color: color-mix(in srgb, var(--caution) 40%, transparent);
-  background: var(--caution-soft);
-  color: var(--caution);
-}
-
 .unified-notices {
   display: grid;
   gap: 8px;
@@ -475,18 +433,6 @@ body {
 
 .unified-empty-state p {
   margin: 0 0 14px;
-}
-
-@media (max-width: 768px) {
-  .unified-filters {
-    width: 100%;
-  }
-
-  .unified-filters .ant-select,
-  .unified-filters .ant-picker,
-  .unified-filter-button {
-    width: 100%;
-  }
 }
 
 /* ── App shell ── */

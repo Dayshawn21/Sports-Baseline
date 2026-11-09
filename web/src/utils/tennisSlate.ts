@@ -4,6 +4,7 @@ import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unif
 import { getDisplayFlags } from '~/components/tennis/qualityFlags'
 import { fmtStartCT, fmtTournament } from '~/utils/format'
 import { fmtAmerican } from '~/utils/odds'
+import { propMatchPath } from '~/utils/tennisMatchView'
 
 type Pair = [number, number]
 
@@ -194,4 +195,58 @@ export function featuredPicks(matches: UnifiedTennisMatch[], limit: number): Fea
     if (featured.length === limit) break
   }
   return featured
+}
+
+export interface SlateDayTime { day: string, time: string }
+
+/** Every row names its day: fmtStartCT omits it for today, so the slate says "Today". */
+export function slateDayTime(startUtc: string | null, now: number): SlateDayTime {
+  const label = fmtStartCT(startUtc, now)
+  if (!label) return { day: '', time: 'TBA' }
+  const [day, time] = label.split(' · ')
+  return time === undefined ? { day: 'Today', time: day } : { day, time }
+}
+
+export interface ModelLeanCell { text: string, ev: string | null, link: string | null }
+
+const NO_LEAN = fmtEv(null)
+
+/** The gray lean; EV only for a priced best bet, which is the one pick the slate may color. */
+export function modelLeanCell(row: SlateRow): ModelLeanCell {
+  if (row.primaryPick) {
+    return { text: row.primaryPick.pick, ev: row.primaryIsBestBet ? fmtEv(row.primaryPick.evPct) : null, link: null }
+  }
+  if (row.primaryProp) {
+    const prop = row.primaryProp
+    return { text: `${prop.playerName ?? 'Player'} · ${prop.statType}`, ev: null, link: propMatchPath(prop) }
+  }
+  return { text: NO_LEAN, ev: null, link: null }
+}
+
+export interface TennisLeanDigestItem {
+  matchKey: string
+  analysisPath: string
+  lean: string
+  what: string
+  when: string
+}
+
+/** The next matches to start that carry a model lean, in start order: no ranking. */
+export function leanDigest(rows: SlateRow[], now: number, limit: number): TennisLeanDigestItem[] {
+  return rows
+    .flatMap((row) => {
+      const analysisPath = matchAnalysisPath(row.match)
+      const start = Date.parse(row.startUtc ?? '')
+      if (!row.primaryPick || analysisPath == null || !Number.isFinite(start) || start <= now) return []
+      return [{ row, analysisPath, start }]
+    })
+    .sort((a, b) => a.start - b.start)
+    .slice(0, limit)
+    .map(({ row, analysisPath }) => ({
+      matchKey: row.key,
+      analysisPath,
+      lean: row.primaryPick?.pick ?? NO_LEAN,
+      what: row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0],
+      when: `${fmtTournament(row.tournament)} · ${fmtStartCT(row.startUtc, now)}`,
+    }))
 }
