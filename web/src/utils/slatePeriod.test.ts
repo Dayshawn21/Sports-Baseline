@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAsOf, oddsPart, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAgeLabel, oddsAsOf, oddsPart, rowOddsAge, staleOddsSince, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
 
 const NOW = Date.parse('2026-11-08T22:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -62,26 +62,58 @@ describe('gameSlateLine', () => {
     expect(gameSlateLine('Week 9', counts, [NOW + HOUR], NOW)).toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT')
   })
 
-  it('marks stale odds while a game is still to start', () => {
+  it('says how old stale odds are while a game is still to start', () => {
     expect(gameSlateLine('Week 9', { ...counts, oddsUpdatedMs: NOW - 7 * HOUR }, [NOW + HOUR], NOW))
-      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT (stale)')
+      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT · 7 hours old')
+    expect(gameSlateLine('Week 9', { ...counts, oddsUpdatedMs: NOW - 5.7 * 24 * HOUR }, [NOW + HOUR], NOW))
+      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT · 6 days old')
   })
 
-  it('leaves out the odds when none are stored, and shows the period alone for an empty slate', () => {
+  it('leaves out the odds when none are stored, a zero final count, and shows the period alone for an empty slate', () => {
     expect(gameSlateLine('Sun, Nov 8, 2026', { games: 1, finals: 0, oddsUpdated: null, oddsUpdatedMs: null }, [], NOW))
-      .toBe('Sun, Nov 8, 2026 · 1 game · 0 final')
+      .toBe('Sun, Nov 8, 2026 · 1 game')
     expect(gameSlateLine('Week 12', { ...counts, games: 0 }, [], NOW)).toBe('Week 12')
   })
 })
 
 describe('oddsPart', () => {
-  it('labels the odds time and marks stale odds in words', () => {
-    expect(oddsPart('Tue 3:12 PM CT', false)).toBe('odds Tue 3:12 PM CT')
-    expect(oddsPart('Tue 3:12 PM CT', true)).toBe('odds Tue 3:12 PM CT (stale)')
+  it('labels the odds time and adds the age of stale odds', () => {
+    expect(oddsPart('Tue 3:12 PM CT', null)).toBe('odds Tue 3:12 PM CT')
+    expect(oddsPart('Tue 3:12 PM CT', '6 days old')).toBe('odds Tue 3:12 PM CT · 6 days old')
   })
 
   it('is left out when no odds are stored', () => {
-    expect(oddsPart(null, true)).toBeNull()
+    expect(oddsPart(null, '6 days old')).toBeNull()
+  })
+})
+
+describe('oddsAgeLabel', () => {
+  it('rounds to the nearest hour under a day, then the nearest day', () => {
+    expect(oddsAgeLabel(NOW - 7.2 * HOUR, NOW)).toBe('7 hours old')
+    expect(oddsAgeLabel(NOW - 23.6 * HOUR, NOW)).toBe('1 day old')
+    expect(oddsAgeLabel(NOW - 5.7 * 24 * HOUR, NOW)).toBe('6 days old')
+  })
+})
+
+describe('staleOddsSince', () => {
+  it('returns the newest fetch only while the odds are stale', () => {
+    expect(staleOddsSince(NOW - 7 * HOUR, [NOW + HOUR], NOW)).toBe(NOW - 7 * HOUR)
+    expect(staleOddsSince(NOW - 2 * HOUR, [NOW + HOUR], NOW)).toBeNull()
+    expect(staleOddsSince(null, [NOW + HOUR], NOW)).toBeNull()
+  })
+})
+
+describe('rowOddsAge', () => {
+  const slate = NOW - 6 * 24 * HOUR
+
+  it('stays quiet for a row from the same run as the slate newest fetch', () => {
+    expect(rowOddsAge(slate, slate, NOW)).toBeNull()
+    expect(rowOddsAge(slate - 40 * 60 * 1000, slate, NOW)).toBeNull()
+  })
+
+  it('names a row fetched in another run, and a row with no stored time', () => {
+    expect(rowOddsAge(slate - 3 * 24 * HOUR, slate, NOW)).toMatch(/^as of /)
+    expect(rowOddsAge(null, slate, NOW)).toBe('odds time not stored')
   })
 })
 

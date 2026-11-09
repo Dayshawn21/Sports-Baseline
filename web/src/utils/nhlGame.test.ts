@@ -56,6 +56,12 @@ describe('NHL CT labels and game state', () => {
     expect(nhlGameState(game(), NOW)).toEqual({ state: 'upcoming', label: 'Scheduled' })
     expect(nhlGameState(game({ startUtc: NOW.toISOString() }), NOW)).toEqual({ state: 'started', label: 'Puck dropped' })
     expect(nhlGameState(game({ startUtc: null }), NOW).state).toBe('upcoming')
+    expect(nhlGameState(game({ startUtc: '2026-10-23T12:59:00Z' }), NOW)).toEqual({ state: 'pending', label: 'Result pending' })
+  })
+  it('gives an ended game with no final no tags or odds age, but keeps its market', () => {
+    const row = nhlSlateRow(game({ startUtc: '2026-10-23T12:00:00Z' }), NOW, Date.parse('2026-10-23T17:30:00Z'))
+    expect([row.state, row.tags, row.oddsAge]).toEqual(['pending', [], null])
+    expect(row.win).not.toBeNull()
   })
   it.each(['OT', 'SO'] as const)('preserves final %s context before clock state', endPeriod => {
     expect(nhlGameState(game({ status: 'completed', endPeriod }), NOW)).toEqual({ state: 'final', label: `Final / ${endPeriod}` })

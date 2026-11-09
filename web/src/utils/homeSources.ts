@@ -10,6 +10,7 @@ import { nflSlateSummary, type NflSlateDigestItem } from '~/utils/nflSlate'
 import { nhlSlateSummary } from '~/utils/nhlSlate'
 import { enrichTennisPropLines, isTennisRateable, marketTitle, marketWinProbabilities, payoutTier } from '~/utils/tennisPropBoard'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
+import { signedGapUnits } from '~/utils/gapUnits'
 
 /** A gray reference line; the digests' own display strings, never re-ranked across sports. */
 export interface HomeGap {
@@ -20,6 +21,7 @@ export interface HomeGap {
   matchup: string
   line: string
   model: string
+  /** Model minus line in the stat's units, as the slates show it: "+32.6 yds". */
   gap: string
   /** The digest's own Central start text, such as `Thu 7:15 PM CT`. */
   when: string
@@ -206,7 +208,7 @@ export function nflSource(slate: NflSlateResponse, digest: NflSlateDigestItem[],
     gameCount: slate.games.length,
     propLines: nflSlateSummary(slate.games, undefined).propLines,
     gaps: digest.slice(0, GAPS_PER_SPORT).map(item => gapOf(
-      'nfl', item, String(item.lineId), nflPlayerMarketLink(item.playerId, item.marketKey, { season: slate.season, week: slate.week }),
+      'nfl', { ...item, gap: item.gapUnits }, String(item.lineId), nflPlayerMarketLink(item.playerId, item.marketKey, { season: slate.season, week: slate.week }),
     )),
     moneyline: moneylineRows(nflWinSides(slate.games), now),
     period: `Week ${slate.week}`,
@@ -239,10 +241,6 @@ export function isPricedMatch(match: MatchPrediction): boolean {
   return match.p1OddsAmerican != null && match.p2OddsAmerican != null
 }
 
-function signedShare(value: number): string {
-  return `${value < 0 ? '-' : '+'}${Math.abs(value).toFixed(1)}%`
-}
-
 /**
  * The tennis board's standard PrizePicks lines as gray gap rows: the projection against the line as a share of
  * the line, the NFL rows' unit. Lines whose projection ran on the model total are left out (48a: it ran low).
@@ -265,7 +263,7 @@ export function tennisGapRows(props: PropLine[], matches: MatchPrediction[], now
     rows.push({
       key: String(line.id), sport: 'tennis', playerName: line.playerName ?? 'Unknown player', market: marketTitle(line.statType),
       matchup: line.matchup ?? '', when: `${startLabel(start, now)} CT`, line: Number(line.line).toFixed(1),
-      model: (line.statAvg as number).toFixed(1), gap: signedShare(edge), path,
+      model: (line.statAvg as number).toFixed(1), gap: signedGapUnits((line.statAvg as number) - Number(line.line)), path,
     })
     if (rows.length === GAPS_PER_SPORT) break
   }

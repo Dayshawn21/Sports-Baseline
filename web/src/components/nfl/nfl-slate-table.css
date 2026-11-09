@@ -4,14 +4,14 @@
 /* Fixed widths, sized to the longest value each column holds, so every kickoff window's table lines up with the
    others. Every column has a width, so wider screens spread the spare room across all eight instead of handing
    it to Notes. Below 1100px they no longer fit and the rows go to two lines. */
-.nfl-slate-table col.is-kickoff { width: 116px; }
+.nfl-slate-table col.is-kickoff { width: 140px; }
 .nfl-slate-table col.is-game { width: 144px; }
 .nfl-slate-table col.is-spread { width: 128px; }
 .nfl-slate-table col.is-total { width: 108px; }
 .nfl-slate-table col.is-moneyline { width: 100px; }
 .nfl-slate-table col.is-model { width: 144px; }
 .nfl-slate-table col.is-props { width: 64px; }
-.nfl-slate-table col.is-notes { width: 220px; }
+.nfl-slate-table col.is-notes { width: 196px; }
 .nfl-slate-table th {
   padding: 6px 10px; color: var(--text-muted); text-align: left; white-space: nowrap;
   font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
@@ -32,6 +32,9 @@
 .nfl-slate-table__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: normal; }
 .nfl-slate-table__conditions { color: var(--text-muted); font: 400 11px var(--font-body); }
 .nfl-slate-table__unit { display: none; }
+/* Stale prices step down to the secondary gray (2026-11-09 critique, P2): still readable, no longer the loudest
+   numbers on the row. The head says how old they are; a final's graded close is never stale. */
+.nfl-slate-table.has-stale-odds tr:not(.is-final) :is(.nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline) { color: var(--text-secondary); }
 
 /* Phones and narrow tablets: each game is two lines, kickoff, game and props, then the lines. The header
    hides, so the total, moneyline and model carry short labels; the spread reads as "BUF -4.5" unaided. */
@@ -53,6 +56,9 @@
   /* A live game with no stored score says so beside "Live", in place of the kickoff time. */
   .nfl-slate-table tr.is-live .nfl-slate-table__kickoff .nfl-slate-table__pending { display: inline; }
   .nfl-slate-table__pending::before { content: '· '; }
+  /* An ended game with no stored final says "Result pending" in place of its kickoff time. */
+  .nfl-slate-table tr.is-pending .nfl-slate-table__time { display: none; }
+  .nfl-slate-table tr.is-pending .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
   .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
   .nfl-slate-table__props { order: 2; color: var(--text-muted); }

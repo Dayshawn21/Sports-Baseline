@@ -1,0 +1,31 @@
+/* The slate's lead while a sport has no adopted picks (2026-11-09 critique, P1): the headline first, the
+   gaps as one gray line under it. Nothing here is colored; a gap is not a pick. */
+.slate-no-picks { margin-top: 22px; }
+.slate-no-picks__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.slate-no-picks__title { margin: 0; color: var(--text-primary); font: 700 18px/1.3 var(--font-display); }
+.slate-no-picks__left { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.slate-gaps { display: flex; align-items: baseline; gap: 4px 14px; margin-top: 8px; min-width: 0; font-size: 12px; }
+.slate-gaps__label {
+  flex: none; color: var(--text-muted);
+  font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.slate-gaps__note { margin-left: 4px; font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+.slate-gaps__list { display: flex; flex-wrap: wrap; gap: 4px 16px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.slate-gaps__item { color: var(--text-secondary); white-space: nowrap; }
+/* The color restates the base: Ant Design's global `a:hover` would turn the link blue. */
+.slate-gaps__item:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.slate-gaps__item:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 2px; }
+.slate-gaps__item strong { color: var(--text-primary); font-weight: 600; }
+.slate-gaps__market { color: var(--text-muted); }
+.slate-gaps__gap { font-family: var(--font-mono); }
+/* Phones: the gaps scroll sideways on one line, each a full-height tap target. */
+@media (max-width: 767px) {
+  .slate-no-picks { margin-top: 14px; }
+  .slate-no-picks__title { font-size: 16px; }
+  .slate-gaps { flex-direction: column; gap: 0; margin-top: 6px; }
+  .slate-gaps__list {
+    flex-wrap: nowrap; gap: 0 18px; width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  }
+  .slate-gaps__list li { flex: none; }
+  .slate-gaps__item { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+}

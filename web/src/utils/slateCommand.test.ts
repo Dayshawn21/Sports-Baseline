@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SlateCommandRowInput, SlateCommandScope } from '~/types/slateCommand'
 import {
+  commandGameContext,
   firstSlateCommandPath,
   initialSlateCommandState,
   matchingSlateCommandRows,
@@ -9,6 +10,7 @@ import {
   nhlSlateCommandRows,
   nflSlateCommandRows,
   normalizeSlateCommand,
+  slateCommandPlaceholder,
   slateCommandReducer,
   slateCommandRow,
   tennisSlateCommandRows,
@@ -27,6 +29,21 @@ function row(input: Partial<SlateCommandRowInput> = {}) {
     ...input,
   })
 }
+
+describe('slateCommandPlaceholder', () => {
+  it('names each sport event: a tennis match, a team sport game', () => {
+    expect(slateCommandPlaceholder('/tennis', true)).toBe('Jump to a match or player...')
+    expect(slateCommandPlaceholder('/nfl', true)).toBe('Jump to a game or player...')
+    expect(slateCommandPlaceholder('/nba', true)).toBe('Jump to a game or player...')
+    expect(slateCommandPlaceholder('/nhl', true)).toBe('Search teams or games...')
+  })
+
+  it('offers another event off the slate, and says when search is loading', () => {
+    expect(slateCommandPlaceholder('/nfl/game/12', true)).toBe('Jump to another game or player...')
+    expect(slateCommandPlaceholder('/tennis/match/9', true)).toBe('Jump to another match or player...')
+    expect(slateCommandPlaceholder('/nfl', false)).toBe('Slate search loading...')
+  })
+})
 
 describe('normalizeSlateCommand', () => {
   it('trims, collapses whitespace, and ignores case', () => {
@@ -114,14 +131,15 @@ describe('tennisSlateCommandRows', () => {
     ])
   })
 
-  it('matches matchup, tournament, tour, and player aliases without changing the parent path', () => {
-    for (const query of ['Gauff Swiatek', 'Indian Wells', 'challenger', 'WTA 125', 'C. Gauff']) {
+  it('opens the match for its matchup, tournament and tour, and the player first for a player alias', () => {
+    for (const query of ['Gauff Swiatek', 'Indian Wells', 'challenger', 'WTA 125']) {
       expect(firstSlateCommandPath(tennisRows, query)).toBe('/tennis/match/41')
     }
     expect(matchingSlateCommandTargets(tennisRows, 'C. Gauff').map(target => target.path)).toEqual([
-      '/tennis/match/41',
       '/tennis/player/7',
+      '/tennis/match/41',
     ])
+    expect(firstSlateCommandPath(tennisRows, 'C. Gauff')).toBe('/tennis/player/7')
   })
 
   it('omits rows and player targets whose IDs cannot form valid routes', () => {
@@ -155,10 +173,10 @@ describe('nflSlateCommandRows', () => {
     ])
   })
 
-  it('matches team and player aliases while Enter keeps the parent game destination', () => {
-    expect(matchingSlateCommandTargets(rows, 'JAX').map(target => target.kind)).toEqual(['game', 'team'])
-    expect(matchingSlateCommandTargets(rows, 'N. Collins').map(target => target.kind)).toEqual(['game', 'player'])
-    expect(firstSlateCommandPath(rows, 'Nico')).toBe('/nfl/game/71')
+  it('lists a direct team or player hit before its game, and Enter opens that top hit', () => {
+    expect(matchingSlateCommandTargets(rows, 'JAX').map(target => target.kind)).toEqual(['team', 'game'])
+    expect(matchingSlateCommandTargets(rows, 'N. Collins').map(target => target.kind)).toEqual(['player', 'game'])
+    expect(firstSlateCommandPath(rows, 'Nico')).toBe('/nfl/player/22')
   })
 
   it('finds a team by nickname or city as well as its code', () => {
@@ -176,7 +194,30 @@ describe('nflSlateCommandRows', () => {
     expect(matchingSlateCommandRows(slate, 'KC').map(row => row.path)).toEqual(['/nfl/game/90', '/nfl/game/91'])
     expect(firstSlateCommandPath(slate, 'KC')).toBe('/nfl/game/91')
     expect(matchingSlateCommandTargets(slate, 'KC')[0].path).toBe('/nfl/game/91')
-    expect(firstSlateCommandPath(slate, 'concepcion')).toBe('/nfl/game/90')
+    expect(firstSlateCommandPath(slate, 'concepcion')).toBe('/nfl/player/5')
+  })
+
+  it('ranks every Allen above the games, lists each game once, and leaves out games with no Allen', () => {
+    const slate = nflSlateCommandRows([
+      { gameId: 1, awayTeam: 'BUF', homeTeam: 'MIA', lines: [{ playerId: 10, playerName: 'Josh Allen' }, { playerId: 11, playerName: 'Ray Davis' }], commandContext: 'Final · BUF 30, MIA 20' },
+      { gameId: 2, awayTeam: 'DAL', homeTeam: 'NYG', lines: [] },
+      { gameId: 3, awayTeam: 'CHI', homeTeam: 'DET', lines: [{ playerId: 12, playerName: 'Keenan Allen' }, { playerId: 13, playerName: 'Allen Robinson' }] },
+    ])
+    expect(matchingSlateCommandTargets(slate, 'allen').map(target => [target.kind, target.label])).toEqual([
+      ['player', 'Josh Allen'], ['player', 'Keenan Allen'], ['player', 'Allen Robinson'], ['game', 'BUF @ MIA'], ['game', 'CHI @ DET'],
+    ])
+    expect(firstSlateCommandPath(slate, 'allen')).toBe('/nfl/player/10')
+    expect(matchingSlateCommandTargets(slate, 'allen').filter(target => target.kind === 'game').map(target => target.context))
+      .toEqual(['Final · BUF 30, MIA 20', 'NFL game'])
+  })
+})
+
+describe('commandGameContext', () => {
+  it('adds the score to a final and leaves a start time alone', () => {
+    const final = { away: { code: 'TB', score: 24 }, home: { code: 'CHI', score: 27 } }
+    expect(commandGameContext('Final', final)).toBe('Final · TB 24, CHI 27')
+    expect(commandGameContext('Mon 7:15 PM CT')).toBe('Mon 7:15 PM CT')
+    expect(commandGameContext('Final', { ...final, home: { code: 'CHI', score: null } })).toBe('Final')
   })
 })
 
@@ -201,12 +242,12 @@ describe('nbaSlateCommandRows', () => {
       expect(firstSlateCommandPath(rows, query)).toBe('/nba/game/81')
     }
     expect(rows[0].targets.filter(target => target.kind === 'player').map(target => target.path)).toEqual(['/nba/game/81'])
-    expect(matchingSlateCommandTargets(rows, 'Shai').map(target => target.kind)).toEqual(['game', 'player'])
+    expect(matchingSlateCommandTargets(rows, 'Shai').map(target => target.kind)).toEqual(['player', 'game'])
   })
 
   it('keeps game and team search available without digest data', () => {
     const rows = nbaSlateCommandRows(games, [])
-    expect(matchingSlateCommandTargets(rows, 'Minnesota').map(target => target.kind)).toEqual(['game', 'team'])
+    expect(matchingSlateCommandTargets(rows, 'Minnesota').map(target => target.kind)).toEqual(['team', 'game'])
     expect(matchingSlateCommandTargets(rows, 'Shai')).toEqual([])
   })
 })
@@ -229,8 +270,8 @@ describe('command matching', () => {
 
   it('lets a player match its parent game and returns the direct player target', () => {
     expect(matchingSlateCommandRows(rows, 'nico').map(item => item.key)).toEqual(['hou-jax'])
-    expect(matchingSlateCommandTargets(rows, 'nico').map(target => target.path)).toEqual(['/nfl/player/22'])
-    expect(firstSlateCommandPath(rows, 'nico')).toBe('/nfl/game/7')
+    expect(matchingSlateCommandTargets(rows, 'nico').map(target => target.path)).toEqual(['/nfl/player/22', '/nfl/game/7'])
+    expect(firstSlateCommandPath(rows, 'nico')).toBe('/nfl/player/22')
   })
 
   it('treats an empty query as no filter and no open results', () => {

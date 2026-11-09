@@ -62,6 +62,6 @@ export function NbaGameMarket({ detail, card }: { detail: NbaGameDetail, card: N
   if (card.state === 'off') return <p className="nfl-game-empty">{card.stateLabel}: no market shown</p>
   return <>
     <MarketBlock detail={detail} />
-    {card.state === 'started' && <p className="nfl-game-note">Scores load the morning after the game.</p>}
+    {(card.state === 'started' || card.state === 'pending') && <p className="nfl-game-note">Scores load the morning after the game.</p>}
   </>
 }

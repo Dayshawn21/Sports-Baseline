@@ -16,7 +16,7 @@ export function NbaSlateDigest({ items, scope = 'today', playerPath }: Props) {
   return <SlateDigest label={`Largest prop gaps ${scope} · reference, not picks`} labelId="nba-digest-label">
     {items.map(item => {
       const body = <GapDigestBody playerName={item.playerName} market={item.market} matchup={item.matchup}
-        when={item.when} line={item.line} model={item.model} gap={item.gap} gapScale="then as % of the line" />
+        when={item.when} line={item.line} model={item.model} gap={item.gap} gapDetail={item.gapScaled} />
       return playerPath
         ? <Link key={item.key} className="slate-digest__play" to={playerPath(item)}
           aria-label={`${item.playerName}, ${item.market}, open player page`}>{body}</Link>

@@ -27,11 +27,12 @@ function Notes({ row }: { row: NflSlateRowModel }) {
     {injuries !== null && injuries.questionable > 0 && <span className="nfl-slate-card__tag is-caution" title={`${injuries.questionable} questionable`} aria-label={`${injuries.questionable} questionable`}>{injuries.questionable} Q</span>}
     {row.qbChange.map(team => <span key={`qb-${team}`} className="nfl-slate-card__tag is-caution">QB change: {team}</span>)}
     {row.shortWeek.map(team => <span key={team} className="nfl-slate-card__tag">Short week: {team}</span>)}
-    {row.state !== 'final' && <span className="nfl-slate-table__conditions">{row.conditions}</span>}
+    {row.state !== 'final' && row.state !== 'pending' && <span className="nfl-slate-table__conditions">{row.conditions}</span>}
   </span>
 }
 
 function Kickoff({ row }: { row: NflSlateRowModel }) {
+  if (row.state === 'pending') return <><span className="nfl-slate-table__time">{row.kickoff}</span><small className="nfl-slate-table__result">Result pending</small></>
   if (row.state !== 'live') return <>{row.kickoff}</>
   return <><span className="nfl-slate-card__live">Live</span>{row.scorePending
     ? <small className="nfl-slate-table__pending">score pending</small>
@@ -45,14 +46,14 @@ function Spread({ row }: { row: NflSlateRowModel }) {
 const COLUMNS = ['kickoff', 'game', 'spread', 'total', 'moneyline', 'model', 'props', 'notes']
 
 /** One kickoff window's games, one row each; a row opens its game page. Display only, never green. */
-export function NflSlateTable({ rows, label }: { rows: NflSlateRowModel[], label: string }) {
+export function NflSlateTable({ rows, label, staleOdds = false }: { rows: NflSlateRowModel[], label: string, staleOdds?: boolean }) {
   const navigate = useNavigate()
   const open = (event: MouseEvent, gameId: number) => {
     // The Game link handles its own clicks, so a click on it never navigates twice.
     if (event.target instanceof Element && event.target.closest('a')) return
     navigate(`/nfl/game/${gameId}`)
   }
-  return <table className="nfl-slate-table" aria-label={label}>
+  return <table className={`nfl-slate-table${staleOdds ? ' has-stale-odds' : ''}`} aria-label={label}>
     <colgroup>{COLUMNS.map(column => <col key={column} className={`is-${column}`} />)}</colgroup>
     <thead><tr>
       <th>Kickoff</th><th>Game</th><th>Spread</th><th>Total</th><th>Moneyline</th>

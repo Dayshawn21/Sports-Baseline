@@ -6,6 +6,18 @@ import type {
   SlateCommandTargetInput,
 } from '~/types/slateCommand'
 import { nflTeamName } from '~/utils/nflTeams'
+import { type Sport, sportForPath, sportViewForPath } from '~/utils/sportNav'
+
+const EVENT_NOUN: Record<Sport, string> = { tennis: 'match', nfl: 'game', nba: 'game', nhl: 'game' }
+
+/** The search field's hint, in the page's own noun: a tennis "match", a team sport's "game". NHL search has no players. */
+export function slateCommandPlaceholder(pathname: string, ready: boolean): string {
+  if (!ready) return 'Slate search loading...'
+  const sport = sportForPath(pathname)
+  if (sport === 'nhl') return 'Search teams or games...'
+  const noun = sport === null ? 'game' : EVENT_NOUN[sport]
+  return sportViewForPath(pathname) === 'slate' ? `Jump to a ${noun} or player...` : `Jump to another ${noun} or player...`
+}
 
 export interface SlateCommandState {
   routeKey: string
@@ -41,6 +53,8 @@ interface NflCommandGameInput {
   awayTeam: string
   homeTeam: string
   lines: readonly { playerId: number, playerName: string }[]
+  /** The game result's second line: its start time or final score (`commandGameContext`). */
+  commandContext?: string
 }
 
 interface TeamCommandGameInput {
@@ -49,6 +63,15 @@ interface TeamCommandGameInput {
   homeTeam: string
   awayTeamName: string
   homeTeamName: string
+  commandContext?: string
+}
+
+interface CommandScore { code: string, score: number | null }
+
+/** A game result's context: its start or state ("Mon 7:15 PM CT", "Result pending"), with the score once final. */
+export function commandGameContext(label: string, final?: { away: CommandScore, home: CommandScore }): string {
+  if (!final || final.away.score === null || final.home.score === null) return label
+  return `${label} · ${final.away.code} ${final.away.score}, ${final.home.code} ${final.home.score}`
 }
 
 interface NbaCommandGapInput {
@@ -145,7 +168,7 @@ export function tennisSlateCommandRows(rows: readonly TennisCommandRowInput[]): 
           label: matchup,
           context: row.tournament ?? row.tourLabel ?? row.tour ?? 'Tennis match',
           path: matchPath,
-          searchTerms: targetTerms,
+          searchTerms: rowTerms,
         },
         ...[...players].map(([playerId, player]) => ({
           key: `player-${playerId}`,
@@ -185,7 +208,7 @@ export function nflSlateCommandRows(games: readonly NflCommandGameInput[]): Slat
       path,
       searchTerms: terms,
       targets: [
-        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: 'NFL game', path, searchTerms: terms },
+        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: game.commandContext ?? 'NFL game', path, searchTerms: teamTerms },
         { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: awayName ?? matchup, path, searchTerms: awayName ? [awayName] : [] },
         { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: homeName ?? matchup, path, searchTerms: homeName ? [homeName] : [] },
         ...[...players].map(([playerId, player]) => ({
@@ -234,7 +257,7 @@ export function nbaSlateCommandRows(
       path,
       searchTerms: terms,
       targets: [
-        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: 'NBA game', path, searchTerms: terms },
+        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: game.commandContext ?? 'NBA game', path, searchTerms: teamTerms },
         { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: game.awayTeamName, path, searchTerms: [game.awayTeamName] },
         { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: game.homeTeamName, path, searchTerms: [game.homeTeamName] },
         ...[...players].map(([playerId, player]) => ({
@@ -261,7 +284,7 @@ export function nhlSlateCommandRows(games: readonly TeamCommandGameInput[]): Sla
     return [slateCommandRow({
       key: `nhl-${game.gameId}`, path, searchTerms: terms,
       targets: [
-        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: 'NHL game', path, searchTerms: terms },
+        { key: `game-${game.gameId}`, kind: 'game', label: matchup, context: game.commandContext ?? 'NHL game', path, searchTerms: terms },
         { key: `away-${game.awayTeam}`, kind: 'team', label: game.awayTeam, context: game.awayTeamName, path, searchTerms: aliases(game.awayTeamName) },
         { key: `home-${game.homeTeam}`, kind: 'team', label: game.homeTeam, context: game.homeTeamName, path, searchTerms: aliases(game.homeTeamName) },
       ],
@@ -282,7 +305,6 @@ const EXACT_LABEL = 0
 const WHOLE_WORDS = 1
 const WORD_PREFIXES = 2
 const SUBSTRINGS = 3
-const ROW_ONLY = 4
 
 function words(value: string): string[] {
   return value.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
@@ -297,24 +319,37 @@ function targetScore(target: SlateCommandTarget, query: string, queryTokens: rea
   return SUBSTRINGS
 }
 
-interface RankedRow {
-  row: SlateCommandRow
-  targets: SlateCommandTarget[]
+// A player is the most specific answer to a name, then a team; a game is what both belong to.
+const KIND_ORDER: Record<SlateCommandTarget['kind'], number> = { player: 0, team: 1, game: 2, match: 2 }
+
+interface RankedTarget {
+  target: SlateCommandTarget
   score: number
+  row: number
+  index: number
 }
 
-/** Matching rows, best match first; ties keep the slate's order and each row keeps its own target order. */
-function rankedSlateCommandRows(rows: readonly SlateCommandRow[], query: string): RankedRow[] {
+/**
+ * Every target that matches the query by its own name, best first: by how directly it matches, then player, team,
+ * game, then slate order. A game or match that matched only through a player or across targets follows once, after
+ * them, so "allen" lists the Allens before their games.
+ */
+function rankedSlateCommandTargets(rows: readonly SlateCommandRow[], query: string): SlateCommandTarget[] {
   const queryTokens = tokens(query)
   if (queryTokens.length === 0) return []
   const normalized = normalizeSlateCommand(query)
-  return matchingSlateCommandRows(rows, query)
-    .map(row => {
-      const direct = row.targets.filter(target => includesEveryToken(target.searchText, queryTokens))
-      const score = Math.min(ROW_ONLY, ...direct.map(target => targetScore(target, normalized, queryTokens)))
-      return { row, targets: direct.length > 0 ? direct : row.targets.slice(0, 1), score }
-    })
-    .sort((left, right) => left.score - right.score)
+  const direct: RankedTarget[] = []
+  const parents: SlateCommandTarget[] = []
+  matchingSlateCommandRows(rows, query).forEach((row, rowIndex) => {
+    const hits = row.targets.filter(target => includesEveryToken(target.searchText, queryTokens))
+    hits.forEach((target, index) => direct.push({ target, score: targetScore(target, normalized, queryTokens), row: rowIndex, index }))
+    const parent = row.targets[0]
+    if (parent && !hits.includes(parent)) parents.push(parent)
+  })
+  direct.sort((left, right) => left.score - right.score
+    || KIND_ORDER[left.target.kind] - KIND_ORDER[right.target.kind]
+    || left.row - right.row || left.index - right.index)
+  return [...direct.map(ranked => ranked.target), ...parents]
 }
 
 /** Filter without sorting, so the slate's existing row order remains authoritative. */
@@ -324,14 +359,14 @@ export function matchingSlateCommandRows(rows: readonly SlateCommandRow[], query
   return rows.filter(row => includesEveryToken(row.searchText, queryTokens))
 }
 
-/** Matching jump targets, rows ranked by their best match; a row-only match falls back to its first target. */
+/** Matching jump targets, direct name hits first; see `rankedSlateCommandTargets`. */
 export function matchingSlateCommandTargets(rows: readonly SlateCommandRow[], query: string): SlateCommandTarget[] {
-  return rankedSlateCommandRows(rows, query).flatMap(ranked => ranked.targets)
+  return rankedSlateCommandTargets(rows, query)
 }
 
-/** Enter opens the best-matching row's page (the game or match, never a player page). */
+/** Enter opens the top result, the same one the list shows first. */
 export function firstSlateCommandPath(rows: readonly SlateCommandRow[], query: string): string | null {
-  return rankedSlateCommandRows(rows, query)[0]?.row.path ?? null
+  return rankedSlateCommandTargets(rows, query)[0]?.path ?? null
 }
 
 export function initialSlateCommandState(routeKey: string): SlateCommandState {

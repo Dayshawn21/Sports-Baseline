@@ -3,9 +3,19 @@ export type SlatePhase = 'live' | 'upcoming' | 'off' | 'final'
 
 const PHASE_ORDER: Record<SlatePhase, number> = { live: 0, upcoming: 1, off: 2, final: 3 }
 
-/** The four sports' row states, as phases: NBA and NHL say "started" for a game in play. */
-export function slatePhase(state: 'upcoming' | 'live' | 'started' | 'final' | 'off'): SlatePhase {
-  return state === 'started' ? 'live' : state
+/** The four sports' row states, as phases: NBA and NHL say "started" for a game in play, and a game whose result is pending has ended. */
+export function slatePhase(state: 'upcoming' | 'live' | 'started' | 'pending' | 'final' | 'off'): SlatePhase {
+  if (state === 'started') return 'live'
+  return state === 'pending' ? 'final' : state
+}
+
+/** No NFL, NBA or NHL game runs this long, overtime included; past it, a game with no result has ended and only its score is missing. */
+export const RESULT_PENDING_AFTER_MS = 5 * 60 * 60 * 1000
+
+/** True for a game started over five hours ago; callers ask only of games not yet marked final or off. */
+export function isResultPending(startUtc: string | null, now: Date): boolean {
+  const start = startUtc === null ? Number.NaN : Date.parse(startUtc)
+  return Number.isFinite(start) && now.getTime() - start > RESULT_PENDING_AFTER_MS
 }
 
 /** Live, then upcoming, then off, then final; a stable sort, so games keep their order within a phase. */

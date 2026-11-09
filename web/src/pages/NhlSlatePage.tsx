@@ -10,13 +10,19 @@ import SlateLegend from '~/components/shared/SlateLegend'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNhlSlate } from '~/hooks/useNhl'
 import { usePhoneLayout } from '~/hooks/usePhoneLayout'
-import { nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
-import { matchingSlateCommandRows, nhlSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { type NhlSlateRowModel, nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
+import { commandGameContext, matchingSlateCommandRows, nhlSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { finalsStartOpen, openWindowTitle, slatePhase, splitFinals } from '~/utils/slateOrder'
-import { gameSlateLine, isOddsStale, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { gameSlateLine, staleOddsSince, startTimes, tableCountPart } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 import './nhl-slate.css'
+
+/** A search result's second line: puck drop, state, or the final score. */
+function commandContext(row: NhlSlateRowModel | undefined): string | undefined {
+  if (!row) return undefined
+  return commandGameContext(row.state === 'upcoming' ? row.puckDrop : row.stateLabel, row.state === 'final' ? row : undefined)
+}
 
 export default function NhlSlatePage() {
   const [searchParams] = useSearchParams()
@@ -25,13 +31,16 @@ export default function NhlSlatePage() {
   const { query } = useSlateCommand()
   const phone = usePhoneLayout()
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
-  const rows = useMemo(() => {
+  const { rows, staleOdds } = useMemo(() => {
     const now = new Date()
-    // The period line's own check, so a row shows its odds age exactly when the head says "(stale)".
-    const stale = isOddsStale(nhlSlateSummary(games).oddsUpdatedMs, startTimes(games.map(game => game.startUtc)), now.getTime())
-    return games.map(game => nhlSlateRow(game, now, stale))
+    // The period line's own check: while the odds are stale, a row shows its age only when it differs from the head's.
+    const stale = staleOddsSince(nhlSlateSummary(games).oddsUpdatedMs, startTimes(games.map(game => game.startUtc)), now.getTime())
+    return { rows: games.map(game => nhlSlateRow(game, now, stale)), staleOdds: stale !== null }
   }, [games])
-  const commandRows = useMemo(() => nhlSlateCommandRows(games), [games])
+  const commandRows = useMemo(
+    () => nhlSlateCommandRows(games.map((game, index) => ({ ...game, commandContext: commandContext(rows[index]) }))),
+    [games, rows],
+  )
   const scope = useMemo(() => slate.isLoading || slate.isError || !slate.data
     ? null : { periodKey: slate.data.date, rows: commandRows },
   [commandRows, slate.data, slate.isError, slate.isLoading])
@@ -67,7 +76,7 @@ export default function NhlSlatePage() {
       {(shown.open.length > 0 || (searchActive && filtered.length === 0)) && <section className="nfl-slate-window" aria-label="Games">
         <h2 className="nfl-slate-window__title">{openWindowTitle(split.finals.length)} <small>{tableCountPart(shown.open.length, split.open.length, searchActive, 'game')}</small></h2>
         {searchActive && filtered.length === 0 ? <div className="nfl-empty">No games found for this slate search.</div>
-          : shown.open.length > 0 && <NhlSlateTable rows={shown.open} />}
+          : shown.open.length > 0 && <NhlSlateTable rows={shown.open} staleOdds={staleOdds} />}
       </section>}
       {shown.finals.length > 0 && <SlateFinalsWindow
         key={`${date}-${searchActive}`}
