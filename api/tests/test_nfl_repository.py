@@ -22,6 +22,7 @@ from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
 from app.core.nfl_game_line_clv import ClvGame, OddsCandidate
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_lines import NflGameLineGame
+from app.core.nfl_kicker_projection import KICKER_REPLAY_MARKETS
 from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
 from app.nfl.markets import NflLineOnlyMarket, NflPropMarket
@@ -1116,6 +1117,44 @@ def test_a_fantasy_line_settles_on_prizepicks_points_not_nflverse_ppr() -> None:
     assert line.stat_value == 21.26
     assert settle_line(line).outcome == "over"
 
+
+
+def test_kicker_replay_rows_load_only_k_fantasy_and_settle_on_prizepicks_points(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_slate_line_rows(db: object, season: int, week: int, lines_cte: str, params: dict[str, object]) -> list[dict]:
+        captured["params"] = params
+        return [{"player_id": 9, "game_id": 3, "market": "fantasy_points", "position": "K", "opponent_team_id": 5}]
+
+    async def fake_team_game_totals(db: object, season: int, week: int) -> dict:
+        return {}
+
+    monkeypatch.setattr(nfl_repository, "_slate_line_rows", fake_slate_line_rows)
+    monkeypatch.setattr(nfl_repository, "get_team_game_position_totals", fake_team_game_totals)
+    stats = dict.fromkeys(
+        ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts",
+         "receiving_yards", "receptions", "touchdowns"),
+    )
+    session = _MappingSession([
+        {"player_id": 9, "game_id": 3, **stats, "prizepicks_fantasy_points": 11.0, "home_moneyline": None,
+         "away_moneyline": None, "spread_line": None, "total_line": None, "roof": None, "wind": None},
+    ])
+
+    replay = asyncio.run(get_replay_rows(cast(AsyncSession, session), 2025, 4, KICKER_REPLAY_MARKETS))
+
+    assert captured["params"] == {"replay_positions": ["K"], "replay_markets": ["fantasy_points"]}
+    assert [(item.row["position"], item.actual) for item in replay] == [("K", 11.0)]
+
+
+def test_kicker_pat_misses_read_k_regular_season_rows_of_one_season() -> None:
+    session = _MappingSession([{"player_id": 9, "game_id": 3, "pat_missed": 1}])
+
+    misses = asyncio.run(nfl_repository.get_kicker_pat_misses(cast(AsyncSession, session), 2025))
+
+    [(sql, params)] = session.calls
+    assert "p.position = 'K'" in sql and "g.game_type = 'REG'" in sql and "s.pat_missed IS NOT NULL" in sql
+    assert params == {"season": 2025}
+    assert misses == {(9, 3): 1}
 
 def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
