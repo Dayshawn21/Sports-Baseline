@@ -5,10 +5,12 @@ import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
+import SlateLegend from '~/components/shared/SlateLegend'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNhlSlate } from '~/hooks/useNhl'
 import { nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
 import { matchingSlateCommandRows, nhlSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 import './nhl-slate.css'
@@ -50,9 +52,7 @@ export default function NhlSlatePage() {
       No NHL games on {slateDateLabel(date)}.{' '}
       {nextDate && <Link className="nfl-empty__next" to={`/nhl?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
-      <p className="nfl-slate__legend"><span>Stored full-game prices include overtime and shootouts.</span>
-        <span>Win probability is de-vigged per book.</span><span>Props are line-only. No NHL picks.</span>
-        <span>Scores update after games.</span><span>Goalies and injuries are ESPN reports; late changes may be missing.</span></p>
+      <SlateLegend {...SLATE_LEGENDS.nhl} />
       <section className="nfl-slate-window" aria-label="Games">
         {searchActive && filtered.length === 0 ? <div className="nfl-empty">No games found for this slate search.</div> : <NhlSlateTable rows={filtered} />}
       </section>

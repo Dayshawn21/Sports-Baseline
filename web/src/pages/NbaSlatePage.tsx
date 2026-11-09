@@ -5,21 +5,15 @@ import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
+import SlateLegend from '~/components/shared/SlateLegend'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
 import { nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
 import './nfl-slate.css'
-
-function Legend() {
-  return <p className="nfl-slate__legend">
-    <span><b>Market</b> is DraftKings when stored, else the latest book; win probability is de-vigged.</span>
-    <span><b>Gaps</b> are the reference projection minus the line: gray reference, not picks, until the ranking check adopts one.</span>
-    <span><b>Scores</b> load the morning after each game.</span>
-  </p>
-}
 
 export default function NbaSlatePage() {
   const [searchParams] = useSearchParams()
@@ -73,7 +67,7 @@ export default function NbaSlatePage() {
       {nextDate && <Link className="nfl-empty__next" to={`/nba?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
       <NbaSlateDigest items={digest} />
-      <Legend />
+      <SlateLegend {...SLATE_LEGENDS.nba} />
       <section className="nfl-slate-window" aria-label="Games">
         {commandActive && filteredRows.length === 0
           ? <div className="nfl-empty">No games found for this slate search.</div>

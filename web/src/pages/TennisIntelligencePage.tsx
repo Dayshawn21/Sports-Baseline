@@ -8,6 +8,7 @@ import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
+import SlateLegend from '~/components/shared/SlateLegend'
 import TennisSlateDigest from '~/components/tennis/TennisSlateDigest'
 import TennisSlateTable from '~/components/tennis/TennisSlateTable'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
@@ -21,6 +22,7 @@ import type { TourTab } from '~/utils/tennisSlate'
 import { featuredPicks, isGroupedSort, slateRows, tennisDigest } from '~/utils/tennisSlate'
 import { ctDayKey } from '~/utils/format'
 import { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
+import { tennisLegend } from '~/utils/slateLegend'
 import { countPart, slatePeriodLine } from '~/utils/slatePeriod'
 import { tennisDateNeighbors } from '~/utils/tennisDates'
 import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
@@ -233,6 +235,7 @@ export default function TennisIntelligencePage() {
         ) : (
           <>
           <TennisSlateDigest items={digest} />
+          <SlateLegend {...tennisLegend(sourceLabel)} />
           <TennisSlateTable
             rows={filteredRows}
             grouped={isGroupedSort(sort)}

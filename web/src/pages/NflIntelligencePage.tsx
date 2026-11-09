@@ -6,6 +6,7 @@ import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
+import SlateLegend from '~/components/shared/SlateLegend'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
@@ -14,6 +15,7 @@ import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { kickoffWindows, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 import { type NflWeek, nflWeekKey, nflWeekNeighbors, nflWeekPath, nflWeekPickerOptions, parseNflWeekKey, readNflWeekLink } from '~/utils/nflWeekPeriod'
 import { matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { gameSlateLine, startTimes } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
@@ -39,14 +41,6 @@ function WeekPicker({ active }: { active: NflWeek }) {
 
 function nextWeekLabel(active: NflWeek, next: NflWeek): string {
   return next.season === active.season ? `Week ${next.week}` : `${next.season} Week ${next.week}`
-}
-
-function Legend() {
-  return <p className="nfl-slate__legend">
-    <span><b>Market</b> is DraftKings when stored, else the latest book.</span>
-    <span><b>Model</b> is nfl-elo-v1, shown for context. It is not a pick: the closing line beat it on the 2022-25 holdout.</span>
-    <span><b>Gaps</b> are reference, not picks: they stay gray until the ranking check (27j) adopts a slice.</span>
-  </p>
 }
 
 export default function NflIntelligencePage() {
@@ -112,7 +106,7 @@ export default function NflIntelligencePage() {
         {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
       </div> : <>
         <NflSlateDigest items={digest} />
-        <Legend />
+        <SlateLegend {...SLATE_LEGENDS.nfl} />
         {commandActive && filteredWindows.length === 0 && <div className="nfl-empty">No games found for this slate search.</div>}
         {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
           <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
