@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { ModelPredictionsResponse, ModelVersionCount, TrackCalibrationBin, TrackGroupScores } from '~/types/tennis'
-import { calibrationPoints, ensembleVerdictText, pairedLossText, rateRange, sampleProgress, seMultiple, signalClass, unsettledVersionNote, versionOptions } from '~/utils/trackRecord'
+import type { ModelPredictionsResponse, ModelVersionCount, TrackGroupScores } from '~/types/tennis'
+import { calibrationChartData, ensembleVerdictText, pairedLossText, rateRange, sampleProgress, seMultiple, signalClass, unsettledVersionNote, versionOptions } from '~/utils/trackRecord'
 
 function group(signal: 'positive' | 'neutral' | null, n = 308): TrackGroupScores {
   return {
@@ -14,10 +14,6 @@ function group(signal: 'positive' | 'neutral' | null, n = 308): TrackGroupScores
       },
     ],
   }
-}
-
-function bin(meanPredicted: number, actualRate: number, n: number): TrackCalibrationBin {
-  return { low: 0, high: 0.1, n, meanPredicted, actualRate }
 }
 
 describe('signalClass', () => {
@@ -65,23 +61,15 @@ describe('pairedLossText', () => {
   })
 })
 
-describe('calibrationPoints', () => {
-  const box = { left: 30, right: 310, top: 10, bottom: 250 }
-
-  it('places predicted on x and actual on y, inverted for SVG', () => {
-    const [point] = calibrationPoints([bin(0.5, 0.25, 10)], box)
-    expect(point.x).toBe(170)
-    expect(point.y).toBe(190)
-  })
-
-  it('scales the radius by the square root of the bin count', () => {
-    const [small, large] = calibrationPoints([bin(0.2, 0.2, 25), bin(0.8, 0.8, 100)], box)
-    expect(large.r).toBe(7)
-    expect(small.r).toBe(5)
+describe('calibrationChartData', () => {
+  it('puts each bin in percent with its count and range label', () => {
+    expect(calibrationChartData([{ low: 0.4, high: 0.5, n: 120, meanPredicted: 0.455, actualRate: 0.43 }])).toEqual([
+      { predicted: 45.5, actual: 43, n: 120, range: '40-50%' },
+    ])
   })
 
   it('returns nothing for no bins', () => {
-    expect(calibrationPoints([], box)).toEqual([])
+    expect(calibrationChartData([])).toEqual([])
   })
 })
 

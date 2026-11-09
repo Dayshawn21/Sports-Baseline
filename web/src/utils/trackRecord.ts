@@ -44,31 +44,22 @@ export function unsettledVersionNote(data: ModelPredictionsResponse): string | n
   return `No ${data.modelVersion} prediction has settled yet; it is the version being served, so its record starts as matches finish.${older}`
 }
 
-export interface ChartBox {
-  left: number
-  right: number
-  top: number
-  bottom: number
+export interface CalibrationDatum {
+  /** Mean predicted p1 win chance in the bin, in percent. */
+  predicted: number
+  /** Actual p1 win rate in the bin, in percent. */
+  actual: number
+  n: number
+  range: string
 }
 
-export interface CalibrationPoint {
-  x: number
-  y: number
-  r: number
-  bin: TrackCalibrationBin
-}
-
-const MIN_RADIUS = 3
-const RADIUS_RANGE = 4
-
-/** Predicted on x, actual on y; the dot's area grows with the bin's match count. */
-export function calibrationPoints(bins: TrackCalibrationBin[], box: ChartBox): CalibrationPoint[] {
-  const maxN = Math.max(0, ...bins.map((b) => b.n))
+/** Calibration bins in percent for the chart; the dot's area follows `n`. */
+export function calibrationChartData(bins: TrackCalibrationBin[]): CalibrationDatum[] {
   return bins.map((bin) => ({
-    x: box.left + bin.meanPredicted * (box.right - box.left),
-    y: box.bottom - bin.actualRate * (box.bottom - box.top),
-    r: MIN_RADIUS + (maxN > 0 ? RADIUS_RANGE * Math.sqrt(bin.n / maxN) : 0),
-    bin,
+    predicted: bin.meanPredicted * 100,
+    actual: bin.actualRate * 100,
+    n: bin.n,
+    range: `${Math.round(bin.low * 100)}-${Math.round(bin.high * 100)}%`,
   }))
 }
 
