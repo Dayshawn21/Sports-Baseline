@@ -36,11 +36,12 @@ const HEADER_STYLE: CSSProperties = {
   borderBottom: '1px solid var(--border-subtle)',
 }
 
-function Wordmark() {
+/** The wordmark is the home link, so the sport tabs start with the first sport. */
+function Wordmark({ home }: { home: ShellNav['home'] }) {
   return (
-    <span className="app-wordmark">
+    <Link to={home.path} className="app-wordmark" aria-label="Lineform home" aria-current={home.active ? 'page' : undefined}>
       Line<b>form</b>
-    </span>
+    </Link>
   )
 }
 
@@ -67,11 +68,8 @@ function drawerItems(adminVisible: boolean): MenuProps['items'] {
 function TopBar({ nav }: { nav: ShellNav }) {
   return (
     <Header style={{ ...HEADER_STYLE, padding: '0 clamp(20px, 3.2vw, 56px)', gap: 24 }}>
-      <Wordmark />
+      <Wordmark home={nav.home} />
       <nav className="shell-tabs" aria-label="Sports">
-        <Link to={nav.home.path} className={nav.home.active ? 'is-active' : ''} aria-current={nav.home.active ? 'page' : undefined}>
-          {nav.home.label}
-        </Link>
         {nav.sports.map(sport => (
           <Link key={sport.code} to={sport.path} className={sport.active ? 'is-active' : ''} aria-current={sport.active ? 'true' : undefined}>
             {sport.label}
@@ -117,7 +115,7 @@ function Nav() {
             <SlateCommandField mobile mobileExpanded onMobileExpandedChange={setMobileCommandOpen} />
           ) : (
             <>
-              <Wordmark />
+              <Wordmark home={nav.home} />
               <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
               <SlateCommandField mobile onMobileExpandedChange={setMobileCommandOpen} />
               <AskLauncher sport={nav.sports.find(sport => sport.active)?.code ?? null} />
