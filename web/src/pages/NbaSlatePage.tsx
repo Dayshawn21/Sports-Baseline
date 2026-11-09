@@ -16,7 +16,7 @@ import { commandGameContext, matchingSlateCommandRows, nbaSlateCommandRows, norm
 import { slateRemainingLine } from '~/utils/slateHeadline'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { finalsStartOpen, openWindowTitle, slatePhase, splitFinals } from '~/utils/slateOrder'
-import { gameSlateLine, staleOddsSince, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { gameSlateLine, slatePeriodLine, staleOddsSince, startTimes, tableCountPart, windowOddsNote } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
 function gapLink(item: NbaSlateDigestItem) {
@@ -44,13 +44,14 @@ export default function NbaSlatePage() {
   // A malformed link falls back to the API's choice rather than an error page.
   const requested = parseSlateDate(searchParams.get('date'))
   const slate = useNbaSlate(requested)
-  const { rows, staleOdds } = useMemo(() => {
+  const { rows, staleSince, nowMs } = useMemo(() => {
     const now = new Date()
     const all = slate.data?.games ?? []
     // The period line's own check: while the odds are stale, a row shows its age only when it differs from the head's.
     const stale = staleOddsSince(nbaSlateSummary(all).oddsUpdatedMs, startTimes(all.map(game => game.startUtc)), now.getTime())
-    return { rows: all.map(game => nbaSlateRow(game, now, stale)), staleOdds: stale !== null }
+    return { rows: all.map(game => nbaSlateRow(game, now, stale)), staleSince: stale, nowMs: now.getTime() }
   }, [slate.data])
+  const staleOdds = staleSince !== null
   const gaps = useNbaSlateGaps(slate.data?.date ?? null)
   // A failed digest only hides the strip; the games still render.
   const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
@@ -108,7 +109,10 @@ export default function NbaSlatePage() {
       />
       {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
       {(shown.open.length > 0 || (commandActive && filteredRows.length === 0)) && <section className="nfl-slate-window" aria-label="Games">
-        <h2 className="nfl-slate-window__title">{openWindowTitle(split.finals.length)} <small>{tableCountPart(shown.open.length, split.open.length, commandActive, 'game')}</small></h2>
+        <h2 className="nfl-slate-window__title">{openWindowTitle(split.finals.length)} <small>{slatePeriodLine([
+          tableCountPart(shown.open.length, split.open.length, commandActive, 'game'),
+          windowOddsNote(staleSince, shown.open.map(row => slatePhase(row.state)), nowMs),
+        ])}</small></h2>
         {commandActive && filteredRows.length === 0
           ? <div className="nfl-empty">No games found for this slate search.</div>
           : shown.open.length > 0 && <NbaSlateTable rows={shown.open} staleOdds={staleOdds} />}

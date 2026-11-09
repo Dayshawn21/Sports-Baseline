@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAgeLabel, oddsAsOf, oddsPart, rowOddsAge, staleOddsSince, slatePeriodLine, splitTags, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAgeLabel, oddsAsOf, oddsPart, rowOddsAge, staleOddsSince, slatePeriodLine, splitTags, startTimes, tableCountPart, windowOddsNote } from '~/utils/slatePeriod'
 
 const NOW = Date.parse('2026-11-08T22:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -169,5 +169,23 @@ describe('oddsAsOf', () => {
   it('says so when the fetch time is not stored', () => {
     expect(oddsAsOf(null, NOW)).toBe('odds time not stored')
     expect(oddsAsOf(Number.NaN, NOW)).toBe('odds time not stored')
+  })
+})
+
+describe('windowOddsNote', () => {
+  const stale = NOW - 6 * 24 * HOUR
+
+  it('names the age on a window holding a game not yet started', () => {
+    expect(windowOddsNote(stale, ['live', 'upcoming'], NOW)).toBe('odds 6 days old')
+  })
+
+  it('stays off while the odds are fresh', () => {
+    expect(windowOddsNote(null, ['upcoming'], NOW)).toBeNull()
+  })
+
+  it('never marks a window of finals, games in play or postponed games', () => {
+    expect(windowOddsNote(stale, ['final', 'final'], NOW)).toBeNull()
+    expect(windowOddsNote(stale, ['live', 'off'], NOW)).toBeNull()
+    expect(windowOddsNote(stale, [], NOW)).toBeNull()
   })
 })

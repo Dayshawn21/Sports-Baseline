@@ -22,7 +22,7 @@ import { commandGameContext, matchingSlateCommandRows, nflSlateCommandRows, norm
 import { slateRemainingLine } from '~/utils/slateHeadline'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { finalsStartOpen, orderWindowsByPhase, slatePhase, splitFinals } from '~/utils/slateOrder'
-import { gameSlateLine, staleOddsSince, startTimes, tableCountPart } from '~/utils/slatePeriod'
+import { gameSlateLine, slatePeriodLine, staleOddsSince, startTimes, tableCountPart, windowOddsNote } from '~/utils/slatePeriod'
 import './nfl-slate.css'
 
 const WEEK_OPTIONS = nflWeekPickerOptions()
@@ -87,13 +87,14 @@ export default function NflIntelligencePage() {
   const gameNotes = useNflGameNotes(activeSeason, activeWeek)
   const games = useMemo(() => slate.data?.games ?? [], [slate.data])
   const notes = gameNotes.data?.games
-  const { rows, staleOdds } = useMemo(() => {
+  const { rows, staleSince, nowMs } = useMemo(() => {
     const now = new Date()
     const notesById = new Map((notes ?? []).map(item => [item.gameId, item]))
     // The period line's own check: while the odds are stale, a row shows its age only when it differs from the head's.
     const stale = staleOddsSince(nflSlateSummary(games, notes).oddsUpdatedMs, startTimes(games.map(game => game.startUtc)), now.getTime())
-    return { rows: new Map(games.map(game => [game.gameId, nflSlateRow(game, notesById.get(game.gameId), now, stale)])), staleOdds: stale !== null }
+    return { rows: new Map(games.map(game => [game.gameId, nflSlateRow(game, notesById.get(game.gameId), now, stale)])), staleSince: stale, nowMs: now.getTime() }
   }, [games, notes])
+  const staleOdds = staleSince !== null
   // As of now, so only games not yet kicked off can reach the digest.
   const digest = useMemo(() => slateDigest(buildNflPropBoard(games, 'all', new Date())), [games])
   const remaining = useMemo(() => slateRemainingLine(games.map(game => ({ state: rows.get(game.gameId)?.state ?? 'upcoming', startUtc: game.startUtc })), Date.now()), [games, rows])
@@ -165,7 +166,7 @@ export default function NflIntelligencePage() {
           <div className="nfl-empty">No games found for this slate search.</div>
         </section>}
         {filteredWindows.map(window => <section key={window.key} className="nfl-slate-window" aria-label={window.title}>
-          <h2 className="nfl-slate-window__title">{window.title} <small>{window.subtitle}</small></h2>
+          <h2 className="nfl-slate-window__title">{window.title} <small>{slatePeriodLine([window.subtitle, windowOddsNote(staleSince, window.games.map(phaseOf), nowMs)])}</small></h2>
           <NflSlateTable label={`${window.title} games`} rows={tableRows(window.games)} staleOdds={staleOdds} />
         </section>)}
         {filteredFinals.length > 0 && <SlateFinalsWindow
