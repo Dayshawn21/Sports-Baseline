@@ -362,10 +362,20 @@ version and forward validation.
 **Suggested fix:** remove both `.nfl-prop-detail__model` rules.
 **Resolution:** Fixed 2026-11-09 on `claude/player-page-dead-code-19b957`: removed both `.nfl-prop-detail__model` rules; `.nfl-prop-detail__kv` and the other rules are unchanged. `rg` finds no reference and web verify passed. A later `/audit` closes it.
 
-### F-45 [P3] unverified - Team logos download 500px PNGs for 14 to 52px slots
+### F-45 [P3] open - Team logos download 500px PNGs for 14 to 52px slots
 
-**File:** web/src/utils/teamLogo.ts:19; web/src/components/shared/SlateMatchupTeams.tsx:7; web/src/components/home/HomeSportCard.tsx:7
+**File:** web/src/utils/teamLogo.ts:19; web/src/components/shared/TeamLogo.tsx:15; web/src/components/shared/SlateMatchupTeams.tsx:7; web/src/components/home/HomeSportCard.tsx:7
 **Found:** 2026-11-09 by /audit (scope: last 5 commits; lens: performance)
-**Why it matters:** every logo uses ESPN's `/500/` file, displayed at 16px in slate rows, 14px on home cards and 52px in game heroes. A full NHL or NBA slate shows up to about 30 logos, so the page may fetch well over 10 times the pixels it draws. `loading="lazy"` limits this to visible rows but does not shrink each file. Unverified: no file sizes or network timings were measured (that needs a network request to the CDN, not approved for this audit).
-**Suggested fix:** measure one slate's logo bytes in the browser network panel first. If it matters, check whether ESPN serves a smaller variant (a smaller path segment or its image combiner) and use it for the row-sized slots, keeping the 500px file for heroes and the code badge as the fallback.
+**Why it matters:** every logo uses ESPN's `/500/` file, displayed at 16px in slate rows, 14px on home cards and 52px in game heroes. `loading="lazy"` limits this to visible rows but does not shrink each file.
+**Measured 2026-11-09** (user approved the CDN requests): the NBA slate for Mon Nov 9 (8 games, local dev server in Playwright Chromium at 1028px wide) rendered 16 logos at 16x16, all 16 loaded, each 500x500 natural size. The NHL slate rendered 6 at 16x16; the home page rendered none that night (home logos only appear in a card's "next" line, at most 2 per sport card). Resource Timing reports 0 bytes for these files because ESPN sends no `Timing-Allow-Origin`, so the byte counts come from fetching the same 16 URLs with `curl`:
+
+| Variant for the 16 NBA logos | Total bytes | Per logo |
+|---|---|---|
+| `/i/teamlogos/nba/500/{code}.png` (current) | 978,608 | 22.7 to 95.6 KB |
+| `/i/teamlogos/nba/500/scoreboard/{code}.png` | 978,608 | identical bytes, no saving |
+| `/combiner/i?img=/i/teamlogos/nba/500/{code}.png&w=40&h=40` | 31,876 | 1.3 to 2.9 KB |
+| same combiner at `w=104&h=104` (52px hero at 2x) | 107,205 | 3.8 to 9.5 KB |
+
+PNGs are not gzipped, so transfer roughly equals these totals on a cold cache. The current files cost about 31 times the bytes of a 40px (2x of 16px) combiner image, and each decodes to about 1 MB of RGBA (500x500x4), so 16 MB of decoded bitmaps for one NBA slate against about 100 KB at 40px. The combiner returns a 40x40 RGBA PNG with `Access-Control-Allow-Origin: *` and works for NHL too (`nhl/500/tor.png`: 56,235 bytes vs 1,918 at 40px).
+**Suggested fix:** in `teamLogoUrl`, take the display size and return the combiner URL `https://a.espncdn.com/combiner/i?img=/i/teamlogos/{sport}/500/{code}.png&w={2*size}&h={2*size}` for row-sized slots (16px slate rows, 14px home cards), keeping the plain `/500/` file for the 52px game heroes, and keep the existing `onError` fallback to the code badge (or nothing) unchanged, so a combiner failure still degrades cleanly. Add a `teamLogo.test.ts` case for each branch (row size gives the combiner with doubled dimensions, hero size gives `/500/`, NHL overrides still apply). Optional: the 104px combiner would cut a hero from about 61 KB to about 6.7 KB, but the audit asked to keep heroes on the 500px file.
 **Resolution:**
