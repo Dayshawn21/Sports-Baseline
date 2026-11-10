@@ -339,3 +339,33 @@ version and forward validation.
 - CRLF registry CSVs were found only in `.claude/worktrees/sports-drawer-pages-747c69` (re-checked out to LF; its 59 registry tests pass), `.claude/worktrees/55-home-page` and the leftover `fix-f26-ask-spend-cap-ae1ff5` worktree. The main checkout and the other worktrees were already LF.
 - The last two are on commits without the `eol=lf` rule (`2ce4cf00`, `c0728da0`). Their `tennis_elo_identities.csv` differs from `master`, so a merge rewrites it as LF, but their `tennis_elo_local_overrides.csv` is byte-identical to `master` in git and still CRLF on disk (11 CR bytes each), so a merge leaves it CRLF: the exact case this finding describes.
 - To close: after either checkout next merges `master`, delete its `tennis_elo_local_overrides.csv` and run `git checkout -- api/app/ingest/data/tennis_elo_local_overrides.csv`, or remove the leftover worktree. Not done here, since both checkouts belong to other work.
+
+## Audit 2026-11-09 (scope: last 5 commits, d281a079~1..26e25700; lenses: all)
+
+**Scope:** commits `d281a079` (#33), `ac73e775` (#34), `966f51d6` (#35), `ed2f8146` (58) and `26e25700` on `master`, chosen by the user over `full` (no active feature; the untracked files are notes and images, not source). The range touches only `web/` and `blueprint/`: 71 web files.
+**Signals:** `npm --prefix web run verify` passed (96 test files, 1,435 tests, typecheck, build). API tests not run: no API file is in the range. No lint command exists.
+**Clean:** every new pure helper has a test (`playerGameLog`, `playerProjection`, `injuryTone`, `latestTime`, the NBA, NHL, NFL and tennis hero and footer builders, `teamLogoUrl`, `matchupSegment`); new tags, projection heroes and line-type tags stay gray; the tennis side and EV cells reuse the board's 48f/48g coloring unchanged; the removed NFL lines card and game-market block were specced removals; no `any`, no new direct axios or fetch; the logo URL is built from stored team codes only.
+
+### F-43 [P3] fixed - TennisPropEvidenceBody.tsx is dead after the tennis player-page move
+
+**File:** web/src/components/tennis/TennisPropEvidenceBody.tsx:24; web/src/components/tennis/TennisPropEvidenceBody.tsx:71
+**Found:** 2026-11-09 by /audit (scope: last 5 commits; lens: quality)
+**Why it matters:** `966f51d6` replaced its only use in `PlayerPropTabs.tsx` with `TennisMarketPanel`. Its two exports, `TennisRecentBars` and `TennisPropEvidenceBody` (88 lines), now have no importer, and its side-cell logic is a third copy of the rule in `TennisPropTable.tsx:35` and `TennisMarketPanel.tsx`, so a later color change could update a copy nobody renders.
+**Suggested fix:** delete the file. Its CSS classes stay, since `TennisMarketPanel` reuses them from `pages/tennis-prop-board.css`.
+**Resolution:** Fixed 2026-11-09 on `claude/player-page-dead-code-19b957`: deleted `TennisPropEvidenceBody.tsx`; the `tennis-prop-evidence__*` classes stay in `pages/tennis-prop-board.css`. `rg` finds no reference and web verify passed (96 files, 1,435 tests). A later `/audit` closes it.
+
+### F-44 [P3] fixed - Orphaned game-market CSS left in nfl-prop-detail.css
+
+**File:** web/src/components/nfl/nfl-prop-detail.css:138; web/src/components/nfl/nfl-prop-detail.css:152
+**Found:** 2026-11-09 by /audit (scope: last 5 commits; lens: quality)
+**Why it matters:** `.nfl-prop-detail__model` styled the `DetailGameMarket` block that `ac73e775` removed. No `.tsx` or `.ts` file uses the class now. It was the only orphan found in the 11 stylesheets the range changed.
+**Suggested fix:** remove both `.nfl-prop-detail__model` rules.
+**Resolution:** Fixed 2026-11-09 on `claude/player-page-dead-code-19b957`: removed both `.nfl-prop-detail__model` rules; `.nfl-prop-detail__kv` and the other rules are unchanged. `rg` finds no reference and web verify passed. A later `/audit` closes it.
+
+### F-45 [P3] unverified - Team logos download 500px PNGs for 14 to 52px slots
+
+**File:** web/src/utils/teamLogo.ts:19; web/src/components/shared/SlateMatchupTeams.tsx:7; web/src/components/home/HomeSportCard.tsx:7
+**Found:** 2026-11-09 by /audit (scope: last 5 commits; lens: performance)
+**Why it matters:** every logo uses ESPN's `/500/` file, displayed at 16px in slate rows, 14px on home cards and 52px in game heroes. A full NHL or NBA slate shows up to about 30 logos, so the page may fetch well over 10 times the pixels it draws. `loading="lazy"` limits this to visible rows but does not shrink each file. Unverified: no file sizes or network timings were measured (that needs a network request to the CDN, not approved for this audit).
+**Suggested fix:** measure one slate's logo bytes in the browser network panel first. If it matters, check whether ESPN serves a smaller variant (a smaller path segment or its image combiner) and use it for the row-sized slots, keeping the 500px file for heroes and the code badge as the fallback.
+**Resolution:**

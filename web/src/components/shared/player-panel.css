@@ -212,10 +212,14 @@
 .nfl-prop-detail__table td {
   padding: 7px 0;
   border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
   font-family: var(--font-mono);
   text-align: right;
   white-space: nowrap;
+}
+
+/* Cell colors sit in :where() so a class a sport puts on a cell, such as tennis's side and EV tones, wins on every row. */
+:where(.nfl-prop-detail__table) td {
+  color: var(--text-secondary);
 }
 
 .nfl-prop-detail__table th + th,
@@ -229,8 +233,11 @@
 }
 
 .nfl-prop-detail__table tr.is-selected td {
-  color: var(--text-primary);
   font-weight: 600;
+}
+
+:where(.nfl-prop-detail__table tr.is-selected) td {
+  color: var(--text-primary);
 }
 
 .player-lines__wrap {
@@ -240,9 +247,12 @@
 .nfl-prop-detail__table td small {
   display: block;
   margin-top: 2px;
-  color: var(--text-muted);
   font-family: var(--font-body);
   font-size: 11px;
+}
+
+:where(.nfl-prop-detail__table td) small {
+  color: var(--text-muted);
 }
 
 .nfl-prop-detail__table tr.player-lines__note td {
