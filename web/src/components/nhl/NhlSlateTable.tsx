@@ -1,9 +1,9 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SlateMatchupTeams } from '~/components/shared/SlateMatchupTeams'
 import { SlatePropsCell } from '~/components/shared/SlatePropsCell'
 import type { NhlSlateRowCell, NhlSlateRowModel } from '~/utils/nhlSlate'
 import { splitTags } from '~/utils/slatePeriod'
-import { slateMatchup } from '~/utils/slateMatchup'
 import '~/components/nfl/nfl-slate-card.css'
 import '~/components/nfl/nfl-slate-table.css'
 
@@ -15,7 +15,7 @@ function Game({ row }: { row: NhlSlateRowModel }) {
   const { away, home } = row
   const names = `${away.name} · ${home.name}`
   return <Link to={`/nhl/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
-    {slateMatchup(away, home)}
+    <SlateMatchupTeams sport="nhl" away={away} home={home} />
     <small title={names}>{names}</small>
   </Link>
 }

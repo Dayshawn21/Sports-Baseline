@@ -1,3 +1,4 @@
+import TeamLogo from '~/components/shared/TeamLogo'
 import type { NflGameDetail, NflGameNotes, NflSlateGame, NflTeamContext } from '~/types/nfl'
 import { conditionsLabel, gameMarket, marketImpliedPoints, recordLabel } from '~/utils/nflGame'
 import { NFL_GAME_MODEL_CAVEAT, nflGameModelSummary, qbChangeText, qbChanges, type NflGameModelCell } from '~/utils/nflGameModel'
@@ -8,7 +9,7 @@ const POINTS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximu
 /** `context` is undefined while the slate loads, so no record is claimed before it arrives. */
 function Team({ code, context, side }: { code: string, context: NflTeamContext | null | undefined, side: 'away' | 'home' }) {
   return <div className={`nfl-game-hero__team is-${side}`}>
-    <span className="nfl-game-badge" aria-hidden="true">{code}</span>
+    <TeamLogo sport="nfl" code={code} size={52} />
     <div><strong>{code}</strong><small>{context === undefined ? null : recordLabel(context)}</small></div>
   </div>
 }

@@ -1,10 +1,11 @@
+import TeamLogo from '~/components/shared/TeamLogo'
 import type { NbaGameDetail } from '~/types/nba'
 import type { NbaSlateCardModel, NbaSlateCardTeam } from '~/utils/nbaSlate'
 import { nbaGameMarket } from '~/utils/nbaGame'
 
 function Team({ team, side }: { team: NbaSlateCardTeam, side: 'away' | 'home' }) {
   return <div className={`nfl-game-hero__team is-${side}`}>
-    <span className="nfl-game-badge" aria-hidden="true">{team.code}</span>
+    <TeamLogo sport="nba" code={team.code} size={52} />
     <div><strong>{team.name}</strong><small>{team.record}</small></div>
   </div>
 }

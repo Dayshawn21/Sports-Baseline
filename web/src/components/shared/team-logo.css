@@ -1,0 +1,14 @@
+.team-logo { display: inline-block; flex: none; vertical-align: middle; object-fit: contain; }
+
+.team-logo--badge {
+  display: inline-grid; place-items: center; border-radius: 50%;
+  background: var(--bg-raised); color: var(--text-secondary);
+  font: 800 1em var(--font-display); letter-spacing: 0.04em;
+}
+
+.slate-matchup__logo { margin-right: 5px; }
+
+/* The phone row is already full: two logos would clip the records (checked at 375px, up to 23px short). */
+@media (max-width: 480px) {
+  .slate-matchup__logo { display: none; }
+}

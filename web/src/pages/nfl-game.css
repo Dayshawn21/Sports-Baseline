@@ -17,11 +17,6 @@
 .nfl-game-hero__team small { display: block; min-height: 1.4em; color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
 .nfl-game-hero__mid { display: grid; gap: 3px; text-align: center; color: var(--text-secondary); font-size: 12px; }
 
-.nfl-game-badge {
-  display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%;
-  background: var(--bg-raised); color: var(--text-secondary); font: 800 15px var(--font-display); letter-spacing: 0.04em;
-}
-
 .nfl-game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; margin-top: 18px; }
 .nfl-game-main, .nfl-game-side { display: grid; gap: 14px; }
 

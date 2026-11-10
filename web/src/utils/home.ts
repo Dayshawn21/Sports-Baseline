@@ -82,7 +82,10 @@ export interface HomeCard {
   when: string
   count: string
   noun: string
+  /** The next-games text; `nextSegments` joined, so a screen reader and a test read one string. */
   next: string
+  /** The same text split so a matchup can carry its team logos. */
+  nextSegments: HomeNextSegment[]
   tone: CardTone
   links: HomeCardLink[]
 }
@@ -97,12 +100,30 @@ function cardWhen(data: HomeSportData, now: number): { text: string, tone: CardT
   return { text: `${START_WORD[sport]} ${startLabel(start, now)} CT`, tone: 'normal' }
 }
 
+export type HomeNextSegment = { text: string } | { away: string, home: string }
+
+/** A team game's "AWAY @ HOME" title as its two codes; anything else (tennis "A vs B") stays text. */
+export function matchupSegment(title: string): HomeNextSegment {
+  const parts = /^(\S+) @ (\S+)$/.exec(title)
+  return parts === null ? { text: title } : { away: parts[1], home: parts[2] }
+}
+
+function joined(items: HomeNextSegment[][], separator: string): HomeNextSegment[] {
+  return items.flatMap((item, index) => index === 0 ? item : [{ text: separator }, ...item])
+}
+
+export function nextSegmentsText(segments: HomeNextSegment[]): string {
+  return segments.map(segment => 'text' in segment ? segment.text : `${segment.away} @ ${segment.home}`).join('')
+}
+
 /** The NFL names a day's game when it has one and counts the rest; other sports list their next games. */
-function nextLine(sport: Sport, source: HomeSource): string {
+function nextSegments(sport: Sport, source: HomeSource): HomeNextSegment[] {
   if (sport === 'nfl') {
-    return source.days.map(day => day.count === 1 ? `${day.label}: ${day.title}` : `${day.label}: ${day.count} games`).join(' · ')
+    return joined(source.days.map(day => day.count === 1
+      ? [{ text: `${day.label}: ` }, matchupSegment(day.title)]
+      : [{ text: `${day.label}: ${day.count} games` }]), ' · ')
   }
-  return source.nextGames.length === 0 ? '' : `Next: ${source.nextGames.map(game => game.title).join(', ')}`
+  return source.nextGames.length === 0 ? [] : [{ text: 'Next: ' }, ...joined(source.nextGames.map(game => [matchupSegment(game.title)]), ', ')]
 }
 
 export function homeCard(data: HomeSportData, source: HomeSource, now: number): HomeCard {
@@ -110,6 +131,7 @@ export function homeCard(data: HomeSportData, source: HomeSource, now: number): 
   const when = cardWhen(data, now)
   const ready = data.status === 'ready'
   const priced = sport === 'tennis' ? ' priced' : ''
+  const segments = ready ? nextSegments(sport, source) : []
   return {
     sport,
     label: SPORTS.find(entry => entry.code === sport)!.label,
@@ -117,7 +139,8 @@ export function homeCard(data: HomeSportData, source: HomeSource, now: number): 
     when: when.text,
     count: ready ? String(data.gameCount) : '--',
     noun: `${sportNoun(sport, data.gameCount)}${priced}`,
-    next: ready ? nextLine(sport, source) : '',
+    next: nextSegmentsText(segments),
+    nextSegments: segments,
     tone: when.tone,
     links: sportViews(sport).map(({ view, path }) => ({ view, label: VIEW_LABELS[view], path })),
   }

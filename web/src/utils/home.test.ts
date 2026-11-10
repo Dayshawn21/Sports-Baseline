@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HomeGap, HomeMoneyline, HomeSource } from '~/utils/homeSources'
 import {
-  allGapRows, gapTabs, gapsBody, homeCard, newestUpdate, nextStart, parseGapKind, parseGapTab, sportNoun, startLabel, todayStatus,
+  allGapRows, gapTabs, gapsBody, homeCard, matchupSegment, newestUpdate, nextStart, parseGapKind, parseGapTab, sportNoun, startLabel, todayStatus,
   type HomeSportData, type HomeSportView,
 } from '~/utils/home'
 
@@ -75,6 +75,26 @@ describe('homeCard', () => {
     const card = homeCard(sportData('nba', [7, 9]), source({ nextGames: next }), NOW)
     expect(card).toMatchObject({ period: 'TODAY', when: 'First tip 6:00 PM CT', count: '2', next: 'Next: ORL @ CHA, DET @ TOR, LAL @ GSW' })
     expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ when: 'First puck 6:00 PM CT', next: '' })
+  })
+
+  it('splits the next games so each matchup can carry its logos, with the same text', () => {
+    const nba = homeCard(sportData('nba', [7, 9]), source({ nextGames: [game('1', 'ORL @ CHA'), game('2', 'DET @ TOR')] }), NOW)
+    expect(nba.nextSegments).toEqual([
+      { text: 'Next: ' }, { away: 'ORL', home: 'CHA' }, { text: ', ' }, { away: 'DET', home: 'TOR' },
+    ])
+    expect(nba.next).toBe('Next: ORL @ CHA, DET @ TOR')
+    const days = [{ key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL' }, { key: 'b', label: 'Sun', count: 12, title: 'x' }]
+    expect(homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW).nextSegments).toEqual([
+      { text: 'Thu: ' }, { away: 'JAX', home: 'BAL' }, { text: ' · ' }, { text: 'Sun: 12 games' },
+    ])
+    expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ next: '', nextSegments: [] })
+  })
+
+  it('keeps a title that is not "AWAY @ HOME" as plain text', () => {
+    expect(matchupSegment('Rune vs Sinner')).toEqual({ text: 'Rune vs Sinner' })
+    expect(matchupSegment('LAL @ ATL')).toEqual({ away: 'LAL', home: 'ATL' })
+    const tennis = homeCard(sportData('tennis', [3]), source({ nextGames: [game('1', 'Rune vs Sinner')] }), NOW)
+    expect(tennis.nextSegments).toEqual([{ text: 'Next: ' }, { text: 'Rune vs Sinner' }])
   })
 
   it('gives NHL and tennis all three links', () => {
