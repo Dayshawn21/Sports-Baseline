@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
@@ -90,6 +91,15 @@ async def security_headers(
     if is_production(settings.api_env):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+# Outermost, so 429s and CORS responses are compressed too. Level 4, not the
+# default 9: on the 15 MB NFL slate, 9 cost about 4x the CPU for 26% fewer
+# bytes, and Render gives the API half a core. Starlette leaves
+# text/event-stream (Ask Lineform) uncompressed. The http middlewares above
+# stream every body, so GZip's minimum_size never applies and small bodies
+# are compressed too; that costs a few bytes, not CPU worth measuring.
+app.add_middleware(GZipMiddleware, compresslevel=4)
 
 
 app.include_router(tennis.router, prefix="/tennis", tags=["tennis"])
