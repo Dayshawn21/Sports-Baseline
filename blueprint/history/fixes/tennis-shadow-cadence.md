@@ -4,8 +4,9 @@
 
 **Type:** Fix
 **Branch:** `fix/tennis-shadow-cadence` (worktree `.claude/worktrees/fix-tennis-shadow-cadence`)
-**Status:** Complete 2026-11-09 (Step 1). Step 2 is runner acceptance and
-can only run after the merge reaches `master` on GitHub; pending.
+**Status:** Complete 2026-11-09 (Step 1). Step 2 is runner acceptance:
+partly met as of 2026-11-10, see "Runner results". An odds-triggered freeze
+has run its step but has not yet inserted a pair.
 
 ## Completion evidence (2026-11-09)
 
@@ -21,6 +22,42 @@ can only run after the merge reaches `master` on GitHub; pending.
 - Baseline to compare Step 2 against: on 2026-11-09, `tennis_elo --count`
   read v3 frozen ATP 0, WTA 2, ATP_CHALLENGER 9. The 2026-11-08 freeze run
   `42510003746` paired 8 of 134 attempts.
+
+## Runner results (through 2026-11-10)
+
+Freeze runs since the push (UTC):
+
+| Created | Trigger | Run | Freeze step | Attempts | Paired | Inserted |
+|---|---|---|---|---|---|---|
+| 11-09 15:28 | odds `42644910284` (dispatch) | `42645055411` | skipped, cache miss | n/a | n/a | n/a |
+| 11-09 18:42 | odds `42676256759` | `42676365593` | skipped | n/a | n/a | n/a |
+| 11-09 23:05 | 13:30 cron | `42717561445` | ran | 114 | 36 | 36 |
+| 11-10 02:40 | odds `42744328367` | `42744406654` | skipped | n/a | n/a | n/a |
+| 11-10 12:29 | odds `42816165302` | `42816250676` | skipped | n/a | n/a | n/a |
+| 11-10 20:32 | 13:30 cron | `42896237939` | ran | 84 | 23 | 23 |
+| 11-10 21:46 | odds `42908195789` | `42908308918` | ran | 84 | 0 | 0 |
+
+Run `42908308918` reasons: `already_started` 31, `already_frozen` 24,
+`not_unstarted` 17, `missing_market` 5, `missing_or_invalid_candidate` 4,
+`missing_incumbent` 2, `ambiguous_players_or_group` 1. Every match that could
+be paired had been paired by the 20:32 cron.
+
+The box-score job wrote the day's ELO cache at 21:11 on 11-09 (run
+`42700193490`) and 18:22 on 11-10 (run `42874541221`), later than the 16:45
+this spec assumed. On 11-09 no odds run landed after it.
+
+`tennis_elo --count` at 2026-11-10 22:55 UTC: v3 frozen ATP 8, WTA 3,
+ATP_CHALLENGER 59, total 70, which is the baseline 11 plus 36 and 23. Mature 0;
+no outcomes read.
+
+Against the Step 2 list:
+
+- Odds run triggers a freeze run: met (`42644910284` to `42645055411`).
+- Early run skips on a cache miss: met (`42645055411`).
+- Evening odds run shows paired and inserted pairs: **not met**. The step ran
+  in `42908308918` without error and inserted 0.
+- Frozen counts above about 8 a day: 36 and 23, but both came from the 13:30
+  cron path, so this does not show the odds trigger adding pairs.
 
 ## The problem
 
