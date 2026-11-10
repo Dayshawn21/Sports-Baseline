@@ -18,7 +18,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Literal, NamedTuple
 
 from app.core.box_score_join import JoinResult
-from app.core.prop_projection import normalize_stat_type
+from app.core.prop_projection import PRIZEPICKS_HARD_BLOCKS, normalize_stat_type
 from app.core.prop_ranking_rule import (
     BREAK_EVEN_BY_ODDS_TYPE, FrozenCall, Pick, Side, SliceResult, one_pick_per_bet, to_pick, verdict_sample,
 )
@@ -34,10 +34,8 @@ BOOK_TOTAL_MIN_GAMES = 17.0
 # the sample only once its late lines have had time to land.
 MATURITY_DAYS = 3
 # Flags that mean the row is not a real pre-match projection of a supported stat.
-EXCLUDED_FLAGS = frozenset({
-    "match_finished", "match_link_invalid", "bo5_unsupported_stat", "unsupported_stat", "ungraded_stat",
-    "missing_player", "missing_match",
-})
+# missing_stats stays out: such a row has no probability and is excluded as that.
+EXCLUDED_FLAGS = (PRIZEPICKS_HARD_BLOCKS - {"missing_stats"}) | {"ungraded_stat"}
 UNKNOWN_ODDS_TYPE = "unknown_odds_type"
 NO_PROBABILITY = "no_probability"
 INCOMPLETE_SCORE = "incomplete_score"

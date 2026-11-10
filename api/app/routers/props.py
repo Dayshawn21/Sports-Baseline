@@ -26,6 +26,7 @@ from app.core.prop_projection import (
     _SERVE_POINTS_PER_MATCH,
     _SURFACE_ACE_FACTOR,
     _SURFACE_DF_FACTOR,
+    PRIZEPICKS_HARD_BLOCKS,
     TOTALS_DEPENDENT_STATS,
     ace_matchup_factor as _ace_matchup_factor,
     compute_stat_avg as _compute_stat_avg,
@@ -409,18 +410,8 @@ def _enrich(
     else:
         projection_status = "unsupported_stat"
 
-    if is_prizepicks:
-        hard_blocks = {
-            "missing_player",
-            "missing_match",
-            "missing_stats",
-            "unsupported_stat",
-            "match_finished",
-            "match_link_invalid",
-            "bo5_unsupported_stat",
-        }
-        if hard_blocks.intersection(data_quality_flags):
-            recommendation = None
+    if is_prizepicks and PRIZEPICKS_HARD_BLOCKS.intersection(data_quality_flags):
+        recommendation = None
 
     projection_found = stat_avg is not None
     audit = PropAudit(

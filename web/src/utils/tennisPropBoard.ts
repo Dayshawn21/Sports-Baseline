@@ -55,8 +55,8 @@ const MARKET_LABELS: Record<string, string> = {
 }
 
 const BLOCKING_FLAGS = new Set([
-  'missing_player', 'missing_match', 'missing_stats', 'unsupported_stat',
-  'stale_stats', 'stale_odds', 'market_stale', 'small_sample', 'missing_prediction', 'missing_projection',
+  'missing_player', 'missing_match', 'missing_stats', 'unsupported_stat', 'bo5_unsupported_stat',
+  'stale_stats', 'stale_odds', 'small_sample', 'missing_prediction',
   'match_finished', 'match_link_invalid', 'ungraded_stat',
 ])
 

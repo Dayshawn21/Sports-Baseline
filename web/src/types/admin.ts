@@ -12,6 +12,7 @@ export interface FlaggedPlayer {
   flags: string[]
   hasElo: boolean
   hasStats: boolean
+  missingSurfaces: string[]
   taSlug: string | null   // current DB slug override (null if not set)
   autoSlug: string        // computed slug from player name — used for UI prefill
 }

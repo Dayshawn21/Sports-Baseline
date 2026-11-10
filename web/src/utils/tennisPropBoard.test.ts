@@ -23,6 +23,7 @@ describe('isTennisRateable', () => {
     ['stale', { dataQualityFlags: ['stale_stats'] }],
     ['stale odds', { dataQualityFlags: ['stale_odds'] }],
     ['thin', { dataQualityFlags: ['small_sample'] }],
+    ['best-of-5 set stat', { dataQualityFlags: ['bo5_unsupported_stat'] }],
     ['no P(over)', { pOver: null }],
     ['hard-blocked (no side)', { recommendation: null }],
     ['Moneyline', { statType: 'moneyline', statAvg: 70, line: '-110' }],

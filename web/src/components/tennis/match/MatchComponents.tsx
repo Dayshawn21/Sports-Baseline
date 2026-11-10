@@ -42,7 +42,7 @@ export default function MatchComponents({ detail }: { detail: MatchDetail }) {
         {flags.length > 0 && (
           <div className="tennis-match-flags">
             {flags.map((flag) => (
-              <Tooltip key={flag} title={getDisplayFlagLabel(prediction, flag)}>
+              <Tooltip key={flag} title={getDisplayFlagLabel(flag)}>
                 <span className="tennis-match-flag">{flag.replaceAll('_', ' ')}</span>
               </Tooltip>
             ))}

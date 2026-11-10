@@ -14,6 +14,7 @@ import { useAdminSession, useFetchPlayerElo, useFetchPlayerStats, useFlaggedPlay
 import AdminSignIn from '~/components/admin/AdminSignIn'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
+import { surfaceGapNote } from '~/utils/adminFlags'
 import { sessionAdminKey } from '~/utils/adminAuth'
 import { httpStatus, retryAfterSeconds } from '~/utils/httpError'
 import PropsAuditBanner from '~/components/tennis/PropsAuditBanner'
@@ -30,6 +31,11 @@ const FLAG_META: Record<string, { color: string; bg: string; border: string }> =
   p2_elo_missing:      { color: 'var(--caution)', bg: 'var(--caution-soft)', border: 'color-mix(in srgb, var(--caution) 30%, transparent)' },
   ml_features_partial: { color: 'var(--caution)', bg: 'var(--caution-soft)', border: 'color-mix(in srgb, var(--caution) 30%, transparent)' },
   high_overround:      { color: 'var(--caution)', bg: 'var(--caution-soft)', border: 'color-mix(in srgb, var(--caution) 30%, transparent)' },
+}
+
+function SurfaceGapNote({ missingSurfaces }: { missingSurfaces: string[] }) {
+  const note = surfaceGapNote(missingSurfaces)
+  return note ? <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, maxWidth: 320 }}>{note}</div> : null
 }
 
 function FlagPill({ flag }: { flag: string }) {
@@ -233,10 +239,13 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
       title: 'Flags',
       dataIndex: 'flags',
       key: 'flags',
-      render: (flags: string[]) => (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {flags.map((f) => <FlagPill key={f} flag={f} />)}
-        </div>
+      render: (flags: string[], record) => (
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {flags.map((f) => <FlagPill key={f} flag={f} />)}
+          </div>
+          <SurfaceGapNote missingSurfaces={record.missingSurfaces} />
+        </>
       ),
     },
     {
@@ -505,6 +514,7 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
                         {record.flags.map((f) => <FlagPill key={f} flag={f} />)}
                       </div>
                     </div>
+                    <SurfaceGapNote missingSurfaces={record.missingSurfaces} />
                     <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {hasStatsFlag(record.flags) && (
                         <Button size="small" type={activePanel[record.playerId] === 'stats' ? 'primary' : 'default'} onClick={() => togglePanel(record.playerId, 'stats')}>Fix Stats</Button>

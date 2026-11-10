@@ -34,6 +34,11 @@ _BREAK_CHANCE_FACTOR_MAX = 1.60
 _BASELINE_RET_PTS_WON = 0.38
 _ACE_MATCHUP_FACTOR_MIN = 0.75
 _ACE_MATCHUP_FACTOR_MAX = 1.25
+# A PrizePicks row carrying one of these shows no projection or recommendation.
+PRIZEPICKS_HARD_BLOCKS = frozenset({
+    "missing_player", "missing_match", "missing_stats", "unsupported_stat",
+    "match_finished", "match_link_invalid", "bo5_unsupported_stat",
+})
 # League rates per serve point, keyed by players.tour: what a typical same-tour
 # opponent allows, so a typical opponent's matchup factor is 1.0. Measured
 # 2026-10-28 by app.backtest.tennis_league_rates (48a step 2, players with 5+

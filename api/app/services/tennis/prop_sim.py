@@ -14,6 +14,7 @@ import numpy as np
 from app.core.prop_ev import assess_prop
 from app.core.prop_probs import PropProbabilities, prop_side
 from app.core.prop_projection import (
+    PRIZEPICKS_HARD_BLOCKS,
     _BASELINE_HOLD_PCT,
     _SURFACE_ACE_FACTOR,
     _SURFACE_DF_FACTOR,
@@ -102,11 +103,6 @@ def line_probabilities(values: np.ndarray, line: float) -> PropProbabilities:
     )
 
 
-# _enrich's PrizePicks hard blocks: a row carrying one shows no projection.
-_BLOCKING_FLAGS = frozenset({
-    "missing_player", "missing_match", "missing_stats", "unsupported_stat",
-    "match_finished", "match_link_invalid", "bo5_unsupported_stat",
-})
 _OVER_ONLY = frozenset({"demon", "goblin"})
 _ACE_STATS = frozenset({"aces", "fantasy_score"})
 _DF_STATS = frozenset({"double_faults", "fantasy_score"})
@@ -238,7 +234,7 @@ def _projection_inputs(sim: MatchSim, player: int) -> dict[str, float | str]:
 
 
 def _sim_values(prop: Prop, line: PropLine, sim: MatchSim | None) -> tuple[int, np.ndarray] | None:
-    if sim is None or prop.player_id not in sim.players or _BLOCKING_FLAGS.intersection(line.data_quality_flags):
+    if sim is None or prop.player_id not in sim.players or PRIZEPICKS_HARD_BLOCKS.intersection(line.data_quality_flags):
         return None
     player = sim.players.index(prop.player_id)
     stat = normalize_stat_type(prop.stat_type)

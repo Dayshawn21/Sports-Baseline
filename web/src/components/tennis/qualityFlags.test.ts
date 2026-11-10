@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getDisplayFlags } from './qualityFlags'
+import { getDisplayFlagLabel, getDisplayFlags } from './qualityFlags'
 
 describe('getDisplayFlags', () => {
   it('shows partial context when recent form is missing', () => {
@@ -25,5 +25,12 @@ describe('getDisplayFlags', () => {
       'stale_odds',
       'market_missing',
     ])
+  })
+})
+
+describe('getDisplayFlagLabel', () => {
+  it('names the collapsed context chip and passes other flags through', () => {
+    expect(getDisplayFlagLabel('partial_context')).toBe('Partial context')
+    expect(getDisplayFlagLabel('ml_features_partial')).toBe('ml_features_partial')
   })
 })
