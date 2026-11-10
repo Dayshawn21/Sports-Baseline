@@ -195,3 +195,22 @@ def test_empty_batches_do_not_query(session: _Session) -> None:
     assert asyncio.run(nhl.get_line_movement(db, [])) == []
     assert asyncio.run(nhl.get_prop_line_counts(db, [])) == {}
     assert session.calls == 0
+
+
+def test_completed_results_read_only_completed_regular_season_nhl_games(session: _Session) -> None:
+    for game_id, overrides in (
+        (20, {"game_type": "PST", "status": "completed", "away_score": 1, "home_score": 4}),
+        (21, {"season": 2025, "status": "completed", "away_score": 1, "home_score": 4}),
+        (22, {"sport": "nba", "status": "completed", "away_score": 1, "home_score": 4}),
+        (23, {"status": "completed", "end_period": "REG", "away_score": 1, "home_score": 4, "game_date": "2026-10-25"}),
+    ):
+        _insert(session.connection, "sport_games", {
+            "id": game_id, "sport": "nhl", "season": 2026, "week": 1, "game_type": "REG",
+            "game_date": DAY, "start_utc": START, "status": "scheduled", "away_score": None,
+            "home_score": None, "end_period": None, "away_team_id": 1, "home_team_id": 2, **overrides,
+        })
+    results = asyncio.run(nhl.get_completed_results(cast(AsyncSession, session), [2026]))
+    assert sorted((r.end_period, r.away_team, r.home_team, r.away_score, r.home_score) for r in results) == [
+        ("REG", "MTL", "CHI", 1, 4), ("SO", "MTL", "CHI", 3, 2),
+    ]
+    assert asyncio.run(nhl.get_completed_results(cast(AsyncSession, session), [])) == []

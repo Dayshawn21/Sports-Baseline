@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
 from app.core.nhl_player_values import NHL_FIRST_HISTORY_SEASON
+from app.core.nhl_records import NhlResult
 from app.core.nhl_projection_backtest import REFERENCE_GAMES, SERVED_GAME_TYPES, NhlHistoryRow
 from app.core.nhl_prop_predictions import NhlFreezeLine, settle_frozen
 from app.core.prop_ranking_check import FrozenLine
@@ -263,6 +264,22 @@ async def get_games_on(db: AsyncSession, game_date: date) -> list[dict[str, obje
 async def get_game(db: AsyncSession, game_id: int) -> dict[str, object] | None:
     games = await _served_games(db, "g.id = :game_id", {"game_id": game_id})
     return games[0] if games else None
+
+
+async def get_completed_results(db: AsyncSession, seasons: Sequence[int]) -> list[NhlResult]:
+    """Completed regular-season results of the given seasons, for W-L-OT records."""
+    if not seasons:
+        return []
+    statement = text("""
+        SELECT g.season, g.game_type, g.game_date, g.status, g.end_period,
+               home.team_code, away.team_code, g.home_score, g.away_score
+        FROM sport_games g
+        JOIN sport_teams home ON home.sport = 'nhl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nhl' AND away.id = g.away_team_id
+        WHERE g.sport = 'nhl' AND g.game_type = 'REG' AND g.status = 'completed' AND g.season IN :seasons
+    """).bindparams(bindparam("seasons", expanding=True))
+    rows = await db.execute(statement, {"seasons": list(seasons)})
+    return [NhlResult(*row) for row in rows.fetchall()]
 
 
 # All market readers share the same eligibility and book choice, including history.

@@ -1,4 +1,4 @@
-import type { NhlBook, NhlSlateGame } from '~/types/nhl'
+import type { NhlBook, NhlRecord, NhlSlateGame } from '~/types/nhl'
 import { fmtAmerican } from '~/utils/odds'
 import { isResultPending } from '~/utils/slateOrder'
 import { dayClockCt } from '~/utils/slatePeriod'
@@ -47,6 +47,12 @@ export function nhlGameState(game: NhlSlateGame, now: Date): { state: NhlGameSta
 }
 
 const NHL_BOOK_LABELS: Record<NhlBook, string> = { draftkings: 'DraftKings', fanduel: 'FanDuel', bet365: 'Bet365' }
+
+/** "8-4-2", or "No games yet" as the NBA and NFL records read before a team has played. */
+export function nhlRecordLabel(record: NhlRecord): string {
+  const { wins, losses, otLosses } = record
+  return wins + losses + otLosses === 0 ? 'No games yet' : `${wins}-${losses}-${otLosses}`
+}
 
 export function nhlBookLabel(book: NhlBook): string {
   return NHL_BOOK_LABELS[book]

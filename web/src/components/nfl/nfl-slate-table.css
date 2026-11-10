@@ -76,7 +76,6 @@
   .nfl-slate-table tr.is-pending .nfl-slate-table__time { display: none; }
   .nfl-slate-table tr.is-pending .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
-  .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
   .nfl-slate-table__props { order: 2; }
   .nfl-slate-table__unit { display: inline; }
   .nfl-slate-table__props.is-empty { display: none; }

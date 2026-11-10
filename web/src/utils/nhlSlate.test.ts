@@ -99,7 +99,7 @@ function game(homeWinProbability: number | null): NhlSlateGame {
   return {
     gameId: 1, season: 2026, week: 2, gameType: 'REG', gameDate: '2026-10-23', startUtc: START,
     status: 'scheduled', awayTeam: 'FLA', homeTeam: 'BOS', awayTeamName: 'Florida Panthers', homeTeamName: 'Boston Bruins',
-    awayScore: null, homeScore: null, endPeriod: null, propLineCount: 0,
+    awayScore: null, homeScore: null, endPeriod: null, awayRecord: { wins: 0, losses: 0, otLosses: 0 }, homeRecord: { wins: 0, losses: 0, otLosses: 0 }, propLineCount: 0,
     moneyline: homeWinProbability === null ? null
       : { book: 'draftkings', homeOdds: -130, awayOdds: 110, homeWinProbability, fetchedAt: FRESH },
     spread: null, total: null, lineMovement: [], context: unavailableNhlContext('FLA', 'BOS'),

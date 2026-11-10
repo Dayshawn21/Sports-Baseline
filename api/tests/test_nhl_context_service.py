@@ -191,9 +191,9 @@ def test_missing_migration_is_explicit_503_and_other_database_errors_are_not_hid
 
 
 def test_slate_and_detail_share_context_with_identical_fixed_clock_and_existing_fields(monkeypatch: pytest.MonkeyPatch) -> None:
-    row = game().model_dump(exclude={"context", "moneyline", "spread", "total", "line_movement", "prop_line_count"})
+    row = game().model_dump(exclude={"context", "moneyline", "spread", "total", "line_movement", "prop_line_count", "away_record", "home_record"})
     for name, value in {"get_game_dates": [DAY], "get_games_on": [row], "get_game": row,
-                        "get_latest_market_rows": [], "get_line_movement": [], "get_prop_line_counts": {1: 7},
+                        "get_latest_market_rows": [], "get_line_movement": [], "get_prop_line_counts": {1: 7}, "get_completed_results": [],
                         "get_game_line_history": []}.items():
         monkeypatch.setattr(nhl, name, AsyncMock(return_value=value))
     monkeypatch.setattr(repo, "get_injury_snapshots", AsyncMock(return_value={1: injuries()}))

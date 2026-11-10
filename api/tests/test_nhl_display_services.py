@@ -14,6 +14,7 @@ from app.repositories import nhl_context as context_repo
 from app.services.nhl.game_detail import build_game_detail, game_detail
 from app.services.nhl.line_only_props import build_line_only_props, line_only_props
 from app.services.nhl.projections import NO_INPUTS
+from app.core.nhl_records import NhlResult
 from app.services.nhl.slate import assemble_games, build_slate, slate_games
 
 DAY = date(2026, 10, 23)
@@ -155,7 +156,7 @@ def _mock_repository(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(context_repo, "get_goalie_snapshots", AsyncMock(return_value={}))
     for name, result in {
         "get_game_dates": [DAY], "get_games_on": [_game()], "get_game": _game(),
-        "get_latest_market_rows": [_market()], "get_line_movement": [], "get_prop_line_counts": {1: 1},
+        "get_latest_market_rows": [_market()], "get_line_movement": [], "get_prop_line_counts": {1: 1}, "get_completed_results": [],
         "get_game_line_history": [], "get_line_only_lines": [_line()], "get_prior_history": {},
     }.items():
         monkeypatch.setattr(nhl, name, AsyncMock(return_value=result))
@@ -210,3 +211,22 @@ def test_database_failure_is_not_reported_as_an_empty_slate(monkeypatch: pytest.
     nhl.get_games_on.side_effect = RuntimeError("database unavailable")
     with pytest.raises(RuntimeError, match="database unavailable"):
         asyncio.run(build_slate(cast(AsyncSession, object()), DAY, DAY))
+
+
+def test_records_count_games_before_each_games_own_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_repository(monkeypatch)
+    earlier = NhlResult(2026, "REG", DAY - timedelta(days=2), "completed", "OT", "CHI", "TBL", 2, 3)
+    same_day = NhlResult(2026, "REG", DAY, "completed", "REG", "CHI", "TBL", 5, 1)
+    nhl.get_completed_results.return_value = [earlier, same_day]
+    db = cast(AsyncSession, object())
+    later = {**_game(2), "game_date": DAY + timedelta(days=1)}
+    first, second = asyncio.run(assemble_games(db, [_game(1), later]))
+    nhl.get_completed_results.assert_awaited_once_with(db, [2026])
+    wire = first.model_dump(mode="json", by_alias=True)
+    assert (wire["awayRecord"], wire["homeRecord"]) == ({"wins": 1, "losses": 0, "otLosses": 0}, {"wins": 0, "losses": 0, "otLosses": 1})
+    assert (second.away_record.losses, second.home_record.wins) == (1, 1)
+
+
+def test_slate_games_without_records_read_zero() -> None:
+    game = slate_games([_game()], [], [], {})[0]
+    assert (game.away_record.wins, game.home_record.ot_losses) == (0, 0)

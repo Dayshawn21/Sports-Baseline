@@ -1,7 +1,7 @@
 import type { NhlSlateGame } from '~/types/nhl'
 import { nhlSlateContext } from '~/utils/nhlContext'
 import {
-  nhlGameState, nhlMarketCells, nhlPuckDropLabel, nhlTimeLabel, type NhlGameState,
+  nhlGameState, nhlMarketCells, nhlPuckDropLabel, nhlRecordLabel, nhlTimeLabel, type NhlGameState,
 } from '~/utils/nhlGame'
 
 import { latestTime, rowOddsAge } from '~/utils/slatePeriod'
@@ -62,8 +62,8 @@ export interface NhlSlateRowModel {
   state: NhlGameState
   puckDrop: string
   stateLabel: string
-  away: { code: string, name: string, score: number | null }
-  home: { code: string, name: string, score: number | null }
+  away: { code: string, record: string, score: number | null }
+  home: { code: string, record: string, score: number | null }
   puckLine: NhlSlateRowCell
   total: NhlSlateRowCell
   moneyline: NhlSlateRowCell
@@ -83,8 +83,8 @@ export function nhlSlateRow(game: NhlSlateGame, now: Date, staleSince: number | 
   const context = nhlSlateContext(game.context, game.awayTeam, game.homeTeam, game.startUtc, now)
   return {
     gameId: game.gameId, state, stateLabel: label, puckDrop: nhlPuckDropLabel(game.startUtc),
-    away: { code: game.awayTeam, name: game.awayTeamName, score: state === 'final' ? game.awayScore : null },
-    home: { code: game.homeTeam, name: game.homeTeamName, score: state === 'final' ? game.homeScore : null },
+    away: { code: game.awayTeam, record: nhlRecordLabel(game.awayRecord), score: state === 'final' ? game.awayScore : null },
+    home: { code: game.homeTeam, record: nhlRecordLabel(game.homeRecord), score: state === 'final' ? game.homeScore : null },
     puckLine, total, moneyline, win: nhlWinLabel(game, state), props: game.propLineCount,
     tags: nhlNoteTags(context, state, game.awayTeam, game.homeTeam),
     oddsAge: staleSince !== null && !ended(state) && (game.spread || game.total || game.moneyline)
