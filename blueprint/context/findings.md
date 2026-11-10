@@ -362,7 +362,7 @@ version and forward validation.
 **Suggested fix:** remove both `.nfl-prop-detail__model` rules.
 **Resolution:** Fixed 2026-11-09 on `claude/player-page-dead-code-19b957`: removed both `.nfl-prop-detail__model` rules; `.nfl-prop-detail__kv` and the other rules are unchanged. `rg` finds no reference and web verify passed. A later `/audit` closes it.
 
-### F-45 [P3] open - Team logos download 500px PNGs for 14 to 52px slots
+### F-45 [P3] fixed - Team logos download 500px PNGs for 14 to 52px slots
 
 **File:** web/src/utils/teamLogo.ts:19; web/src/components/shared/TeamLogo.tsx:15; web/src/components/shared/SlateMatchupTeams.tsx:7; web/src/components/home/HomeSportCard.tsx:7
 **Found:** 2026-11-09 by /audit (scope: last 5 commits; lens: performance)
@@ -378,4 +378,4 @@ version and forward validation.
 
 PNGs are not gzipped, so transfer roughly equals these totals on a cold cache. The current files cost about 31 times the bytes of a 40px (2x of 16px) combiner image, and each decodes to about 1 MB of RGBA (500x500x4), so 16 MB of decoded bitmaps for one NBA slate against about 100 KB at 40px. The combiner returns a 40x40 RGBA PNG with `Access-Control-Allow-Origin: *` and works for NHL too (`nhl/500/tor.png`: 56,235 bytes vs 1,918 at 40px).
 **Suggested fix:** in `teamLogoUrl`, take the display size and return the combiner URL `https://a.espncdn.com/combiner/i?img=/i/teamlogos/{sport}/500/{code}.png&w={2*size}&h={2*size}` for row-sized slots (16px slate rows, 14px home cards), keeping the plain `/500/` file for the 52px game heroes, and keep the existing `onError` fallback to the code badge (or nothing) unchanged, so a combiner failure still degrades cleanly. Add a `teamLogo.test.ts` case for each branch (row size gives the combiner with doubled dimensions, hero size gives `/500/`, NHL overrides still apply). Optional: the 104px combiner would cut a hero from about 61 KB to about 6.7 KB, but the audit asked to keep heroes on the 500px file.
-**Resolution:**
+**Resolution:** Fixed 2026-11-09 on `fix/team-logo-size`: `teamLogoUrl(sport, code, size)` returns ESPN's combiner URL at twice the display size for every slot (user chose heroes too), and `TeamLogo` passes its size. Tests cover 16, 14 and 52px, rounding, the NHL overrides and blank codes; web verify passed (1,447 tests). The NBA slate's 16 logos and the NHL slate's 6 load at 32x32, an NBA hero at 104x104. A later `/audit` closes it.

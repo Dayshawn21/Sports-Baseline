@@ -12,7 +12,7 @@ interface Props {
 
 /** A team's logo at a fixed size; a missing code or a failed image shows the code badge (or nothing). */
 export default function TeamLogo({ sport, code, size, fallback = 'badge' }: Props) {
-  const url = teamLogoUrl(sport, code)
+  const url = teamLogoUrl(sport, code, size)
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const style = { width: size, height: size }
   if (url !== null && failedUrl !== url) {
