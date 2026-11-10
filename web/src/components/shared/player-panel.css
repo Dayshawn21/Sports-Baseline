@@ -1,0 +1,271 @@
+/* The prop panel every player page shares: section, form chart, window switch, lines table.
+   Loaded by PlayerPageShell so no sport depends on another sport importing it. */
+
+.nfl-prop-detail__section {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nfl-prop-detail__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.nfl-prop-detail__section-head h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__section-head > span {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.nfl-prop-detail__switch {
+  display: inline-flex;
+  max-width: 100%;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nfl-prop-detail__switch button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 12px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nfl-prop-detail__switch button:last-child { border-right: 0; }
+.nfl-prop-detail__switch button:hover:not(:disabled) { color: var(--text-primary); }
+.nfl-prop-detail__switch button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.nfl-prop-detail__switch button[aria-pressed='true'] { background: var(--chart-low); color: var(--text-primary); }
+.nfl-prop-detail__switch button:disabled { color: var(--text-muted); cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .nfl-prop-detail__switch button { min-height: 44px; }
+}
+
+/* Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Heights are
+   shares of the plot box, so the mark and the bars read off the same scale. */
+.nfl-prop-detail__chart {
+  margin-top: var(--space-3);
+}
+
+.nfl-prop-detail__plot,
+.nfl-prop-detail__opps {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-2);
+}
+
+.nfl-prop-detail__plot {
+  position: relative;
+  height: 112px;
+  margin-top: 18px;
+}
+
+.nfl-prop-detail__col {
+  position: relative;
+  height: 100%;
+}
+
+.nfl-prop-detail__bar {
+  position: absolute;
+  bottom: var(--b, 0%);
+  left: 50%;
+  width: 100%;
+  max-width: 40px;
+  height: max(var(--h), 2px);
+  border-radius: 5px 5px 2px 2px;
+  background: var(--text-secondary);
+  transform: translateX(-50%);
+}
+
+.nfl-prop-detail__col.is-above .nfl-prop-detail__bar {
+  background: var(--text-primary);
+}
+
+.nfl-prop-detail__col.is-below .nfl-prop-detail__bar {
+  background: var(--chart-low);
+}
+
+.nfl-prop-detail__val {
+  position: absolute;
+  bottom: calc(var(--b, 0%) + max(var(--h), 2px) + 4px);
+  left: 50%;
+  z-index: 2;
+  padding: 0 2px;
+  background: var(--nfl-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transform: translateX(-50%);
+}
+
+.nfl-prop-detail__opps {
+  margin-top: 6px;
+}
+
+.nfl-prop-detail__opps > span {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.nfl-prop-detail__opps > span > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+/* Only in a plot that reaches below zero: the baseline the bars grow from and drop away from. */
+.nfl-prop-detail__zero {
+  position: absolute;
+  right: 0;
+  bottom: var(--zero);
+  left: 0;
+  border-top: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+
+.nfl-prop-detail__line-mark {
+  position: absolute;
+  right: 0;
+  bottom: var(--line);
+  left: 0;
+  z-index: 1;
+  border-top: 1px dashed var(--text-secondary);
+  pointer-events: none;
+}
+
+.nfl-prop-detail__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.nfl-prop-detail__toolbar .nfl-prop-detail__switch { margin-top: 0; }
+
+.nfl-prop-detail__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.nfl-prop-detail__legend::before {
+  content: '';
+  width: 18px;
+  border-top: 1px dashed var(--text-secondary);
+}
+
+.nfl-prop-detail__table {
+  width: 100%;
+  margin-top: var(--space-3);
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.nfl-prop-detail__table th {
+  padding: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__table td {
+  padding: 7px 0;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nfl-prop-detail__table th + th,
+.nfl-prop-detail__table td + td {
+  padding-left: 10px;
+}
+
+.nfl-prop-detail__table th:first-child,
+.nfl-prop-detail__table td:first-child {
+  text-align: left;
+}
+
+.nfl-prop-detail__table tr.is-selected td {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.player-lines__wrap {
+  overflow-x: auto;
+}
+
+.nfl-prop-detail__table td small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.nfl-prop-detail__table tr.player-lines__note td {
+  padding: 0 0 8px;
+  border-top: 0;
+  color: var(--text-muted);
+  font: 400 11px var(--font-body);
+  text-align: left;
+  white-space: normal;
+}
+
+.nfl-prop-detail__table .ant-tag {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nfl-prop-detail__this {
+  margin-left: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+}

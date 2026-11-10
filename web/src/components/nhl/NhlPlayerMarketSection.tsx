@@ -1,7 +1,7 @@
-import { Tag } from 'antd'
 import { NhlPlayerEvidence } from '~/components/nhl/NhlPlayerEvidence'
 import { NhlPlayerFormSection } from '~/components/nhl/NhlPlayerFormSection'
 import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
+import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
 import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import type { NhlPlayerMarket, NhlPlayerProps } from '~/types/nhl'
 import { nhlTimeLabel } from '~/utils/nhlGame'
@@ -15,25 +15,20 @@ import { nhlProjectionHero } from '~/utils/nhlPlayer'
 function Rungs({ market }: { market: NhlPlayerMarket }) {
   const covers = market.lines.some(rung => rung.pOver !== null || nhlLineProbabilityNote(rung.flags) !== null)
   const weakNote = nhlProbabilityNote(market.market)
-  return <section className="nfl-prop-detail__section">
-    <div className="nfl-prop-detail__section-head"><h3>PrizePicks lines</h3></div>
-    {covers && <p className="nfl-player-muted">{NHL_PROBABILITY_CAPTION}.{weakNote && ` ${weakNote}`}</p>}
-    <div className="nhl-player-table-wrap">
-      <table className="nfl-prop-detail__table">
-        <thead><tr><th>Type</th><th>Line</th><th>Gap</th>{covers && <><th>P(over)</th><th>P(under)</th></>}<th>Updated (CT)</th></tr></thead>
-        <tbody>{market.lines.map(rung => <tr key={`${rung.oddsType}-${rung.line}`}>
-          <td><Tag>{ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType}</Tag></td>
-          <td>{nhlPropLineLabel(market.market, rung.line)}</td>
-          <td>{nhlGapLabel(rung.gap)}</td>
-          {covers && <>
-            <td>{nhlPercentLabel(rung.pOver)}{nhlLineProbabilityNote(rung.flags) && <small>{nhlLineProbabilityNote(rung.flags)}</small>}</td>
-            <td>{nhlPercentLabel(rung.pUnder)}</td>
-          </>}
-          <td><time dateTime={rung.fetchedAt}>{nhlTimeLabel(rung.fetchedAt, true)}</time></td>
-        </tr>)}</tbody>
-      </table>
-    </div>
-  </section>
+  const rows: PlayerLinesRow[] = market.lines.map(rung => {
+    const note = nhlLineProbabilityNote(rung.flags)
+    return {
+      key: `${rung.oddsType}-${rung.line}`,
+      type: ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType,
+      line: nhlPropLineLabel(market.market, rung.line),
+      gap: nhlGapLabel(rung.gap),
+      pOver: <>{nhlPercentLabel(rung.pOver)}{note && <small>{note}</small>}</>,
+      pUnder: nhlPercentLabel(rung.pUnder),
+      trailing: [{ content: <time dateTime={rung.fetchedAt}>{nhlTimeLabel(rung.fetchedAt, true)}</time> }],
+    }
+  })
+  return <PlayerLinesTable columns={covers ? ['gap', 'pOver', 'pUnder'] : ['gap']} trailing={['Updated (CT)']} rows={rows}
+    intro={covers && <p className="nfl-player-muted">{NHL_PROBABILITY_CAPTION}.{weakNote && ` ${weakNote}`}</p>} />
 }
 
 /** One market's tab on the player page: the lines on offer beside the gray reference projection and, where the fit covers the market, a gray P(over) per line. Never a pick. */

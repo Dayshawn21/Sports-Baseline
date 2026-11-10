@@ -44,6 +44,7 @@
   margin-bottom: var(--space-3);
 }
 .tennis-player-section-head .tennis-match-section { margin: 0; }
+.tennis-player-section-head .nfl-prop-detail__switch { margin-top: 0; }
 .tennis-player-splits { padding: var(--space-3) var(--space-5) var(--space-4); }
 .tennis-player-split {
   display: grid;
@@ -62,7 +63,6 @@
 .tennis-player-note { margin: var(--space-3) 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
 .tennis-player-small { font-weight: 600; color: var(--text-secondary); }
 
-.tennis-player-log { padding: var(--space-2) var(--space-3); overflow-x: auto; }
 .tennis-player-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tennis-player-table th {
   padding: 0 var(--space-2) var(--space-2);

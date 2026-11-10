@@ -1,6 +1,8 @@
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerProps, NbaPlayerRung } from '~/types/nba'
 import type { FormRow } from '~/utils/nflFormWindow'
+import { nbaInjuryTime } from '~/utils/nbaInjuries'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
+import { latestTime } from '~/utils/playerPage'
 import { nbaPropFlagText, signedGap } from '~/utils/nbaProps'
 import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
 
@@ -151,3 +153,13 @@ export function nbaHeadChips(player: Pick<NbaPlayerProps, 'markets'>): PlayerHea
 
 /** Single-stat markets for the joined game log; combos and double-double repeat these. */
 export const NBA_LOG_MARKETS = ['points', 'rebounds', 'assists', 'threes_made', 'blocks'] as const
+
+/** The page footer: when the lines and the injury report were last read, and which model projected them. */
+export function nbaPlayerFooter(player: Pick<NbaPlayerProps, 'markets' | 'injuryReport' | 'modelVersion'>): string {
+  const lines = latestTime(player.markets.flatMap(market => market.lines.map(rung => rung.fetchedAt)))
+  return [
+    lines === null ? 'No PrizePicks lines stored.' : `PrizePicks lines as of ${nbaInjuryTime(lines)}.`,
+    player.injuryReport.fetchedAt === null ? 'No ESPN injury report loaded.' : `ESPN injury report as of ${nbaInjuryTime(player.injuryReport.fetchedAt)}.`,
+    `Projections from ${player.modelVersion}.`,
+  ].join(' ')
+}

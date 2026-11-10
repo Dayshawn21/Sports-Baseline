@@ -1,14 +1,15 @@
 import {
-  DetailBreakdown, DetailContext, DetailFlags, DetailGameLog, DetailLines, DetailProjection, DetailSportsbook, DetailStatus,
+  DetailBreakdown, DetailContext, DetailFlags, DetailGameLog, DetailLines, DetailSportsbook, DetailStatus,
   DetailVolume,
 } from '~/components/nfl/NflPropDetailSections'
 import { NflOpponentAllowed } from '~/components/nfl/NflEvidenceContext'
 import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
+import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import type { NflSlateGame } from '~/types/nfl'
-import { formatProjection, marketLabel } from '~/utils/nflLabels'
-import { nflPropDetail } from '~/utils/nflPropDetail'
+import { marketLabel } from '~/utils/nflLabels'
+import { nflProjectionHero, nflPropDetail } from '~/utils/nflPropDetail'
 import type { NflPlayerWeekLine } from '~/utils/nflPlayer'
-import { edgeLabel, edgePctLabel } from '~/utils/nflSignal'
+import { edgePctLabel } from '~/utils/nflSignal'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import './nfl-prop-detail.css'
 
@@ -20,18 +21,17 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
   const detail = nflPropDetail(row, game, item.alternates, Date.now())
   const reference = isTargetsReference(row.market)
   const isTd = row.market === TD
-  const gap = reference ? `${edgeLabel(row.edge)} gap` : isTd ? null : edgePctLabel(item.edgeShare)
+  // The projection block already reads the gap in units; the head keeps only the share, which it does not.
+  const gapShare = reference || isTd || item.edgeShare === null ? null : `${edgePctLabel(item.edgeShare)} gap`
   return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
       <h3 id={`${id}-title`} className="nfl-player-prop__title" title={reference ? TARGETS_REFERENCE_NOTE : undefined}>
         {marketLabel(row.market)}{reference ? <small>reference</small> : item.rank !== null && <small>#{item.rank}</small>}
       </h3>
-      <span className="nfl-player-muted">
-        {isTd ? 'Anytime' : `Line ${row.line?.toFixed(1) ?? '--'}`} · Model {formatProjection(row.market, row.projection)}{gap && ` · ${gap}`}
-      </span>
+      {gapShare && <span className="nfl-player-muted">{gapShare}</span>}
     </div>
     <div className="nfl-player-prop__body">
-      <DetailProjection detail={detail} />
+      <PlayerProjectionHero hero={nflProjectionHero(row, detail)} />
       <DetailGameLog row={row} />
       <DetailLines detail={detail} />
       <PlayerEvidence contents="Opponent allowed, history, how it is built, sportsbooks, status">

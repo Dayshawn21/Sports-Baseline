@@ -1,0 +1,20 @@
+.player-tag {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 6px;
+  border: 1px solid var(--border-card);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font: 600 11px/1.5 var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+.player-tag.is-caution {
+  color: var(--text-primary);
+}
+
+.player-tag.is-out {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  font-weight: 700;
+}

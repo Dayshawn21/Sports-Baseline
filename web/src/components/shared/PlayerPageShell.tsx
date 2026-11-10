@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import PageHead from '~/components/shared/PageHead'
 import '~/pages/nfl-slate.css'
 import '~/pages/nfl-player.css'
+import './player-panel.css'
 
 interface ShellProps {
   /** The sport's own class (`nba-player`), beside the shared `nfl-slate nfl-player`; NFL adds none. */

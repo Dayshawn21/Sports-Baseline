@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NbaInjuryTag } from '~/components/nba/NbaInjury'
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import { NbaPlayerPropTabs } from '~/components/nba/NbaPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
@@ -14,7 +15,7 @@ import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nbaGame'
 import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel } from '~/utils/nbaLineOnly'
-import { NBA_LOG_MARKETS, NBA_SEASON_START_MONTH, nbaHeadChips, nbaPlayerStatus } from '~/utils/nbaPlayer'
+import { NBA_LOG_MARKETS, NBA_SEASON_START_MONTH, nbaHeadChips, nbaPlayerFooter, nbaPlayerStatus } from '~/utils/nbaPlayer'
 import { playerGameLog } from '~/utils/playerGameLog'
 import { arrivedFromBoard } from '~/utils/nflPlayer'
 import './nfl-slate.css'
@@ -70,5 +71,6 @@ export default function NbaPlayerPage() {
       log={playerGameLog(player.markets, NBA_LOG_MARKETS)} label={nbaMarketLabel} valueText={nbaRecentValueLabel}
       seasonStartMonth={NBA_SEASON_START_MONTH} recordNote="No graded record for this player yet. NBA projections are reference only."
     />}
+    <PlayerFooter>{nbaPlayerFooter(player)}</PlayerFooter>
   </PlayerPageShell>
 }

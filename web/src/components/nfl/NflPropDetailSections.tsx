@@ -8,16 +8,10 @@ import { formBars, type NflRecentBar } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
 import { playerSearch } from '~/utils/nflPlayer'
 import { volumeReferenceModel } from '~/utils/nflVolume'
+import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
+import { SegmentSwitch } from '~/components/shared/SegmentSwitch'
+import '~/components/shared/player-panel.css'
 import './nfl-prop-detail.css'
-
-export function DetailProjection({ detail }: { detail: NflPropDetailModel }) {
-  const tone = !detail.hasEdge ? '' : detail.isUnder ? ' is-under' : ' is-over'
-  return <section className="nfl-prop-detail__projection">
-    <span>{detail.projectionLabel}</span>
-    <strong>{detail.projectionText}</strong>
-    <p className={`nfl-prop-detail__delta${tone}`}>{detail.deltaText}</p>
-  </section>
-}
 
 /** Where zero sits in a plot that reaches below it: a bar's bottom edge if it is not negative, else its top edge. */
 function zeroPct(bar: NflRecentBar): number {
@@ -53,10 +47,8 @@ export function GameLogBars({ row, sample, seasonStartMonth }: { row: Parameters
 export function FormSwitch({ row, window }: { row: FormRow, window: FormWindow }) {
   const [params, setParams] = useSearchParams()
   const choose = (next: FormWindow) => setParams(playerSearch(params, { [FORM_PARAM]: next === '5' ? null : next }), { replace: true })
-  return <div className="nfl-prop-detail__switch" role="group" aria-label="Recent form window">
-    {formOptions(row).map(option => <button key={option.window} type="button" aria-pressed={option.window === window}
-      disabled={option.disabledReason !== null} title={option.disabledReason ?? undefined} onClick={() => choose(option.window)}>{option.label}</button>)}
-  </div>
+  const options = formOptions(row).map(option => ({ value: option.window, label: option.label, disabledReason: option.disabledReason }))
+  return <SegmentSwitch label="Recent form window" options={options} value={window} onChange={choose} />
 }
 
 /** Bars only where a game is a count against a full-game line; a TD game is 0 or 1, so TD keeps the text list. */
@@ -124,19 +116,13 @@ export function DetailVolume({ row }: { row: NflSlateLine }) {
 }
 
 export function DetailLines({ detail }: { detail: NflPropDetailModel }) {
-  return <section className="nfl-prop-detail__section">
-    <SectionHead title="PrizePicks lines" />
-    <table className="nfl-prop-detail__table">
-      <thead><tr><th>Type</th><th>Line</th>{!detail.referenceNote && <th>P(over)</th>}</tr></thead>
-      <tbody>{detail.lines.map(line => <tr key={line.key} className={line.selected ? 'is-selected' : undefined}>
-        <td><Tag color={line.typeColor}>{line.typeLabel}</Tag>{line.selected && <span className="nfl-prop-detail__this">This line</span>}</td>
-        <td>{line.lineText}</td>
-        {!detail.referenceNote && <td>{line.pOverText ?? '--'}</td>}
-      </tr>)}</tbody>
-    </table>
+  const rows: PlayerLinesRow[] = detail.lines.map(line => ({
+    key: String(line.key), type: line.typeLabel, line: line.lineText, pOver: line.pOverText ?? '--', selected: line.selected,
+  }))
+  return <PlayerLinesTable columns={detail.referenceNote ? [] : ['pOver']} rows={rows}>
     {detail.pOverNote && <Tooltip title={P_OVER_NOTE}><p className="nfl-prop-detail__note">{detail.pOverNote}</p></Tooltip>}
     {detail.referenceNote && <p className="nfl-prop-detail__note">{detail.referenceNote}</p>}
-  </section>
+  </PlayerLinesTable>
 }
 
 export function DetailSportsbook({ detail }: { detail: NflPropDetailModel }) {

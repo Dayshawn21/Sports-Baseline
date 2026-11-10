@@ -37,11 +37,6 @@ export const ODDS_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', goblin: 'Goblin', demon: 'Demon',
 }
 
-/** Goblin and demon lines are moved off the market price on purpose. */
-export const ODDS_TYPE_COLORS: Record<string, string> = {
-  standard: 'default', goblin: 'gold', demon: 'volcano',
-}
-
 export const FLAG_LABELS: Record<string, string> = {
   no_baseline: 'No valid pre-week targets history',
   historical_baseline: 'Baseline from past results, not a live model',

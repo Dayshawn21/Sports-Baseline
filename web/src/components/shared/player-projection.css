@@ -1,4 +1,4 @@
-/* Shared by the NBA and NHL player panels (NFL keeps its own block for now). Gray only: a projection is never a pick. */
+/* The projection block at the top of every player panel. Gray only: a projection is never a pick. */
 .player-projection { display: grid; gap: var(--space-1); padding: var(--space-4); }
 .player-projection__label { color: var(--text-secondary); font-size: 13px; }
 .player-projection__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-6); }

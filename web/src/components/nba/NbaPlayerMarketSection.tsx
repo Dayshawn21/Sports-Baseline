@@ -1,9 +1,8 @@
-import { Tag } from 'antd'
-import { Fragment } from 'react'
 import { NbaInjuryEvidence } from '~/components/nba/NbaInjury'
 import { NbaOpponentEvidence } from '~/components/nba/NbaOpponentEvidence'
 import { NbaPlayerFormSection } from '~/components/nba/NbaPlayerFormSection'
 import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
+import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
 import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import type { NbaPlayerMarket, NbaPlayerProps } from '~/types/nba'
 import { ODDS_TYPE_LABELS } from '~/utils/nflLabels'
@@ -14,30 +13,18 @@ import { signedGap } from '~/utils/nbaProps'
 function Rungs({ market }: { market: NbaPlayerMarket }) {
   const modelled = market.kind === 'modelled'
   const notes = nbaRungNotes(market.lines)
-  return <section className="nfl-prop-detail__section">
-    <div className="nfl-prop-detail__section-head"><h3>PrizePicks lines</h3></div>
-    <div className="nba-player-table-wrap">
-      <table className="nfl-prop-detail__table">
-        <thead><tr>
-          <th>Type</th><th>Line</th>
-          {modelled && <><th>Gap</th><th>P(over)</th><th>P(under)</th></>}
-        </tr></thead>
-        <tbody>{market.lines.map((rung, index) => <Fragment key={`${rung.oddsType}-${rung.line}`}>
-          <tr>
-            <td><Tag>{rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard'}</Tag></td>
-            <td>{rung.line}</td>
-            {modelled && <>
-              <td>{rung.gap === null ? '--' : signedGap(rung.gap)}</td>
-              <td>{nbaPercentText(rung.pOver)}</td>
-              <td>{nbaPercentText(rung.pUnder)}</td>
-            </>}
-          </tr>
-          {notes.perRung[index] && <tr className="nba-player-flag-row"><td colSpan={5}>{notes.perRung[index]}</td></tr>}
-        </Fragment>)}</tbody>
-      </table>
-    </div>
+  const rows: PlayerLinesRow[] = market.lines.map((rung, index) => ({
+    key: `${rung.oddsType}-${rung.line}`,
+    type: rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard',
+    line: String(rung.line),
+    gap: rung.gap === null ? '--' : signedGap(rung.gap),
+    pOver: nbaPercentText(rung.pOver),
+    pUnder: nbaPercentText(rung.pUnder),
+    note: notes.perRung[index],
+  }))
+  return <PlayerLinesTable columns={modelled ? ['gap', 'pOver', 'pUnder'] : []} rows={rows}>
     {notes.shared && <p className="nba-player-sample">{notes.shared}</p>}
-  </section>
+  </PlayerLinesTable>
 }
 
 /** One market's tab on the player page: the gray reference projection when modelled, recent form, its lines, then the injury and opponent evidence, closed. */

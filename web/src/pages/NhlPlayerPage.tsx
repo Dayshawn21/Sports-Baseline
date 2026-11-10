@@ -6,13 +6,16 @@ import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { PlayerContextSections } from '~/components/shared/PlayerContextSections'
 import { PlayerHeadChips } from '~/components/shared/PlayerHeadChips'
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
+import { PlayerTag } from '~/components/shared/PlayerTag'
 import { useNhlPlayerProps } from '~/hooks/useNhl'
 import type { NhlPlayerProps } from '~/types/nhl'
 import { isNotFound } from '~/utils/httpError'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { parseNhlGameId } from '~/utils/nhlGame'
-import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerInjuryReport, nhlPlayerStatus } from '~/utils/nhlPlayer'
+import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus } from '~/utils/nhlPlayer'
+import { injuryTone } from '~/utils/playerPage'
 import { playerGameLog } from '~/utils/playerGameLog'
 import './nfl-slate.css'
 import './nfl-player.css'
@@ -41,8 +44,8 @@ function AvailabilityLine({ player }: { player: NhlPlayerProps }) {
   const goalie = nhlOpposingGoalieTag(player, now)
   if (!entry && goalie === null) return null
   return <div className="nfl-player-tags" role="group" aria-label="Availability">
-    {entry && <span className="nhl-player-injury-tag">{entry.status}{freshness === 'stale' ? ' (stale)' : ''}</span>}
-    {goalie && <span className="nfl-player-tag">{goalie}</span>}
+    {entry && <PlayerTag tone={injuryTone(entry.status)}>{entry.status}{freshness === 'stale' ? ' (stale)' : ''}</PlayerTag>}
+    {goalie && <PlayerTag>{goalie}</PlayerTag>}
   </div>
 }
 
@@ -67,5 +70,6 @@ export default function NhlPlayerPage() {
       log={playerGameLog(player.markets, NHL_LOG_MARKETS)} label={nhlLogLabel} valueText={nhlLogValue}
       seasonStartMonth={NHL_SEASON_START_MONTH} recordNote="No graded record for this player yet. NHL projections are reference only."
     />}
+    <PlayerFooter>{nhlPlayerFooter(player)}</PlayerFooter>
   </PlayerPageShell>
 }

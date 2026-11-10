@@ -3,12 +3,6 @@
 .nba-player .nfl-player-empty a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
 
 .nba-player-sample { margin: 6px 0 0; color: var(--text-muted); font: 400 11px var(--font-mono); }
-.nba-player-table-wrap { overflow-x: auto; }
-.nba-player .nfl-prop-detail__table th,
-.nba-player .nfl-prop-detail__table td { padding-left: 10px; }
-.nba-player .nfl-prop-detail__table th:first-child,
-.nba-player .nfl-prop-detail__table td:first-child { padding-left: 0; }
-.nba-player .nba-player-flag-row td { padding: 0 0 8px; border-top: 0; color: var(--text-muted); font: 400 11px var(--font-body); text-align: left; }
 .nba-player .nba-prop-evidence__section { padding-bottom: 14px; }
 
 .nba-player-yesno { margin: 0; padding: 0; list-style: none; }

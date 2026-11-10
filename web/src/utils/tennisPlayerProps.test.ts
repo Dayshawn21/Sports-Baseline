@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MatchPrediction, PlayerMatchLogRow } from '~/types/tennis'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { recentStatBars } from '~/utils/tennisPropCards'
-import { formShortNote, formWindowOptions, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisMarketHero, tennisTabSearch } from '~/utils/tennisPlayerProps'
+import { formShortNote, formWindowOptions, opponentShortName, tennisFormSample, tennisFormTitle, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisMarketHero, tennisTabSearch } from '~/utils/tennisPlayerProps'
 
 function line(id: number, overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
   return { id, playerId: 7, playerName: 'Coco Gauff', matchId: 10, statType: 'aces', matchup: 'Coco Gauff vs Iga Swiatek', startTime: '2026-09-21T16:00:00Z', ...overrides } as TennisBoardLine
@@ -209,5 +209,46 @@ describe('tennisMarketHero', () => {
 
   it('is null without lines', () => {
     expect(tennisMarketHero([])).toBeNull()
+  })
+})
+
+describe('opponentShortName', () => {
+  it('keeps the surname and any particle before it', () => {
+    expect(opponentShortName('Lorenzo Sonego')).toBe('Sonego')
+    expect(opponentShortName('Alex de Minaur')).toBe('de Minaur')
+    expect(opponentShortName('Botic van de Zandschulp')).toBe('van de Zandschulp')
+    expect(opponentShortName('Juan Manuel Cerundolo')).toBe('Cerundolo')
+  })
+
+  it('handles one word and an empty name', () => {
+    expect(opponentShortName('Sinner')).toBe('Sinner')
+    expect(opponentShortName('  ')).toBeNull()
+  })
+})
+
+describe('tennisFormSample', () => {
+  it('turns oldest-first bars into a newest-first sample and skips missing stats', () => {
+    const sample = tennisFormSample([
+      { matchDate: '2026-10-11', opponentName: 'Lorenzo Sonego', value: 13, vsLine: 'below' },
+      { matchDate: '2026-10-20T00:00:00', opponentName: 'No Stat', value: null, vsLine: null },
+      { matchDate: '2026-10-26', opponentName: 'Alex de Minaur', value: 32, vsLine: 'above' },
+    ])
+    expect(sample.values).toEqual([
+      { value: 32, opponentTeam: 'de Minaur', gameDate: '2026-10-26' },
+      { value: 13, opponentTeam: 'Sonego', gameDate: '2026-10-11' },
+    ])
+    expect(sample.average).toBe(22.5)
+  })
+
+  it('has no average without a value', () => {
+    expect(tennisFormSample([{ matchDate: '2026-10-11', opponentName: 'A B', value: null, vsLine: null }])).toEqual({ average: null, values: [] })
+  })
+})
+
+describe('tennisFormTitle', () => {
+  it('names each window as the other sports do', () => {
+    expect(tennisFormTitle('5', null)).toBe('Recent form')
+    expect(tennisFormTitle('10', null)).toBe('Last 10')
+    expect(tennisFormTitle('opp', 'Lorenzo Sonego')).toBe('Vs Lorenzo Sonego')
   })
 })
