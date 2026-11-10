@@ -6,7 +6,7 @@ import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/Playe
 import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import { propMatchPath } from '~/utils/tennisMatchView'
 import { tennisMarketHero } from '~/utils/tennisPlayerProps'
-import { marketTitle, signalSummary, type TennisBoardLine } from '~/utils/tennisPropBoard'
+import { marketTitle, payoutTier, signalSummary, type TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard } from '~/utils/tennisPropCards'
 
 interface LineRow { row: TennisBoardLine, review: boolean }
@@ -68,6 +68,8 @@ export function TennisMarketPanel({ market, rated, review, selectedId, form }: P
   const hero = tennisMarketHero(lines.map(line => line.row))
   const first = lines[0]?.row ?? null
   const matchPath = first ? propMatchPath(first) : null
+  // Moneyline and sportsbook rows can still carry a colored side, so the caption only claims what is true of PrizePicks lines.
+  const prizePicksOnly = lines.length > 0 && lines.every(({ row }) => payoutTier(row) != null)
   return <section className="nfl-player-card nfl-player-prop" aria-label={marketTitle(market)}>
     <div className="nfl-player-card__head">
       <h3 className="nfl-player-prop__title">{marketTitle(market)}</h3>
@@ -76,7 +78,8 @@ export function TennisMarketPanel({ market, rated, review, selectedId, form }: P
     <div className="nfl-player-prop__body">
       {hero && <PlayerProjectionHero hero={hero} />}
       <section className="nfl-prop-detail__section">{form}</section>
-      <PlayerLinesTable title="Lines" columns={['gap']} trailing={['Model', 'Side', 'Hit', 'EV']} rows={lines.map(line => linesRow(line, selectedId))} />
+      <PlayerLinesTable title="Lines" columns={['gap']} trailing={['Model', 'Side', 'Hit', 'EV']} rows={lines.map(line => linesRow(line, selectedId))}
+        intro={prizePicksOnly && <p className="player-lines__tier-note tennis-market-panel__reference">Model, Hit and EV are reference, not picks. A side to take shows only on an adopted line.</p>} />
       <PlayerEvidence contents="Why each line, event, projection inputs, quality notes">
         {lines.map(({ row }) => <LineEvidence key={`${row.source}-${row.id}`} row={row} />)}
       </PlayerEvidence>

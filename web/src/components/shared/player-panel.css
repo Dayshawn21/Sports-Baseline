@@ -255,6 +255,12 @@
   color: var(--text-muted);
 }
 
+.player-lines__tier-note {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font: 400 11px/1.5 var(--font-body);
+}
+
 .nfl-prop-detail__table tr.player-lines__note td {
   padding: 0 0 8px;
   border-top: 0;

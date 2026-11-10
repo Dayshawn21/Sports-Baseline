@@ -20,6 +20,7 @@
 .nfl-player-card__empty { margin: 0; padding: 14px 16px; color: var(--text-muted); font-size: 11px; }
 .nfl-player-label { color: var(--text-muted); font: 700 11px var(--font-display); letter-spacing: 0.15em; text-transform: uppercase; }
 .nfl-player-muted { color: var(--text-muted); font-size: 11px; text-align: right; }
+.nfl-player-muted a { text-decoration: underline; text-underline-offset: 3px; }
 
 .nfl-player-usage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 24px; }
 .nfl-player-usage__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }

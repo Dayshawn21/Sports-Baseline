@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { injuryTone, latestTime, marketCountLabel } from '~/utils/playerPage'
+import { PAYOUT_TIER_NOTE, injuryTone, latestTime, marketCountLabel, payoutTierNote } from '~/utils/playerPage'
 
 describe('marketCountLabel', () => {
   it('uses the singular only for one market', () => {
@@ -33,5 +33,18 @@ describe('latestTime', () => {
   it('is null when nothing parses', () => {
     expect(latestTime([])).toBeNull()
     expect(latestTime([null, 'bad'])).toBeNull()
+  })
+})
+
+describe('payoutTierNote', () => {
+  it('explains the tiers when any line is a goblin or demon, in any case', () => {
+    expect(payoutTierNote(['Standard', 'Goblin'])).toBe(PAYOUT_TIER_NOTE)
+    expect(payoutTierNote(['demon'])).toBe(PAYOUT_TIER_NOTE)
+    expect(payoutTierNote([' DEMON '])).toBe(PAYOUT_TIER_NOTE)
+  })
+
+  it('is null for standard-only or other line types', () => {
+    expect(payoutTierNote([])).toBeNull()
+    expect(payoutTierNote(['Standard', 'PrizePicks', 'goblins'])).toBeNull()
   })
 })

@@ -24,7 +24,7 @@ export function NflUsageContext({ row, game, children }: { row: NflSlateLine, ga
     {context.isError && <ErrorState error={context.error} onRetry={() => void context.refetch()} />}
     {context.isSuccess && !selected && <p className="nfl-evidence-context__note">No unambiguous current-week roster context is stored for {row.playerName} in this game.</p>}
     {selected && context.data && <>
-      <p className="nfl-evidence-context__note">{context.data.season} season through Week {context.data.cutoffWeek}. Recent means the last up to three played games in this window. Full-game history; dates are UTC.</p>
+      <p className="nfl-evidence-context__note">{context.data.season} season through Week {context.data.cutoffWeek}. Recent means the last up to three played games in this window. Full-game history. Dates are kickoff dates in UTC, so a night game can show the next day.</p>
       {selected.player.seasonUsage.teams.length > 1 && <p className="nfl-evidence-context__note">Historical teams: {selected.player.seasonUsage.teams.join(', ')}.</p>}
       <table className="nfl-context-table">
         <caption className="sr-only">{row.playerName}: recent versus season usage with metric-specific observed and eligible games, coverage and dates</caption>

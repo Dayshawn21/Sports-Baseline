@@ -14,6 +14,10 @@ export const APP_ANTD_THEME: ThemeConfig = {
     colorPrimary: '#f5f5f7',
     colorText: '#f5f5f7',
     colorTextPlaceholder: '#85858f',
+    // Ant's dark default link is an off-palette blue at 3.7:1 on the card.
+    colorLink: '#9a9aa3',
+    colorLinkHover: '#f5f5f7',
+    colorLinkActive: '#f5f5f7',
     fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
     fontFamilyCode: "'JetBrains Mono', 'Fira Mono', monospace",
     borderRadius: 8,

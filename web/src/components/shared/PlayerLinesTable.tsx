@@ -1,5 +1,6 @@
 import { Tag } from 'antd'
 import { Fragment, type ReactNode } from 'react'
+import { payoutTierNote } from '~/utils/playerPage'
 import './player-panel.css'
 
 export type PlayerLinesColumn = 'gap' | 'pOver' | 'pUnder'
@@ -46,6 +47,7 @@ const CORE: Array<{ key: PlayerLinesColumn, label: string }> = [
 export function PlayerLinesTable({ title = 'PrizePicks lines', columns, trailing = [], rows, intro, children }: PlayerLinesTableProps) {
   const core = CORE.filter(column => columns.includes(column.key))
   const span = 2 + core.length + trailing.length
+  const tierNote = payoutTierNote(rows.map(row => row.type))
   return <section className="nfl-prop-detail__section">
     <div className="nfl-prop-detail__section-head"><h3>{title}</h3></div>
     {intro}
@@ -71,6 +73,7 @@ export function PlayerLinesTable({ title = 'PrizePicks lines', columns, trailing
         </Fragment>)}</tbody>
       </table>
     </div>
+    {tierNote && <p className="player-lines__tier-note">{tierNote}</p>}
     {children}
   </section>
 }
