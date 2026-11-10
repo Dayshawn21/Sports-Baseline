@@ -1,5 +1,7 @@
+import { PlayerTag } from '~/components/shared/PlayerTag'
 import type { NbaInjury, NbaInjuryReport } from '~/types/nba'
 import { nbaInjuryFreshness, nbaInjuryTime } from '~/utils/nbaInjuries'
+import { injuryTone } from '~/utils/playerPage'
 import './nba-evidence.css'
 import './nba-injury.css'
 
@@ -10,7 +12,7 @@ interface TagProps {
 
 export function NbaInjuryTag({ injury, freshness }: TagProps) {
   if (!injury || freshness === 'unavailable') return null
-  return <span className="nba-injury-tag">{injury.status}{freshness === 'stale' ? ' (stale)' : ''}</span>
+  return <PlayerTag tone={injuryTone(injury.status)} className="nba-injury-tag">{injury.status}{freshness === 'stale' ? ' (stale)' : ''}</PlayerTag>
 }
 
 interface EvidenceProps {

@@ -1,3 +1,4 @@
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import type { CSSProperties } from 'react'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { marketLabel } from '~/utils/nflLabels'
@@ -65,8 +66,8 @@ export function NflPlayerRecord({ player }: { player: NflPlayerDetail }) {
 /** Data freshness and provider-name overrides; aliases are omitted when there are none. */
 export function NflPlayerFooter({ player }: { player: NflPlayerDetail }) {
   const through = player.statsThrough ? `NFLverse weekly stats and snaps through ${player.statsThrough.season} W${player.statsThrough.week}.` : 'No weekly stats loaded yet.'
-  return <p className="nfl-player-note nfl-player-footer">
+  return <PlayerFooter>
     {through} Roster, depth and injuries as of week {player.week}.
     {player.aliases.length > 0 && <> Aliases: {player.aliases.map(alias => `"${alias}"`).join(', ')}.</>}
-  </p>
+  </PlayerFooter>
 }

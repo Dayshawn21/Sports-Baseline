@@ -1,7 +1,9 @@
 import type { NhlPlayerGame, NhlPlayerInjury, NhlPlayerMarket, NhlPlayerProps } from '~/types/nhl'
 import type { NhlContextSource } from '~/types/nhlContext'
 import type { FormRow, FormWindow } from '~/utils/nflFormWindow'
+import { nhlTimeLabel } from '~/utils/nhlGame'
 import { nhlMarketLabel, nhlPropLineLabel } from '~/utils/nhlLineOnly'
+import { latestTime } from '~/utils/playerPage'
 import { nhlGapLabel, nhlProjectionNote } from '~/utils/nhlProjection'
 import { nhlContextSource, nhlGoalieLabel } from '~/utils/nhlContext'
 import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
@@ -157,4 +159,14 @@ export function nhlLogValue(market: string, value: number | null): string {
   if (market === 'time_on_ice') return value.toFixed(1)
   if (market === 'plus_minus' && value > 0) return `+${value}`
   return String(value)
+}
+
+/** The page footer: when the lines and the injury report were last read, and which P(over) fit is served. */
+export function nhlPlayerFooter(player: Pick<NhlPlayerProps, 'markets' | 'injury' | 'overProbabilityVersion'>): string {
+  const lines = latestTime(player.markets.flatMap(market => market.lines.map(rung => rung.fetchedAt)))
+  return [
+    lines === null ? 'No PrizePicks lines stored.' : `PrizePicks lines as of ${nhlTimeLabel(lines, true)}.`,
+    player.injury.fetchedAt === null ? 'No ESPN injury report loaded.' : `ESPN injury report as of ${nhlTimeLabel(player.injury.fetchedAt, true)}.`,
+    player.overProbabilityVersion === null ? null : `P(over) from ${player.overProbabilityVersion}.`,
+  ].filter(Boolean).join(' ')
 }

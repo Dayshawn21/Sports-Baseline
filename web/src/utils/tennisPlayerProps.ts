@@ -1,8 +1,9 @@
+import type { NflHistorySample } from '~/types/nfl'
 import type { MatchPrediction, PlayerMatchLogRow, RecentMatchResult } from '~/types/tennis'
 import { playerSearch } from '~/utils/nflPlayer'
 import type { PlayerProjectionHero } from '~/utils/playerProjection'
 import { isMoneyline, isWinASet, marketKey, marketLabel, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
-import { propCard } from '~/utils/tennisPropCards'
+import { propCard, type RecentStatBar } from '~/utils/tennisPropCards'
 
 export type TennisFormWindow = '5' | '10' | 'opp'
 
@@ -205,4 +206,28 @@ export function tennisMarketHero(rows: readonly TennisBoardLine[]): PlayerProjec
     reason: value === null ? `No projection: ${why}.` : null,
     facts,
   }
+}
+
+const SURNAME_PARTICLES = new Set(['de', 'del', 'della', 'di', 'da', 'van', 'von', 'der', 'den', 'le', 'la', 'dos', 'du'])
+
+/** The surname under a chart bar, keeping a particle (`de Minaur`, `van de Zandschulp`). */
+export function opponentShortName(name: string): string | null {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return null
+  let start = words.length - 1
+  while (start > 1 && SURNAME_PARTICLES.has(words[start - 1].toLowerCase())) start -= 1
+  return words.slice(start).join(' ')
+}
+
+/** Oldest-first tennis bars as the newest-first sample the shared form chart reads; a match without the stat is left out. */
+export function tennisFormSample(bars: RecentStatBar[]): NflHistorySample {
+  const values = bars.flatMap(bar => bar.value == null ? [] : [{ value: bar.value, opponentTeam: opponentShortName(bar.opponentName), gameDate: bar.matchDate.slice(0, 10) }]).reverse()
+  const average = values.length ? values.reduce((sum, item) => sum + item.value, 0) / values.length : null
+  return { average, values }
+}
+
+/** The recent-form heading, worded as the other sports' form sections are. */
+export function tennisFormTitle(window: TennisFormWindow, opponentName: string | null): string {
+  if (window === '10') return 'Last 10'
+  return window === 'opp' ? `Vs ${opponentName ?? 'opponent'}` : 'Recent form'
 }

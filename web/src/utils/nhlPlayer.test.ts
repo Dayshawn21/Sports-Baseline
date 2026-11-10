@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { NhlPlayerGame, NhlPlayerInjury, NhlPlayerLine, NhlPlayerMarket } from '~/types/nhl'
 import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, type FormRow } from '~/utils/nflFormWindow'
 import { nhlContextSource } from '~/utils/nhlContext'
+import { nhlTimeLabel } from '~/utils/nhlGame'
 import {
   NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag,
-  nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
+  nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
 } from '~/utils/nhlPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'WSH'): NhlPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
@@ -210,5 +211,20 @@ describe('nhlLogValue and nhlLogLabel', () => {
     expect(nhlLogValue('goals', null)).toBe('--')
     expect(nhlLogLabel('shots_on_goal')).toBe('Shots on Goal')
     expect(nhlLogLabel('unknown_market')).toBe('unknown_market')
+  })
+})
+
+describe('nhlPlayerFooter', () => {
+  const injury: NhlPlayerInjury = { fetchedAt: '2026-11-02T14:00:00Z', sourceTimestamp: null, freshness: 'fresh', entry: null }
+  const markets = [{ lines: [rung(1.5, 'standard'), { ...rung(2.5, 'demon'), fetchedAt: '2026-11-02T16:30:00Z' }] }] as NhlPlayerMarket[]
+
+  it('names the newest line, the injury report and the P(over) fit', () => {
+    expect(nhlPlayerFooter({ markets, injury, overProbabilityVersion: 'nhl-pover-v1' })).toBe(
+      `PrizePicks lines as of ${nhlTimeLabel('2026-11-02T16:30:00Z', true)}. ESPN injury report as of ${nhlTimeLabel('2026-11-02T14:00:00Z', true)}. P(over) from nhl-pover-v1.`,
+    )
+  })
+
+  it('drops the fit when none is served and says what is missing', () => {
+    expect(nhlPlayerFooter({ markets: [], injury: { ...injury, fetchedAt: null }, overProbabilityVersion: null })).toBe('No PrizePicks lines stored. No ESPN injury report loaded.')
   })
 })

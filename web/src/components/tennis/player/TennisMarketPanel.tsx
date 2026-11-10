@@ -2,6 +2,7 @@ import { Tag } from 'antd'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
+import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
 import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
 import { propMatchPath } from '~/utils/tennisMatchView'
 import { tennisMarketHero } from '~/utils/tennisPlayerProps'
@@ -17,29 +18,26 @@ function sideClass(row: TennisBoardLine): string {
   return card.pickLabel === '--' || card.payoutTier ? ' is-none' : card.isUnder ? ' is-negative' : ''
 }
 
-function LinesTable({ lines, selectedId }: { lines: LineRow[], selectedId: string | null }) {
-  return <section className="nfl-prop-detail__section">
-    <div className="nfl-prop-detail__section-head"><h3>Lines</h3></div>
-    <div className="tennis-market-panel__table">
-      <table className="nfl-prop-detail__table">
-        <thead><tr><th>Type</th><th>Side</th><th>Line</th><th>Model</th><th>Gap</th><th>Hit</th><th>EV</th></tr></thead>
-        <tbody>{lines.map(({ row, review }) => {
-          const card = propCard(row)
-          return <tr key={card.key} data-prop-id={row.id} className={String(row.id) === selectedId ? 'is-linked' : undefined}>
-            <td><Tag>{card.payoutTier ?? card.source}</Tag>{review && <small className="tennis-market-panel__review">review</small>}</td>
-            <td className={`tennis-prop-evidence__pick${sideClass(row)}`}>{card.pickLabel}</td>
-            <td>{card.valueText}</td>
-            <td>{card.projectionText}</td>
-            <td>{card.gapText ?? '--'}</td>
-            <td>{card.hitPct == null ? '--' : `${card.hitPct.toFixed(0)}%`}</td>
-            <td className={`tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`}>
-              {card.evText}{card.marginText && <small className="tennis-prop-evidence__margin">{card.marginText}</small>}
-            </td>
-          </tr>
-        })}</tbody>
-      </table>
-    </div>
-  </section>
+function linesRow({ row, review }: LineRow, selectedId: string | null): PlayerLinesRow {
+  const card = propCard(row)
+  return {
+    key: card.key,
+    propId: row.id,
+    type: card.payoutTier ?? card.source,
+    typeNote: review ? 'review' : undefined,
+    line: card.valueText,
+    gap: card.gapText ?? '--',
+    selected: String(row.id) === selectedId,
+    trailing: [
+      { content: card.projectionText },
+      { content: card.pickLabel, className: `tennis-prop-evidence__pick${sideClass(row)}` },
+      { content: card.hitPct == null ? '--' : `${card.hitPct.toFixed(0)}%` },
+      {
+        content: <>{card.evText}{card.marginText && <small className="tennis-prop-evidence__margin">{card.marginText}</small>}</>,
+        className: `tennis-prop-evidence__ev${card.evTone ? ` is-${card.evTone}` : ''}`,
+      },
+    ],
+  }
 }
 
 function LineEvidence({ row }: { row: TennisBoardLine }) {
@@ -78,7 +76,7 @@ export function TennisMarketPanel({ market, rated, review, selectedId, form }: P
     <div className="nfl-player-prop__body">
       {hero && <PlayerProjectionHero hero={hero} />}
       <section className="nfl-prop-detail__section">{form}</section>
-      <LinesTable lines={lines} selectedId={selectedId} />
+      <PlayerLinesTable title="Lines" columns={['gap']} trailing={['Model', 'Side', 'Hit', 'EV']} rows={lines.map(line => linesRow(line, selectedId))} />
       <PlayerEvidence contents="Why each line, event, projection inputs, quality notes">
         {lines.map(({ row }) => <LineEvidence key={`${row.source}-${row.id}`} row={row} />)}
       </PlayerEvidence>

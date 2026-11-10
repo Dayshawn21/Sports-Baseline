@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerRung } from '~/types/nba'
+import { nbaInjuryTime } from '~/utils/nbaInjuries'
 import { formEmptyText, formOptions, formSample, formShortNote } from '~/utils/nflFormWindow'
-import { nbaChartLine, nbaFormRow, nbaFormSample, nbaHeadChips, nbaNotLoadedCount, nbaPercentText, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaProjectionHero, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
+import { nbaChartLine, nbaFormRow, nbaFormSample, nbaHeadChips, nbaNotLoadedCount, nbaPercentText, nbaPlayerFooter, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaProjectionHero, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'TOR'): NbaPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
 const rung = (line: number, oddsType: string | null): NbaPlayerRung => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, overProbabilityVersion: null, flags: [] })
@@ -192,5 +193,20 @@ describe('nbaHeadChips', () => {
   it('keeps only the count when no market carries a sample, and nothing without markets', () => {
     expect(nbaHeadChips({ markets: [market({ kind: 'line-only', gamesInSample: null, priorMinutes: null })] })).toEqual([{ value: '1', label: 'Prop market' }])
     expect(nbaHeadChips({ markets: [] })).toEqual([])
+  })
+})
+
+describe('nbaPlayerFooter', () => {
+  const report = { source: 'ESPN' as const, fetchedAt: '2026-11-02T14:00:00Z', freshness: 'fresh' as const, injuries: [] }
+
+  it('names the newest line, the injury report and the model', () => {
+    const later = { ...rung(5.5, 'standard'), fetchedAt: '2026-11-02T16:30:00Z' }
+    const text = nbaPlayerFooter({ markets: [market(), market({ lines: [later] })], injuryReport: report, modelVersion: 'nba-props-v2' })
+    expect(text).toBe(`PrizePicks lines as of ${nbaInjuryTime('2026-11-02T16:30:00Z')}. ESPN injury report as of ${nbaInjuryTime('2026-11-02T14:00:00Z')}. Projections from nba-props-v2.`)
+  })
+
+  it('says what is missing', () => {
+    const text = nbaPlayerFooter({ markets: [], injuryReport: { ...report, fetchedAt: null }, modelVersion: 'nba-props-v2' })
+    expect(text).toBe('No PrizePicks lines stored. No ESPN injury report loaded. Projections from nba-props-v2.')
   })
 })

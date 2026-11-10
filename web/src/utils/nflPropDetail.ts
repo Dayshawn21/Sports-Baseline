@@ -2,7 +2,7 @@ import type { NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { depthLabel, injuryLabel } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence, type NflBookOddsEvidence } from '~/utils/nflBookOdds'
 import {
-  BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_COLORS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
+  BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
   formatProjection, marketLabel, matchupAllowedLabel, segmentLabel,
 } from '~/utils/nflLabels'
 import { teamBadge } from '~/utils/nflPropCards'
@@ -10,6 +10,7 @@ import { formDateText, formHistoryDate } from '~/utils/nflFormWindow'
 import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
+import type { PlayerProjectionHero } from '~/utils/playerProjection'
 
 export interface NflDetailRow {
   label: string
@@ -28,7 +29,6 @@ export interface NflDetailHistory {
 export interface NflDetailLine {
   key: number
   typeLabel: string
-  typeColor: string
   lineText: string
   pOverText: string | null
   selected: boolean
@@ -121,7 +121,6 @@ function lines(row: NflSlateLine, alternates: NflSlateLine[]): NflDetailLine[] {
   const item = (line: NflSlateLine, selected: boolean): NflDetailLine => ({
     key: line.lineId,
     typeLabel: typeLabel(line.oddsType, selected ? 'Standard' : 'Alternate'),
-    typeColor: ODDS_TYPE_COLORS[line.oddsType ?? ''] ?? 'default',
     lineText: line.line?.toFixed(1) ?? '--',
     pOverText: isTargetsReference(row.market) ? null : overShareLabel(line.pOver),
     selected,
@@ -174,5 +173,20 @@ export function nflPropDetail(row: NflSlateLine, game: NflSlateGame | null, alte
     flags: row.qualityFlags
       .filter(flag => flag !== 'historical_baseline')
       .map(flag => ({ key: flag, label: flag.replaceAll('_', ' '), tooltip: FLAG_LABELS[flag] ?? flag })),
+  }
+}
+
+/** The shared projection block for one NFL prop, built from the same strings the detail panel shows. Always gray. */
+export function nflProjectionHero(row: NflSlateLine, detail: Pick<NflPropDetailModel, 'projectionLabel' | 'projectionText' | 'deltaText'>): PlayerProjectionHero {
+  const value = row.projection === null ? null : detail.projectionText
+  return {
+    label: detail.projectionLabel,
+    value,
+    delta: value === null || row.line === null ? null : detail.deltaText,
+    reason: value === null ? 'No projection for this market this week.' : null,
+    facts: [
+      { label: 'Model', value: row.projectionModelVersion },
+      { label: 'Sample', value: `${row.gamesInSample} games` },
+    ],
   }
 }

@@ -1,6 +1,6 @@
-import { Tag } from 'antd'
 import { useSearchParams } from 'react-router-dom'
 import { FormSwitch, GameLogBars } from '~/components/nfl/NflPropDetailSections'
+import { PlayerLinesTable } from '~/components/shared/PlayerLinesTable'
 import type { NflOtherMarket } from '~/types/nfl'
 import { formBars } from '~/utils/nflPropCards'
 import { formEmptyText, formShortNote, formSample, formTitle, parseFormWindow, resolveFormWindow } from '~/utils/nflFormWindow'
@@ -34,17 +34,11 @@ export function NflPlayerOtherMarketSection({ id, market, opponent }: { id: stri
         </div>
         <GameLogBars row={barRow} sample={sample} />
       </section>
-      <section className="nfl-prop-detail__section">
-        <div className="nfl-prop-detail__section-head"><h3>PrizePicks lines</h3></div>
-        <table className="nfl-prop-detail__table">
-          <thead><tr><th>Type</th><th>Line</th></tr></thead>
-          <tbody>{market.lines.map(rung => <tr key={`${rung.oddsType}-${rung.line}`}>
-            <td><Tag>{rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard'}</Tag></td>
-            <td>{rung.line.toFixed(1)}</td>
-          </tr>)}</tbody>
-        </table>
+      <PlayerLinesTable columns={[]} rows={market.lines.map(rung => ({
+        key: `${rung.oddsType}-${rung.line}`, type: rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard', line: rung.line.toFixed(1),
+      }))}>
         <p className="nfl-prop-detail__note">Reference only: no projection, gap or rank for this market.</p>
-      </section>
+      </PlayerLinesTable>
     </div>
   </section>
 }

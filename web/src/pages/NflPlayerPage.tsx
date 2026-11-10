@@ -8,6 +8,7 @@ import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
+import { PlayerTag } from '~/components/shared/PlayerTag'
 import StatChip from '~/components/shared/StatChip'
 import { useNflOtherMarkets, useNflPlayer, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
@@ -15,6 +16,7 @@ import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nflGame'
 import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
+import { injuryTone } from '~/utils/playerPage'
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -26,22 +28,18 @@ function PlayerPageState({ children }: { children: ReactNode }) {
   return <PlayerPageShell crumb={SLATE_CRUMB} title="NFL player">{children}</PlayerPageShell>
 }
 
-function injuryTag(player: NflPlayerDetail): { text: string, tone: string } {
-  if (player.injuryStatus === null) {
-    return { text: player.practiceStatus ?? 'No injury designation', tone: '' }
-  }
-  const text = player.injury ? `${player.injuryStatus} · ${player.injury}` : player.injuryStatus
-  return { text, tone: player.injuryStatus === 'Out' ? 'is-out' : 'is-caution' }
+function injuryText(player: NflPlayerDetail): string {
+  if (player.injuryStatus === null) return player.practiceStatus ?? 'No injury designation'
+  return player.injury ? `${player.injuryStatus} · ${player.injury}` : player.injuryStatus
 }
 
 function Availability({ player }: { player: NflPlayerDetail }) {
-  const injury = injuryTag(player)
   const depth = player.depthPosition !== null && player.depthRank !== null ? `Depth: ${player.depthPosition}${player.depthRank}` : 'Not on this week\'s depth chart'
   const team = player.team === null ? 'No team (cut or retired)' : `Week ${player.week} team: ${player.team} (roster)`
   return <div className="nfl-player-tags" role="group" aria-label="Availability and roster">
-    <span className="nfl-player-tag">{depth}</span>
-    <span className={`nfl-player-tag ${injury.tone}`}>{injury.text}</span>
-    <span className="nfl-player-tag">{team}</span>
+    <PlayerTag>{depth}</PlayerTag>
+    <PlayerTag tone={injuryTone(player.injuryStatus)}>{injuryText(player)}</PlayerTag>
+    <PlayerTag>{team}</PlayerTag>
   </div>
 }
 

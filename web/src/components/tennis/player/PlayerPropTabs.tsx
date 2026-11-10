@@ -1,54 +1,61 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { GameLogBars } from '~/components/nfl/NflPropDetailSections'
 import { PlayerMarketTabs } from '~/components/shared/PlayerMarketTabs'
+import { SegmentSwitch, type SegmentOption } from '~/components/shared/SegmentSwitch'
 import { TennisMarketPanel } from '~/components/tennis/player/TennisMarketPanel'
-import { TennisRecentBars } from '~/components/tennis/TennisPropEvidenceBody'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import {
-  FORM_PARAM, MARKET_PARAM, MATCH_PARAM, PROP_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow, tennisTabSearch,
+  FORM_PARAM, MARKET_PARAM, MATCH_PARAM, PROP_PARAM, formShortNote, formWindowOptions, formWindowSample, matchOptions, parseTennisFormWindow, playerMarketTabs, resolveFormWindow, tennisFormSample, tennisFormTitle, tennisTabSearch,
   type FormWindowOption, type PlayerMatchOption, type TennisFormWindow,
 } from '~/utils/tennisPlayerProps'
 import { buildTennisPropBoard, lineNumber, marketLabel, marketTitle, moneylineBoardRows, winASetBoardRows, type TennisBoardLine } from '~/utils/tennisPropBoard'
+import { formBarLabel } from '~/utils/nflFormWindow'
 import { recentStatBars } from '~/utils/tennisPropCards'
 import '~/pages/tennis-prop-board.css'
 import './tennis-player-props.css'
 
 const FORM_LOG_LIMIT = 50
+/** A tennis season is the calendar year, so a bar's date gains a year only before January. */
+const TENNIS_SEASON_START_MONTH = 0
 
 interface FormChartProps {
-  row: TennisBoardLine
+  row: TennisBoardLine | null
   log: ReturnType<typeof usePlayerMatches>
   window: TennisFormWindow
   option: PlayerMatchOption | null
+  /** The match and form-window switches, in the toolbar beside the line legend. */
+  controls: ReactNode
 }
 
-function FormChart({ row, log, window, option }: FormChartProps) {
-  const line = lineNumber(row)
-  if (log.isLoading) return <section className="tennis-prop-form"><p>Loading recent matches...</p></section>
-  if (log.isError || !log.data) return <section className="tennis-prop-form"><p>Recent matches are unavailable.</p></section>
-  const sample = formWindowSample(log.data.log, window, option?.opponentId ?? null)
-  const bars = line == null ? null : recentStatBars(sample, row.statType, line)
-  if (line == null || !bars?.some(bar => bar.value != null)) {
-    return <section className="tennis-prop-form"><p>{sample.length === 0 ? 'No completed matches for this window.' : `No recent results to show for ${marketLabel(row.statType)}.`}</p></section>
+/** Message, average and bars for one window, before any chart is drawn. */
+function formChartContent(row: TennisBoardLine | null, log: FormChartProps['log'], window: TennisFormWindow, option: PlayerMatchOption | null) {
+  const line = row ? lineNumber(row) : null
+  if (log.isLoading) return { summary: 'Loading recent matches...', line, sample: null }
+  if (log.isError || !log.data) return { summary: 'Recent matches are unavailable.', line, sample: null }
+  const matches = formWindowSample(log.data.log, window, option?.opponentId ?? null)
+  const sample = row && line != null ? tennisFormSample(recentStatBars(matches, row.statType, line) ?? []) : null
+  if (!row || sample?.average == null) {
+    return { summary: matches.length === 0 ? 'No completed matches for this window' : `No recent ${row ? marketLabel(row.statType).toLowerCase() : 'results'} to show`, line, sample: null }
   }
-  const name = window === 'opp' ? `vs ${option?.opponentName ?? 'opponent'}` : `last ${bars.length}`
-  const note = formShortNote(window, sample.length)
-  return <TennisRecentBars title={`${marketLabel(row.statType)} · ${name}${note ? ` · ${note}` : ''}`} line={line} bars={bars} />
+  const note = formShortNote(window, matches.length)
+  return { summary: `${formBarLabel(sample.average)} avg${note ? ` · ${note}` : ''}`, line, sample }
 }
 
-interface SegmentOption<T extends string> {
-  value: T
-  label: string
-  disabledReason?: string | null
-}
-
-function Segment<T extends string>({ label, options, value, onChange }: { label: string, options: Array<SegmentOption<T>>, value: T, onChange: (value: T) => void }) {
-  return <div className="tennis-prop-seg" role="group" aria-label={label}>
-    {options.map(option => <button key={option.value} type="button" className={value === option.value ? 'is-selected' : ''} aria-pressed={value === option.value} disabled={Boolean(option.disabledReason)} title={option.disabledReason ?? undefined} onClick={() => onChange(option.value)}>{option.label}</button>)}
-  </div>
+/** Recent form in the section every sport's panel uses: heading and average, switches and line legend, then the shared bars. */
+function FormChart({ row, log, window, option, controls }: FormChartProps) {
+  const { summary, line, sample } = formChartContent(row, log, window, option)
+  return <>
+    <div className="nfl-prop-detail__section-head"><h3>{tennisFormTitle(window, option?.opponentName ?? null)}</h3><span>{summary}</span></div>
+    <div className="nfl-prop-detail__toolbar">
+      <div className="tennis-player-props__controls">{controls}</div>
+      {sample && line != null && <span className="nfl-prop-detail__legend">Line {formBarLabel(line)}</span>}
+    </div>
+    {sample && row && line != null && <GameLogBars row={{ market: row.statType, line, segment: 'full_game' }} sample={sample} seasonStartMonth={TENNIS_SEASON_START_MONTH} />}
+  </>
 }
 
 function windowChoices(options: FormWindowOption[]): Array<SegmentOption<TennisFormWindow>> {
@@ -114,13 +121,10 @@ export default function PlayerPropTabs({ playerId, playerName }: { playerId: num
   return <section className="tennis-player-props" aria-label={`${playerName} props`}>
     <PlayerMarketTabs heading="Today's props" tabs={tabs.map(item => ({ key: item.market, label: marketTitle(item.market) }))}
       selectedIndex={tabs.indexOf(tab)} hrefFor={key => tennisTabSearch(params, key, tabs[0].market)}>
-    <TennisMarketPanel market={tab.market} rated={rated} review={review} selectedId={propId} form={<>
-      <div className="tennis-player-props__controls">
-        {matches.length > 1 && <Segment label="Match" value={String(option?.matchId)} options={matches.map(item => ({ value: String(item.matchId), label: item.opponentName ? `vs ${item.opponentName}` : item.matchup ?? 'Match' }))} onChange={value => update(MATCH_PARAM, value === String(matches[0].matchId) ? null : value)} />}
-        <Segment label="Form window" value={window} options={windowChoices(windowOptions)} onChange={value => update(FORM_PARAM, value === '5' ? null : value)} />
-      </div>
-      {firstLine && <FormChart row={firstLine} log={log} window={window} option={option} />}
-    </>} />
+    <TennisMarketPanel market={tab.market} rated={rated} review={review} selectedId={propId} form={<FormChart row={firstLine} log={log} window={window} option={option} controls={<>
+        {matches.length > 1 && <SegmentSwitch label="Match" value={String(option?.matchId)} options={matches.map(item => ({ value: String(item.matchId), label: item.opponentName ? `vs ${item.opponentName}` : item.matchup ?? 'Match' }))} onChange={value => update(MATCH_PARAM, value === String(matches[0].matchId) ? null : value)} />}
+        <SegmentSwitch label="Form window" value={window} options={windowChoices(windowOptions)} onChange={value => update(FORM_PARAM, value === '5' ? null : value)} />
+      </>} />} />
     </PlayerMarketTabs>
   </section>
 }

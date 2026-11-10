@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameModel, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { formatKickoffTime } from '~/utils/nflLabels'
-import { history, nflPropDetail } from '~/utils/nflPropDetail'
+import { history, nflProjectionHero, nflPropDetail } from '~/utils/nflPropDetail'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -228,5 +228,25 @@ describe('nflPropDetail status and flags', () => {
     expect(nflPropDetail(row(), game(), [], NOW).sportsbook).toBeNull()
     const priced = nflPropDetail(row({ market: 'anytime_touchdown', bookProbability: 0.3, bookCount: 3, bookIncludesMargin: true, bookFetchedAt: '2026-09-30T10:00:00Z' }), game(), [], NOW)
     expect(priced.sportsbook?.summary).toBeTruthy()
+  })
+})
+
+describe('nflProjectionHero', () => {
+  it('shows the panel projection, its gap and the model facts', () => {
+    const line = row()
+    expect(nflProjectionHero(line, nflPropDetail(line, game(), [], NOW))).toEqual({
+      label: 'Projected receiving yards',
+      value: '39.1',
+      delta: '+25.6 vs 13.5 line',
+      reason: null,
+      facts: [{ label: 'Model', value: 'opponent-dvp-tg-blend-usage-snap-v4' }, { label: 'Sample', value: '17 games' }],
+    })
+  })
+
+  it('says why there is no number, and drops the delta without a line', () => {
+    const none = row({ projection: null, line: null, edge: null })
+    expect(nflProjectionHero(none, nflPropDetail(none, game(), [], NOW))).toMatchObject({ value: null, delta: null, reason: 'No projection for this market this week.' })
+    const noLine = row({ line: null, edge: null })
+    expect(nflProjectionHero(noLine, nflPropDetail(noLine, game(), [], NOW))).toMatchObject({ value: '39.1', delta: null })
   })
 })

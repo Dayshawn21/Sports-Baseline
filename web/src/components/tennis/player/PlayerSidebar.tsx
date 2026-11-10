@@ -1,3 +1,4 @@
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import ErrorState from '~/components/shared/ErrorState'
@@ -97,13 +98,13 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
   )
 }
 
-/** Data freshness and aliases, one line under the page like the NFL player footer. */
+/** Data freshness and aliases, in the footer every player page ends with. */
 export function PlayerIdentityFooter({ player }: { player: PlayerDetail }) {
   const computed = player.statsComputedAt ? `${fmtDateCT(player.statsComputedAt)} ${fmtTimeCT(player.statsComputedAt)}` : '--'
-  return <p className="nfl-player-note nfl-player-footer">
+  return <PlayerFooter>
     ELO as of {player.elo.asOf ? shortDate(player.elo.asOf) : '--'} · Stats computed {computed}
     {player.aliases.length > 0 && ` · Also listed as ${player.aliases.join(', ')}`}
-  </p>
+  </PlayerFooter>
 }
 
 /** The record and settled props, side by side as the NFL Model record section lays them out. */
