@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, leanDigest, matchAnalysisPath, modelLeanCell, tableGroups, groupByTournament, slateDayTime, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, leanDigest, leanLink, matchAnalysisPath, modelLeanCell, tableGroups, groupByTournament, slateDayTime, slateRow, slateRows, tennisDigest, tennisRemainingLine, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -380,5 +380,32 @@ describe('leanDigest', () => {
   })
   it('is empty for an empty slate', () => {
     expect(leanDigest([], NOW_MS, 4)).toEqual([])
+  })
+})
+
+describe('leanLink', () => {
+  it('leads with the lean and carries no gap number', () => {
+    expect(leanLink({ matchKey: 'm1', analysisPath: '/tennis/match/1', lean: 'Wild wins 2-0', what: 'A1 vs B1', when: 'Lima 2 · 9:00 AM CT' })).toEqual({
+      key: 'm1', to: '/tennis/match/1', playerName: 'Wild wins 2-0', market: 'A1 vs B1 · Lima 2 · 9:00 AM CT',
+      ariaLabel: 'Wild wins 2-0, A1 vs B1, Lima 2 · 9:00 AM CT, open match analysis',
+    })
+  })
+})
+
+describe('tennisRemainingLine', () => {
+  const row = (id: number, startUtc: string | null) => slateRow(match({
+    key: `m${id}`, matchId: id, prediction: prediction({ matchId: id, startUtc: startUtc ?? undefined }),
+  }))
+
+  it('counts matches yet to start and names the next start', () => {
+    const rows = [row(1, '2026-08-25T16:00:00Z'), row(2, '2026-08-25T20:00:00Z'), row(3, '2026-08-25T18:00:00Z')]
+    expect(tennisRemainingLine(rows, NOW_MS)).toBe('2 matches to start · next Tue 1:00 PM CT')
+  })
+  it('drops "next" for a single match and skips unreadable times', () => {
+    expect(tennisRemainingLine([row(1, '2026-08-25T18:00:00Z'), row(2, 'not a date')], NOW_MS)).toBe('1 match to start · Tue 1:00 PM CT')
+  })
+  it('says when every match has started, and is empty for an empty slate', () => {
+    expect(tennisRemainingLine([row(1, '2026-08-25T16:00:00Z')], NOW_MS)).toBe('Every match has started')
+    expect(tennisRemainingLine([], NOW_MS)).toBe('')
   })
 })

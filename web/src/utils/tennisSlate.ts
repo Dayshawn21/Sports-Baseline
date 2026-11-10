@@ -5,6 +5,8 @@ import { getDisplayFlags } from '~/components/tennis/qualityFlags'
 import { fmtStartCT, fmtTournament } from '~/utils/format'
 import { fmtAmerican } from '~/utils/odds'
 import { propMatchPath } from '~/utils/tennisMatchView'
+import { countPart, dayClockCt } from '~/utils/slatePeriod'
+import type { SlateGapLink } from '~/components/shared/SlateGaps'
 
 type Pair = [number, number]
 
@@ -249,4 +251,26 @@ export function leanDigest(rows: SlateRow[], now: number, limit: number): Tennis
       what: row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0],
       when: `${fmtTournament(row.tournament)} · ${fmtStartCT(row.startUtc, now)}`,
     }))
+}
+/** A lean in the gray reference line: the lean leads, the match and its start follow muted. */
+export function leanLink(item: TennisLeanDigestItem): SlateGapLink {
+  return {
+    key: item.matchKey,
+    to: item.analysisPath,
+    playerName: item.lean,
+    market: `${item.what} · ${item.when}`,
+    ariaLabel: `${item.lean}, ${item.what}, ${item.when}, open match analysis`,
+  }
+}
+
+/**
+ * Under "No tennis picks": "12 matches to start · next Tue 9:00 AM CT". Slate rows carry no live or final
+ * state, so a match counts only until its start; "left" would claim matches still in play were done.
+ */
+export function tennisRemainingLine(rows: readonly SlateRow[], now: number): string {
+  if (rows.length === 0) return ''
+  const starts = rows.map(row => Date.parse(row.startUtc ?? '')).filter(start => Number.isFinite(start) && start > now)
+  if (starts.length === 0) return 'Every match has started'
+  const next = dayClockCt(Math.min(...starts))
+  return starts.length === 1 ? `1 match to start · ${next}` : `${countPart(starts.length, 'match', 'matches')} to start · next ${next}`
 }

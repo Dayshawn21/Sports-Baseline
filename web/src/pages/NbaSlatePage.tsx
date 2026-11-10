@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { NBA_GAPS_ORDER, nbaGapLink } from '~/components/nba/NbaSlateDigest'
 import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
@@ -11,25 +12,13 @@ import { SlateNoPicks } from '~/components/shared/SlateNoPicks'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
 import { usePhoneLayout } from '~/hooks/usePhoneLayout'
-import { type NbaSlateDigestItem, type NbaSlateRowModel, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import { type NbaSlateRowModel, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 import { commandGameContext, matchingSlateCommandRows, nbaSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { slateRemainingLine } from '~/utils/slateHeadline'
 import { SLATE_LEGENDS } from '~/utils/slateLegend'
 import { finalsStartOpen, openWindowTitle, slatePhase, splitFinals } from '~/utils/slateOrder'
 import { gameSlateLine, slatePeriodLine, staleOddsSince, startTimes, tableCountPart, windowOddsNote } from '~/utils/slatePeriod'
 import './nfl-slate.css'
-
-function gapLink(item: NbaSlateDigestItem) {
-  return {
-    key: item.key,
-    to: `/nba/game/${item.gameId}`,
-    playerName: item.playerName,
-    market: item.market,
-    gap: item.gap,
-    share: item.gapShare,
-    ariaLabel: [`${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gap}`, item.gapScaled, 'open game page'].filter(Boolean).join(', '),
-  }
-}
 
 /** A search result's second line: tip time, state, or the final score. */
 function commandContext(row: NbaSlateRowModel | undefined): string | undefined {
@@ -104,8 +93,8 @@ export default function NbaSlatePage() {
       {nextDate && <Link className="nfl-empty__next" to={`/nba?date=${nextDate}`}>Next slate: {slateDateLabel(nextDate)} →</Link>}
     </div> : <>
       <SlateNoPicks
-        sport="nba" remaining={remaining} gaps={digest.map(gapLink)}
-        gapsLabel="Largest gaps" gapsOrder="by share of the line"
+        sport="nba" remaining={remaining} gaps={digest.map(item => nbaGapLink(item))}
+        gapsLabel="Largest gaps" gapsOrder={NBA_GAPS_ORDER}
       />
       {!phone && <SlateLegend {...SLATE_LEGENDS.nba} />}
       {(shown.open.length > 0 || (commandActive && filteredRows.length === 0)) && <section className="nfl-slate-window" aria-label="Games">

@@ -16,7 +16,7 @@ import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/Sl
 import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
 import { assessPropsHealth, composeUnifiedMatches } from '~/utils/unifiedTennis'
 import type { TourTab } from '~/utils/tennisSlate'
-import { featuredPicks, isGroupedSort, leanDigest, slateRows, tennisDigest } from '~/utils/tennisSlate'
+import { featuredPicks, isGroupedSort, leanDigest, slateRows, tennisDigest, tennisRemainingLine } from '~/utils/tennisSlate'
 import { ctDayKey } from '~/utils/format'
 import { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 import { tennisLegend } from '~/utils/slateLegend'
@@ -117,6 +117,7 @@ export default function TennisIntelligencePage() {
   const digest = useMemo(() => tennisDigest(featuredPicks(matches, 4)), [matches])
   const rows = useMemo(() => slateRows(matches), [matches])
   const leans = useMemo(() => leanDigest(rows, Date.now(), 4), [rows])
+  const remaining = useMemo(() => tennisRemainingLine(rows, Date.now()), [rows])
 
   // Predictions and Best Picks are the primary sources; gating on props too
   // would let a fast props failure render the empty state mid-load.
@@ -204,7 +205,7 @@ export default function TennisIntelligencePage() {
           </div>
         ) : (
           <>
-          <TennisSlateDigest priced={digest} leans={leans} />
+          <TennisSlateDigest priced={digest} leans={leans} remaining={remaining} />
           {!phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
           <TennisSlateTable
             rows={filteredRows}

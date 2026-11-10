@@ -1,6 +1,7 @@
 import { Select } from 'antd'
 import { useCallback, useMemo } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { NFL_GAPS_ORDER, nflGapLink } from '~/components/nfl/NflSlateDigest'
 import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
@@ -8,15 +9,13 @@ import PageHead from '~/components/shared/PageHead'
 import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
 import SlateLegend from '~/components/shared/SlateLegend'
 import { SlateNoPicks } from '~/components/shared/SlateNoPicks'
-import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { useNflCurrentWeek, useNflGameNotes, useNflSlate } from '~/hooks/useNfl'
 import { usePhoneLayout } from '~/hooks/usePhoneLayout'
 import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
 import { parseGameId } from '~/utils/nflGame'
-import { openedRowKey } from '~/utils/nflOpenedRow'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { kickoffWindows, type NflSlateDigestItem, type NflSlateRowModel, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
+import { kickoffWindows, type NflSlateRowModel, nflSlateRow, nflSlateSummary, searchedKickoffWindow, slateDigest } from '~/utils/nflSlate'
 import { type NflWeek, nflWeekKey, nflWeekNeighbors, nflWeekPath, nflWeekPickerOptions, parseNflWeekKey, readNflWeekLink } from '~/utils/nflWeekPeriod'
 import { commandGameContext, matchingSlateCommandRows, nflSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
 import { slateRemainingLine } from '~/utils/slateHeadline'
@@ -29,24 +28,6 @@ const WEEK_OPTIONS = nflWeekPickerOptions()
 
 function periodLine(week: number, games: NflSlateGame[], notes: NflGameNotes[] | undefined): string {
   return gameSlateLine(`Week ${week}`, nflSlateSummary(games, notes), startTimes(games.map(game => game.startUtc)), Date.now())
-}
-
-function gapLink(item: NflSlateDigestItem) {
-  return {
-    key: String(item.lineId),
-    to: `/nfl/game/${item.gameId}`,
-    playerName: item.playerName,
-    market: item.market,
-    gap: item.gapUnits,
-    share: item.gapShare,
-    note: item.shortSample,
-    ariaLabel: [
-      `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gapUnits}`,
-      item.gapScaled, item.shortSample && `only ${item.shortSample} of history`, 'open game page',
-    ].filter(Boolean).join(', '),
-    openKey: openedRowKey('digest', item.lineId),
-    onOpen: () => rememberOpened('digest', item.lineId),
-  }
 }
 
 const STATE_LABEL: Partial<Record<NflSlateRowModel['state'], string>> = { final: 'Final', pending: 'Result pending', live: 'Live' }
@@ -160,8 +141,8 @@ export default function NflIntelligencePage() {
         {next && <Link className="nfl-empty__next" to={nflWeekPath(next)}>{nextWeekLabel(active, next)} →</Link>}
       </div> : <>
         <SlateNoPicks
-          sport="nfl" remaining={remaining} gaps={digest.map(gapLink)}
-          gapsLabel="Top gaps" gapsOrder="8+ games of history first, then by share of a typical line"
+          sport="nfl" remaining={remaining} gaps={digest.map(item => nflGapLink(item))}
+          gapsLabel="Top gaps" gapsOrder={NFL_GAPS_ORDER}
         />
         {!phone && <SlateLegend {...SLATE_LEGENDS.nfl} />}
         {commandActive && filteredWindows.length === 0 && filteredFinals.length === 0 && <section className="nfl-slate-window" aria-label="Games">

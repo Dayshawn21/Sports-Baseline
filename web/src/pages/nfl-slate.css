@@ -19,8 +19,6 @@
   .nfl-slate .nfl-slate-window { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
   .nfl-slate .nfl-slate-window__title { margin-bottom: 4px; }
   .is-game-slate .nfl-slate__legend { margin-top: 18px; }
-  /* The same sentence sat in every gap box; the slate legend's "What's a pick?" says it once. */
-  .is-game-slate .slate-digest__basis { display: none; }
 }
 .nfl-slate-window {
   min-width: 0;

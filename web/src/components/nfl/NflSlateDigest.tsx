@@ -1,29 +1,38 @@
-import { Link } from 'react-router-dom'
-import { GapDigestBody } from '~/components/shared/GapDigestBody'
-import { SlateDigest } from '~/components/shared/SlateDigest'
+import { SlateGaps, type SlateGapLink } from '~/components/shared/SlateGaps'
 import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { openedRowKey } from '~/utils/nflOpenedRow'
 import type { NflSlateDigestItem } from '~/utils/nflSlate'
 
+export const NFL_GAPS_ORDER = '8+ games of history first, then by share of a typical line'
+
+/** One gap in the gray strip; it opens the game page unless `to` says otherwise (the player page). */
+export function nflGapLink(item: NflSlateDigestItem, to?: string): SlateGapLink {
+  return {
+    key: String(item.lineId),
+    to: to ?? `/nfl/game/${item.gameId}`,
+    playerName: item.playerName,
+    market: item.market,
+    gap: item.gapUnits,
+    share: item.gapShare,
+    note: item.shortSample,
+    ariaLabel: [
+      `${item.playerName}, ${item.market}, ${item.matchup}, gap ${item.gapUnits}`,
+      item.gapScaled, item.shortSample && `only ${item.shortSample} of history`, to ? 'open player page' : 'open game page',
+    ].filter(Boolean).join(', '),
+    openKey: openedRowKey('digest', item.lineId),
+    onOpen: () => rememberOpened('digest', item.lineId),
+  }
+}
+
 interface Props {
   items: NflSlateDigestItem[]
   scope?: string
-  /** Where a box goes; defaults to the game page. */
+  /** Where an item goes; defaults to the game page. */
   linkFor?: (item: NflSlateDigestItem) => string
 }
 
-/** The week's largest prop gaps; gray reference, never a pick until the ranking check adopts a slice. */
+/** The largest prop gaps as one gray line; reference, never a pick until the ranking check adopts a slice. */
 export function NflSlateDigest({ items, scope = 'this week', linkFor }: Props) {
-  if (items.length === 0) return null
-  return <SlateDigest label={`Largest prop gaps ${scope} · reference, not picks`} labelId="nfl-digest-label">
-    {items.map(item => {
-      const body = <GapDigestBody playerName={item.playerName} market={item.market} matchup={item.matchup}
-        when={item.when} line={item.line} model={item.model} gap={item.gapUnits} gapDetail={item.gapScaled} modelLabel={item.modelLabel} />
-      return linkFor
-        ? <Link key={item.lineId} className="slate-digest__play" to={linkFor(item)} data-open-key={openedRowKey('digest', item.lineId)} onClick={() => rememberOpened('digest', item.lineId)}
-          aria-label={`${item.playerName}, ${item.market}, open player page`}>{body}</Link>
-        : <Link key={item.lineId} className="slate-digest__play" to={`/nfl/game/${item.gameId}`} data-open-key={openedRowKey('digest', item.lineId)} onClick={() => rememberOpened('digest', item.lineId)}
-          aria-label={`${item.playerName}, ${item.market}, ${item.matchup}, open game page`}>{body}</Link>
-    })}
-  </SlateDigest>
+  return <SlateGaps lead label={`Largest prop gaps ${scope}`} order={NFL_GAPS_ORDER}
+    gaps={items.map(item => nflGapLink(item, linkFor?.(item)))} />
 }
