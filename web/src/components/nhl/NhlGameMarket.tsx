@@ -1,25 +1,5 @@
-import TeamLogo from '~/components/shared/TeamLogo'
 import type { NhlGameDetail } from '~/types/nhl'
 import { nhlBookLabel, nhlGameState, nhlMarketCells, nhlMarketProbability, nhlTimeLabel, type NhlMarketCell } from '~/utils/nhlGame'
-
-export function NhlGameHero({ game }: { game: NhlGameDetail }) {
-  const scored = game.status === 'completed' && game.awayScore !== null && game.homeScore !== null
-  return <div className="nfl-game-hero" role="group" aria-label="Teams and score">
-    <div className="nfl-game-hero__team is-away">
-      <TeamLogo sport="nhl" code={game.awayTeam} size={52} />
-      <div><strong>{game.awayTeamName}</strong><small>Away</small></div>
-    </div>
-    <div className="nfl-game-hero__mid">
-      {scored && <span className="nhl-game-score" aria-label={`${game.awayTeam} ${game.awayScore}, ${game.homeTeam} ${game.homeScore}`}>
-        <span>{game.awayScore}</span><span>{game.homeScore}</span>
-      </span>}
-    </div>
-    <div className="nfl-game-hero__team is-home">
-      <TeamLogo sport="nhl" code={game.homeTeam} size={52} />
-      <div><strong>{game.homeTeamName}</strong><small>Home</small></div>
-    </div>
-  </div>
-}
 
 function MarketCell({ cell }: { cell: NhlMarketCell }) {
   return <div>

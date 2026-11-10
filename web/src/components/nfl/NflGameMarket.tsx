@@ -1,29 +1,8 @@
-import TeamLogo from '~/components/shared/TeamLogo'
-import type { NflGameDetail, NflGameNotes, NflSlateGame, NflTeamContext } from '~/types/nfl'
-import { conditionsLabel, gameMarket, marketImpliedPoints, recordLabel } from '~/utils/nflGame'
+import type { NflGameNotes, NflSlateGame } from '~/types/nfl'
+import { gameMarket, marketImpliedPoints } from '~/utils/nflGame'
 import { NFL_GAME_MODEL_CAVEAT, nflGameModelSummary, qbChangeText, qbChanges, type NflGameModelCell } from '~/utils/nflGameModel'
 
-const VENUE_LABELS: Record<string, string> = { dome: 'Dome', outdoor: 'Outdoor', retractable: 'Retractable roof' }
 const POINTS = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
-
-/** `context` is undefined while the slate loads, so no record is claimed before it arrives. */
-function Team({ code, context, side }: { code: string, context: NflTeamContext | null | undefined, side: 'away' | 'home' }) {
-  return <div className={`nfl-game-hero__team is-${side}`}>
-    <TeamLogo sport="nfl" code={code} size={52} />
-    <div><strong>{code}</strong><small>{context === undefined ? null : recordLabel(context)}</small></div>
-  </div>
-}
-
-export function NflGameHero({ detail, game }: { detail: NflGameDetail, game: NflSlateGame | null }) {
-  const venue = game ? VENUE_LABELS[game.weather.venueType] ?? game.weather.venueType : null
-  return <div className="nfl-game-hero" role="group" aria-label="Team records and conditions">
-    <Team code={detail.awayTeam} context={game?.awayContext} side="away" />
-    <div className="nfl-game-hero__mid">
-      {game && <span>{venue} · {conditionsLabel(game.weather)}</span>}
-    </div>
-    <Team code={detail.homeTeam} context={game?.homeContext} side="home" />
-  </div>
-}
 
 function ModelCell({ cell }: { cell: NflGameModelCell }) {
   return <div className="is-model"><span className="nfl-game-big">{cell.model}</span><small>{cell.gap ?? 'No market to compare'}</small></div>
