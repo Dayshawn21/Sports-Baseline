@@ -2,8 +2,12 @@ name: Tennis PrizePicks Prop Lines
 
 on:
   # GitHub pauses schedules after 60 days without a commit. Times are UTC.
+  # PrizePicks pulls a line at match start and tennis plays around the clock,
+  # so the second pull catches the evening and overnight boards. 19:45 sits off
+  # the NBA, NHL and NFL PrizePicks pulls.
   schedule:
     - cron: "0 13 * * *"
+    - cron: "45 19 * * *"
   workflow_dispatch:
 
 permissions:
@@ -35,4 +39,18 @@ jobs:
       - name: Ingest PrizePicks props
         run: |
           cd api
-          python -m app.ingest.prizepicks
+          status=0
+          python -m app.ingest.prizepicks || status=$?
+          if [ "$status" -eq 75 ]; then
+            echo "::error::PrizePicks rate limited the tennis line pull; no lines were stored this run."
+          fi
+          exit "$status"
+
+      # New lines get no projection until a snapshot runs, and a stored snapshot
+      # is frozen. The 13:00 pull leaves its lines to the 13:30 predictions job,
+      # which snapshots after the day's predictions exist.
+      - name: Snapshot PrizePicks projections
+        if: github.event.schedule == '45 19 * * *'
+        run: |
+          cd api
+          python -m app.ingest.prop_snapshots

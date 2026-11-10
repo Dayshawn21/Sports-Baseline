@@ -34,7 +34,10 @@ per command; read this file before running, scheduling or changing one.
   keep `no_market_total`. Stops below 150 credits, above NBA's 100, so tennis
   goes quiet first in a heavy month. `--dry-run` writes nothing but still
   spends the credits. `tennis-totals.yml` runs it daily at 12:45 UTC)
-- Props: `python -m app.ingest.prizepicks`
+- Props: `python -m app.ingest.prizepicks` (exits 75 when PrizePicks still
+  rate-limits the catalog or every tennis league; `tennis-prop-lines.yml` runs
+  it at 13:00 and 19:45 UTC; only the 19:45 run follows with `prop_snapshots`,
+  since a snapshot is frozen and the 13:30 one needs that day's predictions)
 - NFL schedule + player stats: `python -m app.ingest.nflverse --season 2024`
 - NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve
   stored lines to players and games without spending a provider request)

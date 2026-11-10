@@ -36,6 +36,10 @@ HEADERS = {
 }
 
 
+class PrizePicksRateLimited(RuntimeError):
+    """Raised when PrizePicks still answers HTTP 429 after the whole retry budget."""
+
+
 # =============================================================================
 # PrizePicks API helpers
 # =============================================================================
@@ -49,7 +53,12 @@ async def _fetch_leagues(client: httpx.AsyncClient) -> list[dict]:
     try:
         for attempt in range(1, RATE_LIMIT_ATTEMPTS + 1):
             r = await client.get(f"{PRIZEPICKS_BASE}/leagues", headers=HEADERS, timeout=15)
-            if r.status_code == 429 and attempt < RATE_LIMIT_ATTEMPTS:
+            if r.status_code == 429:
+                if attempt == RATE_LIMIT_ATTEMPTS:
+                    raise PrizePicksRateLimited(
+                        "PrizePicks rate-limited the league catalog request. "
+                        "No lines were stored; retry after the provider window clears."
+                    )
                 wait_s = retry_after_seconds(r, attempt)
                 logger.warning(
                     "  leagues: HTTP 429, retrying in %ss (attempt %d/%d)",
@@ -59,6 +68,8 @@ async def _fetch_leagues(client: httpx.AsyncClient) -> list[dict]:
                 continue
             r.raise_for_status()
             return r.json().get("data") or []
+    except PrizePicksRateLimited:
+        raise
     except Exception as e:
         logger.warning("Could not fetch leagues: %s", e)
     return []
@@ -200,9 +211,14 @@ def link_date_utc(start_time: dt.datetime | str) -> dt.date:
 
 
 async def _fetch_league_props(client: httpx.AsyncClient, league_ids: list[int]) -> tuple[list[dict], int]:
-    """Every league's parsed props, and how many leagues failed to fetch or parse."""
+    """Every league's parsed props, and how many leagues failed to fetch or parse.
+
+    Raises PrizePicksRateLimited when every league was throttled, so the run
+    fails instead of reading as a day with no tennis lines.
+    """
     all_props: list[dict] = []
     failed = 0
+    throttled = 0
     for lg_id in league_ids:
         try:
             raw = await _fetch_projections(client, lg_id)
@@ -211,11 +227,18 @@ async def _fetch_league_props(client: httpx.AsyncClient, league_ids: list[int]) 
             all_props.extend(props)
         except httpx.HTTPStatusError as e:
             failed += 1
+            if e.response.status_code == 429:
+                throttled += 1
             logger.error("  league %d: HTTP %d", lg_id, e.response.status_code)
         except Exception as e:
             failed += 1
             logger.error("  league %d: %s", lg_id, e)
         await asyncio.sleep(0.5)
+    if league_ids and throttled == len(league_ids):
+        raise PrizePicksRateLimited(
+            f"PrizePicks rate-limited every tennis league request ({league_ids}). "
+            "No lines were stored; retry after the provider window clears."
+        )
     return all_props, failed
 
 
@@ -345,4 +368,8 @@ async def _main() -> None:
 if __name__ == "__main__":
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(_main())
+    try:
+        asyncio.run(_main())
+    except PrizePicksRateLimited as exc:
+        logger.error("%s", exc)
+        raise SystemExit(75)

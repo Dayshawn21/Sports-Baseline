@@ -10,7 +10,7 @@ remote verification. It does not reduce API usage or change provider limits.
 | Tennis Match Ingest | `tennis-ingest.yml` | Daily 06:30 | Run directly; matches and H2H |
 | Tennis Game Odds | `tennis-odds.yml` | Every four hours at :10 | Run directly; next 14 hours |
 | Tennis Total Games | `tennis-totals.yml` | Daily 12:45 | Run directly; next 24 hours |
-| Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 | Run directly |
+| Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 and 19:45; the 19:45 run then snapshots projections | Run directly |
 | Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30; shadow freeze also after each successful Tennis Game Odds run, once that day's candidate ELO is cached | `predictions` or `tennis-elo-comparison` |
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
 | Tennis Player Stats | `tennis-player-stats.yml` | Daily 10:00 | Run directly |
@@ -35,6 +35,11 @@ and select **Run workflow**. The two workflows containing a dependent ELO job
 retain a job selector. All other entries run their single task directly.
 Selecting an ingest operation can spend provider quota or write the shared
 database; runner acceptance has not been tested by dispatching live ingest.
+
+Prop Lines exits 75 with an `::error::` when PrizePicks still rate-limits the
+league catalog or every tennis league after its retries, so a throttled run
+fails instead of reading as an empty board. One throttled league keeps the
+others' lines and skips pruning.
 
 `predictions` persists predictions and then PrizePicks projection snapshots.
 After both succeed, its dependent job freezes the ELO shadow comparison.
