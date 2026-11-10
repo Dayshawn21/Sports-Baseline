@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import type { NhlLineOnlyLine, NhlLineOnlyWireLine, NhlMarketProjection } from '~/types/nhl'
-import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel, nhlJoinProjections, nhlOddsTypeCounts, nhlPropLineLabel, nhlPropListGroups } from '~/utils/nhlLineOnly'
+import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel, nhlJoinProjections, nhlOddsTypeCounts, nhlPropLineLabel, nhlPropListGroups, nhlSharedFetchedAt } from '~/utils/nhlLineOnly'
 
 function line(overrides: Partial<NhlLineOnlyLine> = {}): NhlLineOnlyLine {
   return {
@@ -159,4 +159,11 @@ it('rebuilds each line from the market projection plus its own gap, P(over) and 
   expect(low.projection).toEqual({ modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 12, gap: 0.5, pOver: 0.61, flags: ['low_toi'] })
   expect(whole.projection.flags).toEqual(['low_toi', 'integer_line'])
   expect(() => nhlJoinProjections([wire({ playerId: 99 })], [shared])).toThrow('No projection')
+})
+
+it('returns the shared fetch time only when every row shows the same CT minute', () => {
+  expect(nhlSharedFetchedAt([{ fetchedAt: '2026-10-23T12:00:05Z' }, { fetchedAt: '2026-10-23T12:00:40Z' }])).toBe('2026-10-23T12:00:05Z')
+  expect(nhlSharedFetchedAt([{ fetchedAt: '2026-10-23T12:00:00Z' }, { fetchedAt: '2026-10-23T12:01:00Z' }])).toBeNull()
+  expect(nhlSharedFetchedAt([])).toBeNull()
+  expect(nhlSharedFetchedAt([{ fetchedAt: 'not a time' }])).toBeNull()
 })

@@ -1,4 +1,5 @@
 import type { NhlLineOnlyLine, NhlLineOnlyMarket, NhlLineOnlyWireLine, NhlMarketProjection, NhlProjection } from '~/types/nhl'
+import { nhlTimeLabel } from '~/utils/nhlGame'
 import { nhlCoversProbability, nhlLineProbabilityNote } from '~/utils/nhlProjection'
 
 export const NHL_LINE_ONLY_MARKETS = [
@@ -142,4 +143,12 @@ export function nhlPropListGroups(lines: readonly NhlLineOnlyLine[]): NhlPropLis
     }).sort((a, b) => compareText(a.playerName, b.playerName) || a.playerId - b.playerId)
     return [{ market, label: nhlMarketLabel(market), rows }]
   })
+}
+
+/** The one fetch time every row shows (same CT minute), so a table can print it once; null when rows differ or are empty. */
+export function nhlSharedFetchedAt(rows: readonly Pick<NhlPropListRow, 'fetchedAt'>[]): string | null {
+  if (rows.length === 0) return null
+  const label = nhlTimeLabel(rows[0].fetchedAt, true)
+  if (label === '--') return null
+  return rows.every(row => nhlTimeLabel(row.fetchedAt, true) === label) ? rows[0].fetchedAt : null
 }

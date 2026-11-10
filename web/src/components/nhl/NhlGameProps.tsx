@@ -3,7 +3,7 @@ import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useNhlLineOnlyProps } from '~/hooks/useNhl'
 import { nhlTimeLabel } from '~/utils/nhlGame'
-import { nhlOddsTypeCounts, nhlPropListGroups, type NhlPropListGroup, type NhlPropListRow } from '~/utils/nhlLineOnly'
+import { nhlOddsTypeCounts, nhlPropListGroups, nhlSharedFetchedAt, type NhlPropListGroup, type NhlPropListRow } from '~/utils/nhlLineOnly'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
 import {
   NHL_PROBABILITY_CAPTION, NHL_PROJECTION_CAPTION, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
@@ -19,24 +19,41 @@ function alternates(row: NhlPropListRow): string {
 function MarketTable({ group, gameDate }: { group: NhlPropListGroup, gameDate: string }) {
   const covers = group.rows.some(row => row.coversProbability)
   const weakNote = nhlProbabilityNote(group.market)
+  const sharedFetchedAt = nhlSharedFetchedAt(group.rows)
+  const perRowUpdated = sharedFetchedAt === null
   return <section className="nhl-prop-group" aria-labelledby={`nhl-props-${group.market}`}>
     <h3 id={`nhl-props-${group.market}`}>{group.label} <small>{group.rows.length} {group.rows.length === 1 ? 'player' : 'players'}</small></h3>
-    {covers && <p className="nhl-prop-caption">{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{weakNote && ` ${weakNote}`}</p>}
+    {(covers || !perRowUpdated) && <p className="nhl-prop-caption">
+      {covers && <>{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{weakNote && ` ${weakNote}`} </>}
+      {!perRowUpdated && <>Updated <time dateTime={sharedFetchedAt}>{nhlTimeLabel(sharedFetchedAt, true)}</time>.</>}
+    </p>}
     <table className="nhl-prop-table" aria-label={`${group.label} lines`}>
-      <thead><tr><th scope="col">Player</th><th scope="col">Standard</th><th scope="col">Proj</th><th scope="col">Gap</th>{covers && <th scope="col">P(over)</th>}<th scope="col">Other lines</th><th scope="col" className="nhl-prop-updated">Updated (CT)</th></tr></thead>
-      <tbody>{group.rows.map(row => <tr key={row.key}>
-        <td>
-          <strong><Link className="nhl-prop-link" to={nhlPlayerPath(row.playerId, { date: gameDate, market: row.market })}>{row.playerName}</Link></strong>
-          <small>{row.team ?? '--'}{row.position ? ` / ${row.position}` : ''}</small>
-          <time className="nhl-prop-updated-mobile" dateTime={row.fetchedAt}>{nhlTimeLabel(row.fetchedAt, true)}</time>
-        </td>
-        <td className="nhl-prop-line">{row.standard ?? '--'}</td>
-        <td className="nhl-prop-line">{nhlProjectionValue(row.projection)}{nhlProjectionNote(row.projection) && <small>{nhlProjectionNote(row.projection)}</small>}</td>
-        <td className="nhl-prop-line">{nhlGapLabel(row.standardGap)}</td>
-        {covers && <td className="nhl-prop-line">{nhlPercentLabel(row.standardPOver)}{row.standardProbabilityNote && <small>{row.standardProbabilityNote}</small>}</td>}
-        <td>{alternates(row) || '--'}</td>
-        <td className="nhl-prop-updated"><time dateTime={row.fetchedAt}>{nhlTimeLabel(row.fetchedAt, true)}</time></td>
-      </tr>)}</tbody>
+      <thead><tr>
+        <th scope="col" className="nhl-prop-col-player">Player</th>
+        <th scope="col" className="nhl-prop-col-line">Standard</th>
+        <th scope="col" className="nhl-prop-col-line">Proj</th>
+        <th scope="col" className="nhl-prop-col-gap">Gap</th>
+        {covers && <th scope="col" className="nhl-prop-col-pover">P(over)</th>}
+        <th scope="col" className="nhl-prop-alt">Other lines</th>
+        {perRowUpdated && <th scope="col" className="nhl-prop-updated">Updated (CT)</th>}
+      </tr></thead>
+      <tbody>{group.rows.map(row => {
+        const others = alternates(row)
+        return <tr key={row.key}>
+          <td>
+            <strong><Link className="nhl-prop-link" to={nhlPlayerPath(row.playerId, { date: gameDate, market: row.market })}>{row.playerName}</Link></strong>
+            <small>{row.team ?? '--'}{row.position ? ` / ${row.position}` : ''}</small>
+            {others && <small className="nhl-prop-alt-mobile">Other lines: {others}</small>}
+            {perRowUpdated && <time className="nhl-prop-updated-mobile" dateTime={row.fetchedAt}>{nhlTimeLabel(row.fetchedAt, true)}</time>}
+          </td>
+          <td className="nhl-prop-line">{row.standard ?? '--'}</td>
+          <td className="nhl-prop-line">{nhlProjectionValue(row.projection)}{nhlProjectionNote(row.projection) && <small>{nhlProjectionNote(row.projection)}</small>}</td>
+          <td className="nhl-prop-line">{nhlGapLabel(row.standardGap)}</td>
+          {covers && <td className="nhl-prop-line">{nhlPercentLabel(row.standardPOver)}{row.standardProbabilityNote && <small>{row.standardProbabilityNote}</small>}</td>}
+          <td className="nhl-prop-alt">{others || '--'}</td>
+          {perRowUpdated && <td className="nhl-prop-updated"><time dateTime={row.fetchedAt}>{nhlTimeLabel(row.fetchedAt, true)}</time></td>}
+        </tr>
+      })}</tbody>
     </table>
   </section>
 }
