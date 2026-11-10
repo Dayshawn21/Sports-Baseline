@@ -15,7 +15,6 @@ function Game({ row }: { row: NbaSlateRowModel }) {
   const { away, home } = row
   return <Link to={`/nba/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
     <SlateMatchupTeams sport="nba" away={away} home={home} />
-    <small>{away.record} · {home.record}</small>
   </Link>
 }
 

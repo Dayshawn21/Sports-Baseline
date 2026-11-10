@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NhlSlateGame } from '~/types/nhl'
 import { unavailableNhlContext } from '~/utils/nhlContext'
 import {
-  nhlBookLabel, nhlGameState, nhlMarketCells, nhlMarketProbability, nhlPuckDropLabel,
+  nhlBookLabel, nhlGameState, nhlMarketCells, nhlMarketProbability, nhlPuckDropLabel, nhlRecordLabel,
   nhlTimeLabel, parseNhlGameId, signedNhlLine, validNhlGameId,
 } from '~/utils/nhlGame'
 import { nhlSlateRow, nhlSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
@@ -14,7 +14,7 @@ function game(overrides: Partial<NhlSlateGame> = {}): NhlSlateGame {
   return {
     gameId: 57029, season: 2026, week: 2, gameType: 'REG', gameDate: '2026-10-23', startUtc: '2026-10-24T00:00:00Z',
     status: 'scheduled', awayTeam: 'MTL', homeTeam: 'CHI', awayTeamName: 'Montreal Canadiens', homeTeamName: 'Chicago Blackhawks',
-    awayScore: null, homeScore: null, endPeriod: null, propLineCount: 3,
+    awayScore: null, homeScore: null, endPeriod: null, awayRecord: { wins: 0, losses: 0, otLosses: 0 }, homeRecord: { wins: 0, losses: 0, otLosses: 0 }, propLineCount: 3,
     moneyline: { book: 'draftkings', homeOdds: -120, awayOdds: 110, homeWinProbability: 0.53, fetchedAt: FETCHED },
     spread: { book: 'bet365', homeLine: -1.5, homeOdds: 150, awayOdds: -180, fetchedAt: FETCHED },
     total: { book: 'draftkings', line: 6.5, overOdds: -110, underOdds: -115, fetchedAt: FETCHED },
@@ -107,6 +107,13 @@ describe('NHL market display', () => {
 })
 
 describe('NHL slate derivations', () => {
+  it('writes records W-L-OT and says when a team has not played', () => {
+    expect(nhlRecordLabel({ wins: 8, losses: 4, otLosses: 2 })).toBe('8-4-2')
+    expect(nhlRecordLabel({ wins: 0, losses: 0, otLosses: 1 })).toBe('0-0-1')
+    expect(nhlRecordLabel({ wins: 0, losses: 0, otLosses: 0 })).toBe('No games yet')
+    const row = nhlSlateRow(game({ awayRecord: { wins: 5, losses: 6, otLosses: 0 }, homeRecord: { wins: 9, losses: 2, otLosses: 3 } }), NOW)
+    expect([row.away.record, row.home.record]).toEqual(['5-6-0', '9-2-3'])
+  })
   it('shows only completed scores, preserving zero and null values', () => {
     expect(nhlSlateRow(game({ awayScore: 0, homeScore: 2 }), NOW).away.score).toBeNull()
     const final = nhlSlateRow(game({ status: 'completed', endPeriod: 'SO', awayScore: 0, homeScore: 1 }), NOW)

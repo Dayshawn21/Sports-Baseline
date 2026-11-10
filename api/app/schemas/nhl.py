@@ -63,6 +63,14 @@ class NhlLineHistorySchema(_CamelModel):
     steps: list[NhlLineStepSchema]
 
 
+class NhlRecordSchema(_CamelModel):
+    """W-L-OT as the NHL standings write it: overtime and shootout losses are the third number."""
+
+    wins: int
+    losses: int
+    ot_losses: int
+
+
 class NhlSlateGameSchema(_CamelModel):
     game_id: int
     season: int
@@ -78,6 +86,8 @@ class NhlSlateGameSchema(_CamelModel):
     away_score: int | None
     home_score: int | None
     end_period: Literal["REG", "OT", "SO"] | None
+    away_record: NhlRecordSchema
+    home_record: NhlRecordSchema
     prop_line_count: int
     moneyline: NhlMoneylineSchema | None
     spread: NhlSpreadSchema | None

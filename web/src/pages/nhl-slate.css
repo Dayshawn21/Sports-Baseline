@@ -4,7 +4,6 @@
 .nfl-slate-table.nhl-slate-table col.is-total { width: 168px; }
 .nfl-slate-table.nhl-slate-table col.is-win { width: 92px; }
 .nfl-slate-table.nhl-slate-table col.is-notes { width: 276px; }
-.nhl-slate-table .nfl-slate-table__game small { overflow: hidden; text-overflow: ellipsis; }
 /* Notes stay one line at every width, so NHL rows match the other slates' height: the two goalies, then
    "+N" for the rest, which keep their text for a screen reader and sit on the game page in full. */
 .nhl-slate-table .nfl-slate-table__tags { flex-wrap: nowrap; overflow: hidden; }
@@ -16,8 +15,6 @@
 
 @media (max-width: 1100px) {
   .nhl-slate-table__win { order: 4; }
-  /* Full team names don't fit beside the time on line 1; the codes already name the game. */
-  .nfl-slate-table.nhl-slate-table .nfl-slate-table__game small { display: none; }
   /* The NFL rule hides a final's moneyline for its graded result; NHL finals keep their closing moneyline. */
   .nfl-slate-table.nhl-slate-table tr.is-final .nfl-slate-table__moneyline { display: block; }
   .nhl-slate-table tr.is-final .nhl-slate-table__win,

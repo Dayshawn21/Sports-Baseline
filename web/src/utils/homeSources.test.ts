@@ -14,7 +14,7 @@ function nhlGame(gameId: number, hours: number | null, status = 'scheduled'): Nh
   return {
     gameId, season: 2026, week: null, gameType: 'REG', gameDate: '2026-11-03', startUtc: hours === null ? null : at(hours), status,
     awayTeam: `A${gameId}`, homeTeam: `H${gameId}`, awayTeamName: '', homeTeamName: '', awayScore: null, homeScore: null,
-    endPeriod: null, propLineCount: 10, moneyline: null, spread: null, total: null,
+    endPeriod: null, awayRecord: { wins: 0, losses: 0, otLosses: 0 }, homeRecord: { wins: 0, losses: 0, otLosses: 0 }, propLineCount: 10, moneyline: null, spread: null, total: null,
   } as NhlSlateGame
 }
 

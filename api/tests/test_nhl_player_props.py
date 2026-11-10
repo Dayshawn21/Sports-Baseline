@@ -159,7 +159,7 @@ def _mock_repository(monkeypatch: pytest.MonkeyPatch, *, lines: list[dict[str, o
     for name, result in {
         "get_player": PLAYER, "get_game_dates": [TODAY], "get_player_line_dates": dates,
         "get_player_lines": lines, "get_game": full_game, "get_latest_market_rows": [], "get_line_movement": [],
-        "get_prop_line_counts": {90: 1}, "get_player_played_games": [row(30, points=1)],
+        "get_prop_line_counts": {90: 1}, "get_completed_results": [], "get_player_played_games": [row(30, points=1)],
         "get_prior_history": {},
     }.items():
         monkeypatch.setattr(nhl, name, AsyncMock(return_value=result))

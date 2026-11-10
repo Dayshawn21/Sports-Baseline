@@ -36,6 +36,13 @@ export interface NhlLineMove {
   currentFetchedAt: string
 }
 
+/** W-L-OT as the NHL standings write it: overtime and shootout losses are the third number. */
+export interface NhlRecord {
+  wins: number
+  losses: number
+  otLosses: number
+}
+
 export interface NhlSlateGame {
   gameId: number
   season: number
@@ -51,6 +58,8 @@ export interface NhlSlateGame {
   awayScore: number | null
   homeScore: number | null
   endPeriod: 'REG' | 'OT' | 'SO' | null
+  awayRecord: NhlRecord
+  homeRecord: NhlRecord
   propLineCount: number
   moneyline: NhlMoneyline | null
   spread: NhlSpread | null

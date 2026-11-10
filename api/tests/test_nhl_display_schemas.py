@@ -18,6 +18,7 @@ def _game(**overrides: object) -> dict[str, object]:
         "game_date": date(2026, 10, 23), "start_utc": None, "status": "completed",
         "away_team": "MTL", "home_team": "CHI", "away_team_name": "Montreal",
         "home_team_name": "Chicago", "away_score": 2, "home_score": 3, "end_period": "OT",
+        "away_record": {"wins": 8, "losses": 4, "ot_losses": 2}, "home_record": {"wins": 0, "losses": 0, "ot_losses": 0},
         "prop_line_count": 0, "moneyline": None, "spread": None, "total": None,
         "context": {"injuries": {}, "goalies": {"away": {"team": "MTL"}, "home": {"team": "CHI"}}}, **overrides,
     }
@@ -30,6 +31,7 @@ def test_detail_and_slate_camel_case_and_missing_data_contract() -> None:
     assert wire["date"] == "2026-10-23" and wire["previousDate"] is None
     assert wire["games"][0]["gameId"] == 1 and wire["games"][0]["endPeriod"] == "OT"
     assert wire["games"][0]["lineMovement"] == [] and wire["games"][0]["moneyline"] is None
+    assert wire["games"][0]["awayRecord"] == {"wins": 8, "losses": 4, "otLosses": 2}
     assert game.model_dump(by_alias=True)["lineHistory"] == []
     assert NhlLineOnlyPropsResponse(game_id=1, lines=[], projections=[]).model_dump(by_alias=True) == {
         "gameId": 1, "overProbabilityVersion": None, "lines": [], "projections": [],

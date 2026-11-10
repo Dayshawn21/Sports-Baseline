@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Mapping, Sequence
+from dataclasses import asdict
+from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nhl_records import NhlRecord, NhlResult, team_records
 from app.core.slate_dates import adjacent_dates, slate_date
 from app.repositories import nhl
 from app.schemas.nhl import NhlSlateGameSchema, NhlSlateResponse
@@ -45,20 +48,43 @@ def _by_game(rows: Sequence[Mapping[str, object]]) -> dict[int, list[Mapping[str
     return grouped
 
 
+def _records(records: Mapping[str, NhlRecord], game: Mapping[str, object]) -> dict[str, object]:
+    away, home = records.get(str(game["away_team"]), NhlRecord()), records.get(str(game["home_team"]), NhlRecord())
+    return {"away_record": asdict(away), "home_record": asdict(home)}
+
+
 def slate_games(
     games: Sequence[Mapping[str, object]], markets: Sequence[Mapping[str, object]],
     movements: Sequence[Mapping[str, object]], counts: Mapping[int, int],
+    records_by_game: Mapping[int, Mapping[str, NhlRecord]] | None = None,
 ) -> list[NhlSlateGameSchema]:
+    """Without `records_by_game` (callers that only need contexts), every record reads 0-0-0."""
     markets_by_game, movements_by_game = _by_game(markets), _by_game(movements)
+    records = records_by_game or {}
     return [
         NhlSlateGameSchema.model_validate({
             **game, **_markets(markets_by_game.get(int(str(game["game_id"])), [])),
+            **_records(records.get(int(str(game["game_id"])), {}), game),
             "prop_line_count": counts.get(int(str(game["game_id"])), 0),
             "line_movement": movements_by_game.get(int(str(game["game_id"])), []),
             "context": unavailable_context(str(game["away_team"]), str(game["home_team"])),
         })
         for game in games
     ]
+
+
+def records_by_game(
+    games: Sequence[Mapping[str, object]], results: Sequence[NhlResult],
+) -> dict[int, dict[str, NhlRecord]]:
+    """Each game's records going into its own date, so a game page matches the slate it sits on."""
+    by_key: dict[tuple[int, dt.date], dict[str, NhlRecord]] = {}
+    by_game: dict[int, dict[str, NhlRecord]] = {}
+    for game in games:
+        season, day = int(str(game["season"])), cast(dt.date, game["game_date"])
+        if (season, day) not in by_key:
+            by_key[(season, day)] = team_records(results, season, day)
+        by_game[int(str(game["game_id"]))] = by_key[(season, day)]
+    return by_game
 
 
 async def assemble_games(
@@ -68,9 +94,11 @@ async def assemble_games(
     if not games:
         return []
     game_ids = [int(str(game["game_id"])) for game in games]
+    results = await nhl.get_completed_results(db, sorted({int(str(game["season"])) for game in games}))
     assembled = slate_games(
         games, await nhl.get_latest_market_rows(db, game_ids),
         await nhl.get_line_movement(db, game_ids), await nhl.get_prop_line_counts(db, game_ids),
+        records_by_game(games, results),
     )
     contexts = await load_contexts(db, assembled, clock)
     return [game.model_copy(update={"context": contexts[game.game_id]}) for game in assembled]

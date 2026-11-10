@@ -13,10 +13,8 @@ function Value({ cell }: { cell: NhlSlateRowCell }) {
 
 function Game({ row }: { row: NhlSlateRowModel }) {
   const { away, home } = row
-  const names = `${away.name} · ${home.name}`
   return <Link to={`/nhl/game/${row.gameId}`} aria-label={`${away.code} at ${home.code}, open game page`}>
     <SlateMatchupTeams sport="nhl" away={away} home={home} />
-    <small title={names}>{names}</small>
   </Link>
 }
 

@@ -6,6 +6,14 @@
   font: 800 1em var(--font-display); letter-spacing: 0.04em;
 }
 
+/* Each side is a column, so a record sits under its own team rather than under the away team. */
+.slate-matchup { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 100%; vertical-align: top; }
+.slate-matchup__side { display: inline-flex; flex-direction: column; min-width: 0; }
+.slate-matchup__team { white-space: nowrap; }
+.slate-matchup__record {
+  overflow: hidden; color: var(--text-muted); font: 400 11px/1.35 var(--font-mono);
+  white-space: nowrap; text-overflow: ellipsis;
+}
 .slate-matchup__logo { margin-right: 5px; }
 
 /* The phone row is already full: two logos would clip the records (checked at 375px, up to 23px short). */
