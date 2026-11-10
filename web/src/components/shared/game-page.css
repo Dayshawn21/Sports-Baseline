@@ -1,0 +1,40 @@
+/* The game-page frame every sport shares: crumb, hero head, meta line. Gray only; nothing here is a signal. */
+
+.game-crumb { display: inline-flex; align-items: center; min-height: 32px; margin-bottom: 6px; color: var(--text-secondary); font-size: 12px; }
+.game-crumb:hover { color: var(--text-primary); }
+.game-crumb:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; }
+
+.game-head { padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--border-subtle); }
+.game-head__title { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.game-head__meta { margin: 12px 0 0; color: var(--text-secondary); font: 500 13px/1.5 var(--font-body); }
+
+.game-hero {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 24px;
+  max-width: 640px; padding-top: 6px;
+}
+.game-hero__team { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.game-hero__team.is-home { flex-direction: row-reverse; text-align: right; }
+.game-hero__name { min-width: 0; }
+.game-hero__name strong { display: block; color: var(--text-primary); font: 700 26px/1.1 var(--font-display); }
+.game-hero__name small { display: block; min-height: 1.4em; color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
+
+.game-hero__mid { display: grid; justify-items: center; gap: 2px; max-width: 220px; text-align: center; }
+.game-hero__mid small { color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
+.game-hero__big { color: var(--text-primary); font: 600 18px/1.2 var(--font-display); white-space: nowrap; }
+.game-hero__score { display: flex; gap: 18px; color: var(--text-primary); font: 500 28px/1.1 var(--font-mono); }
+.game-hero__score .is-loser { color: var(--text-muted); }
+.game-hero__detail { margin-top: 2px; }
+
+@media (max-width: 767px) {
+  .game-crumb { min-height: 40px; margin-bottom: 0; }
+  .game-head { padding-bottom: 12px; }
+  .game-head__meta { margin-top: 8px; font-size: 12px; }
+  .game-hero { gap: 8px; padding-top: 0; }
+  .game-hero__team { gap: 8px; }
+  .game-hero__name strong { font-size: 18px; }
+  .game-hero__name small { font-size: 11px; }
+  .game-hero__mid { max-width: 140px; }
+  .game-hero__mid small { font-size: 11px; }
+  .game-hero__big { font-size: 15px; }
+  .game-hero__score { gap: 12px; font-size: 22px; }
+}

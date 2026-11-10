@@ -56,8 +56,9 @@ export function nhlPropBoardQuery(date: string | null) {
   })
 }
 
-export function useNhlSlate(date: string | null) {
-  return useQuery(nhlSlateQuery(date))
+/** A null date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
+export function useNhlSlate(date: string | null, enabled = true) {
+  return useQuery({ ...nhlSlateQuery(date), enabled })
 }
 
 export function useNhlGame(gameId: number | null) {

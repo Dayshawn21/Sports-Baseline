@@ -3,10 +3,12 @@ import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaModelRanking, fetchNbaPlay
 import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 
-export function useNbaSlate(date: string | null) {
+/** A null date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
+export function useNbaSlate(date: string | null, enabled = true) {
   return useQuery({
     queryKey: ['nba', 'slate', date],
     queryFn: () => fetchNbaSlate(date),
+    enabled,
     staleTime: 5 * 60 * 1000,
   })
 }

@@ -1,33 +1,6 @@
-import TeamLogo from '~/components/shared/TeamLogo'
 import type { NbaGameDetail } from '~/types/nba'
-import type { NbaSlateCardModel, NbaSlateCardTeam } from '~/utils/nbaSlate'
+import type { NbaSlateCardModel } from '~/utils/nbaSlate'
 import { nbaGameMarket } from '~/utils/nbaGame'
-
-function Team({ team, side }: { team: NbaSlateCardTeam, side: 'away' | 'home' }) {
-  return <div className={`nfl-game-hero__team is-${side}`}>
-    <TeamLogo sport="nba" code={team.code} size={52} />
-    <div><strong>{team.name}</strong><small>{team.record}</small></div>
-  </div>
-}
-
-function Score({ card }: { card: NbaSlateCardModel }) {
-  if (card.away.score === null || card.home.score === null) return null
-  return <span className="nba-game-score">
-    <span className={card.away.lost ? 'is-loser' : ''}>{card.away.score}</span>
-    <span className={card.home.lost ? 'is-loser' : ''}>{card.home.score}</span>
-  </span>
-}
-
-/** Supporting team records and final score, read from the slate card model. */
-export function NbaGameHero({ card }: { card: NbaSlateCardModel }) {
-  return <div className="nfl-game-hero" role="group" aria-label="Team records and score">
-    <Team team={card.away} side="away" />
-    <div className="nfl-game-hero__mid">
-      <Score card={card} />
-    </div>
-    <Team team={card.home} side="home" />
-  </div>
-}
 
 /** Market only: NBA has no model row until 20g. */
 function MarketBlock({ detail }: { detail: NbaGameDetail }) {
