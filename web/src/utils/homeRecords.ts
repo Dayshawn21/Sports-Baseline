@@ -18,8 +18,10 @@ const DETAIL: Record<RecordSport, string> = {
   nhl: 'Forward ranking check',
 }
 
+const PLACEHOLDER: Record<HomeStatus, string> = { error: 'Unavailable', loading: 'Loading', ready: 'Not graded yet' }
+
 function placeholder(sport: RecordSport, status: HomeStatus): HomeRecord {
-  return { sport, status, label: status === 'error' ? 'Unavailable' : '--', detail: DETAIL[sport] }
+  return { sport, status, label: PLACEHOLDER[status], detail: DETAIL[sport] }
 }
 
 const NO_DATA = 'No data'

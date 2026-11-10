@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
 import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
-import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isZeroGap, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
 import type { NbaSlateDigestItem } from '~/utils/nbaSlate'
 
 const HOUR = 60 * 60 * 1000
@@ -45,7 +45,7 @@ describe('nhlSource', () => {
     games.push(nhlGame(20, -2), nhlGame(21, 3, 'completed'))
     const { schedule, nextGames } = nhlSource(games, NOW)
     expect(schedule).toHaveLength(SCHEDULE_LIMIT)
-    expect(schedule[0]).toEqual({ key: '12', title: 'A12 @ H12', when: '12:00 PM' })
+    expect(schedule[0]).toEqual({ key: '12', title: 'A12 @ H12', when: '12:00 PM', path: '/nhl/game/12' })
     expect(schedule.map(game => game.key)).not.toContain('20')
     expect(schedule.map(game => game.key)).not.toContain('21')
     expect(nextGames.map(game => game.key)).toEqual(schedule.slice(0, HERO_NEXT_LIMIT).map(game => game.key))
@@ -63,6 +63,21 @@ describe('nhlSource', () => {
 })
 
 describe('nbaSource', () => {
+  it('links each next game to its game page', () => {
+    const game = { gameId: 42, startUtc: at(3), awayTeam: 'NO', homeTeam: 'GS', status: 'scheduled', lines: [], moneyline: null, spread: null, total: null, propLineCount: 0 } as unknown as Parameters<typeof nbaSource>[0][number]
+    expect(nbaSource([game], [], '2026-11-03', NOW).nextGames).toEqual([{ key: '42', title: 'NO @ GS', when: '2:00 PM', path: '/nba/game/42' }])
+  })
+
+  it('drops a zero gap before the cut and keeps the rest in digest order', () => {
+    const item = (n: number, gap: string): NbaSlateDigestItem => ({
+      key: `k${n}`, gameId: n, playerId: n, playerName: `Player ${n}`, marketKey: 'points', market: 'Points', matchup: 'A @ B',
+      when: 'x', line: '20.5', model: '20.5', gap, gapScaled: null, gapShare: '0%',
+    })
+    const digest = [item(1, '+2.0 pts'), item(2, '+0.0 pts'), ...Array.from({ length: 10 }, (_, n) => item(n + 3, '-1.0 pts'))]
+    const keys = nbaSource([], digest, '2026-11-04', NOW).gaps.map(gap => gap.key)
+    expect(keys).toEqual(['k1', ...Array.from({ length: 9 }, (_, n) => `k${n + 3}`)])
+  })
+
   it('shows at most the hero limit of gaps, keeping the digest order and strings', () => {
     const item = (n: number): NbaSlateDigestItem => ({
       key: `k${n}`, gameId: n, playerId: n, playerName: `Player ${n}`, marketKey: 'points', market: 'Points', matchup: 'A @ B',
@@ -83,6 +98,7 @@ describe('tennisSource', () => {
     const source = tennisSource([match(1, 3), match(2, 4, [null, 100]), match(3, 5, [-110, null]), match(4, 6, [null, null])], NOW)
     expect(source.gameCount).toBe(1)
     expect(source.nextGames.map(game => game.title)).toEqual(['P1 vs Q1'])
+    expect(source.nextGames[0].path).toBe('/tennis/match/1')
     expect(source.propLines).toBeNull()
   })
 
@@ -94,6 +110,16 @@ describe('tennisSource', () => {
 
   it('is empty when nothing is priced', () => {
     expect(tennisSource([match(1, 3, [null, null])], NOW)).toMatchObject({ gameCount: 0, startsMs: [] })
+  })
+})
+
+describe('isZeroGap', () => {
+  it('matches a gap that shows as zero, signed or not, with or without a unit', () => {
+    expect(['0.0', '+0.0', '-0.0', '+0.0 yds', ' 0.0 pts'].map(isZeroGap)).toEqual([true, true, true, true, true])
+  })
+
+  it('keeps every gap that shows a value, and a missing one', () => {
+    expect(['+0.1', '-0.05', '+10.0 yds', '+0.04%', '--', '+100.0'].map(isZeroGap)).toEqual([false, false, false, false, false, false])
   })
 })
 
@@ -117,8 +143,8 @@ describe('nflSource', () => {
     expect(source.period).toBe('Week 9')
     expect(source.gameCount).toBe(5)
     expect(source.days).toEqual([
-      { key: expect.any(String), label: 'Thu', count: 1, title: 'A1 @ H1' },
-      { key: expect.any(String), label: 'Fri', count: 2, title: 'A2 @ H2' },
+      { key: expect.any(String), label: 'Thu', count: 1, title: 'A1 @ H1', path: '/nfl/game/1' },
+      { key: expect.any(String), label: 'Fri', count: 2, title: 'A2 @ H2', path: '/nfl/game/2' },
     ])
   })
 
@@ -177,6 +203,14 @@ describe('tennisGapRows', () => {
       prop(7, { playerId: null, playerName: 'Nobody' }), prop(8, { edgePct: 12 }),
     ], matches, NOW)
     expect(rows.map(row => row.key)).toEqual(['8'])
+  })
+
+  it('leaves out a line whose gap shows as 0.0 and keeps the rest in order', () => {
+    const rows = tennisGapRows([
+      prop(1, { statType: 'Tie Breaks', line: '0.5', statAvg: 0.52, edgePct: 40 }),
+      prop(2, { playerId: 12, playerName: 'P2', matchId: 2, startTime: at(5), edgePct: 30 }),
+    ], matches, NOW)
+    expect(rows.map(row => [row.key, row.gap])).toEqual([['2', '+1.5']])
   })
 
   it('shows at most ten rows and none for no lines', () => {

@@ -14,8 +14,8 @@ function Side({ sport, code }: { sport: HomeCard['sport'], code: string }) {
 }
 
 function Segment({ sport, segment }: { sport: HomeCard['sport'], segment: HomeNextSegment }) {
-  if ('text' in segment) return <>{segment.text}</>
-  return <><Side sport={sport} code={segment.away} /> @ <Side sport={sport} code={segment.home} /></>
+  const body = 'text' in segment ? segment.text : <><Side sport={sport} code={segment.away} /> @ <Side sport={sport} code={segment.home} /></>
+  return segment.path === undefined ? <>{body}</> : <Link to={segment.path} className="home-card__match">{body}</Link>
 }
 
 /** One sport. The title link covers the card (so the whole card opens the slate) and each view link sits above it. */

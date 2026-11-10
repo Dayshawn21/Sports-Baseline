@@ -22,8 +22,9 @@ describe('rankingRecord', () => {
     expect(rankingRecord('nba', slices('adopt', 'adopt'), 'ready').detail).toBe('Forward ranking check')
   })
 
-  it('shows a dash while loading and says Unavailable on error, never a made-up value', () => {
-    expect(rankingRecord('nfl', undefined, 'loading')).toMatchObject({ status: 'loading', label: '--' })
+  it('says Loading, Not graded yet or Unavailable before a record exists, never a dash or a made-up value', () => {
+    expect(rankingRecord('nfl', undefined, 'loading')).toMatchObject({ status: 'loading', label: 'Loading' })
+    expect(rankingRecord('nba', undefined, 'ready')).toMatchObject({ status: 'ready', label: 'Not graded yet' })
     expect(rankingRecord('nba', undefined, 'error')).toMatchObject({ status: 'error', label: 'Unavailable' })
   })
 })
@@ -34,7 +35,7 @@ describe('rankingRecord for NHL', () => {
       .toEqual({ sport: 'nhl', status: 'ready', label: '0 of 4 adopted', detail: 'Forward ranking check · 4 accruing' })
     expect(rankingRecord('nhl', slices('adopt', 'insufficient', 'insufficient', 'insufficient'), 'ready'))
       .toMatchObject({ label: '1 of 4 adopted', detail: 'Forward ranking check · 3 accruing' })
-    expect(rankingRecord('nhl', undefined, 'loading')).toMatchObject({ status: 'loading', label: '--' })
+    expect(rankingRecord('nhl', undefined, 'loading')).toMatchObject({ status: 'loading', label: 'Loading' })
     expect(rankingRecord('nhl', undefined, 'error')).toMatchObject({ status: 'error', label: 'Unavailable' })
   })
 })
@@ -59,6 +60,6 @@ describe('tennisRecord', () => {
   })
 
   it('has a placeholder before its data arrives', () => {
-    expect(tennisRecord(undefined, 'loading')).toMatchObject({ sport: 'tennis', status: 'loading', label: '--' })
+    expect(tennisRecord(undefined, 'loading')).toMatchObject({ sport: 'tennis', status: 'loading', label: 'Loading' })
   })
 })

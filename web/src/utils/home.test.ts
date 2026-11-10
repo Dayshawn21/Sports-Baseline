@@ -53,14 +53,14 @@ describe('todayStatus and sportNoun', () => {
 const source = (overrides: Partial<HomeSource> = {}): HomeSource => ({
   gameCount: 0, startsMs: [], propLines: null, gaps: [], moneyline: [], nextGames: [], schedule: [], period: null, days: [], ...overrides,
 })
-const game = (key: string, title: string) => ({ key, title, when: '' })
+const game = (key: string, title: string) => ({ key, title, when: '', path: `/nba/game/${key}` })
 
 describe('homeCard', () => {
   it('describes the NFL week with its days', () => {
     const days = [
-      { key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL' },
-      { key: 'b', label: 'Sun', count: 12, title: 'x' },
-      { key: 'c', label: 'Mon', count: 1, title: 'DEN @ CAR' },
+      { key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL', path: '/nfl/game/1' },
+      { key: 'b', label: 'Sun', count: 12, title: 'x', path: '/nfl/game/2' },
+      { key: 'c', label: 'Mon', count: 1, title: 'DEN @ CAR', path: '/nfl/game/3' },
     ]
     const card = homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW)
     expect(card).toMatchObject({
@@ -80,12 +80,12 @@ describe('homeCard', () => {
   it('splits the next games so each matchup can carry its logos, with the same text', () => {
     const nba = homeCard(sportData('nba', [7, 9]), source({ nextGames: [game('1', 'ORL @ CHA'), game('2', 'DET @ TOR')] }), NOW)
     expect(nba.nextSegments).toEqual([
-      { text: 'Next: ' }, { away: 'ORL', home: 'CHA' }, { text: ', ' }, { away: 'DET', home: 'TOR' },
+      { text: 'Next: ' }, { away: 'ORL', home: 'CHA', path: '/nba/game/1' }, { text: ', ' }, { away: 'DET', home: 'TOR', path: '/nba/game/2' },
     ])
     expect(nba.next).toBe('Next: ORL @ CHA, DET @ TOR')
-    const days = [{ key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL' }, { key: 'b', label: 'Sun', count: 12, title: 'x' }]
+    const days = [{ key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL', path: '/nfl/game/1' }, { key: 'b', label: 'Sun', count: 12, title: 'x', path: '/nfl/game/2' }]
     expect(homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW).nextSegments).toEqual([
-      { text: 'Thu: ' }, { away: 'JAX', home: 'BAL' }, { text: ' · ' }, { text: 'Sun: 12 games' },
+      { text: 'Thu: ' }, { away: 'JAX', home: 'BAL', path: '/nfl/game/1' }, { text: ' · ' }, { text: 'Sun: 12 games' },
     ])
     expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ next: '', nextSegments: [] })
   })
@@ -93,8 +93,8 @@ describe('homeCard', () => {
   it('keeps a title that is not "AWAY @ HOME" as plain text', () => {
     expect(matchupSegment('Rune vs Sinner')).toEqual({ text: 'Rune vs Sinner' })
     expect(matchupSegment('LAL @ ATL')).toEqual({ away: 'LAL', home: 'ATL' })
-    const tennis = homeCard(sportData('tennis', [3]), source({ nextGames: [game('1', 'Rune vs Sinner')] }), NOW)
-    expect(tennis.nextSegments).toEqual([{ text: 'Next: ' }, { text: 'Rune vs Sinner' }])
+    const tennis = homeCard(sportData('tennis', [3]), source({ nextGames: [{ key: '1', title: 'Rune vs Sinner', when: '', path: '/tennis/match/1' }] }), NOW)
+    expect(tennis.nextSegments).toEqual([{ text: 'Next: ' }, { text: 'Rune vs Sinner', path: '/tennis/match/1' }])
   })
 
   it('gives NHL and tennis all three links', () => {
@@ -114,9 +114,18 @@ describe('homeCard', () => {
     expect(homeCard(sportData('tennis', []), source(), NOW)).toMatchObject({ when: 'No priced matches', tone: 'quiet' })
   })
 
-  it('says nothing is left when every game has started', () => {
-    expect(homeCard(sportData('nba', [-3, -1]), source(), NOW)).toMatchObject({ when: 'No upcoming games', count: '2', tone: 'quiet' })
-    expect(homeCard(sportData('tennis', [-1]), source(), NOW).when).toBe('No upcoming matches')
+  it('counts started games that are not final as in progress', () => {
+    expect(homeCard(sportData('nba', [-3, -1]), source(), NOW)).toMatchObject({ when: '2 in progress', count: '2', tone: 'normal' })
+    expect(homeCard(sportData('nfl', [-1]), source(), NOW)).toMatchObject({ when: '1 in progress', tone: 'normal' })
+  })
+
+  it('names the next start, not the live games, while one is still to come', () => {
+    expect(homeCard(sportData('nba', [-1, 2]), source(), NOW).when).toBe('First tip 1:00 PM CT')
+  })
+
+  it('says nothing is left when every game is final, and never calls a tennis match live', () => {
+    expect(homeCard(sportData('nba', [], { gameCount: 3 }), source(), NOW)).toMatchObject({ when: 'No upcoming games', tone: 'quiet' })
+    expect(homeCard(sportData('tennis', [-1]), source(), NOW)).toMatchObject({ when: 'No upcoming matches', tone: 'quiet' })
   })
 
   it('marks a loading or failed sport without a made-up count', () => {
@@ -135,13 +144,13 @@ describe('gaps tabs', () => {
   const sports = (): HomeSportView[] => [
     view('nfl', [56], { gaps: [gap('nfl', 'f1'), gap('nfl', 'f2')] }),
     view('nba', [7], { gaps: [gap('nba', 'b1')] }),
-    view('nhl', [], { schedule: [{ key: '1', title: 'A @ B', when: '6:00 PM' }] }),
+    view('nhl', [], { schedule: [{ key: '1', title: 'A @ B', when: '6:00 PM', path: '/nhl/game/1' }] }),
     view('tennis', [], {}, { status: 'loading' }),
   ]
 
   it('lists All then each sport in the cards order, with the next start on a sport that has one', () => {
     expect(gapTabs(sports(), NOW).map(tab => [tab.key, tab.text])).toEqual([
-      ['all', 'All'], ['nfl', 'NFL · Thu 7:00 PM'], ['nba', 'NBA · 6:00 PM'], ['nhl', 'NHL'], ['tennis', 'Tennis'],
+      ['all', 'All'], ['nfl', 'NFL · Thu 7:00 PM CT'], ['nba', 'NBA · 6:00 PM CT'], ['nhl', 'NHL'], ['tennis', 'Tennis'],
     ])
   })
 
@@ -198,7 +207,7 @@ describe('gaps tabs', () => {
     const mlSports = (): HomeSportView[] => {
       const list = sports()
       list[0] = view('nfl', [56], { moneyline: [ml('nfl', 'f1')] })
-      list[1] = view('nba', [7], { schedule: [{ key: '9', title: 'X @ Y', when: '7:00 PM' }] })
+      list[1] = view('nba', [7], { schedule: [{ key: '9', title: 'X @ Y', when: '7:00 PM', path: '/nba/game/9' }] })
       list[3] = view('tennis', [3], { moneyline: [ml('tennis', 't1')] })
       return list
     }

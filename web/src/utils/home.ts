@@ -18,6 +18,14 @@ const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: '
 const MONTH_DAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, month: 'short', day: 'numeric' })
 const DAY_KEY = new Intl.DateTimeFormat('en-CA', { timeZone: CENTRAL })
 
+/**
+ * Team games that have started and are not final, the slates' own "live" rule. Tennis is left out: its feed marks
+ * no match done, so a started match cannot be told from a finished one.
+ */
+export function inProgressCount(data: HomeSportData, now: number): number {
+  return data.sport === 'tennis' ? 0 : data.startsMs.filter(start => start <= now).length
+}
+
 /** Soonest start strictly after `now`, or null when nothing is left. */
 export function nextStart(data: HomeSportData, now: number): number | null {
   const upcoming = data.startsMs.filter(start => start > now)
@@ -96,16 +104,21 @@ function cardWhen(data: HomeSportData, now: number): { text: string, tone: CardT
   if (data.status === 'error') return { text: 'Could not load', tone: 'error' }
   if (data.gameCount === 0) return { text: emptyText(sport), tone: 'quiet' }
   const start = nextStart(data, now)
-  if (start === null) return { text: `No upcoming ${NOUN[sport].many}`, tone: 'quiet' }
+  if (start === null) {
+    const live = inProgressCount(data, now)
+    return live > 0 ? { text: `${live} in progress`, tone: 'normal' } : { text: `No upcoming ${NOUN[sport].many}`, tone: 'quiet' }
+  }
   return { text: `${START_WORD[sport]} ${startLabel(start, now)} CT`, tone: 'normal' }
 }
 
-export type HomeNextSegment = { text: string } | { away: string, home: string }
+/** Plain text, or a matchup (a team game's two codes, or tennis "A vs B" text) that links to its game page. */
+export type HomeNextSegment = { text: string, path?: string } | { away: string, home: string, path?: string }
 
 /** A team game's "AWAY @ HOME" title as its two codes; anything else (tennis "A vs B") stays text. */
-export function matchupSegment(title: string): HomeNextSegment {
+export function matchupSegment(title: string, path?: string): HomeNextSegment {
   const parts = /^(\S+) @ (\S+)$/.exec(title)
-  return parts === null ? { text: title } : { away: parts[1], home: parts[2] }
+  const segment: HomeNextSegment = parts === null ? { text: title } : { away: parts[1], home: parts[2] }
+  return path === undefined ? segment : { ...segment, path }
 }
 
 function joined(items: HomeNextSegment[][], separator: string): HomeNextSegment[] {
@@ -120,10 +133,10 @@ export function nextSegmentsText(segments: HomeNextSegment[]): string {
 function nextSegments(sport: Sport, source: HomeSource): HomeNextSegment[] {
   if (sport === 'nfl') {
     return joined(source.days.map(day => day.count === 1
-      ? [{ text: `${day.label}: ` }, matchupSegment(day.title)]
+      ? [{ text: `${day.label}: ` }, matchupSegment(day.title, day.path)]
       : [{ text: `${day.label}: ${day.count} games` }]), ' · ')
   }
-  return source.nextGames.length === 0 ? [] : [{ text: 'Next: ' }, ...joined(source.nextGames.map(game => [matchupSegment(game.title)]), ', ')]
+  return source.nextGames.length === 0 ? [] : [{ text: 'Next: ' }, ...joined(source.nextGames.map(game => [matchupSegment(game.title, game.path)]), ', ')]
 }
 
 export function homeCard(data: HomeSportData, source: HomeSource, now: number): HomeCard {
@@ -190,7 +203,7 @@ export function gapTabs(sports: HomeSportView[], now: number): HomeGapTab[] {
       const label = sportLabel(sport)
       const data = sports.find(entry => entry.data.sport === sport)!.data
       const start = data.status === 'ready' ? nextStart(data, now) : null
-      return { key: sport, label, text: start === null ? label : `${label} · ${startLabel(start, now)}` }
+      return { key: sport, label, text: start === null ? label : `${label} · ${startLabel(start, now)} CT` }
     }),
   ]
 }

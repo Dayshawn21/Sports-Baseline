@@ -49,6 +49,8 @@ export interface HomeNextGame {
   key: string
   title: string
   when: string
+  /** The game or match page. */
+  path: string
 }
 
 /** One Central day of the NFL week: how many games are still to come and, for the first, who plays. */
@@ -57,6 +59,8 @@ export interface HomeDay {
   label: string
   count: number
   title: string
+  /** The first game's page. */
+  path: string
 }
 
 /** What one sport contributes to the home, before the lead is chosen. */
@@ -80,6 +84,11 @@ export interface HomeSource {
 }
 
 export const GAPS_PER_SPORT = 10
+
+/** A gap that shows as 0.0 says nothing, so the home gaps list leaves it out; the rest keep their order. */
+export function isZeroGap(gap: string): boolean {
+  return /^[+-]?0\.0(?!\d)/.test(gap.trim())
+}
 export const HERO_NEXT_LIMIT = 3
 export const SCHEDULE_LIMIT = 10
 
@@ -88,6 +97,7 @@ interface Schedulable {
   title: string
   startUtc: string | null
   done: boolean
+  path: string
 }
 
 function parsedStart(startUtc: string | null): number | null {
@@ -98,7 +108,7 @@ function parsedStart(startUtc: string | null): number | null {
 function upcoming(games: Schedulable[]) {
   return games.flatMap(game => {
     const start = parsedStart(game.startUtc)
-    return game.done || start === null ? [] : [{ key: game.key, title: game.title, start }]
+    return game.done || start === null ? [] : [{ key: game.key, title: game.title, path: game.path, start }]
   })
 }
 
@@ -109,7 +119,7 @@ function sourceOf(
 ): HomeSource {
   const left = upcoming(games)
   const soonest = left.filter(game => game.start > now).sort((a, b) => a.start - b.start)
-  const listed = (limit: number) => soonest.slice(0, limit).map(game => ({ key: game.key, title: game.title, when: startLabel(game.start, now) }))
+  const listed = (limit: number) => soonest.slice(0, limit).map(game => ({ key: game.key, title: game.title, when: startLabel(game.start, now), path: game.path }))
   return {
     ...rest,
     moneyline: rest.moneyline ?? [],
@@ -126,13 +136,14 @@ function dayGroups(games: Schedulable[], now: number): HomeDay[] {
     const key = centralDay(game.start)
     const day = days.find(entry => entry.key === key)
     if (day) day.count += 1
-    else days.push({ key, label: weekdayLabel(game.start), count: 1, title: game.title })
+    else days.push({ key, label: weekdayLabel(game.start), count: 1, title: game.title, path: game.path })
   }
   return days
 }
 
-function teamGames(games: (NflSlateGame | NbaSlateGame | NhlSlateGame)[]): Schedulable[] {
+function teamGames(sport: 'nfl' | 'nba' | 'nhl', games: (NflSlateGame | NbaSlateGame | NhlSlateGame)[]): Schedulable[] {
   return games.map(game => ({
+    path: `/${sport}/game/${game.gameId}`,
     key: String(game.gameId),
     title: `${game.awayTeam} @ ${game.homeTeam}`,
     startUtc: game.startUtc,
@@ -205,11 +216,11 @@ function tennisWinSides(matches: MatchPrediction[]): WinSides[] {
 }
 
 export function nflSource(slate: NflSlateResponse, digest: NflSlateDigestItem[], now: number): HomeSource {
-  const games = teamGames(slate.games)
+  const games = teamGames('nfl', slate.games)
   return { ...sourceOf(games, now, {
     gameCount: slate.games.length,
     propLines: nflSlateSummary(slate.games, undefined).propLines,
-    gaps: digest.slice(0, GAPS_PER_SPORT).map(item => gapOf(
+    gaps: digest.filter(item => !isZeroGap(item.gapUnits)).slice(0, GAPS_PER_SPORT).map(item => gapOf(
       'nfl', { ...item, gap: item.gapUnits }, String(item.lineId), nflPlayerMarketLink(item.playerId, item.marketKey, { season: slate.season, week: slate.week }),
     )),
     moneyline: moneylineRows(nflWinSides(slate.games), now),
@@ -218,10 +229,10 @@ export function nflSource(slate: NflSlateResponse, digest: NflSlateDigestItem[],
 }
 
 export function nbaSource(games: NbaSlateGame[], digest: NbaSlateDigestItem[], date: string, now: number): HomeSource {
-  return sourceOf(teamGames(games), now, {
+  return sourceOf(teamGames('nba', games), now, {
     gameCount: games.length,
     propLines: nbaSlateSummary(games).propLines,
-    gaps: digest.slice(0, GAPS_PER_SPORT).map(item => gapOf(
+    gaps: digest.filter(item => !isZeroGap(item.gap)).slice(0, GAPS_PER_SPORT).map(item => gapOf(
       'nba', item, item.key, nbaPlayerPath(item.playerId, { date, market: item.marketKey }),
     )),
     period: null,
@@ -230,7 +241,7 @@ export function nbaSource(games: NbaSlateGame[], digest: NbaSlateDigestItem[], d
 
 /** NHL props are line-only with no projection, so it has no gaps to show. */
 export function nhlSource(games: NhlSlateGame[], now: number): HomeSource {
-  return sourceOf(teamGames(games), now, {
+  return sourceOf(teamGames('nhl', games), now, {
     gameCount: games.length,
     propLines: nhlSlateSummary(games).propLines,
     gaps: [],
@@ -260,12 +271,13 @@ export function tennisGapRows(props: PropLine[], matches: MatchPrediction[], now
   for (const { line, start, edge } of ranked) {
     const path = propPlayerPath(line, matches)
     const player = String(line.playerId ?? line.playerName)
-    if (path === null || seen.has(player)) continue
+    const gap = signedGapUnits((line.statAvg as number) - Number(line.line))
+    if (path === null || seen.has(player) || isZeroGap(gap)) continue
     seen.add(player)
     rows.push({
       key: String(line.id), sport: 'tennis', playerName: line.playerName ?? 'Unknown player', market: marketTitle(line.statType),
       matchup: line.matchup ?? '', when: `${startLabel(start, now)} CT`, line: Number(line.line).toFixed(1),
-      model: (line.statAvg as number).toFixed(1), gap: signedGapUnits((line.statAvg as number) - Number(line.line)),
+      model: (line.statAvg as number).toFixed(1), gap,
       share: `${Math.round(Math.abs(edge))}%`, path,
     })
     if (rows.length === GAPS_PER_SPORT) break
@@ -306,6 +318,7 @@ export function tennisSource(feedMatches: MatchPrediction[], now: number, props:
     title: `${match.p1Name} vs ${match.p2Name}`,
     startUtc: match.startUtc,
     done: false,
+    path: `/tennis/match/${match.matchId}`,
   }))
   return sourceOf(games, now, {
     gameCount: priced.length, propLines: null, gaps: tennisGapRows(props, matches, now), moneyline: moneylineRows(tennisWinSides(priced), now), period: null,

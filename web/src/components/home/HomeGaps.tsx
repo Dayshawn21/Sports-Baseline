@@ -15,8 +15,9 @@ interface Props {
   body: GapsBody
 }
 
+/** On a phone each row folds to two lines (player and gap, then market, line, model and time), so no number loses its label. */
 function GapRows({ rows, showSport }: { rows: HomeGap[], showSport: boolean }) {
-  return <table>
+  return <table className="home-gaps__rows">
     <thead><tr>
       <th>Player</th>
       {showSport && <th>Sport</th>}
