@@ -8,6 +8,7 @@ import LoadingState from '~/components/shared/LoadingState'
 import ModelSection from '~/components/shared/ModelSection'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
+import { useAdminView } from '~/hooks/useAdmin'
 import { useNflCurrentWeek } from '~/hooks/useNfl'
 import { useNflModelClv, useNflModelFit, useNflModelPropLines, useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import type { NflModelClv, NflModelRanking } from '~/types/nfl'
@@ -33,9 +34,11 @@ function Heading({ title, children }: { title: string, children: ReactNode }) {
 export default function NflModelPage() {
   const currentWeek = useNflCurrentWeek()
   const season = currentWeek.data?.season ?? null
+  const adminView = useAdminView()
+  const referenceSeason = adminView ? season : null
   const ranking = useNflModelRanking(season)
-  const targets = useNflModelRanking(season, NFL_TARGETS_RANKING_MODEL)
-  const volume = useNflModelRanking(season, NFL_VOLUME_RANKING_MODEL)
+  const targets = useNflModelRanking(referenceSeason, NFL_TARGETS_RANKING_MODEL)
+  const volume = useNflModelRanking(referenceSeason, NFL_VOLUME_RANKING_MODEL)
   const clv = useNflModelClv(season)
   const lines = useNflModelPropLines(season)
   const fit = useNflModelFit()
@@ -57,18 +60,20 @@ export default function NflModelPage() {
             {(data) => <NflRankingSlices data={data} />}
           </ModelSection>
         </section>
-        <section aria-label="Rec Targets forward check">
-          <Heading title="Rec Targets forward check">nfl-targets-v1 · reference only</Heading>
-          <ModelSection query={targets} loading="Grading frozen Rec Targets predictions...">
-            {(data) => <NflRankingSlices data={data} referenceOnly />}
-          </ModelSection>
-        </section>
-        <section aria-label="Volume model forward check">
-          <Heading title="Volume model forward check">nfl-volume-v1 · receptions · reference only</Heading>
-          <ModelSection query={volume} loading="Grading frozen volume predictions...">
-            {(data) => <NflVolumeRecord data={data} />}
-          </ModelSection>
-        </section>
+        {adminView && <>
+          <section aria-label="Rec Targets forward check">
+            <Heading title="Rec Targets forward check">nfl-targets-v1 · reference only</Heading>
+            <ModelSection query={targets} loading="Grading frozen Rec Targets predictions...">
+              {(data) => <NflRankingSlices data={data} referenceOnly />}
+            </ModelSection>
+          </section>
+          <section aria-label="Volume model forward check">
+            <Heading title="Volume model forward check">nfl-volume-v1 · receptions · reference only</Heading>
+            <ModelSection query={volume} loading="Grading frozen volume predictions...">
+              {(data) => <NflVolumeRecord data={data} />}
+            </ModelSection>
+          </section>
+        </>}
         <Heading title="PrizePicks line grading">27a · standard lines · replays today's code</Heading>
         <ModelSection query={lines} loading="Replaying the slate for every graded week; the first load can take up to a minute...">
           {(data) => <NflLineGrading data={data} />}
