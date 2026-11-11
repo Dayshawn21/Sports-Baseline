@@ -1,4 +1,5 @@
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
+import { ALL, parsePlayerQuery, parseTeamFilter, withPropFilters } from '~/utils/propFilters'
 
 export interface NflBoardView {
   /** Season and week are both null (follow the current week) or both set. */
@@ -9,6 +10,8 @@ export interface NflBoardView {
   /** A game id, or 'all'. */
   game: string
   showAll: boolean
+  q: string
+  team: string
 }
 
 export interface NflGameView {
@@ -16,7 +19,7 @@ export interface NflGameView {
   showAll: boolean
 }
 
-export const DEFAULT_BOARD_VIEW: NflBoardView = { season: null, week: null, position: 'all', market: null, game: 'all', showAll: false }
+export const DEFAULT_BOARD_VIEW: NflBoardView = { season: null, week: null, position: 'all', market: null, game: 'all', showAll: false, q: '', team: ALL }
 
 function integerIn(value: string | null, min: number, max: number): number | null {
   if (value === null || !/^\d+$/.test(value)) return null
@@ -44,6 +47,8 @@ export function parseBoardView(params: URLSearchParams): NflBoardView {
     market: marketParam(params.get('market')),
     game: game === null ? 'all' : String(game),
     showAll: params.get('all') === '1',
+    q: parsePlayerQuery(params.get('q')),
+    team: parseTeamFilter(params.get('team')),
   }
 }
 
@@ -57,7 +62,7 @@ export function boardViewSearch(view: NflBoardView): URLSearchParams {
   if (view.market !== null) params.set('market', view.market)
   if (view.game !== 'all') params.set('game', view.game)
   if (view.showAll) params.set('all', '1')
-  return params
+  return withPropFilters(params, { q: view.q, team: view.team })
 }
 
 export function parseGameView(params: URLSearchParams): NflGameView {

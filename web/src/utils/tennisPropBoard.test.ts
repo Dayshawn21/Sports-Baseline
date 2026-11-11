@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptedPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
-import { buildTennisPropBoard, compareLines, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, compareLines, filterTennisBoardCategories, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
 const prediction: MatchPrediction = {
   matchId: 10, startUtc: '2026-09-21T16:00:00Z', p1Name: 'Aryna Sabalenka', p2Name: 'Coco Gauff', tour: 'WTA', surface: 'Hard', tournament: 'Beijing', round: 'R32',
@@ -246,5 +246,27 @@ describe('sourceLabel', () => {
     expect(sourceLabel('draftkings')).toBe('DraftKings')
     expect(sourceLabel('bet365')).toBe('Market odds')
     expect(sourceLabel('fanduel')).toBe('Market odds')
+  })
+})
+
+describe('filterTennisBoardCategories', () => {
+  const line = (id: number, playerName: string) => ({ id, playerName }) as TennisBoardLine
+  const categories = [
+    { market: 'aces', label: 'Aces', rateable: [line(1, 'Novak Đoković'), line(2, 'Coco Gauff')], other: [line(3, 'Iga Świątek')] },
+    { market: 'games', label: 'Games', rateable: [line(4, 'Coco Gauff')], other: [] },
+  ]
+  const names = (query: string) => filterTennisBoardCategories(categories, query).map(item => [item.rateable.map(row => row.playerName), item.other.map(row => row.playerName)])
+
+  it('returns the same categories on a blank search', () => {
+    expect(filterTennisBoardCategories(categories, ' ')).toBe(categories)
+  })
+
+  it('narrows rated and review lines, ignoring accents', () => {
+    expect(names('dokovic')).toEqual([[['Novak Đoković'], []], [[], []]])
+    expect(names('swiatek')).toEqual([[[], ['Iga Świątek']], [[], []]])
+  })
+
+  it('keeps every market so the pills stay put', () => {
+    expect(names('nobody')).toHaveLength(2)
   })
 })

@@ -1,4 +1,5 @@
 import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
+import { playerNameMatches } from '~/utils/propFilters'
 
 export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'market' | 'model'
 export type TennisTourFilter = 'all' | 'atp' | 'wta' | 'challenger' | 'wta_125'
@@ -352,4 +353,16 @@ export function buildTennisPropBoard(
       rateable: lines.filter(isBoardRateable).sort(compareLines),
       other: lines.filter(line => !isBoardRateable(line)).sort(compareLines),
     }))
+}
+
+/** Every market stays, emptied ones included, so the pills do not reshuffle as a search narrows them. */
+export function filterTennisBoardCategories(categories: TennisBoardCategory[], query: string): TennisBoardCategory[] {
+  if (query.trim() === '') return categories
+  const keep = (line: TennisBoardLine) => playerNameMatches(line.playerName, query)
+  return categories.map(category => ({ ...category, rateable: category.rateable.filter(keep), other: category.other.filter(keep) }))
+}
+
+export function tennisBoardPath(query: string): string {
+  const trimmed = query.trim()
+  return trimmed === '' ? '/tennis/board' : `/tennis/board?${new URLSearchParams({ q: trimmed })}`
 }

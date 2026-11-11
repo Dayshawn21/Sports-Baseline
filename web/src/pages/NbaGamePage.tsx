@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom'
 import { NbaGameMarket } from '~/components/nba/NbaGameMarket'
 import { NbaGameInjuries } from '~/components/nba/NbaGameInjuries'
 import { NbaGameTeamStats } from '~/components/nba/NbaGameTeamStats'
-import { NbaLineOnlyProps } from '~/components/nba/NbaLineOnlyProps'
-import { NbaProps } from '~/components/nba/NbaProps'
+import { NbaGameProps } from '~/components/nba/NbaGameProps'
 import { NflLineMovementChart } from '~/components/nfl/NflLineMovementChart'
 import ErrorState from '~/components/shared/ErrorState'
 import { GameHero } from '~/components/shared/GameHero'
@@ -53,8 +52,5 @@ export default function NbaGamePage() {
         <NbaGameTeamStats detail={data} />
       </div>
     </div>}
-    props={<div className="nfl-game-main">
-      <NbaProps key={`props:${data.gameId}`} game={data} gameDate={data.gameDate} />
-      <NbaLineOnlyProps key={`other:${data.gameId}`} gameId={data.gameId} startUtc={data.startUtc} gameDate={data.gameDate} />
-    </div>} />
+    props={<NbaGameProps game={data} />} />
 }

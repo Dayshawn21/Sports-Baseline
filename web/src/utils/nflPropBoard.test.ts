@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { buildNflPropBoard, categoryReferenceLine, compareBoardLines, edgeShare, filterNflPropBoardGames, flattenSlateLines, isRateable, isUpcomingGame } from '~/utils/nflPropBoard'
+import { buildNflPropBoard, categoryReferenceLine, compareBoardLines, edgeShare, filterNflBoardCategories, filterNflPropBoardGames, flattenSlateLines, isRateable, isUpcomingGame, nflLineTeam } from '~/utils/nflPropBoard'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 
@@ -70,6 +70,54 @@ function game(gameId: number, lines: NflSlateLine[], overrides: Partial<NflSlate
     ...overrides,
   }
 }
+
+describe('filterNflBoardCategories', () => {
+  const board = () => buildNflPropBoard([game(1, [
+    line(1, { playerName: 'Top Jet', opponentTeam: 'MIA', edge: 30 }),
+    line(2, { playerName: 'Middle Dolphin', opponentTeam: 'NYJ', edge: 20 }),
+    line(3, { playerName: 'Last Jet', opponentTeam: 'MIA', edge: 10 }),
+    line(4, { playerName: 'Alternate Jet', opponentTeam: 'MIA', oddsType: 'demon' }),
+    line(5, { playerName: 'Unknown Side', opponentTeam: null, edge: 5 }),
+  ])], 'all')
+  const ranks = (query: string, team: string) => filterNflBoardCategories(board(), query, team)[0].rateable.map(item => [item.row.playerName, item.rank])
+
+  it('keeps the full-board rank for a searched player', () => {
+    expect(ranks('middle', 'all')).toEqual([['Middle Dolphin', 2]])
+    expect(ranks('last jet', 'all')).toEqual([['Last Jet', 3]])
+  })
+
+  it('keeps the full-board rank across a team filter', () => {
+    expect(ranks('', 'NYJ')).toEqual([['Top Jet', 1], ['Last Jet', 3]])
+  })
+
+  it('leaves a row with no known team under all teams and in search only', () => {
+    expect(ranks('', 'all').map(([name]) => name)).toContain('Unknown Side')
+    expect(ranks('unknown', 'all')).toEqual([['Unknown Side', 4]])
+    expect(ranks('unknown', 'NYJ')).toEqual([])
+  })
+
+  it('filters the other rows and keeps the unfiltered reference line', () => {
+    const [full] = board()
+    const [filtered] = filterNflBoardCategories([full], 'alternate', 'NYJ')
+
+    expect(filtered.other.map(row => row.playerName)).toEqual(['Alternate Jet'])
+    expect(filtered.category.referenceLine).toBe(full.referenceLine)
+  })
+})
+
+describe('nflLineTeam', () => {
+  const sides = { awayTeam: 'BUF', homeTeam: 'KC' }
+
+  it('is the away team against the home side and the home team against the away side', () => {
+    expect(nflLineTeam({ ...sides, opponentTeam: 'KC' })).toBe('BUF')
+    expect(nflLineTeam({ ...sides, opponentTeam: 'BUF' })).toBe('KC')
+  })
+
+  it('is null when the opponent is missing or in neither side', () => {
+    expect(nflLineTeam({ ...sides, opponentTeam: null })).toBeNull()
+    expect(nflLineTeam({ ...sides, opponentTeam: 'DAL' })).toBeNull()
+  })
+})
 
 describe('categoryReferenceLine', () => {
   it('takes the median of the lines', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflLineOnlyBoardGame, NflLineOnlyLine, NflSlateGame } from '~/types/nfl'
-import { availableNflPropGames, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
+import { availableNflPropGames, filterNflWeekLineOnly, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
 
 const NOW = new Date('2026-10-21T18:00:00Z')
 const line: NflLineOnlyLine = {
@@ -38,6 +38,21 @@ describe('weekly line-only markets', () => {
     const [category] = nflWeekLineOnlyCategories(games, 'all', null, NOW)
     expect(category.count).toBe(1)
     expect(category.games[0].group.rows[0].rungs.map(rung => rung.line)).toEqual([7.5, 10.5])
+  })
+
+  it('filters by player and by team, reading a provider code as the game code', () => {
+    const jaguar = { ...line, playerId: 2, playerName: 'Trevor Lawrence', team: 'JAC' }
+    const titan = { ...line, playerId: 3, playerName: 'Cam Ward', team: 'TEN' }
+    const unlinked = { ...line, playerId: 4, playerName: 'Unlinked Kicker', team: null }
+    const categories = nflWeekLineOnlyCategories([{ ...game, awayTeam: 'JAX', homeTeam: 'TEN', lines: [jaguar, titan, unlinked] }], 'all', null, NOW)
+    const names = (query: string, team: string) => filterNflWeekLineOnly(categories, query, team).flatMap(item => item.games.flatMap(entry => entry.group.rows.map(row => row.playerName)))
+
+    expect(names('', 'JAX')).toEqual(['Trevor Lawrence'])
+    expect(names('ward', 'all')).toEqual(['Cam Ward'])
+    expect(names('unlinked', 'all')).toEqual(['Unlinked Kicker'])
+    expect(names('unlinked', 'JAX')).toEqual([])
+    expect(filterNflWeekLineOnly(categories, 'nobody', 'all')).toEqual([])
+    expect(filterNflWeekLineOnly(categories, '', 'TEN')[0].count).toBe(1)
   })
 
   it('orders the extra markets consistently and keeps targets on their reference path', () => {

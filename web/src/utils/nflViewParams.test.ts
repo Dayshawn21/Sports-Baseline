@@ -5,9 +5,13 @@ const parse = (query: string) => parseBoardView(new URLSearchParams(query))
 
 describe('board view params', () => {
   it('round trips a full view', () => {
-    const view = { season: 2026, week: 9, position: 'WR' as const, market: 'receptions', game: '121', showAll: true }
+    const view = { season: 2026, week: 9, position: 'WR' as const, market: 'receptions', game: '121', showAll: true, q: 'aj brown', team: 'KC' }
 
     expect(parse(boardViewSearch(view).toString())).toEqual(view)
+  })
+
+  it('leaves a blank search and all teams out of the URL', () => {
+    expect(boardViewSearch({ ...DEFAULT_BOARD_VIEW, q: '  ', team: 'all' }).toString()).toBe('')
   })
 
   it('omits every default', () => {

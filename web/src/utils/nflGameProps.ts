@@ -1,14 +1,9 @@
 import type { NflSlateGame } from '~/types/nfl'
-import { buildNflPropBoard, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
+import { buildNflPropBoard, nflLineTeam, type NflBoardCategory, type NflBoardLine, type NflRankedBoardLine } from '~/utils/nflPropBoard'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import type { NflPropPeriod } from '~/utils/nflPropPeriods'
 import { isTargetsReference } from '~/utils/nflTargets'
-
-export interface NflRankedBoardLine {
-  row: NflBoardLine
-  /** The line's rank on the week-wide prop board, so a card reads the same on both pages. */
-  rank: number | null
-}
+import { playerNameMatches, teamMatches, type GamePropFilter } from '~/utils/propFilters'
 
 export interface NflGamePropCategory {
   /** The week-wide category, whose reference line scores every card's edge share. */
@@ -45,4 +40,10 @@ export function nflGameProps(
       other: category.other.filter(inView),
     }))
     .filter(item => item.rateable.length > 0 || item.other.length > 0)
+}
+
+/** Ranks are already the board's, so narrowing a game's rows cannot renumber them. */
+export function filterNflGameProps(categories: NflGamePropCategory[], filter: GamePropFilter): NflGamePropCategory[] {
+  const keep = (row: NflBoardLine) => playerNameMatches(row.playerName, filter.q) && teamMatches(nflLineTeam(row), filter.team)
+  return categories.map(item => ({ ...item, rateable: item.rateable.filter(entry => keep(entry.row)), other: item.other.filter(keep) }))
 }

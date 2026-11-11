@@ -3,11 +3,15 @@ import { useNbaLineOnlyProps } from '~/hooks/useNba'
 import { nbaLineOnlyGroups, nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaPlayerPath } from '~/utils/nbaPlayer'
 import { UNAVAILABLE_NBA_INJURIES } from '~/utils/nbaInjuries'
+import { gamePropRowMatches, type GamePropFilter } from '~/utils/propFilters'
 
 /** Stored PrizePicks lines with recent results. Display only: no projection, edge, rank or signal color until 20g. A row opens the player page on this game's date. */
-export function NbaLineOnlyProps({ gameId, startUtc, gameDate }: { gameId: number, startUtc: string | null, gameDate: string }) {
+export function NbaLineOnlyProps({ game, gameId, startUtc, gameDate, filter }: {
+  game: { awayTeam: string, homeTeam: string }, gameId: number, startUtc: string | null, gameDate: string, filter: GamePropFilter,
+}) {
   const query = useNbaLineOnlyProps(gameId)
   const groups = query.data ? nbaLineOnlyGroups(query.data.lines) : []
+  const shown = groups.map(group => ({ ...group, rows: group.rows.filter(row => gamePropRowMatches(row, game, filter)) })).filter(group => group.rows.length > 0)
   const injuryReport = query.data?.injuryReport ?? UNAVAILABLE_NBA_INJURIES
   const now = new Date()
   if (query.isSuccess && groups.length === 0) return null
@@ -15,7 +19,8 @@ export function NbaLineOnlyProps({ gameId, startUtc, gameDate }: { gameId: numbe
     <h3 className="nfl-game-label">Other lines <small>not modelled · recent results only</small></h3>
     {query.isLoading && <p className="nfl-line-only__status">Loading lines...</p>}
     {query.isError && <p className="nfl-line-only__status">Lines could not load.</p>}
-    {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
+    {groups.length > 0 && shown.length === 0 && <p className="nfl-line-only__status">No other lines match these filters.</p>}
+    {shown.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{nbaMarketLabel(group.market)}</h4>
       <NbaLineOnlyTable market={group.market} rows={group.rows}
         pathFor={playerId => nbaPlayerPath(playerId, { date: gameDate, market: group.market })}

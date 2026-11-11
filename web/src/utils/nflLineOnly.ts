@@ -21,6 +21,7 @@ export interface NflLineOnlyRow {
   playerId: number
   playerName: string
   position: string | null
+  team: string | null
   rungs: NflLineOnlyRung[]
   recent: NflLineOnlyRecent[]
   /** Recent games over the standard line, among games with a value; null without a standard line. */
@@ -85,7 +86,7 @@ export function lineOnlyGroups(lines: NflLineOnlyLine[], position: NflPositionFi
         const [first] = playerLines
         const rungs = playerLines.map(line => ({ line: line.line, oddsType: line.oddsType })).sort((a, b) => a.line - b.line)
         return {
-          playerId: first.playerId, playerName: first.playerName, position: first.position, rungs,
+          playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team, rungs,
           recent: first.recent, ...overAgainstStandard(rungs, first.recent),
         }
       }).sort((a, b) => a.playerName.localeCompare(b.playerName)),

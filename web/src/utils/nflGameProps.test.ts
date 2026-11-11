@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { gameBoardAsOf, nflGameProps } from '~/utils/nflGameProps'
+import { filterNflGameProps, gameBoardAsOf, nflGameProps } from '~/utils/nflGameProps'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
@@ -88,5 +88,25 @@ describe('gameBoardAsOf', () => {
     expect(gameBoardAsOf({ startUtc: kickoff }, BEFORE)).toEqual(BEFORE)
     expect(gameBoardAsOf({ startUtc: kickoff }, AFTER).getTime()).toBe(Date.parse(kickoff) - 1)
     expect(gameBoardAsOf({ startUtc: null }, AFTER)).toEqual(AFTER)
+  })
+})
+
+describe('filterNflGameProps', () => {
+  const week = [game(1, '2026-09-20T17:00:00Z', [
+    line(11, { playerName: 'Big Jet', opponentTeam: 'MIA', edge: 30 }),
+    line(12, { playerName: 'Small Dolphin', opponentTeam: 'NYJ', edge: 5 }),
+    line(13, { playerName: 'Alt Dolphin', opponentTeam: 'NYJ', oddsType: 'demon' }),
+  ])]
+  const categories = nflGameProps(week, 1, 'all', 'full_game', BEFORE)
+  const summary = (q: string, team: string) => filterNflGameProps(categories, { q, team }).map(item => ({
+    rateable: item.rateable.map(entry => [entry.row.playerName, entry.rank]), other: item.other.map(row => row.playerName),
+  }))
+
+  it('narrows by player and keeps the weekly board rank', () => {
+    expect(summary('small', 'all')).toEqual([{ rateable: [['Small Dolphin', 2]], other: [] }])
+  })
+
+  it('narrows by team across rated and other rows', () => {
+    expect(summary('', 'MIA')).toEqual([{ rateable: [['Small Dolphin', 2]], other: ['Alt Dolphin'] }])
   })
 })

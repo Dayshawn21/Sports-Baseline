@@ -7,6 +7,7 @@ import { useNflLineOnlyProps } from '~/hooks/useNfl'
 import { marketLabel } from '~/utils/nflLabels'
 import { lineOnlyBars, lineOnlyGroups, mainRung, type NflLineOnlyGroup, type NflLineOnlyRow } from '~/utils/nflLineOnly'
 import type { NflPositionFilter } from '~/utils/nflPositions'
+import { gamePropRowMatches, type GamePropFilter } from '~/utils/propFilters'
 import './nfl-prop-table.css'
 
 function rungLabel(line: number, oddsType: string | null): string {
@@ -39,16 +40,20 @@ export function NflLineOnlyTable({ group, week = null }: { group: NflLineOnlyGro
 }
 
 /** Item 35: stored line-only markets with recent results. Display only: no projection, edge, rank, drawer or signal color. */
-export function NflLineOnlyProps({ gameId, position, week }: { gameId: number, position: NflPositionFilter, week: NflSeasonWeek }) {
-  const query = useNflLineOnlyProps(gameId)
+export function NflLineOnlyProps({ game, position, week, filter }: {
+  game: { gameId: number, awayTeam: string, homeTeam: string }, position: NflPositionFilter, week: NflSeasonWeek, filter: GamePropFilter,
+}) {
+  const query = useNflLineOnlyProps(game.gameId)
   const groups = query.data ? lineOnlyGroups(query.data.lines, position) : []
+  const shown = groups.map(group => ({ ...group, rows: group.rows.filter(row => gamePropRowMatches(row, game, filter)) })).filter(group => group.rows.length > 0)
   if (query.isSuccess && groups.length === 0) return null
   return <details className="nfl-line-only" aria-label="Other markets">
-    <summary><span>Other markets{query.isSuccess ? ` · ${groups.length}` : ''}</span><small>Recent results only · no model comparison</small></summary>
+    <summary><span>Other markets{query.isSuccess ? ` · ${shown.length}` : ''}</span><small>Recent results only · no model comparison</small></summary>
     <div className="nfl-line-only__body">
     {query.isLoading && <p className="nfl-line-only__status">Loading other lines...</p>}
     {query.isError && <p className="nfl-line-only__status">Other lines could not load.</p>}
-    {groups.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
+    {groups.length > 0 && shown.length === 0 && <p className="nfl-line-only__status">No other markets match these filters.</p>}
+    {shown.map(group => <div key={group.market} className="nfl-line-only__market prop-table-panel">
       <h4>{marketLabel(group.market)}</h4>
       <NflLineOnlyTable group={group} week={week} />
     </div>)}

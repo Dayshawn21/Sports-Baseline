@@ -2,6 +2,7 @@ import type { NflLineOnlyBoardGame, NflPropGame, NflSlateGame } from '~/types/nf
 import { LINE_ONLY_MARKETS, lineOnlyGroups, type NflLineOnlyGroup } from '~/utils/nflLineOnly'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import { isUpcomingGame } from '~/utils/nflPropBoard'
+import { gameSideTeam, playerNameMatches, teamMatches } from '~/utils/propFilters'
 
 export interface NflWeekLineOnlyCategory {
   market: string
@@ -29,4 +30,15 @@ export function nflWeekLineOnlyCategories(games: NflLineOnlyBoardGame[], positio
     }
   }
   return LINE_ONLY_MARKETS.flatMap(market => categories.has(market) ? [categories.get(market)!] : [])
+}
+
+/** Narrows each game's rows and drops what empties, reading a provider team code as its game's code. */
+export function filterNflWeekLineOnly(categories: NflWeekLineOnlyCategory[], query: string, team: string): NflWeekLineOnlyCategory[] {
+  return categories.flatMap(category => {
+    const games = category.games.flatMap(({ game, group }) => {
+      const rows = group.rows.filter(row => playerNameMatches(row.playerName, query) && teamMatches(gameSideTeam(row.team, game), team))
+      return rows.length ? [{ game, group: { ...group, rows } }] : []
+    })
+    return games.length ? [{ ...category, games, count: games.reduce((total, item) => total + item.group.rows.length, 0) }] : []
+  })
 }

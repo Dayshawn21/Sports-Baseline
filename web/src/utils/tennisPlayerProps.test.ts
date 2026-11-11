@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MatchPrediction, PlayerMatchLogRow } from '~/types/tennis'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
+import { tennisBoardPath } from '~/utils/tennisPropBoard'
 import { recentStatBars } from '~/utils/tennisPropCards'
 import { formShortNote, formWindowOptions, opponentShortName, tennisFormSample, tennisFormTitle, formWindowSample, isPlayerLine, logRowToRecent, matchOptions, parseTennisFormWindow, playerMarketTabs, playerPageOrigin, propPlayerId, propPlayerPath, resolveFormWindow, tennisMarketHero, tennisTabSearch } from '~/utils/tennisPlayerProps'
 
@@ -174,6 +175,18 @@ describe('playerPageOrigin', () => {
   it('accepts the board and a match props tab and labels them', () => {
     expect(playerPageOrigin({ from: '/tennis/board' })).toEqual({ path: '/tennis/board', label: 'Tennis props' })
     expect(playerPageOrigin({ from: '/tennis/match/91823?tab=props&source=prizepicks&market=aces' })).toEqual({ path: '/tennis/match/91823?tab=props&source=prizepicks&market=aces', label: 'Match props' })
+  })
+
+  it('keeps a board search built by tennisBoardPath', () => {
+    const path = tennisBoardPath(' Đoković <b> ')
+
+    expect(path).toBe('/tennis/board?q=%C4%90okovi%C4%87+%3Cb%3E')
+    expect(playerPageOrigin({ from: path })).toEqual({ path, label: 'Tennis props' })
+  })
+
+  it('ignores a board address with anything but an encoded search', () => {
+    expect(playerPageOrigin({ from: '/tennis/board?q=<script>' })).toBeNull()
+    expect(playerPageOrigin({ from: '/tennis/board?x=1' })).toBeNull()
   })
 
   it.each([

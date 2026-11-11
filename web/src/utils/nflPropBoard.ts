@@ -3,6 +3,7 @@ import { MIN_BASELINE_GAMES, STALE_FLAG } from '~/utils/nflBaseline'
 import { MARKET_LABELS } from '~/utils/nflLabels'
 import { filterNflSlateLinesByPosition, type NflPositionFilter } from '~/utils/nflPositions'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { playerNameMatches, teamMatches } from '~/utils/propFilters'
 import { isTargetsReference } from '~/utils/nflTargets'
 
 /** A slate line carrying the game it came from, so the board can show a matchup without regrouping. */
@@ -42,6 +43,25 @@ export function flattenSlateLines(games: NflSlateGame[]): NflBoardLine[] {
     homeTeam: game.homeTeam,
     startUtc: game.startUtc,
   })))
+}
+
+export interface NflRankedBoardLine {
+  row: NflBoardLine
+  /** The line's rank on the prop board, so a card reads the same wherever it appears. */
+  rank: number | null
+}
+
+export interface NflFilteredCategory {
+  category: NflBoardCategory
+  rateable: NflRankedBoardLine[]
+  other: NflBoardLine[]
+}
+
+/** Slate lines store only the opponent, so the player's team is the game's other side. */
+export function nflLineTeam(line: Pick<NflBoardLine, 'opponentTeam' | 'awayTeam' | 'homeTeam'>): string | null {
+  if (line.opponentTeam === line.homeTeam) return line.awayTeam
+  if (line.opponentTeam === line.awayTeam) return line.homeTeam
+  return null
 }
 
 /** A board is actionable only until kickoff; an unknown kickoff stays visible. */
@@ -171,4 +191,14 @@ export function buildNflPropBoard(games: NflSlateGame[], position: NflPositionFi
       other: lines.filter(line => !primary(line)).sort(compare),
     }
   })
+}
+
+/** Rank comes from the row's place in the whole category, before narrowing, so a searched player keeps their real rank. */
+export function filterNflBoardCategories(categories: NflBoardCategory[], query: string, team: string): NflFilteredCategory[] {
+  const keep = (row: NflBoardLine) => playerNameMatches(row.playerName, query) && teamMatches(nflLineTeam(row), team)
+  return categories.map(category => ({
+    category,
+    rateable: category.rateable.flatMap((row, index) => keep(row) ? [{ row, rank: isTargetsReference(row.market) ? null : index + 1 }] : []),
+    other: category.other.filter(keep),
+  }))
 }

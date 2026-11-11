@@ -44,5 +44,5 @@ export default function NhlGamePage() {
         emptyMessage="No pre-puck-drop puck-line or total history is stored for this game." />
       <NhlGameContext game={game} now={now} />
     </div>}
-    props={<NhlGameProps key={game.gameId} gameId={game.gameId} gameDate={game.gameDate} />} />
+    props={<NhlGameProps key={game.gameId} game={game} />} />
 }
