@@ -155,9 +155,9 @@ describe('board URL selection', () => {
   })
 
   it('builds adjacent-date paths preserving and encoding the market, with no path for a missing date', () => {
-    expect(nbaBoardPath('2026-10-22', 'assists')).toBe('/nba/board?date=2026-10-22&market=assists')
+    expect(nbaBoardPath('2026-10-22', 'assists')).toBe('/nba/props?date=2026-10-22&market=assists')
     expect(nbaBoardPath(null, 'points')).toBeNull()
-    expect(nbaBoardPath('2026-10-22', 'custom + market')).toBe('/nba/board?date=2026-10-22&market=custom+%2B+market')
+    expect(nbaBoardPath('2026-10-22', 'custom + market')).toBe('/nba/props?date=2026-10-22&market=custom+%2B+market')
   })
 
   it('uses the slate date parser to reject invalid calendar dates without shifting a valid Eastern day', () => {

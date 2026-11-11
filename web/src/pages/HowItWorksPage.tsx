@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import PageHead from '~/components/shared/PageHead'
 import { SPORTS, sportViews } from '~/utils/sportNav'
+import { SHELL_SHORTCUTS } from '~/utils/shellShortcuts'
 import { SPORT_STATUS } from './howItWorksContent'
 import './nfl-model.css'
 import './how-it-works.css'
@@ -98,6 +99,19 @@ export default function HowItWorksPage() {
 
     <Section title="What each sport shows">
       <SportCards />
+    </Section>
+
+    <Section title="Keyboard shortcuts">
+      <div className="nfl-model-card hiw-card">
+        <dl className="hiw-legend">
+          {SHELL_SHORTCUTS.map(shortcut => (
+            <div key={shortcut.action} className="hiw-legend__row">
+              <dt>{shortcut.keys.map(key => <kbd key={key} className="lf-kbd">{key}</kbd>)}</dt>
+              <dd>{shortcut.action}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </Section>
 
     <Section title="How a model earns a pick">

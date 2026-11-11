@@ -46,7 +46,7 @@ def model_path(sport: AskSport) -> str:
 
 
 def board_path(sport: BoardSport, date: dt.date | None = None) -> str:
-    base = f"/{sport}/board"
+    base = f"/{sport}/props"
     if sport == "nba" and date is not None:
         return f"{base}?date={date.isoformat()}"
     return base

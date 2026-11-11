@@ -1,4 +1,5 @@
 import { lazy, type ComponentType, type ReactElement } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 import { SPORTS, sportViews, type Sport, type SportViewPaths } from '~/utils/sportNav'
 
 const TennisIntelligencePage = lazy(() => import('~/pages/TennisIntelligencePage'))
@@ -85,6 +86,12 @@ export const SPORT_PAGES: { [S in Sport]: SportPages<S> } = {
 
 type AnySportPages = { slate: ComponentType, props?: ComponentType, model?: ComponentType, details: SportRoute[] }
 
+/** Props boards lived at `/<sport>/board`; old links and bookmarks land on the board, filters intact. */
+function LegacyBoardRedirect({ to }: { to: string }) {
+  const { search } = useLocation()
+  return <Navigate to={`${to}${search}`} replace />
+}
+
 /** Every sport's view and detail routes, in registry order. */
 export function sportRoutes(): SportRoute[] {
   return SPORTS.flatMap(sport => {
@@ -94,6 +101,9 @@ export function sportRoutes(): SportRoute[] {
       const Page = pages[view]!
       return { path, element: <Page /> }
     })
-    return [...views, ...pages.details]
+    const legacy = sport.views.props
+      ? [{ path: `/${sport.code}/board`, element: <LegacyBoardRedirect to={sport.views.props} /> }]
+      : []
+    return [...views, ...legacy, ...pages.details]
   })
 }

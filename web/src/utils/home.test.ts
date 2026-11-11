@@ -67,7 +67,7 @@ describe('homeCard', () => {
       sport: 'nfl', label: 'NFL', period: 'WEEK 9', when: 'Next kickoff Thu 7:00 PM CT', count: '2', noun: 'games', tone: 'normal',
       next: 'Thu: JAX @ BAL · Sun: 12 games · Mon: DEN @ CAR',
     })
-    expect(card.links.map(link => [link.label, link.path])).toEqual([['Slate', '/nfl'], ['Props', '/nfl/board'], ['Model', '/nfl/model']])
+    expect(card.links.map(link => [link.label, link.path])).toEqual([['Slate', '/nfl'], ['Props', '/nfl/props'], ['Model', '/nfl/model']])
   })
 
   it('lists the next games for a day-based sport and tags it TODAY', () => {
@@ -173,7 +173,7 @@ describe('gaps tabs', () => {
 
   it('gives a sport tab its own rows and a link to the props board', () => {
     expect(gapsBody('nba', sports())).toMatchObject({
-      kind: 'rows', rows: [{ key: 'b1' }], footer: { label: 'View all NBA props', path: '/nba/board' },
+      kind: 'rows', rows: [{ key: 'b1' }], footer: { label: 'View all NBA props', path: '/nba/props' },
     })
   })
 
@@ -188,7 +188,7 @@ describe('gaps tabs', () => {
 
   it('lists next games for NHL, and says why, with a link to its props board', () => {
     expect(gapsBody('nhl', sports())).toMatchObject({
-      kind: 'games', games: [{ key: '1' }], footer: { label: 'View all NHL props', path: '/nhl/board' },
+      kind: 'games', games: [{ key: '1' }], footer: { label: 'View all NHL props', path: '/nhl/props' },
       intro: expect.stringContaining('no gaps to show'),
     })
   })

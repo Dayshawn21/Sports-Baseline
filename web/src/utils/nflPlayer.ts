@@ -77,7 +77,7 @@ export interface NflPlayerWeek {
 
 /**
  * The player's full-game lines this week, scored against the week-wide board as the game page
- * reads it, so a row never disagrees with `/nfl/board`. Null when the player has no line.
+ * reads it, so a row never disagrees with `/nfl/props`. Null when the player has no line.
  */
 export function playerWeekLines(games: NflSlateGame[], playerId: number, now = new Date()): NflPlayerWeek | null {
   const game = games.find(item => item.lines.some(line => line.playerId === playerId))

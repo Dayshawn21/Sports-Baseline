@@ -77,7 +77,7 @@ export default function NflPlayerPage() {
   const player = detail.data
   const week = slate.data && playerId !== null ? playerWeekLines(slate.data.games, playerId) : null
   const crumb = fromBoard
-    ? <Link className="nfl-player-crumb" to="/nfl/board" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
+    ? <Link className="nfl-player-crumb" to="/nfl/props" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
     : week
     ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
     : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>

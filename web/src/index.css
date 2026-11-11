@@ -239,12 +239,65 @@ body {
   border-radius: 999px;
 }
 
+/* 13px and about 30px tall, level with the sport tabs it sits beside. */
 .sport-view-switch a {
-  padding: 5px 14px;
+  padding: 6px 14px;
   border-radius: 999px;
   color: var(--text-secondary);
-  font: 500 12px var(--font-body);
+  font: 500 13px var(--font-body);
   white-space: nowrap;
+}
+
+.lf-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-card);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font: 500 12px var(--font-mono);
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 0;
+}
+
+.shortcut-list__row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.shortcut-list__row dt {
+  display: flex;
+  gap: 6px;
+}
+
+.shortcut-list__row dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shortcut-list__note {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.shortcut-list__note a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .sport-view-switch a:hover {
@@ -465,7 +518,22 @@ body {
 }
 
 .shell-tabs--end {
+  flex: none;
   margin-left: auto;
+}
+
+/* The search field is the one header item that gives up width; the rest keep theirs. */
+.app-wordmark,
+.ant-layout-header .ask-trigger {
+  flex: none;
+}
+
+/* Sport and view read as one control: tighter than the bar's 24px gap between groups. */
+.shell-nav-cluster {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
 }
 
 .shell-tabs a {
@@ -480,9 +548,12 @@ body {
   color: var(--text-primary);
 }
 
+/* Weight alone is a weak cue at low vision; the underline marks the active tab without using color. */
 .shell-tabs a.is-active {
   color: var(--text-primary);
   font-weight: 700;
+  text-decoration: underline 2px;
+  text-underline-offset: 7px;
 }
 
 .lf-page-head {
@@ -604,19 +675,87 @@ body {
 }
 
 .shell-mobile-sport {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
   margin-right: auto;
-  color: var(--text-secondary);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
   font: 700 15px var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.shell-mobile-sport:active {
+  background: var(--bg-raised);
+}
+
+.shell-mobile-sport:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.shell-mobile-sport__chevron {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* The sport sheet rises from the bottom so the choice lands under the thumb. */
+.sport-sheet .ant-drawer-content {
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--bg-card);
+}
+
+.sport-sheet .ant-drawer-header {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sport-sheet .ant-drawer-body {
+  padding: 8px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.sport-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.sport-sheet__row.is-active {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.sport-sheet__row:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+
+.sport-sheet__sport {
+  font: 700 18px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sport-sheet__view {
+  color: var(--text-muted);
+  font: 500 13px var(--font-body);
 }
 
 .shell-views-row {
   margin: 10px 0 0 max(16px, env(safe-area-inset-left, 0px));
 }
 
-/* Phone taps: the shell's controls reach 44px, the views row spans the width with a gutter on both sides. */
-@media (max-width: 768px) {
+/* The phone header runs to 900px (PHONE_HEADER_MAX_WIDTH in App.tsx): its controls reach 44px and the views row spans the width. */
+@media (max-width: 900px) {
   .shell-views-row {
     display: flex;
     margin-right: max(16px, env(safe-area-inset-right, 0px));
@@ -627,7 +766,7 @@ body {
     flex: 1;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
+    min-height: 44px;
     font-size: 13px;
   }
 
@@ -635,7 +774,9 @@ body {
     width: 44px;
     height: 44px;
   }
+}
 
+@media (max-width: 768px) {
   .lf-page-head__controls .ant-select,
   .nfl-prop-filter-bar .ant-select {
     height: 44px;

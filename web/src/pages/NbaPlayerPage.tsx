@@ -33,7 +33,7 @@ function PlayerPageState({ children }: { children: ReactNode }) {
 /** A board arrival goes back one step, so the board returns on its own date and market; otherwise the game page, or the board for a player with no game. */
 function Crumb({ player }: { player: NbaPlayerProps }) {
   const navigate = useNavigate()
-  const board = `/nba/board?date=${player.date}`
+  const board = `/nba/props?date=${player.date}`
   if (arrivedFromBoard(useLocation().state)) {
     return <Link className="nfl-player-crumb" to={board} onClick={event => { event.preventDefault(); navigate(-1) }}>← NBA props</Link>
   }
@@ -65,7 +65,7 @@ export default function NbaPlayerPage() {
     stats={<PlayerHeadChips chips={nbaHeadChips(player)} />} notice={<InjuryLine player={player} />}>
     <NbaPlayerPropTabs key={player.playerId} player={player} />
     {player.markets.length === 0 && <div className="nfl-player-empty">
-      {player.name} has no prop lines on {player.date}. <Link to={`/nba/board?date=${player.date}`}>Open the NBA props board for that date</Link>.
+      {player.name} has no prop lines on {player.date}. <Link to={`/nba/props?date=${player.date}`}>Open the NBA props board for that date</Link>.
     </div>}
     {player.markets.length > 0 && <PlayerContextSections
       log={playerGameLog(player.markets, NBA_LOG_MARKETS)} label={nbaMarketLabel} valueText={nbaRecentValueLabel}
