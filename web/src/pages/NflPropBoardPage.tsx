@@ -84,7 +84,7 @@ export default function NflPropBoardPage() {
         {selected.rateable.length === 0 && <p className="nfl-prop-table-empty">{isTargetsReference(category.market) ? 'No standard full-game Rec Targets references available.' : `No rateable ${marketLabel(category.market).toLowerCase()} lines this week.`}</p>}
         <NflPropTable category={category} now={Date.now()} week={{ season: activeSeason, week: activeWeek }}
           rateable={selected.rateable}
-          other={showAll ? selected.other.map(row => ({ row, rank: null })) : []} />
+          other={showAll ? selected.other : []} />
       </section>
     </>}
     {!pills.length && slate.isSuccess && lineOnly.isSuccess && <div className="nfl-empty">No upcoming prop lines for these filters. Choose another position, game, or week.</div>}

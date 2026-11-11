@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, playerWeekParams, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
@@ -42,22 +41,19 @@ const WEEK = [
 ]
 
 describe('playerWeekLines', () => {
-  it('keeps the player full-game primary rows with board ranks and edge share', () => {
+  it('keeps the player full-game primary rows with edge share', () => {
     const week = playerWeekLines(WEEK, COOK, NOW)
-    const board = buildNflPropBoard(WEEK, 'all', NOW)
-    const rushing = board.find(category => category.market === 'rushing_yards')
 
     expect(week?.game.gameId).toBe(1)
     expect(week?.lines.map(item => item.row.lineId)).toEqual([11, 13])
-    expect(week?.lines[0]?.rank).toBe((rushing?.rateable.findIndex(row => row.lineId === 11) ?? -1) + 1)
     expect(week?.lines[0]?.edgeShare).toBeCloseTo(9 / 60)
     expect(week?.lines[0]?.alternates.map(alternate => alternate.lineId)).toEqual([12])
   })
 
-  it('keeps anytime TD without a rank or edge', () => {
+  it('keeps anytime TD without an edge', () => {
     const td = playerWeekLines(WEEK, COOK, NOW)?.lines.find(item => item.row.market === 'anytime_touchdown')
 
-    expect([td?.rank, td?.edgeShare, td?.row.bookProbabilityDevigged]).toEqual([null, null, 0.44])
+    expect([td?.edgeShare, td?.row.bookProbabilityDevigged]).toEqual([null, 0.44])
   })
 
   it('is null for a player without a line this week', () => {

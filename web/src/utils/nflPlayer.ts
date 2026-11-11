@@ -65,8 +65,6 @@ export const SPECIALIST_COLUMNS = {
 
 export interface NflPlayerWeekLine {
   row: NflBoardLine
-  /** The line's rank on the week-wide board; null for lines the board does not rate. */
-  rank: number | null
   /** Null for anytime TD, which carries no edge until 25c. */
   edgeShare: number | null
   alternates: NflSlateLine[]
@@ -78,19 +76,17 @@ export interface NflPlayerWeek {
 }
 
 /**
- * The player's full-game lines this week, ranked and scored against the week-wide board as the
- * game page reads it, so a row never disagrees with `/nfl/board`. Null when the player has no line.
+ * The player's full-game lines this week, scored against the week-wide board as the game page
+ * reads it, so a row never disagrees with `/nfl/board`. Null when the player has no line.
  */
 export function playerWeekLines(games: NflSlateGame[], playerId: number, now = new Date()): NflPlayerWeek | null {
   const game = games.find(item => item.lines.some(line => line.playerId === playerId))
   if (!game) return null
   const alternates = new Map(groupNflPropRows(game.lines).map(item => [item.primary.lineId, item.alternates]))
   const lines = nflGameProps(games, game.gameId, 'all', 'full_game', now).flatMap(({ category, rateable, other }) => [
-    ...rateable.filter(item => item.row.playerId === playerId).map(item => ({ row: item.row, rank: item.rank as number | null })),
-    ...other.filter(row => row.playerId === playerId).map(row => ({ row, rank: null })),
-  ].map(({ row, rank }) => ({
+    ...rateable, ...other,
+  ].filter(row => row.playerId === playerId).map(row => ({
     row,
-    rank,
     edgeShare: row.market === 'anytime_touchdown' ? null : edgeShare(row, category.referenceLine),
     alternates: alternates.get(row.lineId) ?? [],
   })))

@@ -16,11 +16,6 @@ import './nfl-prop-table.css'
 
 const OTHER_LINES_NOTE = 'Alternate payouts, partial-game segments, and thin samples. The model does not price these against the market.'
 
-export interface NflPropTableRow {
-  row: NflBoardLine
-  rank: number | null
-}
-
 function edgeNote(category: NflBoardCategory): string | null {
   if (category.referenceLine === null) return null
   return `Model minus line, then as a share of a typical ${marketLabel(category.market).toLowerCase()} line (${category.referenceLine.toFixed(1)}). Scoring against one shared line keeps players comparable; a row's own line can be small enough to make any gap look huge.`
@@ -63,19 +58,21 @@ function Sample({ card }: { card: NflPropCardModel }) {
 }
 
 interface RowProps {
-  item: NflPropTableRow
+  row: NflBoardLine
+  /** A "Not rateable" row; Rec Targets references stay at full strength there too. */
+  rateable: boolean
   category: NflBoardCategory
   inGame: boolean
   now: number
   week: NflSeasonWeek | null
 }
 
-function PropRow({ item: { row, rank }, category, inGame, now, week }: RowProps) {
+function PropRow({ row, rateable, category, inGame, now, week }: RowProps) {
   const navigate = useNavigate()
   const to = nflPlayerMarketLink(row.playerId, row.market, week)
-  const card = nflPropCard(row, rank, category.referenceLine, now)
+  const card = nflPropCard(row, category.referenceLine, now)
   const volumeText = volumeTableText(row)
-  const classes = ['is-row', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
+  const classes = ['is-row', !rateable && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
   // Links and the mini bars handle their own clicks; a modified click keeps the browser's new-tab behavior.
   const open = (event: MouseEvent) => {
     const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
@@ -84,10 +81,9 @@ function PropRow({ item: { row, rank }, category, inGame, now, week }: RowProps)
     navigate(to, { state: inGame ? undefined : FROM_BOARD })
   }
   const player = <td className="prop-table__player"><Player card={card} row={row} to={to} inGame={inGame} /></td>
-  const rankCell = <td className="prop-table__lead prop-table__rank">{card.rank === null ? '--' : `#${card.rank}`}</td>
   if (card.kind === 'td') {
     return <tr className={classes} title={card.why} onClick={open}>
-      {rankCell}{player}
+      {player}
       <td className="prop-table__end is-num">{card.modelText}</td>
       <td className="nfl-prop-table__books" data-label="books">{card.bookText}</td>
       <td className="nfl-prop-table__snap" data-label="snap">{card.snapText ?? '--'}</td>
@@ -95,7 +91,7 @@ function PropRow({ item: { row, rank }, category, inGame, now, week }: RowProps)
     </tr>
   }
   return <tr className={classes} title={card.why} onClick={open}>
-    {rankCell}{player}
+    {player}
     <td className="is-num" data-label="line">{card.lineText}</td>
     <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}{volumeText && <small className="nfl-prop-table__volume" title={VOLUME_NOTE}>{volumeText}</small>}</td>
     <td className="prop-table__end is-num nfl-prop-table__gap"><Gap card={card} note={edgeNote(category)} /></td>
@@ -104,14 +100,14 @@ function PropRow({ item: { row, rank }, category, inGame, now, week }: RowProps)
   </tr>
 }
 
-const STAT_COLUMNS: Array<[string, ReactNode]> = [['rank', '#'], ['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'], ['bars', 'Last 5'], ['sample', 'Sample']]
-const TD_COLUMNS: Array<[string, ReactNode]> = [['rank', '#'], ['player', 'Player'], ['model', 'Model'], ['books', 'Sportsbooks'], ['snap', 'Snap share'], ['sample', 'Sample']]
+const STAT_COLUMNS: Array<[string, ReactNode]> = [['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'], ['bars', 'Last 5'], ['sample', 'Sample']]
+const TD_COLUMNS: Array<[string, ReactNode]> = [['player', 'Player'], ['model', 'Model'], ['books', 'Sportsbooks'], ['snap', 'Snap share'], ['sample', 'Sample']]
 const NUMERIC = new Set(['line', 'model', 'gap'])
 
 interface Props {
   category: NflBoardCategory
-  rateable: NflPropTableRow[]
-  other: NflPropTableRow[]
+  rateable: NflBoardLine[]
+  other: NflBoardLine[]
   now: number
   /** On a game page the rows drop the matchup and kickoff the page already shows. */
   inGame?: boolean
@@ -119,20 +115,20 @@ interface Props {
   week?: NflSeasonWeek | null
 }
 
-/** One market's lines, one row each, ranked as the board ranks them; a row opens the player page. Gray until 27h. */
+/** One market's lines, one row each in board order; a row opens the player page. Gray and unranked until 27h. */
 export function NflPropTable({ category, rateable, other, now, inGame = false, week = null }: Props) {
   const td = category.market === 'anytime_touchdown'
   const reference = isTargetsReference(category.market)
   const columns = td ? TD_COLUMNS : STAT_COLUMNS.map(([key, label]): [string, ReactNode] => [key, reference && key === 'model' ? 'Reference' : label])
-  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} inGame={inGame} now={now} week={week} />
+  const row = (line: NflBoardLine, isRateable: boolean) => <PropRow key={line.lineId} row={line} rateable={isRateable} category={category} inGame={inGame} now={now} week={week} />
   return <table className={`prop-table nfl-prop-table${td ? ' is-td' : ''}`} aria-label={`${marketLabel(category.market)} lines`}>
     {reference && <caption className="nfl-prop-table__reference-note">{TARGETS_REFERENCE_NOTE} Rows are unranked.</caption>}
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) || (td && key === 'model') ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>
-      {rateable.map(row)}
+      {rateable.map(line => row(line, true))}
       {other.length > 0 && <tr className="prop-table__divider"><td colSpan={columns.length}><strong>Not rateable</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
-      {other.map(row)}
+      {other.map(line => row(line, false))}
     </tbody>
   </table>
 }

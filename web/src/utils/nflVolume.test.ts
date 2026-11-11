@@ -97,7 +97,7 @@ describe('v4 presentation is unchanged by the companion', () => {
     const plain = row()
     const mixed = row({ volume: VOLUME })
 
-    expect(nflPropCard(mixed, 3, 5.5, NOW)).toEqual(nflPropCard(plain, 3, 5.5, NOW))
+    expect(nflPropCard(mixed, 5.5, NOW)).toEqual(nflPropCard(plain, 5.5, NOW))
     expect(nflPropDetail(mixed, null, [], NOW)).toEqual(nflPropDetail(plain, null, [], NOW))
     expect(signalSummary(mixed)).toBe(signalSummary(plain))
   })

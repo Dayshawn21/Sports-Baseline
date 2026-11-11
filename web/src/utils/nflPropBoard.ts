@@ -16,9 +16,9 @@ export interface NflBoardLine extends NflSlateLine {
 
 export interface NflBoardCategory {
   market: string
-  /** Default rows: ranked v4 comparisons or unranked Rec Targets references. */
+  /** Default rows: v4 comparisons or Rec Targets references. */
   rateable: NflBoardLine[]
-  /** Ranked, but alternate payouts, partial segments, or thin samples. */
+  /** Alternate payouts, partial segments, or thin samples. */
   other: NflBoardLine[]
   /** Median rateable line, the shared denominator every row in this category is scored against. */
   referenceLine: number | null
@@ -45,15 +45,9 @@ export function flattenSlateLines(games: NflSlateGame[]): NflBoardLine[] {
   })))
 }
 
-export interface NflRankedBoardLine {
-  row: NflBoardLine
-  /** The line's rank on the prop board, so a card reads the same wherever it appears. */
-  rank: number | null
-}
-
 export interface NflFilteredCategory {
   category: NflBoardCategory
-  rateable: NflRankedBoardLine[]
+  rateable: NflBoardLine[]
   other: NflBoardLine[]
 }
 
@@ -99,9 +93,8 @@ export function edgeShare(line: Pick<NflSlateLine, 'edge'>, referenceLine: numbe
 }
 
 /**
- * Mirrors v4's `edge_is_comparable`; Rec Targets follows its own unranked reference path.
- * Anytime TD is never rateable until build-plan item 25c, so it ranks by probability under
- * "show all" without a pick.
+ * Mirrors v4's `edge_is_comparable`; Rec Targets follows its own reference path.
+ * Anytime TD is never rateable until build-plan item 25c, so it shows only under "show all".
  */
 export function isRateable(line: Pick<NflSlateLine, 'edge' | 'gamesInSample' | 'line' | 'market' | 'oddsType' | 'segment'>): boolean {
   return line.market !== 'anytime_touchdown'
@@ -113,15 +106,14 @@ export function isRateable(line: Pick<NflSlateLine, 'edge' | 'gamesInSample' | '
     && line.gamesInSample >= MIN_BASELINE_GAMES
 }
 
-/** A ruled-out player must never top a category, however large the edge looks. */
+/** A ruled-out player must never top a category, whatever the kickoff or edge. */
 function availabilityTier(line: Pick<NflSlateLine, 'qualityFlags'>): number {
   if (line.qualityFlags.includes(OUT_FLAG)) return 2
   if (line.qualityFlags.includes(DOUBTFUL_FLAG)) return 1
   return 0
 }
 
-type RankedLine = Pick<NflBoardLine, 'edge' | 'gamesInSample' | 'line' | 'lineId' | 'playerName' | 'qualityFlags'>
-type AnytimeTdRankedLine = Pick<NflBoardLine, 'lineId' | 'playerName' | 'projection'>
+type BoardOrderLine = Pick<NflBoardLine, 'lineId' | 'playerName' | 'qualityFlags' | 'startUtc'>
 
 export function isConfidentSample(line: Pick<NflBoardLine, 'gamesInSample'>): boolean {
   return line.gamesInSample >= CONFIDENT_SAMPLE_GAMES
@@ -138,28 +130,28 @@ export function compareBoardTiers(left: Pick<NflBoardLine, 'gamesInSample' | 'qu
   return Number(left.qualityFlags.includes(STALE_FLAG)) - Number(right.qualityFlags.includes(STALE_FLAG))
 }
 
-/** Ranks one category, so every row is scored against that category's own reference line. */
-export function compareBoardLines(referenceLine: number | null) {
-  return (left: RankedLine, right: RankedLine): number => {
-    const tier = compareBoardTiers(left, right)
-    if (tier) return tier
-
-    const magnitude = Math.abs(edgeShare(right, referenceLine) ?? 0) - Math.abs(edgeShare(left, referenceLine) ?? 0)
-    if (magnitude) return magnitude
-
-    return left.playerName.localeCompare(right.playerName) || left.lineId - right.lineId
-  }
+function kickoffMs(startUtc: string | null): number {
+  const kickoff = startUtc === null ? Number.NaN : Date.parse(startUtc)
+  return Number.isNaN(kickoff) ? Number.POSITIVE_INFINITY : kickoff
 }
 
-/** Anytime TD uses a probability model, so its board ranks by that model rather than raw edge. */
-export function compareAnytimeTdLines(left: AnytimeTdRankedLine, right: AnytimeTdRankedLine): number {
-  const probability = (right.projection ?? Number.NEGATIVE_INFINITY) - (left.projection ?? Number.NEGATIVE_INFINITY)
-  if (probability) return probability
+/**
+ * Board order for every NFL market: availability, kickoff, then player. No slice is adopted
+ * (27h), so the order never uses the gap, its direction or a probability.
+ */
+export function compareNflPropRows(left: BoardOrderLine, right: BoardOrderLine): number {
+  const availability = availabilityTier(left) - availabilityTier(right)
+  if (availability) return availability
+
+  const leftKickoff = kickoffMs(left.startUtc)
+  const rightKickoff = kickoffMs(right.startUtc)
+  if (leftKickoff !== rightKickoff) return leftKickoff < rightKickoff ? -1 : 1
+
   return left.playerName.localeCompare(right.playerName) || left.lineId - right.lineId
 }
 
 /**
- * One ranked bucket per market across every game in the week. Category order follows
+ * One bucket per market across every game in the week. Category order follows
  * `MARKET_LABELS` so the tab strip does not reshuffle as lines arrive.
  */
 export function buildNflPropBoard(games: NflSlateGame[], position: NflPositionFilter, now = new Date()): NflBoardCategory[] {
@@ -180,26 +172,21 @@ export function buildNflPropBoard(games: NflSlateGame[], position: NflPositionFi
     const rateable = lines.filter(primary)
     // A category with nothing rateable still needs a denominator for its "show all" rows.
     const referenceLine = categoryReferenceLine(rateable.length ? rateable : lines)
-    const compare = isTargetsReference(market)
-      ? (left: NflBoardLine, right: NflBoardLine) => left.playerName.localeCompare(right.playerName) || left.lineId - right.lineId
-      : market === 'anytime_touchdown'
-      ? compareAnytimeTdLines
-      : compareBoardLines(referenceLine)
     return {
       market,
       referenceLine,
-      rateable: rateable.sort(compare),
-      other: lines.filter(line => !primary(line)).sort(compare),
+      rateable: rateable.sort(compareNflPropRows),
+      other: lines.filter(line => !primary(line)).sort(compareNflPropRows),
     }
   })
 }
 
-/** Rank comes from the row's place in the whole category, before narrowing, so a chosen player keeps their real rank. */
+/** Narrows rows only; the category keeps its unfiltered reference line, so a gap share never moves with a filter. */
 export function filterNflBoardCategories(categories: NflBoardCategory[], players: readonly string[], team: string): NflFilteredCategory[] {
   const keep = (row: NflBoardLine) => playerSelected(row.playerName, players) && teamMatches(nflLineTeam(row), team)
   return categories.map(category => ({
     category,
-    rateable: category.rateable.flatMap((row, index) => keep(row) ? [{ row, rank: isTargetsReference(row.market) ? null : index + 1 }] : []),
+    rateable: category.rateable.filter(keep),
     other: category.other.filter(keep),
   }))
 }

@@ -73,9 +73,9 @@ describe('pickLabel', () => {
 
 describe('nflPropCard', () => {
   it('maps an OVER stat line to the strings the table showed', () => {
-    const card = nflPropCard(row(), 1, 26.5, NOW)
+    const card = nflPropCard(row(), 26.5, NOW)
     expect(card).toMatchObject({
-      kind: 'stat', rank: 1, badge: 'LAC', meta: 'WR · MIA @ LAC', unit: 'receiving yards',
+      kind: 'stat', badge: 'LAC', meta: 'WR · MIA @ LAC', unit: 'receiving yards',
       lineText: '58.5', modelText: '66.4', pickLabel: 'OVER', isUnder: false,
       edgeShareText: '+29.8%', edgeText: '+7.9', trust: 'Ready', sampleText: '10g', thin: false,
       bookText: null, snapText: null,
@@ -83,53 +83,53 @@ describe('nflPropCard', () => {
   })
 
   it('marks an UNDER line', () => {
-    const card = nflPropCard(row({ edge: -3.2 }), 2, 32, NOW)
+    const card = nflPropCard(row({ edge: -3.2 }), 32, NOW)
     expect(card).toMatchObject({ pickLabel: 'UNDER', isUnder: true, edgeShareText: '-10.0%', edgeText: '-3.2' })
   })
 
   it('shows dashes with no edge or no reference line', () => {
-    expect(nflPropCard(row({ edge: null, line: null }), null, 26.5, NOW)).toMatchObject({ pickLabel: '--', isUnder: false, edgeShareText: '--', edgeText: '--', lineText: '--' })
-    expect(nflPropCard(row(), 1, null, NOW).edgeShareText).toBe('--')
+    expect(nflPropCard(row({ edge: null, line: null }), 26.5, NOW)).toMatchObject({ pickLabel: '--', isUnder: false, edgeShareText: '--', edgeText: '--', lineText: '--' })
+    expect(nflPropCard(row(), null, NOW).edgeShareText).toBe('--')
   })
 
   it('takes the team from the other side of the game, else the position', () => {
-    expect(nflPropCard(row({ opponentTeam: 'LAC' }), 1, 26.5, NOW).badge).toBe('MIA')
-    expect(nflPropCard(row({ opponentTeam: null }), 1, 26.5, NOW).badge).toBe('WR')
-    expect(nflPropCard(row({ opponentTeam: null, position: null }), 1, 26.5, NOW).badge).toBe('--')
+    expect(nflPropCard(row({ opponentTeam: 'LAC' }), 26.5, NOW).badge).toBe('MIA')
+    expect(nflPropCard(row({ opponentTeam: null }), 26.5, NOW).badge).toBe('WR')
+    expect(nflPropCard(row({ opponentTeam: null, position: null }), 26.5, NOW).badge).toBe('--')
   })
 
   it('adds kickoff and a partial segment to the meta', () => {
-    const card = nflPropCard(row({ segment: 'first_half', startUtc: '2026-10-04T17:00:00Z' }), null, 26.5, NOW)
+    const card = nflPropCard(row({ segment: 'first_half', startUtc: '2026-10-04T17:00:00Z' }), 26.5, NOW)
     expect(card.meta).toBe('WR · MIA @ LAC · 12:00 PM CT · 1st half')
   })
 
   it('keeps only the position and a partial segment in the game-page meta', () => {
-    expect(nflPropCard(row({ startUtc: '2026-10-04T17:00:00Z' }), 1, 26.5, NOW).gameMeta).toBe('WR')
-    expect(nflPropCard(row({ segment: 'first_half' }), null, 26.5, NOW).gameMeta).toBe('WR · 1st half')
-    expect(nflPropCard(row({ position: null }), 1, 26.5, NOW).gameMeta).toBe('--')
+    expect(nflPropCard(row({ startUtc: '2026-10-04T17:00:00Z' }), 26.5, NOW).gameMeta).toBe('WR')
+    expect(nflPropCard(row({ segment: 'first_half' }), 26.5, NOW).gameMeta).toBe('WR · 1st half')
+    expect(nflPropCard(row({ position: null }), 26.5, NOW).gameMeta).toBe('--')
   })
 
   it('flags a thin sample and passes flags through, minus the historical baseline', () => {
-    const card = nflPropCard(row({ gamesInSample: 5, qualityFlags: ['historical_baseline', 'stale_baseline_season'] }), 3, 26.5, NOW)
+    const card = nflPropCard(row({ gamesInSample: 5, qualityFlags: ['historical_baseline', 'stale_baseline_season'] }), 26.5, NOW)
     expect(card).toMatchObject({ sampleText: '5g thin', thin: true, trust: 'Review', flags: ['stale_baseline_season'] })
   })
 
   it('shows depth only when a depth move is flagged, and the injury tag', () => {
     const depth = { depthPosition: 'WR', depthRank: 1, previousDepthPosition: 'WR', previousDepthRank: 2 }
-    expect(nflPropCard(row(depth), 1, 26.5, NOW).depthText).toBeNull()
-    expect(nflPropCard(row({ ...depth, qualityFlags: ['depth_promoted'] }), 1, 26.5, NOW).depthText).toBe('WR1 (was WR2)')
-    expect(nflPropCard(row({ injuryStatus: 'Questionable' }), 1, 26.5, NOW).injury).toEqual({ label: 'Q', color: 'gold' })
+    expect(nflPropCard(row(depth), 26.5, NOW).depthText).toBeNull()
+    expect(nflPropCard(row({ ...depth, qualityFlags: ['depth_promoted'] }), 26.5, NOW).depthText).toBe('WR1 (was WR2)')
+    expect(nflPropCard(row({ injuryStatus: 'Questionable' }), 26.5, NOW).injury).toEqual({ label: 'Q', color: 'gold' })
   })
 
   it('builds an anytime-TD card from the model, books and snap share', () => {
     const td = row({ market: 'anytime_touchdown', projection: 0.52, line: 0.5, edge: null, snapShare: 0.64, snapShareGames: 12 })
-    expect(nflPropCard(td, null, null, NOW)).toMatchObject({ kind: 'td', modelText: '52.0%', bookText: 'No book price', snapText: '64% · 12 g, season-weighted', pickLabel: '--' })
-    const priced = nflPropCard({ ...td, bookProbability: 0.58, bookProbabilityDevigged: 0.55, bookCount: 4, bookIncludesMargin: true, bookFetchedAt: '2026-09-30T10:00:00Z' }, null, null, NOW)
+    expect(nflPropCard(td, null, NOW)).toMatchObject({ kind: 'td', modelText: '52.0%', bookText: 'No book price', snapText: '64% · 12 g, season-weighted', pickLabel: '--' })
+    const priced = nflPropCard({ ...td, bookProbability: 0.58, bookProbabilityDevigged: 0.55, bookCount: 4, bookIncludesMargin: true, bookFetchedAt: '2026-09-30T10:00:00Z' }, null, NOW)
     expect(priced.bookText).toBe('55.0% de-vigged · 4 books · 2h ago')
   })
 
   it('falls back to the raw market name for an unknown market', () => {
-    expect(nflPropCard(row({ market: 'longest_reception' }), 1, 26.5, NOW).unit).toBe('longest_reception')
+    expect(nflPropCard(row({ market: 'longest_reception' }), 26.5, NOW).unit).toBe('longest_reception')
   })
 })
 

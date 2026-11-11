@@ -46,7 +46,7 @@ export function filterNflWeekLineOnly(categories: NflWeekLineOnlyCategory[], pla
 /** The picker lists players under the current position, games and team; hidden review lines stay out until shown. */
 export function nflBoardPlayerOptions(categories: NflBoardCategory[], other: NflWeekLineOnlyCategory[], team: string, players: readonly string[], showAll: boolean): string[] {
   return playerOptions([
-    ...filterNflBoardCategories(categories, [], team).flatMap(item => [...item.rateable.map(entry => entry.row.playerName), ...(showAll ? item.other.map(row => row.playerName) : [])]),
+    ...filterNflBoardCategories(categories, [], team).flatMap(item => [...item.rateable.map(row => row.playerName), ...(showAll ? item.other.map(row => row.playerName) : [])]),
     ...filterNflWeekLineOnly(other, [], team).flatMap(category => category.games.flatMap(entry => entry.group.rows.map(row => row.playerName))),
   ], players)
 }

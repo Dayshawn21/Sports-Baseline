@@ -26,7 +26,7 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
   return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
       <h3 id={`${id}-title`} className="nfl-player-prop__title" title={reference ? TARGETS_REFERENCE_NOTE : undefined}>
-        {marketLabel(row.market)}{reference ? <small>reference</small> : item.rank !== null && <small>#{item.rank}</small>}
+        {marketLabel(row.market)}{reference && <small>reference</small>}
       </h3>
       {gapShare && <span className="nfl-player-muted">{gapShare}</span>}
     </div>

@@ -78,7 +78,6 @@
 }
 .prop-table td small { display: block; color: var(--text-muted); font: 400 11px/1.35 var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
 .prop-table .is-num { text-align: right; }
-.prop-table__rank { color: var(--text-muted); }
 .prop-table tbody tr.is-row { cursor: pointer; }
 .prop-table tbody tr.is-row:hover td { background: var(--bg-card-hover); }
 .prop-table tbody tr.is-selected td { background: var(--bg-raised); }

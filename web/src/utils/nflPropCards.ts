@@ -13,7 +13,6 @@ const DEPTH_FLAGS = ['depth_promoted', 'depth_demoted', 'depth_new']
 export interface NflPropCardModel {
   key: number
   kind: 'stat' | 'td' | 'reference'
-  rank: number | null
   playerName: string
   badge: string
   meta: string
@@ -77,14 +76,13 @@ function gameMeta(row: NflBoardLine): string {
   return row.segment === 'full_game' ? row.position ?? '--' : `${row.position ?? '--'} · ${segmentLabel(row.segment)}`
 }
 
-export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLine: number | null, now: number): NflPropCardModel {
+export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now: number): NflPropCardModel {
   const td = row.market === TD_MARKET
   const reference = isTargetsReference(row.market)
   const confident = reference ? row.projection !== null : isConfidentSample(row)
   return {
     key: row.lineId,
     kind: reference ? 'reference' : td ? 'td' : 'stat',
-    rank: reference ? null : rank,
     playerName: row.playerName,
     badge: teamBadge(row, row.awayTeam, row.homeTeam),
     meta: meta(row),

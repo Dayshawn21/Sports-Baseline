@@ -37,20 +37,19 @@ const WEEK = [
 ]
 
 describe('nflGameProps', () => {
-  it('ranks an upcoming game by the week-wide board', () => {
+  it('scores an upcoming game against the week-wide board', () => {
     const receiving = nflGameProps(WEEK, 1, 'all', 'full_game', BEFORE).find(item => item.category.market === 'receiving_yards')
     const board = buildNflPropBoard(WEEK, 'all', BEFORE).find(item => item.market === 'receiving_yards')
-    expect(receiving?.rateable.map(item => [item.row.lineId, item.rank])).toEqual([[11, 3]])
-    expect(board?.rateable[2].lineId).toBe(11)
+    expect(receiving?.rateable.map(row => row.lineId)).toEqual([11])
     expect(receiving?.category.referenceLine).toBe(board?.referenceLine)
   })
 
-  it('keeps a started game its cards and the ranks from just before its kickoff', () => {
+  it('keeps a started game its rows from just before its kickoff', () => {
     expect(buildNflPropBoard(WEEK, 'all', AFTER).flatMap(item => item.rateable)).toEqual([])
     const markets = nflGameProps(WEEK, 1, 'all', 'full_game', AFTER)
     // Prop-board market order, which is MARKET_LABELS order.
     expect(markets.map(item => item.category.market)).toEqual(['rushing_yards', 'receiving_yards'])
-    expect(markets[1].rateable[0].rank).toBe(3)
+    expect(markets[1].rateable.map(row => row.lineId)).toEqual([11])
   })
 
   it('filters by position and drops markets left empty', () => {
@@ -72,7 +71,7 @@ describe('nflGameProps', () => {
       line(14, { oddsType: 'goblin' }),
     ])]
     const markets = nflGameProps(mixed, 1, 'all', 'full_game', BEFORE)
-    expect(markets.flatMap(item => item.rateable.map(entry => entry.row.lineId))).toEqual([11])
+    expect(markets.flatMap(item => item.rateable.map(row => row.lineId))).toEqual([11])
     expect(markets.flatMap(item => item.other.map(row => row.lineId))).toEqual([14])
   })
 
@@ -99,15 +98,15 @@ describe('filterNflGameProps', () => {
   ])]
   const categories = nflGameProps(week, 1, 'all', 'full_game', BEFORE)
   const summary = (players: string[], team: string) => filterNflGameProps(categories, { players, team }).map(item => ({
-    rateable: item.rateable.map(entry => [entry.row.playerName, entry.rank]), other: item.other.map(row => row.playerName),
+    rateable: item.rateable.map(row => row.playerName), other: item.other.map(row => row.playerName),
   }))
 
-  it('narrows by player and keeps the weekly board rank', () => {
-    expect(summary(['Small Dolphin'], 'all')).toEqual([{ rateable: [['Small Dolphin', 2]], other: [] }])
+  it('narrows by player', () => {
+    expect(summary(['Small Dolphin'], 'all')).toEqual([{ rateable: ['Small Dolphin'], other: [] }])
   })
 
   it('narrows by team across rated and other rows', () => {
-    expect(summary([], 'MIA')).toEqual([{ rateable: [['Small Dolphin', 2]], other: ['Alt Dolphin'] }])
+    expect(summary([], 'MIA')).toEqual([{ rateable: ['Small Dolphin'], other: ['Alt Dolphin'] }])
   })
 
   it('lists players on the chosen side, leaving hidden lines out until shown', () => {

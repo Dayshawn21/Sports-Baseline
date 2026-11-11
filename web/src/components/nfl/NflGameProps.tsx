@@ -35,7 +35,7 @@ interface Props {
   now?: Date
 }
 
-/** The game's props as prop-board rows, ranked and scored by the week-wide board. */
+/** The game's props as prop-board rows, scored against the week-wide board. */
 export function NflGameProps({ games, game, week, now }: Props) {
   // One clock per visit, so the memoized board is not rebuilt on every render.
   const [mountedAt] = useState(() => new Date())
@@ -60,11 +60,11 @@ export function NflGameProps({ games, game, week, now }: Props) {
   const rateableCount = categories.filter(item => !isTargetsReference(item.category.market)).reduce((total, item) => total + item.rateable.length, 0)
   return <section className="nfl-game-props" aria-label="Props for this game">
     <NflSlateDigest items={digest} scope="this game" linkFor={item => nflPlayerMarketLink(item.playerId, item.marketKey, week)} />
-    <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines · ranks from this week's prop board</small></h2>
+    <h2 className="nfl-game-section-title">Props <small>{rateableCount} comparable lines</small></h2>
     <p className="nfl-game-props__intro">Compare projections with full-game lines. Gray gaps are research comparisons, not recommendations.</p>
     <details className="nfl-game-props__help">
       <summary>How to read these comparisons</summary>
-      <p>Over and Under show which side of the line the projection falls on. Ready, Watch and Review describe data quality, not betting confidence. A rank shows a line's place on the weekly prop board; it does not make it a recommended bet. <Link to="/nfl/model">View model validation</Link>.</p>
+      <p>Over and Under show which side of the line the projection falls on. Ready, Watch and Review describe data quality, not betting confidence. Rows follow kickoff, then player name, and are not ranked. <Link to="/nfl/model">View model validation</Link>.</p>
     </details>
     <GamePropFilters game={game} playerNames={playerNames} filter={filter} onPlayers={onPlayers} onTeam={onTeam} />
     <div className="nfl-game-props__toolbar">
@@ -72,13 +72,13 @@ export function NflGameProps({ games, game, week, now }: Props) {
       <Segment label="Position" options={NFL_POSITION_OPTIONS} value={position} onChange={value => setView({ position: value })} />
       <label className="nfl-prop-toggle"><Switch size="small" checked={showAll} onChange={value => setView({ showAll: value })} /><span>Include alternate and thin-sample lines</span></label>
     </div>
-    {hasKickedOff(game.startUtc, at) && <p className="nfl-game-note is-inline">Lines closed at kickoff. Ranks are as the board showed them just before.</p>}
+    {hasKickedOff(game.startUtc, at) && <p className="nfl-game-note is-inline">Lines closed at kickoff. Rows are as the board showed them just before.</p>}
     {game.lines.length === 0 && <div className="nfl-game-empty">No prop lines stored for this game yet.</div>}
     {game.lines.length > 0 && visible.length === 0 && <div className="nfl-game-empty">{filtering ? 'No comparable lines match these filters.' : 'No comparable full-game lines for this position.'} {!showAll ? 'Include alternate and thin-sample lines, or choose another position.' : 'Choose another position or check the other markets below.'}</div>}
     {visible.map(item => <section key={item.category.market} className="nfl-game-props__market prop-table-panel" aria-label={`${marketLabel(item.category.market)} lines`}>
       <h3 className="nfl-game-label">{marketLabel(item.category.market)}</h3>
       <NflPropTable category={item.category} now={at.getTime()} inGame week={week}
-        rateable={item.rateable} other={showAll ? item.other.map(row => ({ row, rank: null })) : []} />
+        rateable={item.rateable} other={showAll ? item.other : []} />
     </section>)}
     <NflLineOnlyProps game={game} position={position} week={week} filter={filter} />
   </section>

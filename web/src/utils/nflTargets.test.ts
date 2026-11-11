@@ -56,10 +56,10 @@ describe('Rec Targets reference discovery', () => {
     expect(board[0].rateable.map(line => line.lineId)).toEqual([71])
   })
 
-  it('carries no recommendation rank into game or player views', () => {
+  it('carries the reference row into game and player views', () => {
     const games = [game([row()])]
-    expect(nflGameProps(games, 50, 'all', 'full_game', NOW)[0].rateable[0].rank).toBeNull()
-    expect(playerWeekLines(games, 7, NOW)?.lines[0].rank).toBeNull()
+    expect(nflGameProps(games, 50, 'all', 'full_game', NOW)[0].rateable[0].market).toBe('receiving_targets')
+    expect(playerWeekLines(games, 7, NOW)?.lines[0].row.market).toBe('receiving_targets')
   })
 
   it('keeps the eight remaining line-only markets', () => {
@@ -69,19 +69,19 @@ describe('Rec Targets reference discovery', () => {
 })
 
 describe('Rec Targets reference wording', () => {
-  it.each([0.75, -0.75, 0])('has no pick or rank for a %s gap', edge => {
-    const card = nflPropCard(row({ edge }), 1, 4.5, NOW.getTime())
-    expect(card).toMatchObject({ kind: 'reference', rank: null, pickLabel: '--', isUnder: false, trust: 'Reference' })
+  it.each([0.75, -0.75, 0])('has no pick for a %s gap', edge => {
+    const card = nflPropCard(row({ edge }), 4.5, NOW.getTime())
+    expect(card).toMatchObject({ kind: 'reference', pickLabel: '--', isUnder: false, trust: 'Reference' })
     expect(card.why).toContain('Season-average reference')
     expect(card.why).not.toMatch(/\bOVER\b|\bUNDER\b/)
   })
 
   it('keeps a real zero distinct from an unavailable projection', () => {
     const zero = row({ projection: 0, edge: -4.5 })
-    expect(nflPropCard(zero, 1, 4.5, NOW.getTime()).modelText).toBe('0.0')
+    expect(nflPropCard(zero, 4.5, NOW.getTime()).modelText).toBe('0.0')
     expect(signalSummary(zero)).toContain('reference 0.0')
-    expect(nflPropCard(row({ gamesInSample: 4 }), null, 4.5, NOW.getTime())).toMatchObject({ sampleText: '4g', thin: false })
-    expect(nflPropCard(row({ projection: null, gamesInSample: 3 }), null, 4.5, NOW.getTime()).sampleText).toBe('3g unavailable')
+    expect(nflPropCard(row({ gamesInSample: 4 }), 4.5, NOW.getTime())).toMatchObject({ sampleText: '4g', thin: false })
+    expect(nflPropCard(row({ projection: null, gamesInSample: 3 }), 4.5, NOW.getTime()).sampleText).toBe('3g unavailable')
     expect(targetsReferenceSummary(row({ projection: null, edge: null, gamesInSample: 0 }))).toContain('no valid pre-week targets history')
     expect(targetsReferenceSummary(row({ projection: null, edge: null, gamesInSample: 3 }))).toContain('fewer than 4 valid games')
   })
@@ -122,7 +122,7 @@ describe('Rec Targets reference wording', () => {
 
   it('preserves the existing v4 card and drawer behavior', () => {
     const v4 = row({ market: 'receiving_yards', projectionModelVersion: 'opponent-dvp-tg-blend-usage-snap-v4' })
-    expect(nflPropCard(v4, 3, 4.5, NOW.getTime())).toMatchObject({ kind: 'stat', rank: 3, pickLabel: 'OVER', trust: 'Ready' })
+    expect(nflPropCard(v4, 4.5, NOW.getTime())).toMatchObject({ kind: 'stat', pickLabel: 'OVER', trust: 'Ready' })
     const detail = nflPropDetail(v4, null, [], NOW.getTime())
     expect(detail.hasEdge).toBe(true)
     expect(detail).not.toHaveProperty('referenceNote')
