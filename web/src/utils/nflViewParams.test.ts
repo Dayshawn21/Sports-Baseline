@@ -5,13 +5,13 @@ const parse = (query: string) => parseBoardView(new URLSearchParams(query))
 
 describe('board view params', () => {
   it('round trips a full view', () => {
-    const view = { season: 2026, week: 9, position: 'WR' as const, market: 'receptions', game: '121', showAll: true, q: 'aj brown', team: 'KC' }
+    const view = { season: 2026, week: 9, position: 'WR' as const, market: 'receptions', games: ['121', '122'], showAll: true, players: ['A.J. Brown', 'Tee Higgins'], team: 'KC' }
 
     expect(parse(boardViewSearch(view).toString())).toEqual(view)
   })
 
-  it('leaves a blank search and all teams out of the URL', () => {
-    expect(boardViewSearch({ ...DEFAULT_BOARD_VIEW, q: '  ', team: 'all' }).toString()).toBe('')
+  it('leaves empty lists and all teams out of the URL', () => {
+    expect(boardViewSearch({ ...DEFAULT_BOARD_VIEW, players: [], games: [], team: 'all' }).toString()).toBe('')
   })
 
   it('omits every default', () => {
@@ -27,7 +27,7 @@ describe('board view params', () => {
     expect(parse('week=abc&season=2026').week).toBeNull()
     expect(parse('position=zz').position).toBe('all')
     expect(parse('market=Bad Market!').market).toBeNull()
-    expect(parse('game=abc').game).toBe('all')
+    expect(parse('game=abc').games).toEqual([])
     expect(parse('all=yes').showAll).toBe(false)
   })
 
@@ -39,8 +39,8 @@ describe('board view params', () => {
   })
 
   it('distinguishes game=all from a numeric game', () => {
-    expect(parse('game=all').game).toBe('all')
-    expect(parse('game=121').game).toBe('121')
+    expect(parse('game=all').games).toEqual([])
+    expect(parse('game=121&game=122').games).toEqual(['121', '122'])
   })
 })
 

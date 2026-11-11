@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { filterNflGameProps, gameBoardAsOf, nflGameProps } from '~/utils/nflGameProps'
+import { filterNflGameProps, gameBoardAsOf, nflGamePlayerOptions, nflGameProps } from '~/utils/nflGameProps'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
@@ -98,15 +98,21 @@ describe('filterNflGameProps', () => {
     line(13, { playerName: 'Alt Dolphin', opponentTeam: 'NYJ', oddsType: 'demon' }),
   ])]
   const categories = nflGameProps(week, 1, 'all', 'full_game', BEFORE)
-  const summary = (q: string, team: string) => filterNflGameProps(categories, { q, team }).map(item => ({
+  const summary = (players: string[], team: string) => filterNflGameProps(categories, { players, team }).map(item => ({
     rateable: item.rateable.map(entry => [entry.row.playerName, entry.rank]), other: item.other.map(row => row.playerName),
   }))
 
   it('narrows by player and keeps the weekly board rank', () => {
-    expect(summary('small', 'all')).toEqual([{ rateable: [['Small Dolphin', 2]], other: [] }])
+    expect(summary(['Small Dolphin'], 'all')).toEqual([{ rateable: [['Small Dolphin', 2]], other: [] }])
   })
 
   it('narrows by team across rated and other rows', () => {
-    expect(summary('', 'MIA')).toEqual([{ rateable: [['Small Dolphin', 2]], other: ['Alt Dolphin'] }])
+    expect(summary([], 'MIA')).toEqual([{ rateable: [['Small Dolphin', 2]], other: ['Alt Dolphin'] }])
+  })
+
+  it('lists players on the chosen side, leaving hidden lines out until shown', () => {
+    expect(nflGamePlayerOptions(categories, ['Kicker'], { players: [], team: 'MIA' }, false)).toEqual(['Kicker', 'Small Dolphin'])
+    expect(nflGamePlayerOptions(categories, [], { players: [], team: 'MIA' }, true)).toEqual(['Alt Dolphin', 'Small Dolphin'])
+    expect(nflGamePlayerOptions(categories, [], { players: ['Big Jet'], team: 'MIA' }, false)).toEqual(['Big Jet', 'Small Dolphin'])
   })
 })

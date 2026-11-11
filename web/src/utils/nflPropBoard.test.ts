@@ -79,26 +79,26 @@ describe('filterNflBoardCategories', () => {
     line(4, { playerName: 'Alternate Jet', opponentTeam: 'MIA', oddsType: 'demon' }),
     line(5, { playerName: 'Unknown Side', opponentTeam: null, edge: 5 }),
   ])], 'all')
-  const ranks = (query: string, team: string) => filterNflBoardCategories(board(), query, team)[0].rateable.map(item => [item.row.playerName, item.rank])
+  const ranks = (players: string[], team: string) => filterNflBoardCategories(board(), players, team)[0].rateable.map(item => [item.row.playerName, item.rank])
 
   it('keeps the full-board rank for a searched player', () => {
-    expect(ranks('middle', 'all')).toEqual([['Middle Dolphin', 2]])
-    expect(ranks('last jet', 'all')).toEqual([['Last Jet', 3]])
+    expect(ranks(['Middle Dolphin'], 'all')).toEqual([['Middle Dolphin', 2]])
+    expect(ranks(['Last Jet', 'Top Jet'], 'all')).toEqual([['Top Jet', 1], ['Last Jet', 3]])
   })
 
   it('keeps the full-board rank across a team filter', () => {
-    expect(ranks('', 'NYJ')).toEqual([['Top Jet', 1], ['Last Jet', 3]])
+    expect(ranks([], 'NYJ')).toEqual([['Top Jet', 1], ['Last Jet', 3]])
   })
 
   it('leaves a row with no known team under all teams and in search only', () => {
-    expect(ranks('', 'all').map(([name]) => name)).toContain('Unknown Side')
-    expect(ranks('unknown', 'all')).toEqual([['Unknown Side', 4]])
-    expect(ranks('unknown', 'NYJ')).toEqual([])
+    expect(ranks([], 'all').map(([name]) => name)).toContain('Unknown Side')
+    expect(ranks(['Unknown Side'], 'all')).toEqual([['Unknown Side', 4]])
+    expect(ranks(['Unknown Side'], 'NYJ')).toEqual([])
   })
 
   it('filters the other rows and keeps the unfiltered reference line', () => {
     const [full] = board()
-    const [filtered] = filterNflBoardCategories([full], 'alternate', 'NYJ')
+    const [filtered] = filterNflBoardCategories([full], ['Alternate Jet'], 'NYJ')
 
     expect(filtered.other.map(row => row.playerName)).toEqual(['Alternate Jet'])
     expect(filtered.category.referenceLine).toBe(full.referenceLine)
@@ -255,12 +255,12 @@ describe('filterNflPropBoardGames', () => {
   ]
 
   it('returns every upcoming game with prop lines for All games', () => {
-    expect(filterNflPropBoardGames(games, null, now).map(item => item.gameId)).toEqual([1, 2])
+    expect(filterNflPropBoardGames(games, [], now).map(item => item.gameId)).toEqual([1, 2])
   })
 
   it('narrows the upcoming slate to one selected game', () => {
-    expect(filterNflPropBoardGames(games, 2, now).map(item => item.gameId)).toEqual([2])
-    expect(filterNflPropBoardGames(games, 3, now)).toEqual([])
+    expect(filterNflPropBoardGames(games, [2], now).map(item => item.gameId)).toEqual([2])
+    expect(filterNflPropBoardGames(games, [3], now)).toEqual([])
   })
 })
 

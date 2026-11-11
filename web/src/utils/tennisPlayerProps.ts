@@ -157,7 +157,7 @@ export function propPlayerPath(line: LinkedLine, matches: PlayerMatchSides[]): s
 }
 
 const ORIGINS: Array<[RegExp, string]> = [
-  [/^\/tennis\/board(\?q=[\w%+.*-]+)?$/, 'Tennis props'],
+  [/^\/tennis\/board(\?player=[\w%+.*-]+(&player=[\w%+.*-]+)*)?$/, 'Tennis props'],
   [/^\/tennis\/match\/\d+\?tab=props(&[a-z]+=[A-Za-z0-9_]+)*$/, 'Match props'],
 ]
 

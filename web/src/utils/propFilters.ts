@@ -50,11 +50,6 @@ export function gameTeams(games: ReadonlyArray<{ awayTeam: string, homeTeam: str
   return [...new Set(games.flatMap(game => [game.awayTeam, game.homeTeam]))].sort()
 }
 
-/** Keeps a trailing space, so the box stays typable when the URL is its only state. */
-export function parsePlayerQuery(value: string | null): string {
-  return (value ?? '').trimStart().slice(0, MAX_QUERY_LENGTH)
-}
-
 export function parseTeamFilter(value: string | null): string {
   return value !== null && /^[A-Z]{2,4}$/.test(value) ? value : ALL
 }
@@ -78,20 +73,14 @@ export function activeGameFilter(filter: string, games: ReadonlyArray<Pick<Filte
   return games.some(game => String(game.gameId) === filter) ? filter : ALL
 }
 
-/** Choosing a game keeps the team only when it plays in that game, so the two filters cannot empty the board. */
-export function teamAfterGame(team: string, game: string, games: readonly FilterGame[]): string {
-  const chosen = games.find(item => String(item.gameId) === game)
-  return !chosen || team === chosen.awayTeam || team === chosen.homeTeam ? team : ALL
-}
-
 export interface BoardFilter {
-  q: string
+  players: string[]
   team: string
-  game: string
+  games: string[]
 }
 
 export function isFiltering(filter: BoardFilter): boolean {
-  return filter.q.trim() !== '' || filter.team !== ALL || filter.game !== ALL
+  return filter.players.length > 0 || filter.team !== ALL || filter.games.length > 0
 }
 
 interface FilterableBoardRow {
@@ -104,10 +93,15 @@ export function filterBoardMarkets<R extends FilterableBoardRow, M extends { row
   if (!isFiltering(filter)) return markets
   return markets.map(market => ({
     ...market,
-    rows: market.rows.filter(({ game, row }) => (filter.game === ALL || String(game.gameId) === filter.game)
+    rows: market.rows.filter(({ game, row }) => (filter.games.length === 0 || filter.games.includes(String(game.gameId)))
       && teamMatches(gameSideTeam(row.team, game), filter.team)
-      && playerNameMatches(row.playerName, filter.q)),
+      && playerSelected(row.playerName, filter.players)),
   }))
+}
+
+/** The picker lists players under the current team and games, so choosing Boston lists Boston players. */
+export function boardPlayerOptions<R extends FilterableBoardRow, M extends { rows: R[] }>(markets: M[], filter: BoardFilter): string[] {
+  return playerOptions(filterBoardMarkets(markets, { ...filter, players: [] }).flatMap(market => market.rows.map(item => item.row.playerName)), filter.players)
 }
 
 /** The market to show. While filtering, an emptied market gives way to one with rows; the URL keeps the user's choice. */
@@ -116,27 +110,74 @@ export function visibleMarket<M>(selected: M, markets: ReadonlyArray<{ market: M
   return markets.find(item => item.count > 0)?.market ?? selected
 }
 
-export interface PropFilterPatch {
-  q?: string
-  team?: string
-  game?: string
-}
-
-/** A copy of the params with these filters applied; a blank or 'all' value drops its key. */
-export function withPropFilters(params: URLSearchParams, patch: PropFilterPatch): URLSearchParams {
-  const next = new URLSearchParams(params)
-  for (const [key, value] of Object.entries(patch)) {
-    if (value.trim() === '' || value === ALL) next.delete(key)
-    else next.set(key, value)
-  }
-  return next
-}
-
 export interface GamePropFilter {
-  q: string
+  players: string[]
   team: string
 }
 
 export function gamePropRowMatches(row: { playerName: string, team: string | null }, game: { awayTeam: string, homeTeam: string }, filter: GamePropFilter): boolean {
-  return teamMatches(gameSideTeam(row.team, game), filter.team) && playerNameMatches(row.playerName, filter.q)
+  return teamMatches(gameSideTeam(row.team, game), filter.team) && playerSelected(row.playerName, filter.players)
+}
+
+const MAX_PLAYERS = 20
+
+export function parsePlayerFilter(params: URLSearchParams): string[] {
+  const names = params.getAll('player').map(name => name.trim().slice(0, MAX_QUERY_LENGTH)).filter(Boolean)
+  return [...new Set(names)].slice(0, MAX_PLAYERS)
+}
+
+export function parseGameFilters(params: URLSearchParams): string[] {
+  return [...new Set(params.getAll('game').filter(value => parseGameFilter(value) !== ALL))]
+}
+
+export function activeGameFilters(selected: readonly string[], games: ReadonlyArray<Pick<FilterGame, 'gameId'>>): string[] {
+  return selected.filter(game => activeGameFilter(game, games) !== ALL)
+}
+
+/** An empty selection means no player filter. Names compare by search form, so one source's accents still match another's. */
+export function playerSelected(name: string | null | undefined, players: readonly string[]): boolean {
+  if (players.length === 0) return true
+  const target = searchForm(name ?? '')
+  return players.some(player => searchForm(player) === target)
+}
+
+/** Chosen names always stay listed, so a chip keeps its label when another filter hides that player's rows. */
+export function playerOptions(names: Iterable<string | null | undefined>, players: readonly string[]): string[] {
+  const options = new Map<string, string>()
+  for (const name of [...names, ...players]) {
+    if (!name) continue
+    const key = searchForm(name)
+    if (key && !options.has(key)) options.set(key, name)
+  }
+  return [...options.values()].sort((left, right) => left.localeCompare(right))
+}
+
+/** Choosing games keeps the team only when it plays in one of them. */
+export function teamAfterGames(team: string, selected: readonly string[], games: readonly FilterGame[]): string {
+  if (selected.length === 0) return team
+  const chosen = games.filter(game => selected.includes(String(game.gameId)))
+  return chosen.length === 0 || chosen.some(game => team === game.awayTeam || team === game.homeTeam) ? team : ALL
+}
+
+export interface PropListFilterPatch {
+  player?: readonly string[]
+  game?: readonly string[]
+  team?: string
+}
+
+/** A copy of the params with these filters applied, lists as repeated keys; an empty list or 'all' drops its key. */
+export function withPropListFilters(params: URLSearchParams, patch: PropListFilterPatch): URLSearchParams {
+  const next = new URLSearchParams(params)
+  for (const [key, value] of Object.entries(patch)) {
+    next.delete(key)
+    for (const item of typeof value === 'string' ? [value] : value) {
+      if (item !== ALL) next.append(key, item)
+    }
+  }
+  return next
+}
+
+/** The picker lists players on the chosen side, always keeping names already chosen. */
+export function gamePlayerOptions(rows: ReadonlyArray<{ playerName: string, team: string | null }>, game: { awayTeam: string, homeTeam: string }, filter: GamePropFilter): string[] {
+  return playerOptions(rows.filter(row => gamePropRowMatches(row, game, { ...filter, players: [] })).map(row => row.playerName), filter.players)
 }

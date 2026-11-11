@@ -12,7 +12,7 @@ import { useNbaPropBoard, useNbaSlateGaps } from '~/hooks/useNba'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaBoardMarket, nbaBoardPath, nbaPropBoard } from '~/utils/nbaPropBoard'
 import { nbaSlateDigest, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
-import { filterBoardMarkets, isFiltering, visibleMarket } from '~/utils/propFilters'
+import { boardPlayerOptions, filterBoardMarkets, isFiltering, visibleMarket } from '~/utils/propFilters'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
 import './nba-prop-board.css'
@@ -24,9 +24,9 @@ export default function NbaPropBoardPage() {
   const groups = useMemo(() => nbaPropBoard(board.data?.games ?? []), [board.data])
   const market = nbaBoardMarket(params.get('market'), groups)
   const games = board.data?.games
-  const { filter, teams, onQuery, onTeam, onGame } = useBoardFilters(games)
-  const { q, team, game } = filter
-  const filtered = useMemo(() => filterBoardMarkets(groups, { q, team, game }), [groups, q, team, game])
+  const { filter, teams, onPlayers, onTeam, onGames } = useBoardFilters(games)
+  const filtered = useMemo(() => filterBoardMarkets(groups, filter), [groups, filter])
+  const players = useMemo(() => boardPlayerOptions(groups, filter), [groups, filter])
   const shownMarket = visibleMarket(market, filtered.map(item => ({ market: item.market, count: item.rows.length })), isFiltering(filter))
   const group = filtered.find(item => item.market === shownMarket)!
   const rowCount = groups.reduce((sum, item) => sum + item.rows.length, 0)
@@ -58,7 +58,7 @@ export default function NbaPropBoardPage() {
         {nbaMarketLabel(item.market)}<em>{item.rows.length}</em>
       </button>)}
     </nav>
-    {rowCount > 0 && <BoardFilterBar games={board.data.games} teams={teams} filter={filter} onQuery={onQuery} onTeam={onTeam} onGame={onGame} />}
+    {rowCount > 0 && <BoardFilterBar games={board.data.games} teams={teams} playerNames={players} filter={filter} onPlayers={onPlayers} onTeam={onTeam} onGames={onGames} />}
     <p className="nba-prop-board__legend">Reference only, no picks. The strip above lists the day's largest gaps; rows below follow tip time, then player name, and are not ranked. Gaps are projection minus line; P(over) is served for eligible assists lines. Dates follow the Eastern game calendar; tip times are CT.</p>
     {gameCount === 0 ? <div className="nfl-empty">No NBA games on this date.</div>
       : rowCount === 0 ? <div className="nfl-empty">NBA games are scheduled on this date, but no prop lines are available.</div>

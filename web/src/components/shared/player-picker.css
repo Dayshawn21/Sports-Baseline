@@ -1,0 +1,20 @@
+.player-picker.ant-select,
+.game-picker.ant-select {
+  max-width: 100%;
+}
+
+.player-picker.ant-select {
+  width: 280px;
+}
+
+.game-picker.ant-select {
+  width: 240px;
+}
+
+@media (max-width: 768px) {
+  .player-picker.ant-select,
+  .game-picker.ant-select {
+    width: 100%;
+    min-height: 44px;
+  }
+}

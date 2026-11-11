@@ -3,7 +3,7 @@ import { buildNflPropBoard, nflLineTeam, type NflBoardCategory, type NflBoardLin
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import type { NflPropPeriod } from '~/utils/nflPropPeriods'
 import { isTargetsReference } from '~/utils/nflTargets'
-import { playerNameMatches, teamMatches, type GamePropFilter } from '~/utils/propFilters'
+import { playerOptions, playerSelected, teamMatches, type GamePropFilter } from '~/utils/propFilters'
 
 export interface NflGamePropCategory {
   /** The week-wide category, whose reference line scores every card's edge share. */
@@ -44,6 +44,13 @@ export function nflGameProps(
 
 /** Ranks are already the board's, so narrowing a game's rows cannot renumber them. */
 export function filterNflGameProps(categories: NflGamePropCategory[], filter: GamePropFilter): NflGamePropCategory[] {
-  const keep = (row: NflBoardLine) => playerNameMatches(row.playerName, filter.q) && teamMatches(nflLineTeam(row), filter.team)
+  const keep = (row: NflBoardLine) => playerSelected(row.playerName, filter.players) && teamMatches(nflLineTeam(row), filter.team)
   return categories.map(item => ({ ...item, rateable: item.rateable.filter(entry => keep(entry.row)), other: item.other.filter(keep) }))
+}
+
+/** The picker lists players on the chosen side from both tables; hidden alternate lines stay out until shown. */
+export function nflGamePlayerOptions(categories: NflGamePropCategory[], otherNames: ReadonlyArray<string>, filter: GamePropFilter, showAll: boolean): string[] {
+  const modelled = filterNflGameProps(categories, { ...filter, players: [] })
+    .flatMap(item => [...item.rateable.map(entry => entry.row.playerName), ...(showAll ? item.other.map(row => row.playerName) : [])])
+  return playerOptions([...modelled, ...otherNames], filter.players)
 }

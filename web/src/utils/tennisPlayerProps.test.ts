@@ -177,15 +177,16 @@ describe('playerPageOrigin', () => {
     expect(playerPageOrigin({ from: '/tennis/match/91823?tab=props&source=prizepicks&market=aces' })).toEqual({ path: '/tennis/match/91823?tab=props&source=prizepicks&market=aces', label: 'Match props' })
   })
 
-  it('keeps a board search built by tennisBoardPath', () => {
-    const path = tennisBoardPath(' Đoković <b> ')
+  it('keeps a board selection built by tennisBoardPath', () => {
+    const path = tennisBoardPath(['Novak Đoković', 'Coco <b>'])
 
-    expect(path).toBe('/tennis/board?q=%C4%90okovi%C4%87+%3Cb%3E')
+    expect(path).toBe('/tennis/board?player=Novak+%C4%90okovi%C4%87&player=Coco+%3Cb%3E')
     expect(playerPageOrigin({ from: path })).toEqual({ path, label: 'Tennis props' })
   })
 
-  it('ignores a board address with anything but an encoded search', () => {
-    expect(playerPageOrigin({ from: '/tennis/board?q=<script>' })).toBeNull()
+  it('ignores a board address with anything but encoded players', () => {
+    expect(playerPageOrigin({ from: '/tennis/board?player=<script>' })).toBeNull()
+    expect(playerPageOrigin({ from: '/tennis/board?q=gojo' })).toBeNull()
     expect(playerPageOrigin({ from: '/tennis/board?x=1' })).toBeNull()
   })
 

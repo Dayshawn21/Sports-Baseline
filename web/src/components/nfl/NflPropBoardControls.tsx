@@ -1,6 +1,7 @@
 import { Select, Switch } from 'antd'
 import PageHead from '~/components/shared/PageHead'
-import PlayerSearchInput from '~/components/shared/PlayerSearchInput'
+import GamePicker from '~/components/shared/GamePicker'
+import PlayerPicker from '~/components/shared/PlayerPicker'
 import type { NflPropGame } from '~/types/nfl'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS, formatKickoffTime, marketLabel } from '~/utils/nflLabels'
 import type { NflBoardCategory } from '~/utils/nflPropBoard'
@@ -47,17 +48,18 @@ export function NflMarketPills({ categories, selected, onSelect }: { categories:
 
 interface FilterProps {
   position: NflPositionFilter
-  gameFilter: string
+  gameFilter: string[]
   games: NflPropGame[]
   showAll: boolean
   showLineToggle?: boolean
-  query: string
+  players: string[]
+  playerNames: string[]
   team: string
   teams: string[]
   onPosition: (position: NflPositionFilter) => void
-  onGame: (game: string) => void
+  onGames: (games: string[]) => void
   onShowAll: (showAll: boolean) => void
-  onQuery: (query: string) => void
+  onPlayers: (players: string[]) => void
   onTeam: (team: string) => void
 }
 
@@ -66,14 +68,14 @@ function gameOption(game: NflPropGame) {
   return { value: String(game.gameId), label: `${game.awayTeam} @ ${game.homeTeam}${kickoff ? ` · ${kickoff}` : ''}` }
 }
 
-export function NflPropBoardFilters({ position, gameFilter, games, showAll, showLineToggle = true, query, team, teams, onPosition, onGame, onShowAll, onQuery, onTeam }: FilterProps) {
+export function NflPropBoardFilters({ position, gameFilter, games, showAll, showLineToggle = true, players, playerNames, team, teams, onPosition, onGames, onShowAll, onPlayers, onTeam }: FilterProps) {
   return <section className="nfl-prop-filter-bar" aria-label="Board filters">
-    <PlayerSearchInput value={query} onChange={onQuery} />
+    <PlayerPicker options={playerNames} value={players} onChange={onPlayers} />
     <div className="nfl-prop-seg" role="group" aria-label="Position">
       {NFL_POSITION_OPTIONS.map(option => <button key={option.value} type="button" className={position === option.value ? 'is-selected' : ''} aria-pressed={position === option.value} onClick={() => onPosition(option.value)}>{option.label}</button>)}
     </div>
     <Select aria-label="Team" value={team} onChange={onTeam} options={[{ value: ALL, label: 'All teams' }, ...teams.map(code => ({ value: code, label: code }))]} />
-    <Select aria-label="Game" value={gameFilter} onChange={onGame} options={[{ value: 'all', label: 'All games' }, ...games.map(gameOption)]} />
+    <GamePicker value={gameFilter} onChange={onGames} options={games.map(gameOption)} />
     {showLineToggle && <label className="nfl-prop-toggle"><Switch size="small" checked={showAll} onChange={onShowAll} /><span>Show all lines</span></label>}
   </section>
 }

@@ -1,18 +1,19 @@
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ALL, activeTeamFilter, isFiltering, parsePlayerQuery, parseTeamFilter, withPropFilters, type GamePropFilter, type PropFilterPatch } from '~/utils/propFilters'
+import { activeTeamFilter, isFiltering, parsePlayerFilter, parseTeamFilter, withPropListFilters, type GamePropFilter, type PropListFilterPatch } from '~/utils/propFilters'
 
-/** A game page's player search and team toggle, kept in the URL so Back from a player page restores them. */
-export function useGamePropFilters(game: { awayTeam: string, homeTeam: string }) {
+/** A game page's player picker and team toggle, kept in the URL so Back from a player page restores them. */
+export function useGamePropFilters({ awayTeam, homeTeam }: { awayTeam: string, homeTeam: string }) {
   const [params, setParams] = useSearchParams()
-  const filter: GamePropFilter = {
-    q: parsePlayerQuery(params.get('q')),
-    team: activeTeamFilter(parseTeamFilter(params.get('team')), [game.awayTeam, game.homeTeam]),
-  }
-  const update = (patch: PropFilterPatch) => setParams(withPropFilters(params, patch), { replace: true })
+  const filter: GamePropFilter = useMemo(() => ({
+    players: parsePlayerFilter(params),
+    team: activeTeamFilter(parseTeamFilter(params.get('team')), [awayTeam, homeTeam]),
+  }), [params, awayTeam, homeTeam])
+  const update = (patch: PropListFilterPatch) => setParams(withPropListFilters(params, patch), { replace: true })
   return {
     filter,
-    filtering: isFiltering({ ...filter, game: ALL }),
-    onQuery: (q: string) => update({ q }),
+    filtering: isFiltering({ ...filter, games: [] }),
+    onPlayers: (player: string[]) => update({ player }),
     onTeam: (team: string) => update({ team }),
   }
 }

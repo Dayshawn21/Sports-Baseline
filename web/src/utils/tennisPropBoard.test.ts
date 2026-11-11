@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptedPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
-import { buildTennisPropBoard, compareLines, filterTennisBoardCategories, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, compareLines, filterTennisBoardCategories, tennisBoardPath, tennisPlayerOptions, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
 const prediction: MatchPrediction = {
   matchId: 10, startUtc: '2026-09-21T16:00:00Z', p1Name: 'Aryna Sabalenka', p2Name: 'Coco Gauff', tour: 'WTA', surface: 'Hard', tournament: 'Beijing', round: 'R32',
@@ -255,18 +255,32 @@ describe('filterTennisBoardCategories', () => {
     { market: 'aces', label: 'Aces', rateable: [line(1, 'Novak Đoković'), line(2, 'Coco Gauff')], other: [line(3, 'Iga Świątek')] },
     { market: 'games', label: 'Games', rateable: [line(4, 'Coco Gauff')], other: [] },
   ]
-  const names = (query: string) => filterTennisBoardCategories(categories, query).map(item => [item.rateable.map(row => row.playerName), item.other.map(row => row.playerName)])
+  const names = (players: string[]) => filterTennisBoardCategories(categories, players).map(item => [item.rateable.map(row => row.playerName), item.other.map(row => row.playerName)])
 
-  it('returns the same categories on a blank search', () => {
-    expect(filterTennisBoardCategories(categories, ' ')).toBe(categories)
+  it('returns the same categories on an empty selection', () => {
+    expect(filterTennisBoardCategories(categories, [])).toBe(categories)
   })
 
-  it('narrows rated and review lines, ignoring accents', () => {
-    expect(names('dokovic')).toEqual([[['Novak Đoković'], []], [[], []]])
-    expect(names('swiatek')).toEqual([[[], ['Iga Świątek']], [[], []]])
+  it('narrows rated and review lines to every chosen player, ignoring accents', () => {
+    expect(names(['Novak Dokovic'])).toEqual([[['Novak Đoković'], []], [[], []]])
+    expect(names(['Iga Świątek', 'Coco Gauff'])).toEqual([[['Coco Gauff'], ['Iga Świątek']], [['Coco Gauff'], []]])
   })
 
   it('keeps every market so the pills stay put', () => {
-    expect(names('nobody')).toHaveLength(2)
+    expect(names(['Nobody'])).toHaveLength(2)
+  })
+})
+
+describe('tennis player picker', () => {
+  const line = (id: number, playerName: string) => ({ id, playerName }) as TennisBoardLine
+  const categories = [{ market: 'aces', label: 'Aces', rateable: [line(1, 'Coco Gauff')], other: [line(2, 'Iga Świątek')] }, { market: 'games', label: 'Games', rateable: [line(3, 'Coco Gauff')], other: [] }]
+
+  it('lists rated and review players once, keeping a chosen name', () => {
+    expect(tennisPlayerOptions(categories, ['Borna Gojo'])).toEqual(['Borna Gojo', 'Coco Gauff', 'Iga Świątek'])
+  })
+
+  it('builds the board address with every chosen player', () => {
+    expect(tennisBoardPath([])).toBe('/tennis/board')
+    expect(tennisBoardPath(['Coco Gauff', 'Borna Gojo'])).toBe('/tennis/board?player=Coco+Gauff&player=Borna+Gojo')
   })
 })

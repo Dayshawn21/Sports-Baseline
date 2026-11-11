@@ -6,18 +6,20 @@ import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import GamePropFilters from '~/components/shared/GamePropFilters'
 import { useGamePropFilters } from '~/hooks/useGamePropFilters'
+import { useNflLineOnlyProps } from '~/hooks/useNfl'
 import { useRestoreOpenedRow } from '~/hooks/useRestoreOpenedRow'
 import type { NflSeasonWeek, NflSlateGame } from '~/types/nfl'
 import { hasKickedOff } from '~/utils/nflGame'
-import { filterNflGameProps, nflGameProps } from '~/utils/nflGameProps'
+import { filterNflGameProps, nflGamePlayerOptions, nflGameProps } from '~/utils/nflGameProps'
 import { marketLabel } from '~/utils/nflLabels'
+import { lineOnlyGroups } from '~/utils/nflLineOnly'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { NFL_POSITION_OPTIONS } from '~/utils/nflPositions'
 import { buildNflPropBoard } from '~/utils/nflPropBoard'
 import { slateDigest } from '~/utils/nflSlate'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { gameViewSearch, parseGameView } from '~/utils/nflViewParams'
-import { withPropFilters } from '~/utils/propFilters'
+import { gamePropRowMatches, withPropListFilters } from '~/utils/propFilters'
 
 function Segment<T extends string>({ label, options, value, onChange }: { label: string, options: Array<{ label: string, value: T }>, value: T, onChange: (value: T) => void }) {
   return <div className="nfl-prop-seg" role="group" aria-label={label}>
@@ -41,11 +43,14 @@ export function NflGameProps({ games, game, week, now }: Props) {
   // In the URL so Back from a player page returns to the same view.
   const [params, setParams] = useSearchParams()
   const { position, showAll } = parseGameView(params)
-  const { filter, filtering, onQuery, onTeam } = useGamePropFilters(game)
-  const setView = (patch: Partial<ReturnType<typeof parseGameView>>) => setParams(withPropFilters(gameViewSearch({ position, showAll, ...patch }), filter), { replace: true })
+  const { filter, filtering, onPlayers, onTeam } = useGamePropFilters(game)
+  const setView = (patch: Partial<ReturnType<typeof parseGameView>>) => setParams(withPropListFilters(gameViewSearch({ position, showAll, ...patch }), { player: filter.players, team: filter.team }), { replace: true })
   useRestoreOpenedRow(true)
   const categories = useMemo(() => nflGameProps(games, game.gameId, position, 'full_game', at), [games, game.gameId, position, at])
   const shown = filterNflGameProps(categories, filter)
+  const lineOnly = useNflLineOnlyProps(game.gameId)
+  const otherRows = lineOnly.data ? lineOnlyGroups(lineOnly.data.lines, position).flatMap(group => group.rows) : []
+  const playerNames = nflGamePlayerOptions(categories, otherRows.filter(row => gamePropRowMatches(row, game, { ...filter, players: [] })).map(row => row.playerName), filter, showAll)
   // The week-wide board (its reference lines set the gap share, so boxes match the slate's numbers),
   // narrowed to this game and left unfiltered so a box shows whatever position is chosen.
   const board = useMemo(() => buildNflPropBoard(games, 'all', at)
@@ -61,7 +66,7 @@ export function NflGameProps({ games, game, week, now }: Props) {
       <summary>How to read these comparisons</summary>
       <p>Over and Under show which side of the line the projection falls on. Ready, Watch and Review describe data quality, not betting confidence. A rank shows a line's place on the weekly prop board; it does not make it a recommended bet. <Link to="/nfl/model">View model validation</Link>.</p>
     </details>
-    <GamePropFilters game={game} filter={filter} onQuery={onQuery} onTeam={onTeam} />
+    <GamePropFilters game={game} playerNames={playerNames} filter={filter} onPlayers={onPlayers} onTeam={onTeam} />
     <div className="nfl-game-props__toolbar">
       <span className="nfl-game-props__period">Full game</span>
       <Segment label="Position" options={NFL_POSITION_OPTIONS} value={position} onChange={value => setView({ position: value })} />

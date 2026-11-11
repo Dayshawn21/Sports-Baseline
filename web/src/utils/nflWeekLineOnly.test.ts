@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflLineOnlyBoardGame, NflLineOnlyLine, NflSlateGame } from '~/types/nfl'
-import { availableNflPropGames, filterNflWeekLineOnly, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
+import { availableNflPropGames, filterNflWeekLineOnly, nflBoardPlayerOptions, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
 
 const NOW = new Date('2026-10-21T18:00:00Z')
 const line: NflLineOnlyLine = {
@@ -15,7 +15,7 @@ describe('weekly line-only markets', () => {
   it('includes games without modelled props and removes closed and empty games', () => {
     const games = [game, { ...game, gameId: 2, startUtc: NOW.toISOString() }, { ...game, gameId: 3, lines: [] }]
     expect(availableNflPropGames([], games, NOW).map(item => item.gameId)).toEqual([1])
-    expect(nflWeekLineOnlyCategories(games, 'all', null, NOW)[0].games.map(item => item.game.gameId)).toEqual([1])
+    expect(nflWeekLineOnlyCategories(games, 'all', [], NOW)[0].games.map(item => item.game.gameId)).toEqual([1])
   })
 
   it('merges a game present in both feeds without duplicating it', () => {
@@ -25,17 +25,17 @@ describe('weekly line-only markets', () => {
 
   it('filters by game and position, and keeps each games player history separate', () => {
     const second = { ...game, gameId: 2, lines: [{ ...line, line: 9.5, recent: [{ season: 2026, week: 6, opponent: 'LV', value: 12 }] }] }
-    expect(nflWeekLineOnlyCategories([game, second], 'QB', null, NOW)).toEqual([])
-    const [category] = nflWeekLineOnlyCategories([game, second], 'K', 2, NOW)
+    expect(nflWeekLineOnlyCategories([game, second], 'QB', [], NOW)).toEqual([])
+    const [category] = nflWeekLineOnlyCategories([game, second], 'K', [2], NOW)
     expect(category.count).toBe(1)
     expect(category.games[0].game.gameId).toBe(2)
     expect(category.games[0].group.rows[0]).toMatchObject({ count: 1, overCount: 1 })
-    expect(nflWeekLineOnlyCategories([game], 'all', 999, NOW)).toEqual([])
+    expect(nflWeekLineOnlyCategories([game], 'all', [999], NOW)).toEqual([])
   })
 
   it('counts player-market rows once and preserves standard and alternate rungs', () => {
     const games = [{ ...game, lines: [line, { ...line, line: 10.5, oddsType: 'demon' }] }]
-    const [category] = nflWeekLineOnlyCategories(games, 'all', null, NOW)
+    const [category] = nflWeekLineOnlyCategories(games, 'all', [], NOW)
     expect(category.count).toBe(1)
     expect(category.games[0].group.rows[0].rungs.map(rung => rung.line)).toEqual([7.5, 10.5])
   })
@@ -44,20 +44,31 @@ describe('weekly line-only markets', () => {
     const jaguar = { ...line, playerId: 2, playerName: 'Trevor Lawrence', team: 'JAC' }
     const titan = { ...line, playerId: 3, playerName: 'Cam Ward', team: 'TEN' }
     const unlinked = { ...line, playerId: 4, playerName: 'Unlinked Kicker', team: null }
-    const categories = nflWeekLineOnlyCategories([{ ...game, awayTeam: 'JAX', homeTeam: 'TEN', lines: [jaguar, titan, unlinked] }], 'all', null, NOW)
-    const names = (query: string, team: string) => filterNflWeekLineOnly(categories, query, team).flatMap(item => item.games.flatMap(entry => entry.group.rows.map(row => row.playerName)))
+    const categories = nflWeekLineOnlyCategories([{ ...game, awayTeam: 'JAX', homeTeam: 'TEN', lines: [jaguar, titan, unlinked] }], 'all', [], NOW)
+    const names = (players: string[], team: string) => filterNflWeekLineOnly(categories, players, team).flatMap(item => item.games.flatMap(entry => entry.group.rows.map(row => row.playerName)))
 
-    expect(names('', 'JAX')).toEqual(['Trevor Lawrence'])
-    expect(names('ward', 'all')).toEqual(['Cam Ward'])
-    expect(names('unlinked', 'all')).toEqual(['Unlinked Kicker'])
-    expect(names('unlinked', 'JAX')).toEqual([])
-    expect(filterNflWeekLineOnly(categories, 'nobody', 'all')).toEqual([])
-    expect(filterNflWeekLineOnly(categories, '', 'TEN')[0].count).toBe(1)
+    expect(names([], 'JAX')).toEqual(['Trevor Lawrence'])
+    expect(names(['Cam Ward', 'Trevor Lawrence'], 'all')).toEqual(['Cam Ward', 'Trevor Lawrence'])
+    expect(names(['Unlinked Kicker'], 'all')).toEqual(['Unlinked Kicker'])
+    expect(names(['Unlinked Kicker'], 'JAX')).toEqual([])
+    expect(filterNflWeekLineOnly(categories, ['Nobody'], 'all')).toEqual([])
+    expect(filterNflWeekLineOnly(categories, [], 'TEN')[0].count).toBe(1)
   })
 
   it('orders the extra markets consistently and keeps targets on their reference path', () => {
     const games = [{ ...game, lines: [line, { ...line, market: 'passing_touchdowns', position: 'QB' }, { ...line, market: 'receiving_targets' }] }]
-    expect(nflWeekLineOnlyCategories(games, 'all', null, NOW).map(item => item.market)).toEqual(['passing_touchdowns', 'kicking_points'])
-    expect(nflWeekLineOnlyCategories([], 'all', null, NOW)).toEqual([])
+    expect(nflWeekLineOnlyCategories(games, 'all', [], NOW).map(item => item.market)).toEqual(['passing_touchdowns', 'kicking_points'])
+    expect(nflWeekLineOnlyCategories([], 'all', [], NOW)).toEqual([])
+  })
+})
+
+describe('nflBoardPlayerOptions', () => {
+  const games = [{ ...game, awayTeam: 'JAX', homeTeam: 'TEN', lines: [{ ...line, playerId: 2, playerName: 'Cam Little', team: 'JAC' }, { ...line, playerId: 3, playerName: 'Joey Slye', team: 'TEN' }] }]
+  const other = nflWeekLineOnlyCategories(games, 'all', [], NOW)
+
+  it('lists players under the team, keeping a chosen name', () => {
+    expect(nflBoardPlayerOptions([], other, 'all', [], false)).toEqual(['Cam Little', 'Joey Slye'])
+    expect(nflBoardPlayerOptions([], other, 'JAX', ['Joey Slye'], false)).toEqual(['Cam Little', 'Joey Slye'])
+    expect(nflBoardPlayerOptions([], other, 'JAX', [], false)).toEqual(['Cam Little'])
   })
 })

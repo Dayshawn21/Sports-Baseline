@@ -1,6 +1,6 @@
 import { Switch } from 'antd'
 import PageHead from '~/components/shared/PageHead'
-import PlayerSearchInput from '~/components/shared/PlayerSearchInput'
+import PlayerPicker from '~/components/shared/PlayerPicker'
 import type { TennisBoardCategory, TennisPropSource, TennisTourFilter } from '~/utils/tennisPropBoard'
 import { TENNIS_PROP_SOURCES, TENNIS_TOUR_FILTERS, marketTitle } from '~/utils/tennisPropBoard'
 
@@ -33,16 +33,17 @@ interface FilterProps {
   source: TennisPropSource
   tour: TennisTourFilter
   showAll: boolean
-  query: string
+  players: string[]
+  playerNames: string[]
   onSource: (source: TennisPropSource) => void
   onTour: (tour: TennisTourFilter) => void
   onShowAll: (showAll: boolean) => void
-  onQuery: (query: string) => void
+  onPlayers: (players: string[]) => void
 }
 
-export function PropBoardFilters({ source, tour, showAll, query, onSource, onTour, onShowAll, onQuery }: FilterProps) {
+export function PropBoardFilters({ source, tour, showAll, players, playerNames, onSource, onTour, onShowAll, onPlayers }: FilterProps) {
   return <section className="tennis-prop-filter-bar" aria-label="Tennis prop board filters">
-    <PlayerSearchInput value={query} onChange={onQuery} />
+    <PlayerPicker options={playerNames} value={players} onChange={onPlayers} />
     <Segment label="Source" options={TENNIS_PROP_SOURCES} value={source} onChange={onSource} />
     <Segment label="Tour" options={TENNIS_TOUR_FILTERS} value={tour} onChange={onTour} />
     <label className="tennis-prop-toggle"><Switch size="small" checked={showAll} onChange={onShowAll} aria-label="Include lines for review" /><span>Include lines for review</span></label>

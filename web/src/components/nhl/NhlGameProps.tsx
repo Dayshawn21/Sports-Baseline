@@ -4,7 +4,7 @@ import GamePropFilters from '~/components/shared/GamePropFilters'
 import LoadingState from '~/components/shared/LoadingState'
 import { useGamePropFilters } from '~/hooks/useGamePropFilters'
 import { useNhlLineOnlyProps } from '~/hooks/useNhl'
-import { gamePropRowMatches } from '~/utils/propFilters'
+import { gamePlayerOptions, gamePropRowMatches } from '~/utils/propFilters'
 import { nhlTimeLabel } from '~/utils/nhlGame'
 import { nhlOddsTypeCounts, nhlPropListGroups, nhlSharedFetchedAt, type NhlPropListGroup, type NhlPropListRow } from '~/utils/nhlLineOnly'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
@@ -65,11 +65,12 @@ function MarketTable({ group, gameDate }: { group: NhlPropListGroup, gameDate: s
 export function NhlGameProps({ game }: { game: { gameId: number, gameDate: string, awayTeam: string, homeTeam: string } }) {
   const { gameId, gameDate } = game
   const query = useNhlLineOnlyProps(gameId)
-  const { filter, onQuery, onTeam } = useGamePropFilters(game)
+  const { filter, onPlayers, onTeam } = useGamePropFilters(game)
   if (query.isLoading) return <LoadingState message="Loading NHL player props..." />
   if (query.isError || !query.data) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
   const lines = query.data.lines
   const groups = nhlPropListGroups(lines)
+  const playerNames = gamePlayerOptions(lines, game, filter)
   const shown = groups.map(group => ({ ...group, rows: group.rows.filter(row => gamePropRowMatches(row, game, filter)) })).filter(group => group.rows.length > 0)
   return <section className="nhl-props" aria-label="Player props">
     <div className="nhl-props-heading"><h2>Player props</h2><p>PrizePicks full-game lines. {NHL_PROJECTION_CAPTION}. Open a player for the form chart and every line.</p></div>
@@ -77,7 +78,7 @@ export function NhlGameProps({ game }: { game: { gameId: number, gameDate: strin
       <div><dt>Total lines</dt><dd>{lines.length}</dd></div>
       {nhlOddsTypeCounts(lines).map(entry => <div key={entry.oddsType}><dt>{entry.label}</dt><dd>{entry.count}</dd></div>)}
     </dl>
-    {groups.length > 0 && <GamePropFilters game={game} filter={filter} onQuery={onQuery} onTeam={onTeam} />}
+    {groups.length > 0 && <GamePropFilters game={game} playerNames={playerNames} filter={filter} onPlayers={onPlayers} onTeam={onTeam} />}
     {groups.length === 0
       ? <p className="nfl-game-empty">No linked full-game PrizePicks lines are stored for this game.</p>
       : shown.length === 0 ? <p className="nfl-game-empty">No props match these filters.</p>

@@ -1,5 +1,5 @@
 import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
-import { playerNameMatches } from '~/utils/propFilters'
+import { playerOptions, playerSelected, withPropListFilters } from '~/utils/propFilters'
 
 export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'market' | 'model'
 export type TennisTourFilter = 'all' | 'atp' | 'wta' | 'challenger' | 'wta_125'
@@ -355,14 +355,18 @@ export function buildTennisPropBoard(
     }))
 }
 
-/** Every market stays, emptied ones included, so the pills do not reshuffle as a search narrows them. */
-export function filterTennisBoardCategories(categories: TennisBoardCategory[], query: string): TennisBoardCategory[] {
-  if (query.trim() === '') return categories
-  const keep = (line: TennisBoardLine) => playerNameMatches(line.playerName, query)
+/** Every market stays, emptied ones included, so the pills do not reshuffle as a selection narrows them. */
+export function filterTennisBoardCategories(categories: TennisBoardCategory[], players: readonly string[]): TennisBoardCategory[] {
+  if (players.length === 0) return categories
+  const keep = (line: TennisBoardLine) => playerSelected(line.playerName, players)
   return categories.map(category => ({ ...category, rateable: category.rateable.filter(keep), other: category.other.filter(keep) }))
 }
 
-export function tennisBoardPath(query: string): string {
-  const trimmed = query.trim()
-  return trimmed === '' ? '/tennis/board' : `/tennis/board?${new URLSearchParams({ q: trimmed })}`
+export function tennisBoardPath(players: readonly string[]): string {
+  const search = withPropListFilters(new URLSearchParams(), { player: players }).toString()
+  return search === '' ? '/tennis/board' : `/tennis/board?${search}`
+}
+
+export function tennisPlayerOptions(categories: TennisBoardCategory[], players: readonly string[]): string[] {
+  return playerOptions(categories.flatMap(category => [...category.rateable, ...category.other].map(line => line.playerName)), players)
 }

@@ -13,8 +13,8 @@ import { buildNflPropBoard, filterNflBoardCategories, filterNflPropBoardGames } 
 import { slateDigest } from '~/utils/nflSlate'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { boardViewSearch, parseBoardView, type NflBoardView } from '~/utils/nflViewParams'
-import { availableNflPropGames, filterNflWeekLineOnly, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
-import { ALL, activeTeamFilter, gameTeams, isFiltering, teamAfterGame, visibleMarket } from '~/utils/propFilters'
+import { availableNflPropGames, filterNflWeekLineOnly, nflBoardPlayerOptions, nflWeekLineOnlyCategories } from '~/utils/nflWeekLineOnly'
+import { ALL, activeGameFilters, activeTeamFilter, gameTeams, isFiltering, teamAfterGames, visibleMarket } from '~/utils/propFilters'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
 
@@ -22,7 +22,7 @@ export default function NflPropBoardPage() {
   // The view lives in the URL so Back from a player page returns to it. Null season and week follow the current week; a pick pins them.
   const [params, setParams] = useSearchParams()
   const view = useMemo(() => parseBoardView(params), [params])
-  const { season, week, position, market, game: gameFilter, showAll, q } = view
+  const { season, week, position, market, showAll, players } = view
   const update = (patch: Partial<NflBoardView>) => setParams(boardViewSearch({ ...view, ...patch }), { replace: true })
   const currentWeek = useNflCurrentWeek()
   const activeSeason = season ?? currentWeek.data?.season ?? null
@@ -31,17 +31,19 @@ export default function NflPropBoardPage() {
   const lineOnly = useNflWeekLineOnlyProps(activeSeason, activeWeek)
   useRestoreOpenedRow(slate.isSuccess)
   const availableGames = useMemo(() => availableNflPropGames(slate.data?.games ?? [], lineOnly.data?.games ?? []), [slate.data, lineOnly.data])
-  const selectedGameId = gameFilter === 'all' ? null : Number(gameFilter)
-  const filteredGames = useMemo(() => filterNflPropBoardGames(slate.data?.games ?? [], selectedGameId), [slate.data, selectedGameId])
+  const gameFilter = useMemo(() => activeGameFilters(view.games, availableGames), [view.games, availableGames])
+  const selectedGameIds = useMemo(() => gameFilter.map(Number), [gameFilter])
+  const filteredGames = useMemo(() => filterNflPropBoardGames(slate.data?.games ?? [], selectedGameIds), [slate.data, selectedGameIds])
   const categories = useMemo(() => buildNflPropBoard(filteredGames, position), [filteredGames, position])
-  const otherCategories = useMemo(() => nflWeekLineOnlyCategories(lineOnly.data?.games ?? [], position, selectedGameId), [lineOnly.data, position, selectedGameId])
+  const otherCategories = useMemo(() => nflWeekLineOnlyCategories(lineOnly.data?.games ?? [], position, selectedGameIds), [lineOnly.data, position, selectedGameIds])
   // The slate's own digest: the whole week as of now, ignoring the board's filters.
   const digest = useMemo(() => slateDigest(buildNflPropBoard(slate.data?.games ?? [], 'all', new Date())), [slate.data])
   const teams = useMemo(() => gameTeams(availableGames), [availableGames])
   const team = activeTeamFilter(view.team, teams)
-  const filtered = useMemo(() => filterNflBoardCategories(categories, q, team), [categories, q, team])
-  const filteredOther = useMemo(() => filterNflWeekLineOnly(otherCategories, q, team), [otherCategories, q, team])
-  const filtering = isFiltering({ q, team, game: ALL })
+  const filtered = useMemo(() => filterNflBoardCategories(categories, players, team), [categories, players, team])
+  const filteredOther = useMemo(() => filterNflWeekLineOnly(otherCategories, players, team), [otherCategories, players, team])
+  const playerNames = useMemo(() => nflBoardPlayerOptions(categories, otherCategories, team, players, showAll), [categories, otherCategories, team, players, showAll])
+  const filtering = isFiltering({ players, team, games: [] })
   const pills = [...filtered.map(item => ({ market: item.category.market, count: item.rateable.length })), ...filteredOther.map(item => ({ market: item.market, count: item.count }))]
   const choosableMarket = pills.some(item => item.market === market) ? market
     : filtered.find(item => item.rateable.length > 0)?.category.market ?? pills[0]?.market ?? null
@@ -58,13 +60,13 @@ export default function NflPropBoardPage() {
   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
     <NflPropBoardHead season={activeSeason} week={activeWeek} games={availableGames.length} categories={categories}
       lineOnlyCount={otherCategories.reduce((total, item) => total + item.count, 0)}
-      onSeason={value => update({ season: value, week: activeWeek, game: 'all', market: null, q: '', team: ALL })}
-      onWeek={value => update({ season: activeSeason, week: value, game: 'all', market: null, q: '', team: ALL })} />
+      onSeason={value => update({ season: value, week: activeWeek, games: [], market: null, players: [], team: ALL })}
+      onWeek={value => update({ season: activeSeason, week: value, games: [], market: null, players: [], team: ALL })} />
     <NflSlateDigest items={digest} />
     <NflMarketPills categories={pills} selected={selectedMarket} onSelect={value => update({ market: value })} />
-    <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll} showLineToggle={!otherCategory} query={q} team={team} teams={teams}
-      onPosition={value => update({ position: value, market: null })} onGame={value => update({ game: value, team: teamAfterGame(team, value, availableGames) })} onShowAll={value => update({ showAll: value })}
-      onQuery={value => update({ q: value })} onTeam={value => update({ team: value })} />
+    <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll} showLineToggle={!otherCategory} players={players} playerNames={playerNames} team={team} teams={teams}
+      onPosition={value => update({ position: value, market: null })} onGames={value => update({ games: value, team: teamAfterGames(team, value, availableGames) })} onShowAll={value => update({ showAll: value })}
+      onPlayers={value => update({ players: value })} onTeam={value => update({ team: value })} />
     {slate.isLoading && <LoadingState message="Loading prop comparisons..." />}
     {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
     {lineOnly.isLoading && <LoadingState message="Loading other markets..." />}
