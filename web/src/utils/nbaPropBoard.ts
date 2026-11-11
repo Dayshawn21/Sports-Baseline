@@ -25,7 +25,7 @@ export function nbaBoardMarket(value: string | null, markets: NbaBoardMarket[]):
 
 export function nbaBoardPath(date: string | null, market: string): string | null {
   if (date === null) return null
-  return `/nba/board?${new URLSearchParams({ date, market })}`
+  return `/nba/props?${new URLSearchParams({ date, market })}`
 }
 
 const TIP_FORMAT = new Intl.DateTimeFormat('en-US', {

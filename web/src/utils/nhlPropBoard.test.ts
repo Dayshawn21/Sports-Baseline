@@ -73,7 +73,7 @@ describe('nhlBoardMarket', () => {
 
 describe('nhlBoardPath', () => {
   it('builds a dated, market-pinned path and is null without a date', () => {
-    expect(nhlBoardPath('2026-10-24', 'power_play_points')).toBe('/nhl/board?date=2026-10-24&market=power_play_points')
+    expect(nhlBoardPath('2026-10-24', 'power_play_points')).toBe('/nhl/props?date=2026-10-24&market=power_play_points')
     expect(nhlBoardPath(null, 'points')).toBeNull()
   })
 })

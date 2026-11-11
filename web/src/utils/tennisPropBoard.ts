@@ -364,7 +364,7 @@ export function filterTennisBoardCategories(categories: TennisBoardCategory[], p
 
 export function tennisBoardPath(players: readonly string[]): string {
   const search = withPropListFilters(new URLSearchParams(), { player: players }).toString()
-  return search === '' ? '/tennis/board' : `/tennis/board?${search}`
+  return search === '' ? '/tennis/props' : `/tennis/props?${search}`
 }
 
 export function tennisPlayerOptions(categories: TennisBoardCategory[], players: readonly string[]): string[] {

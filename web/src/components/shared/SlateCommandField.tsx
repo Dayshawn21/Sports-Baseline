@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import { firstSlateCommandPath, matchingSlateCommandTargets, normalizeSlateCommand, slateCommandPlaceholder } from '~/utils/slateCommand'
 import { sportViewForPath } from '~/utils/sportNav'
+import { isEditableTarget } from '~/utils/keyboard'
 import '~/components/shared/slate-command.css'
 
 const KIND_LABEL = { match: 'Match', game: 'Game', team: 'Team', player: 'Player' } as const
@@ -22,11 +23,6 @@ function resultCount(count: number): string {
 function noMatch(query: string, pathname: string): string {
   const hint = pathname.startsWith('/tennis') ? 'a player or tournament' : 'a team code, team name or player'
   return `No match for "${query.trim()}". Try ${hint}.`
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement
-    && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'))
 }
 
 export default function SlateCommandField({ mobile = false, mobileExpanded = false, onMobileExpandedChange }: Props) {
@@ -57,11 +53,16 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
       if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
       if (event.defaultPrevented || event.repeat || event.isComposing || isEditableTarget(event.target)) return
       event.preventDefault()
-      inputRef.current?.focus()
+      // Collapsed to a button, the field has no input yet: open it, and the expand effect focuses it.
+      if (mobile && !mobileExpanded) {
+        if (scope) onMobileExpandedChange?.(true)
+      } else {
+        inputRef.current?.focus()
+      }
     }
     window.addEventListener('keydown', focusFromShortcut)
     return () => window.removeEventListener('keydown', focusFromShortcut)
-  }, [active])
+  }, [active, mobile, mobileExpanded, onMobileExpandedChange, scope])
 
   if (!active) return null
 

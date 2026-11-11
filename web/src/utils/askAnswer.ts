@@ -12,8 +12,9 @@ const INTERNAL_PATHS: readonly RegExp[] = [
   /^\/tennis\/match\/\d+$/,
   /^\/(nfl|tennis)\/player\/\d+$/,
   /^\/(nba|nfl|tennis)\/model$/,
-  new RegExp(`^/nba/board(\\?date=${DATE})?$`),
-  /^\/tennis\/board$/,
+  // `board` is the pre-rename spelling an API not yet redeployed still writes; the web redirects it.
+  new RegExp(`^/nba/(props|board)(\\?date=${DATE})?$`),
+  /^\/tennis\/(props|board)$/,
 ]
 
 const LINK = /\[([^\]\n]+)\]\(([^)\s]+)\)/g

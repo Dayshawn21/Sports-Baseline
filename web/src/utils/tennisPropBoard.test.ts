@@ -280,7 +280,7 @@ describe('tennis player picker', () => {
   })
 
   it('builds the board address with every chosen player', () => {
-    expect(tennisBoardPath([])).toBe('/tennis/board')
-    expect(tennisBoardPath(['Coco Gauff', 'Borna Gojo'])).toBe('/tennis/board?player=Coco+Gauff&player=Borna+Gojo')
+    expect(tennisBoardPath([])).toBe('/tennis/props')
+    expect(tennisBoardPath(['Coco Gauff', 'Borna Gojo'])).toBe('/tennis/props?player=Coco+Gauff&player=Borna+Gojo')
   })
 })

@@ -173,28 +173,28 @@ describe('propPlayerPath', () => {
 
 describe('playerPageOrigin', () => {
   it('accepts the board and a match props tab and labels them', () => {
-    expect(playerPageOrigin({ from: '/tennis/board' })).toEqual({ path: '/tennis/board', label: 'Tennis props' })
+    expect(playerPageOrigin({ from: '/tennis/props' })).toEqual({ path: '/tennis/props', label: 'Tennis props' })
     expect(playerPageOrigin({ from: '/tennis/match/91823?tab=props&source=prizepicks&market=aces' })).toEqual({ path: '/tennis/match/91823?tab=props&source=prizepicks&market=aces', label: 'Match props' })
   })
 
   it('keeps a board selection built by tennisBoardPath', () => {
     const path = tennisBoardPath(['Novak Đoković', 'Coco <b>'])
 
-    expect(path).toBe('/tennis/board?player=Novak+%C4%90okovi%C4%87&player=Coco+%3Cb%3E')
+    expect(path).toBe('/tennis/props?player=Novak+%C4%90okovi%C4%87&player=Coco+%3Cb%3E')
     expect(playerPageOrigin({ from: path })).toEqual({ path, label: 'Tennis props' })
   })
 
   it('ignores a board address with anything but encoded players', () => {
-    expect(playerPageOrigin({ from: '/tennis/board?player=<script>' })).toBeNull()
-    expect(playerPageOrigin({ from: '/tennis/board?q=gojo' })).toBeNull()
-    expect(playerPageOrigin({ from: '/tennis/board?x=1' })).toBeNull()
+    expect(playerPageOrigin({ from: '/tennis/props?player=<script>' })).toBeNull()
+    expect(playerPageOrigin({ from: '/tennis/props?q=gojo' })).toBeNull()
+    expect(playerPageOrigin({ from: '/tennis/props?x=1' })).toBeNull()
   })
 
   it.each([
     ['no state', null],
     ['a non-object', 'x'],
     ['a non-string from', { from: 5 }],
-    ['an off-site address', { from: 'https://example.com/tennis/board' }],
+    ['an off-site address', { from: 'https://example.com/tennis/props' }],
     ['a protocol-relative address', { from: '//example.com' }],
     ['another page', { from: '/tennis/model' }],
     ['a script in the query', { from: '/tennis/match/1?tab=props&x=<script>' }],

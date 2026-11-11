@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react'
-import { ConfigProvider, Layout, Menu, Drawer, Button, type MenuProps } from 'antd'
+import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { ConfigProvider, Layout, Menu, Drawer, Button } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
 import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { sportRoutes } from '~/routes/sportPages'
@@ -7,10 +7,15 @@ import { useIsMobile } from '~/hooks/useIsMobile'
 import { appAntdTheme } from '~/theme/antdTheme'
 import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
-import { menuSections, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
+import { useLastSportView } from '~/hooks/useLastSportView'
+import { useShellShortcuts } from '~/hooks/useShellShortcuts'
+import { VIEW_SHORTCUT } from '~/utils/shellShortcuts'
+import { phoneMenuItems, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
 import { SlateCommandProvider, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
+import MobileSportSwitcher from '~/components/shared/MobileSportSwitcher'
+import ShortcutsPanel from '~/components/shared/ShortcutsPanel'
 import AskLauncher from '~/components/ask/AskLauncher'
 import LoadingState from '~/components/shared/LoadingState'
 import NotFoundPage from '~/pages/NotFoundPage'
@@ -45,12 +50,25 @@ function Wordmark({ home }: { home: ShellNav['home'] }) {
   )
 }
 
+/** On one of its views the sport tab links to the page itself; on a game or player page it is only the current section. */
+function sportCurrent(sport: ShellNav['sports'][number], nav: ShellNav): 'page' | 'true' | undefined {
+  if (!sport.active) return undefined
+  return nav.views.some(view => view.active) ? 'page' : 'true'
+}
+
 function ViewTabs({ nav, className = '' }: { nav: ShellNav, className?: string }) {
   if (nav.views.length === 0) return null
   return (
     <nav className={`sport-view-switch ${className}`} aria-label="Views">
       {nav.views.map(view => (
-        <Link key={view.view} to={view.path} className={view.active ? 'is-selected' : ''} aria-current={view.active ? 'page' : undefined}>
+        <Link
+          key={view.view}
+          to={view.path}
+          className={view.active ? 'is-selected' : ''}
+          aria-current={view.active ? 'page' : undefined}
+          aria-keyshortcuts={VIEW_SHORTCUT[view.view]}
+          title={`${view.label} (${VIEW_SHORTCUT[view.view]})`}
+        >
           {view.label}
         </Link>
       ))}
@@ -58,26 +76,49 @@ function ViewTabs({ nav, className = '' }: { nav: ShellNav, className?: string }
   )
 }
 
-/** Home leads, each sport is a labeled group of its views, and a divider sets the closing links apart from the last sport. */
-function drawerItems(adminVisible: boolean): MenuProps['items'] {
-  return menuSections(adminVisible).flatMap((section, index) => section.label
-    ? [{ type: 'group' as const, key: section.label, label: section.label, children: section.items }]
-    : [...(index > 0 ? [{ type: 'divider' as const, key: 'links-divider' }] : []), ...section.items])
+/** The full top bar needs about 1040px with the search field open and 850px with it as a button. */
+const PHONE_HEADER_MAX_WIDTH = 900
+const COMPACT_SEARCH_MAX_WIDTH = 1100
+
+interface CommandToggle {
+  compact: boolean
+  open: boolean
+  setOpen: (open: boolean) => void
 }
 
-function TopBar({ nav }: { nav: ShellNav }) {
+function TopBar({ nav, command }: { nav: ShellNav, command: CommandToggle }) {
+  const headerStyle: CSSProperties = { ...HEADER_STYLE, padding: '0 clamp(20px, 3.2vw, 56px)', gap: 24 }
+  if (command.compact && command.open) {
+    return (
+      <Header style={headerStyle}>
+        <SlateCommandField mobile mobileExpanded onMobileExpandedChange={command.setOpen} />
+      </Header>
+    )
+  }
   return (
-    <Header style={{ ...HEADER_STYLE, padding: '0 clamp(20px, 3.2vw, 56px)', gap: 24 }}>
+    <Header style={headerStyle}>
       <Wordmark home={nav.home} />
-      <nav className="shell-tabs" aria-label="Sports">
-        {nav.sports.map(sport => (
-          <Link key={sport.code} to={sport.path} className={sport.active ? 'is-active' : ''} aria-current={sport.active ? 'true' : undefined}>
-            {sport.label}
-          </Link>
-        ))}
-      </nav>
-      <SlateCommandField />
-      <ViewTabs nav={nav} />
+      {/* Views sit beside the sports, ahead of the search, so the search showing only on slates never moves them. */}
+      <div className="shell-nav-cluster">
+        <nav className="shell-tabs" aria-label="Sports">
+          {nav.sports.map((sport, index) => (
+            <Link
+              key={sport.code}
+              to={sport.path}
+              className={sport.active ? 'is-active' : ''}
+              aria-current={sportCurrent(sport, nav)}
+              aria-keyshortcuts={String(index + 1)}
+              title={`${sport.label} (${index + 1})`}
+            >
+              {sport.label}
+            </Link>
+          ))}
+        </nav>
+        <ViewTabs nav={nav} />
+      </div>
+      {command.compact
+        ? <SlateCommandField mobile onMobileExpandedChange={command.setOpen} />
+        : <SlateCommandField />}
       <nav className="shell-tabs shell-tabs--end" aria-label="More">
         {nav.links.map(link => (
           <Link key={link.key} to={link.key} className={link.active ? 'is-active' : ''} aria-current={link.active ? 'page' : undefined}>
@@ -93,11 +134,17 @@ function TopBar({ nav }: { nav: ShellNav }) {
 function Nav() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile(PHONE_HEADER_MAX_WIDTH)
+  const compactSearch = useIsMobile(COMPACT_SEARCH_MAX_WIDTH)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileCommandOpen, setMobileCommandOpen] = useState(false)
   const adminVisible = useAdminView()
-  const nav = shellNav(pathname, adminVisible)
+  const lastView = useLastSportView(pathname)
+  const nav = shellNav(pathname, adminVisible, lastView)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  useShellShortcuts(nav, shortcutsOpen, openShortcuts)
+  const shortcutsPanel = <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
   const { scope: commandScope } = useSlateCommand()
   // Same rule as the field: a slate, or a game page that registered its week's games.
   const mobileCommandActive = mobileCommandOpen && (sportViewForPath(pathname) === 'slate' || commandScope !== null)
@@ -116,7 +163,7 @@ function Nav() {
           ) : (
             <>
               <Wordmark home={nav.home} />
-              <span className="shell-mobile-sport">{nav.sports.find(sport => sport.active)?.label}</span>
+              <MobileSportSwitcher sports={nav.sports} />
               <SlateCommandField mobile onMobileExpandedChange={setMobileCommandOpen} />
               <AskLauncher sport={nav.sports.find(sport => sport.active)?.code ?? null} />
               <Button
@@ -125,6 +172,8 @@ function Nav() {
                 icon={<MenuOutlined style={{ color: 'var(--text-primary)', fontSize: 20 }} />}
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Open navigation menu"
+                aria-haspopup="dialog"
+                aria-expanded={drawerOpen}
               />
             </>
           )}
@@ -145,7 +194,7 @@ function Nav() {
             theme="dark"
             mode="inline"
             selectedKeys={[pathname]}
-            items={drawerItems(adminVisible)}
+            items={phoneMenuItems(adminVisible)}
             onClick={({ key }) => {
               navigate(key)
               setDrawerOpen(false)
@@ -153,11 +202,17 @@ function Nav() {
             style={{ borderRight: 'none' }}
           />
         </Drawer>
+        {shortcutsPanel}
       </>
     )
   }
 
-  return <TopBar nav={nav} />
+  return (
+    <>
+      <TopBar nav={nav} command={{ compact: compactSearch, open: mobileCommandActive, setOpen: setMobileCommandOpen }} />
+      {shortcutsPanel}
+    </>
+  )
 }
 
 export default function App() {

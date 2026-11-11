@@ -16,7 +16,9 @@ describe('isInternalPath', () => {
     '/nba/model',
     '/nfl/model',
     '/tennis/model',
-    '/nba/board',
+    '/nba/props',
+    '/nba/props?date=2026-10-28',
+    '/tennis/props',
     '/nba/board?date=2026-10-28',
     '/tennis/board',
   ])('accepts %s', path => {
@@ -35,6 +37,7 @@ describe('isInternalPath', () => {
     '/nba/game/abc',
     '/nba/player/1',
     '/nfl/board',
+    '/nfl/props',
     '/nba?date=tomorrow',
     '/nba/game/1?x=1',
   ])('rejects %s', path => {

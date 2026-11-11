@@ -22,6 +22,12 @@
   border-color: var(--text-secondary);
 }
 
+/* The input drops its own outline, so the field carries the focus ring for it. */
+.slate-command__field:focus-within {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
 .slate-command__field input {
   min-width: 0;
   flex: 1;

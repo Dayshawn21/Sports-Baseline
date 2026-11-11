@@ -17,10 +17,10 @@ interface SportDefinition {
 
 /** The sport registry: one entry per sport drives the top bar, the phone drawer and (with `SPORT_PAGES`) the routes. */
 export const SPORTS = [
-  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/tennis', props: '/tennis/board', model: '/tennis/model' }, details: ['match', 'player'] },
-  { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/board', model: '/nfl/model' }, details: ['game', 'player'] },
-  { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/board', model: '/nba/model' }, details: ['game', 'player'] },
-  { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl', props: '/nhl/board', model: '/nhl/model' }, details: ['game', 'player'] },
+  { code: 'tennis', label: 'Tennis', prefix: '/tennis/', views: { slate: '/tennis', props: '/tennis/props', model: '/tennis/model' }, details: ['match', 'player'] },
+  { code: 'nfl', label: 'NFL', prefix: '/nfl/', views: { slate: '/nfl', props: '/nfl/props', model: '/nfl/model' }, details: ['game', 'player'] },
+  { code: 'nba', label: 'NBA', prefix: '/nba/', views: { slate: '/nba', props: '/nba/props', model: '/nba/model' }, details: ['game', 'player'] },
+  { code: 'nhl', label: 'NHL', prefix: '/nhl/', views: { slate: '/nhl', props: '/nhl/props', model: '/nhl/model' }, details: ['game', 'player'] },
 ] as const satisfies readonly SportDefinition[]
 
 export type Sport = typeof SPORTS[number]['code']
@@ -86,13 +86,26 @@ export interface ShellLink { key: string, label: string, active: boolean }
 export interface ShellHomeTab { label: string, path: string, active: boolean }
 export interface ShellNav { home: ShellHomeTab, sports: ShellSportTab[], views: ShellViewTab[], links: ShellLink[] }
 
+/**
+ * Where a sport tab goes: the view being read (or the last one, off a view page) carries over, so
+ * NFL Props to NBA is one click. The active sport follows the same rule, so its own tab never
+ * throws the view away; the Slate tab (or `S`) is the way back to the slate.
+ */
+function sportTabPath(sport: SportDefinition, view: SportView | null): string {
+  return (view && sport.views[view]) ?? sport.views.slate
+}
+
 /** Everything the top bar shows for a path: sport tabs, the active sport's views, and the other links. */
-export function shellNav(pathname: string, adminVisible: boolean): ShellNav {
+export function shellNav(pathname: string, adminVisible: boolean, lastView: SportView | null = null): ShellNav {
   const sport = activeSport(pathname)
   const view = sportViewForPath(pathname)
+  const carriedView = view ?? lastView
   return {
     home: { label: 'Home', path: HOME_PATH, active: pathname === HOME_PATH },
-    sports: SPORTS.map(entry => ({ code: entry.code, label: entry.label, path: entry.views.slate, active: entry.code === sport?.code })),
+    sports: SPORTS.map(entry => {
+      const active = entry.code === sport?.code
+      return { code: entry.code, label: entry.label, path: sportTabPath(entry, carriedView), active }
+    }),
     views: sport
       ? viewsOf(sport).map(entry => ({ ...entry, label: VIEW_LABELS[entry.view], active: entry.view === view }))
       : [],
@@ -100,15 +113,9 @@ export function shellNav(pathname: string, adminVisible: boolean): ShellNav {
   }
 }
 
-export interface MenuSection { label: string | null, items: { key: string, label: string }[] }
-
-/** The phone drawer: Home, then every sport with its views nested under it, then the other links; Home and the links are unlabeled sections. */
-export function menuSections(adminVisible: boolean): MenuSection[] {
-  return [
-    { label: null, items: [{ key: HOME_PATH, label: 'Home' }] },
-    ...SPORTS.map(sport => ({ label: sport.label, items: viewsOf(sport).map(entry => ({ key: entry.path, label: VIEW_LABELS[entry.view] })) })),
-    { label: null, items: visibleNavItems(EXTRA_LINKS, adminVisible) },
-  ]
+/** The phone menu holds only what the sport picker and views row do not: Home and the closing links. */
+export function phoneMenuItems(adminVisible: boolean): { key: string, label: string }[] {
+  return [{ key: HOME_PATH, label: 'Home' }, ...visibleNavItems(EXTRA_LINKS, adminVisible)]
 }
 
 /** The browser tab title: the sport and view or detail kind (`NFL game`), then the app name. */

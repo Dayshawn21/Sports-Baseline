@@ -24,7 +24,7 @@ export function nhlBoardMarket(value: string | null, groups: readonly NhlBoardMa
 
 export function nhlBoardPath(date: string | null, market: NhlLineOnlyMarket): string | null {
   if (date === null) return null
-  return `/nhl/board?${new URLSearchParams({ date, market })}`
+  return `/nhl/props?${new URLSearchParams({ date, market })}`
 }
 
 function dropTime(startUtc: string | null): number {

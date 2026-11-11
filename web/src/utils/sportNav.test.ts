@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { SPORTS, documentTitle, menuSections, shellNav, sportViewForPath, sportViews, visibleNavItems } from '~/utils/sportNav'
+import { SPORTS, documentTitle, phoneMenuItems, shellNav, sportViewForPath, sportViews, visibleNavItems } from '~/utils/sportNav'
 
 describe('sportViewForPath', () => {
   it('maps each sport route to its view', () => {
     expect(sportViewForPath('/tennis')).toBe('slate')
-    expect(sportViewForPath('/tennis/board')).toBe('props')
+    expect(sportViewForPath('/tennis/props')).toBe('props')
     expect(sportViewForPath('/tennis/model')).toBe('model')
     expect(sportViewForPath('/nfl')).toBe('slate')
-    expect(sportViewForPath('/nfl/board')).toBe('props')
+    expect(sportViewForPath('/nfl/props')).toBe('props')
     expect(sportViewForPath('/nfl/model')).toBe('model')
     expect(sportViewForPath('/nba')).toBe('slate')
-    expect(sportViewForPath('/nba/board')).toBe('props')
+    expect(sportViewForPath('/nba/props')).toBe('props')
     expect(sportViewForPath('/nba/model')).toBe('model')
   })
 
@@ -24,12 +24,12 @@ describe('sportViews', () => {
   it('gives both sports slate, props and model views', () => {
     expect(sportViews('tennis')).toEqual([
       { view: 'slate', path: '/tennis' },
-      { view: 'props', path: '/tennis/board' },
+      { view: 'props', path: '/tennis/props' },
       { view: 'model', path: '/tennis/model' },
     ])
     expect(sportViews('nfl')).toEqual([
       { view: 'slate', path: '/nfl' },
-      { view: 'props', path: '/nfl/board' },
+      { view: 'props', path: '/nfl/props' },
       { view: 'model', path: '/nfl/model' },
     ])
   })
@@ -53,23 +53,23 @@ describe('SPORTS registry', () => {
 describe('NBA', () => {
   it('has slate, props and model views', () => {
     expect(sportViews('nba')).toEqual([
-      { view: 'slate', path: '/nba' }, { view: 'props', path: '/nba/board' }, { view: 'model', path: '/nba/model' },
+      { view: 'slate', path: '/nba' }, { view: 'props', path: '/nba/props' }, { view: 'model', path: '/nba/model' },
     ])
   })
 
   it('names the Props view in the document title', () => {
-    expect(documentTitle('/nba/board')).toBe('NBA props · Lineform')
+    expect(documentTitle('/nba/props')).toBe('NBA props · Lineform')
   })
 })
 
 describe('NHL', () => {
   it('exposes Slate and Props and recognizes game details under its prefix', () => {
     expect(sportViews('nhl')).toEqual([
-      { view: 'slate', path: '/nhl' }, { view: 'props', path: '/nhl/board' }, { view: 'model', path: '/nhl/model' },
+      { view: 'slate', path: '/nhl' }, { view: 'props', path: '/nhl/props' }, { view: 'model', path: '/nhl/model' },
     ])
     expect(sportViewForPath('/nhl')).toBe('slate')
     expect(sportViewForPath('/nhl/game/57029')).toBeNull()
-    expect(sportViewForPath('/nhl/board')).toBe('props')
+    expect(sportViewForPath('/nhl/props')).toBe('props')
     expect(sportViewForPath('/nhl/model')).toBe('model')
   })
 
@@ -78,7 +78,7 @@ describe('NHL', () => {
     expect(slate.sports.filter(sport => sport.active).map(sport => sport.code)).toEqual(['nhl'])
     expect(slate.views).toEqual([
       { view: 'slate', label: 'Slate', path: '/nhl', active: true },
-      { view: 'props', label: 'Props', path: '/nhl/board', active: false },
+      { view: 'props', label: 'Props', path: '/nhl/props', active: false },
       { view: 'model', label: 'Model', path: '/nhl/model', active: false },
     ])
     const game = shellNav('/nhl/game/57029', false)
@@ -86,10 +86,10 @@ describe('NHL', () => {
     expect(game.views.map(entry => entry.view)).toEqual(['slate', 'props', 'model'])
     expect(shellNav('/nhl/model', false).views.find(entry => entry.active)?.view).toBe('model')
     expect(documentTitle('/nhl/model')).toBe('NHL model · Lineform')
-    expect(shellNav('/nhl/board', false).views.find(entry => entry.active)?.view).toBe('props')
+    expect(shellNav('/nhl/props', false).views.find(entry => entry.active)?.view).toBe('props')
     expect(documentTitle('/nhl')).toBe('NHL slate · Lineform')
     expect(documentTitle('/nhl/game/57029')).toBe('NHL game · Lineform')
-    expect(documentTitle('/nhl/board')).toBe('NHL props · Lineform')
+    expect(documentTitle('/nhl/props')).toBe('NHL props · Lineform')
   })
 })
 
@@ -109,17 +109,33 @@ describe('shellNav', () => {
   const active = <T extends { active: boolean }>(items: T[]) => items.filter(item => item.active)
 
   it('marks the sport and view of each sport route', () => {
-    const nfl = shellNav('/nfl/board', false)
+    const nfl = shellNav('/nfl/props', false)
     expect(nfl.sports.map(sport => [sport.label, sport.path, sport.active])).toEqual([
-      ['Tennis', '/tennis', false], ['NFL', '/nfl', true], ['NBA', '/nba', false], ['NHL', '/nhl', false],
+      ['Tennis', '/tennis/props', false], ['NFL', '/nfl/props', true], ['NBA', '/nba/props', false], ['NHL', '/nhl/props', false],
     ])
     expect(nfl.views).toEqual([
       { view: 'slate', label: 'Slate', path: '/nfl', active: false },
-      { view: 'props', label: 'Props', path: '/nfl/board', active: true },
+      { view: 'props', label: 'Props', path: '/nfl/props', active: true },
       { view: 'model', label: 'Model', path: '/nfl/model', active: false },
     ])
     expect(active(shellNav('/tennis', false).sports).map(sport => sport.code)).toEqual(['tennis'])
     expect(active(shellNav('/tennis', false).views).map(view => view.view)).toEqual(['slate'])
+  })
+
+  it('keeps the view when switching sport, the active sport included', () => {
+    const paths = (nav: ReturnType<typeof shellNav>) => Object.fromEntries(nav.sports.map(sport => [sport.code, sport.path]))
+    expect(paths(shellNav('/nba/model', false))).toEqual({ tennis: '/tennis/model', nfl: '/nfl/model', nba: '/nba/model', nhl: '/nhl/model' })
+    expect(paths(shellNav('/nfl', false))).toEqual({ tennis: '/tennis', nfl: '/nfl', nba: '/nba', nhl: '/nhl' })
+  })
+
+  it('carries the last view from Home and detail pages, defaulting to the slate', () => {
+    const nbaPath = (pathname: string, lastView: Parameters<typeof shellNav>[2]) =>
+      shellNav(pathname, false, lastView).sports.find(sport => sport.code === 'nba')?.path
+    expect(nbaPath('/', 'props')).toBe('/nba/props')
+    expect(nbaPath('/nfl/game/52', 'props')).toBe('/nba/props')
+    expect(nbaPath('/nba/game/7', 'props')).toBe('/nba/props')
+    expect(nbaPath('/', null)).toBe('/nba')
+    expect(nbaPath('/nfl/props', 'model')).toBe('/nba/props')
   })
 
   it('highlights Home alone on the home path and never on another page', () => {
@@ -132,7 +148,7 @@ describe('shellNav', () => {
 
   it('lists only the views a sport has', () => {
     expect(shellNav('/nba/model', false).views.map(view => view.label)).toEqual(['Slate', 'Props', 'Model'])
-    expect(shellNav('/nba/board', false).views.filter(view => view.active).map(view => view.view)).toEqual(['props'])
+    expect(shellNav('/nba/props', false).views.filter(view => view.active).map(view => view.view)).toEqual(['props'])
   })
 
   it('keeps the sport but no view on a detail page', () => {
@@ -162,7 +178,7 @@ describe('documentTitle', () => {
   it('names each sport view', () => {
     expect(documentTitle('/')).toBe('Lineform')
     expect(documentTitle('/tennis')).toBe('Tennis slate · Lineform')
-    expect(documentTitle('/tennis/board')).toBe('Tennis props · Lineform')
+    expect(documentTitle('/tennis/props')).toBe('Tennis props · Lineform')
     expect(documentTitle('/nfl')).toBe('NFL slate · Lineform')
     expect(documentTitle('/nfl/model')).toBe('NFL model · Lineform')
     expect(documentTitle('/nba/model')).toBe('NBA model · Lineform')
@@ -176,7 +192,7 @@ describe('documentTitle', () => {
   })
 
   it('gives an unknown path under a sport no page title', () => {
-    expect(documentTitle('/nfl/props')).toBe('Lineform')
+    expect(documentTitle('/nfl/board')).toBe('Lineform')
     expect(documentTitle('/tennis/game/5')).toBe('Lineform')
     expect(documentTitle('/nba/')).toBe('Lineform')
   })
@@ -189,19 +205,12 @@ describe('documentTitle', () => {
   })
 })
 
-describe('menuSections', () => {
-  it('nests each sport\'s views under it, then the other links', () => {
-    expect(menuSections(false)).toEqual([
-      { label: null, items: [{ key: '/', label: 'Home' }] },
-      { label: 'Tennis', items: [{ key: '/tennis', label: 'Slate' }, { key: '/tennis/board', label: 'Props' }, { key: '/tennis/model', label: 'Model' }] },
-      { label: 'NFL', items: [{ key: '/nfl', label: 'Slate' }, { key: '/nfl/board', label: 'Props' }, { key: '/nfl/model', label: 'Model' }] },
-      { label: 'NBA', items: [{ key: '/nba', label: 'Slate' }, { key: '/nba/board', label: 'Props' }, { key: '/nba/model', label: 'Model' }] },
-      { label: 'NHL', items: [{ key: '/nhl', label: 'Slate' }, { key: '/nhl/board', label: 'Props' }, { key: '/nhl/model', label: 'Model' }] },
-      { label: null, items: [{ key: '/how-it-works', label: 'How it works' }] },
-    ])
+describe('phoneMenuItems', () => {
+  it('holds Home and the closing links, leaving sports and views to the picker and views row', () => {
+    expect(phoneMenuItems(false)).toEqual([{ key: '/', label: 'Home' }, { key: '/how-it-works', label: 'How it works' }])
   })
 
   it('adds Admin for the owner', () => {
-    expect(menuSections(true).at(-1)?.items.map(item => item.label)).toEqual(['How it works', 'Admin'])
+    expect(phoneMenuItems(true).map(item => item.label)).toEqual(['Home', 'How it works', 'Admin'])
   })
 })

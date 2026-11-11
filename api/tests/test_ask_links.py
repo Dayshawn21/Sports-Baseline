@@ -48,5 +48,5 @@ def test_tennis_games_are_match_pages():
 
 def test_board_date_applies_to_nba_only():
     date = dt.date(2026, 10, 27)
-    assert board_path("nba", date) == "/nba/board?date=2026-10-27"
-    assert board_path("tennis", date) == "/tennis/board"
+    assert board_path("nba", date) == "/nba/props?date=2026-10-27"
+    assert board_path("tennis", date) == "/tennis/props"
