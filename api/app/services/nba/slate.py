@@ -7,6 +7,7 @@ from __future__ import annotations
 import datetime as dt
 from collections.abc import Mapping, Sequence
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nba_slate import Record, adjacent_dates, slate_date, team_records
@@ -14,6 +15,15 @@ from app.repositories import nba as nba_repo
 from app.schemas.nba import (
     NbaLineMoveSchema, NbaMoneylineSchema, NbaRecordSchema, NbaSlateGameSchema, NbaSlateResponse, NbaSpreadSchema, NbaTotalSchema,
 )
+from app.services.serial_build_cache import SerialBuildCache
+
+# Matches the web's 5-minute staleTime for NBA data.
+CACHE_TTL_SECONDS = 5 * 60
+FAILURE_TTL_SECONDS = 10
+MAX_ENTRIES = 5
+
+# Six sequential reads took about 0.5 s alone on production (2026-11-11).
+_SLATES: SerialBuildCache[NbaSlateResponse] = SerialBuildCache(CACHE_TTL_SECONDS, FAILURE_TTL_SECONDS, MAX_ENTRIES)
 
 
 def _oriented(row: Mapping[str, object], first: str) -> tuple[int, int, float]:
@@ -95,6 +105,18 @@ async def build_slate(db: AsyncSession, requested: dt.date | None, today: dt.dat
     previous_date, next_date = adjacent_dates(date, game_dates)
     games = await assemble_games(db, await nba_repo.get_games_on(db, date), date)
     return NbaSlateResponse(date=date, previous_date=previous_date, next_date=next_date, games=games)
+
+
+async def cached_slate(db: AsyncSession, requested: dt.date | None, today: dt.date) -> NbaSlateResponse:
+    """`build_slate` through a shared cache, keyed with `today` because the default date is resolved from it."""
+
+    async def build() -> NbaSlateResponse:
+        return await build_slate(db, requested, today)
+
+    slate = await _SLATES.get((requested, today), build)
+    if slate is None:
+        raise HTTPException(status_code=503, detail="The NBA slate is unavailable; try again shortly")
+    return slate
 
 
 async def assemble_games(db: AsyncSession, games: Sequence[Mapping[str, object]], date: dt.date) -> list[NbaSlateGameSchema]:

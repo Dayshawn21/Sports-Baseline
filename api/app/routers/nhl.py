@@ -17,7 +17,7 @@ from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
 from app.services.nhl.prop_board_cache import cached_prop_board_json
-from app.services.nhl.slate import build_slate
+from app.services.nhl.slate import cached_slate
 
 router = APIRouter()
 EASTERN = ZoneInfo("America/New_York")
@@ -26,7 +26,7 @@ EASTERN = ZoneInfo("America/New_York")
 @router.get("/slate", response_model=NhlSlateResponse)
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlSlateResponse:
     clock = dt.datetime.now(dt.timezone.utc)
-    return await build_slate(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
+    return await cached_slate(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
 
 
 @router.get("/props", response_model=NhlPropBoardResponse)

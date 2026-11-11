@@ -21,7 +21,7 @@ from app.services.nba.line_only_props import build_line_only_props
 from app.services.nba.prop_board_cache import cached_prop_board_json
 from app.services.nba.player_props_service import build_player_props
 from app.services.nba.props import build_props
-from app.services.nba.slate import build_slate
+from app.services.nba.slate import cached_slate
 from app.services.nba.slate_gaps import build_slate_gaps
 
 router = APIRouter()
@@ -32,7 +32,7 @@ EASTERN = ZoneInfo("America/New_York")
 
 @router.get("/slate", response_model=NbaSlateResponse)
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NbaSlateResponse:
-    return await build_slate(db, date, dt.datetime.now(EASTERN).date())
+    return await cached_slate(db, date, dt.datetime.now(EASTERN).date())
 
 
 @router.get("/slate/gaps", response_model=NbaSlateGapsResponse)

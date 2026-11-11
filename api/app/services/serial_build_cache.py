@@ -19,8 +19,9 @@ T = TypeVar("T")
 class SerialBuildCache(Generic[T]):
     """Caches each key's result for a while, building at most one key at a time.
 
-    A failure is cached as None for `failure_ttl_seconds`. Beyond `max_entries`
-    the least recently built key is dropped.
+    A failure is cached as None for `failure_ttl_seconds`, except a `reraise`
+    type, which reaches the caller uncached (an HTTPException that carries its
+    own status). Beyond `max_entries` the least recently built key is dropped.
     """
 
     def __init__(
@@ -29,11 +30,14 @@ class SerialBuildCache(Generic[T]):
         failure_ttl_seconds: float,
         max_entries: int,
         clock: Callable[[], float] = time.monotonic,
+        *,
+        reraise: tuple[type[Exception], ...] = (),
     ) -> None:
         self._ttl = ttl_seconds
         self._failure_ttl = failure_ttl_seconds
         self._max_entries = max_entries
         self._clock = clock
+        self._reraise = reraise
         self._entries: OrderedDict[Hashable, tuple[float, Optional[T]]] = OrderedDict()
         self._build_lock = asyncio.Lock()
 
@@ -48,6 +52,8 @@ class SerialBuildCache(Generic[T]):
             try:
                 value: Optional[T] = await fetch()
                 ttl = self._ttl
+            except self._reraise:
+                raise
             except Exception:
                 logger.exception("Build for %s failed; not retrying for %.0fs", key, self._failure_ttl)
                 value = None

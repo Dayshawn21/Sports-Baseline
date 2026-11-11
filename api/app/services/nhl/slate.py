@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from typing import cast
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nhl_records import NhlRecord, NhlResult, team_records
@@ -13,6 +14,18 @@ from app.core.slate_dates import adjacent_dates, slate_date
 from app.repositories import nhl
 from app.schemas.nhl import NhlSlateGameSchema, NhlSlateResponse
 from app.services.nhl.context import load_contexts, unavailable_context
+from app.services.serial_build_cache import SerialBuildCache
+
+# Matches the web's 5-minute staleTime for NHL data.
+CACHE_TTL_SECONDS = 5 * 60
+FAILURE_TTL_SECONDS = 10
+MAX_ENTRIES = 5
+
+# Eight sequential reads took about 0.55 s alone on production (2026-11-11). The
+# missing-migration 503 from `load_contexts` passes through with its own message.
+_SLATES: SerialBuildCache[NhlSlateResponse] = SerialBuildCache(
+    CACHE_TTL_SECONDS, FAILURE_TTL_SECONDS, MAX_ENTRIES, reraise=(HTTPException,),
+)
 
 
 def _oriented(row: Mapping[str, object], first: str) -> tuple[int, int, float]:
@@ -115,3 +128,17 @@ async def build_slate(
         date=selected, previous_date=previous_date, next_date=next_date,
         games=await assemble_games(db, await nhl.get_games_on(db, selected), as_of=clock),
     )
+
+
+async def cached_slate(
+    db: AsyncSession, requested: dt.date | None, today: dt.date, *, as_of: dt.datetime | None = None,
+) -> NhlSlateResponse:
+    """`build_slate` through a shared cache; contexts stay as of the build, at most one TTL old."""
+
+    async def build() -> NhlSlateResponse:
+        return await build_slate(db, requested, today, as_of=as_of)
+
+    slate = await _SLATES.get((requested, today), build)
+    if slate is None:
+        raise HTTPException(status_code=503, detail="The NHL slate is unavailable; try again shortly")
+    return slate
