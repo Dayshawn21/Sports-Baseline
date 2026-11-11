@@ -673,3 +673,20 @@ body {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
 }
+
+/* iOS Safari zooms into any focused field under 16px. Setting 16px on touch screens stops the jump without blocking pinch zoom. */
+@media (pointer: coarse) {
+  :root input,
+  :root textarea,
+  :root select,
+  :root .ant-select,
+  :root .slate-command__field input,
+  :root .ask-form textarea {
+    font-size: 16px;
+  }
+
+  /* Ant Design sizes its select text box with a four-class selector of its own. */
+  .ant-select .ant-select-selection-search-input {
+    font-size: 16px !important;
+  }
+}
