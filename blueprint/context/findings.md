@@ -340,23 +340,13 @@ version and forward validation.
 - The last two are on commits without the `eol=lf` rule (`2ce4cf00`, `c0728da0`). Their `tennis_elo_identities.csv` differs from `master`, so a merge rewrites it as LF, but their `tennis_elo_local_overrides.csv` is byte-identical to `master` in git and still CRLF on disk (11 CR bytes each), so a merge leaves it CRLF: the exact case this finding describes.
 - To close: after either checkout next merges `master`, delete its `tennis_elo_local_overrides.csv` and run `git checkout -- api/app/ingest/data/tennis_elo_local_overrides.csv`, or remove the leftover worktree. Not done here, since both checkouts belong to other work.
 
-### F-43 [P2] closed - NBA slate gaps run one query per game and project every line on request
+### F-45 [P3] fixed - The newly serialized NBA and NHL slate builds sit in the default rate-limit bucket
 
-**File:** api/app/services/nba/slate_gaps.py:27; api/app/repositories/nba.py:745
-**Found:** 2026-11-11 by /audit (scope: home page path; lens: performance)
+**File:** api/app/core/rate_limits.py:16; api/app/services/nba/slate_gaps.py:39
+**Found:** 2026-11-11 by /audit (scope: b6dee2f4 latency fix; lenses: all)
 **Why it matters:**
-- `build_slate_gaps` awaits `get_modelled_lines` once per game (an N+1), although `get_date_modelled_lines` already loads a whole date in one query.
-- `get_prior_games` ranks every stored season of every slate player's box scores with `ROW_NUMBER()` before keeping the last few, and every line is then projected in Python on the 0.5 CPU instance.
-- Measured on production 2026-11-11 (11-game date): `/nba/slate/gaps?limit=5` took 3.4s alone and 3.9-4.6s beside the other home calls. The home page only fires it after `/nba/slate` returns, so the NBA gaps tab lands about 4.5s after load.
-**Suggested fix:** store the digest like `report_snapshots` (written by `nba-ingest.yml` after props refresh), or at minimum swap the loop for `get_date_modelled_lines` and bound `get_prior_games` with a season floor.
-**Resolution:** Fixed on `fix/nba-nhl-home-latency` (2026-11-11), awaiting re-review. `build_slate_gaps` reads the date's lines with one `get_date_modelled_lines` call and caches each date's projected candidates for 5 minutes in a `SerialBuildCache`; market filter and ranking run per request against `now`, so a game that tips drops out without a rebuild. A failed build is a 503 for 10 s. The `get_prior_games` history depth is unchanged (it is the depth 20g1's holdout was scored on). Closed 2026-11-11 by /audit (lens: performance) after re-reading `b6dee2f4`: one date line read, per-request ranking against `now`, no new defect (the triggering request's session is the only one used; a cancelled build caches nothing). Production after deploy, home calls fired together: `/nba/slate/gaps` 0.15-0.23s warm, down from 3.9-4.6s.
-
-### F-44 [P2] closed - NBA and NHL slates are rebuilt from 6-8 sequential queries on every request
-
-**File:** api/app/services/nba/slate.py:92; api/app/services/nhl/slate.py:107
-**Found:** 2026-11-11 by /audit (scope: home page path; lens: performance)
-**Why it matters:**
-- NFL's slate is served from `report_snapshots` and tennis from a cheap read, but `/nba/slate` and `/nhl/slate` each await dates, games, season results, latest markets, line movement and prop counts one after another (NHL adds injury and goalie snapshots), with no cache.
-- Measured on production 2026-11-11: 0.50s and 0.55s alone, 1.0-1.3s when fired with the rest of the home page, against 0.25s for the 3.4 MB NFL slate and 0.13-0.25s for tennis. That gap is the delay on the home NBA and NHL cards.
-**Suggested fix:** a short in-process TTL cache (the props boards already use `cached_prop_board_json`), or a stored snapshot refreshed by the NBA and NHL ingest workflows. Running the independent reads with one round trip each in parallel sessions is a smaller option.
-**Resolution:** Fixed on `fix/nba-nhl-home-latency` (2026-11-11), awaiting re-review. `/nba/slate` and `/nhl/slate` read through `cached_slate`, a 5-minute `SerialBuildCache` keyed on `(requested, today)`; `build_slate` and the shared `assemble_games` are unchanged. `SerialBuildCache` gained a `reraise` option so the NHL missing-migration 503 keeps its message uncached; any other build failure is a 503 for 10 s. Closed 2026-11-11 by /audit (lens: performance) after re-reading `b6dee2f4`; no new defect. Production after deploy, home calls fired together: `/nba/slate` 0.15-0.18s and `/nhl/slate` 0.14s warm, down from 1.0-1.3s. The first call after a deploy still pays the build (1.4s and 2.0s cold).
+- `/nba/slate`, `/nhl/slate` and `/nba/slate/gaps` now build through a `SerialBuildCache`: a hit skips the lock, but a miss waits behind every other miss on that cache. Each cache keeps 5 dates.
+- `date` is client input, and these paths share the 120/minute default bucket. One client cycling 6 or more dates can keep evicting today's entry, so a normal home load misses and waits behind 3.4 s gap builds. `/nfl/slate`, the other serial cache, is in `HEAVY_PATHS` (10/minute) for this reason.
+- Before the fix the same client could already load the instance (every gaps request was a full build), so this is a shift in who waits, not a new hole. Not reproduced.
+**Suggested fix:** add `/nba/slate/gaps` to `HEAVY_PATHS`, and the two slates if a heavier bucket does not hurt date browsing on the slate pages; update `test_rate_limits.py`.
+**Resolution:** Fixed on `fix/slate-rate-limits` (2026-11-11), awaiting re-review. `/nba/slate`, `/nba/slate/gaps` and `/nhl/slate` are in `HEAVY_PATHS` (10/minute per path per client); `test_rate_limits.py` covers them and keeps `/nba/props`, `/nhl/props` and `/nba/slate/other` in the default bucket. The production 429 is not yet observed.

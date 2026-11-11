@@ -14,14 +14,16 @@ HEAVY = "10/minute"
     "path",
     [
         "/nfl/model/prop-lines", "/tennis/model/predictions", "/nba/model/ranking", "/nhl/model/ranking",
-        "/nfl/slate", "/admin/session", "/ask",
+        "/nfl/slate", "/nba/slate", "/nba/slate/gaps", "/nhl/slate", "/admin/session", "/ask",
     ],
 )
 def test_heavy_routes_get_their_own_bucket(path: str) -> None:
     assert rule_for_path(path, DEFAULT, HEAVY) == RateRule(HEAVY, path)
 
 
-@pytest.mark.parametrize("path", ["/nba/slate", "/tennis/predictions/today", "/nfl/games/1", "/ask/status"])
+@pytest.mark.parametrize(
+    "path", ["/nba/props", "/nhl/props", "/nba/slate/other", "/tennis/predictions/today", "/nfl/games/1", "/ask/status"],
+)
 def test_other_routes_share_the_default_bucket(path: str) -> None:
     assert rule_for_path(path, DEFAULT, HEAVY) == RateRule(DEFAULT, "default")
 

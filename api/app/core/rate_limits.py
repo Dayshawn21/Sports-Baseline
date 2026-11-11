@@ -12,8 +12,10 @@ CLIENT_IP_HEADER = "cf-connecting-ip"
 
 # Each of these replays grading or a whole slate per cold request (tens of seconds),
 # except /admin/session, the one route a key guesser needs, and /ask, a paid model call.
+# The slates build one date at a time behind a five-date cache, so a client cycling
+# dates in the default bucket would keep evicting today's entry (F-45).
 HEAVY_PREFIXES = ("/nfl/model/", "/tennis/model/", "/nba/model/", "/nhl/model/")
-HEAVY_PATHS = frozenset({"/nfl/slate", "/admin/session", "/ask"})
+HEAVY_PATHS = frozenset({"/nfl/slate", "/nba/slate", "/nba/slate/gaps", "/nhl/slate", "/admin/session", "/ask"})
 # Platform health probes poll often and cost nothing.
 EXEMPT_PATHS = frozenset({"/health"})
 
