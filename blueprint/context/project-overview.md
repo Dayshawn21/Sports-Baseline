@@ -53,15 +53,16 @@ accounts, auth or per-user scoping to a spec unless `project-plan.md` §2 and
 
 ### Where things stand (2026-11-12)
 
-- **12 leaf items are open, and none is buildable today.** Each waits on a
-  forward verdict, a date, or a provider. `current-feature.md` is the stub.
+- **15 leaf items are open.** Only 68b-68d (web polish; 68a complete
+  2026-11-12) are buildable today; the rest wait on a forward verdict, a date,
+  or a provider.
 - **Next dated event:** 44b's 2026-27 sample (NBA weeks 1-4) is expected to be
   complete about 2026-11-17; work resumes on branch
   `feature/44b-nba-pover-confirmation`.
 - **Next new sport:** 21 (WNBA). The WNBA season runs May to September, so
   sourcing can be specced now but live data will not exist until 2027.
 - **No-argument `/feature` would pick parked 16f.** Name the item instead
-  (`/feature 21`, `/feature 44b`).
+  (`/feature 68b`, `/feature 21`, `/feature 44b`).
 
 ### What's left and what blocks it
 
@@ -78,6 +79,7 @@ accounts, auth or per-user scoping to a spec unless `project-plan.md` §2 and
 | 23 | Soccer support | 22 | |
 | 16f | Tennis set-handicap projection | Parked 2026-09-29: provider sends too few, misfiled lines | Revisit only if lines become regular |
 | 48d2, 48d3 | Store and show sportsbook tennis player props | Parked 2026-10-30: the free books send moneylines only | Revisit only if the free plan adds them |
+| 68b-68d | Interface polish: view transitions, skeleton loaders, swipe-to-dismiss drawers | Nothing; build in order | Display only; no API, model, rank or color change |
 
 **Open decisions found in this refresh** (owner calls, not build steps):
 
@@ -141,6 +143,7 @@ reference, never colored, ranked or picked.
 | 62 | Prop board row polish | Complete |
 | 63 | Why over / Why under on tennis props | Complete; other sports are later items |
 | 64 | Context filters on the prop boards (64a-64c) | Complete |
+| 68 | Interface polish (68a-68d) | 68a complete 2026-11-12 (CSS polish); 68b-68d planned; display only |
 | 21-23 | WNBA, three-way markets, soccer | Planned |
 
 Unless an archive says otherwise, recent items (50 onward) are complete on
@@ -925,7 +928,12 @@ freshness once, and one dense row per game or match. Props are dense table
 rows with a `+N alts` chip and Last 5 bars against the line (62), and every
 prop row opens its player page (50, 53). The theme above is unchanged.
 
-Mobile is a real target: `useIsMobile` swaps the nav to a drawer.
+Mobile is a real target: `useIsMobile` swaps the nav to a drawer. Item 68
+adds display polish only: tabular figures, balanced headings, squircle
+corners, 44px tap targets, View Transitions API crossfades (the app uses
+`HashRouter`, so React Router's `viewTransition` prop is unavailable), table
+skeletons on slates and prop boards, and swipe-to-dismiss drawers; all motion
+is skipped under `prefers-reduced-motion`.
 
 **Guiding principle:** the user should scan a slate and see the actionable plays
 without reading everything. Quality flags and gray-versus-green cut the list

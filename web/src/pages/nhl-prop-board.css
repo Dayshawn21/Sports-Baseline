@@ -16,3 +16,9 @@
 }
 
 .nhl-prop-board__caption { margin: 0 0 8px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+
+/* Rows are not clickable here, so on touch each link takes its whole cell (76px tall) instead of its text. */
+@media (pointer: coarse) {
+  .nhl-prop-board__table td:has(> .nhl-prop-board__player, > .nhl-prop-board__game) { position: relative; }
+  .nhl-prop-board__player::before, .nhl-prop-board__game::before { content: ''; position: absolute; inset: 0; }
+}

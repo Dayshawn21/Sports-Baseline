@@ -17,7 +17,7 @@
 .tennis-prop-table__ev.is-positive { color: var(--positive); }
 .tennis-prop-table__ev.is-negative { color: var(--negative); }
 .tennis-prop-table__gap { color: var(--text-secondary); font-weight: 600; }
-.tennis-prop-table__mobile-gap { display: none; color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.04em; }
+.tennis-prop-table__mobile-gap { display: none; color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 .tennis-prop-table__trust { color: var(--text-secondary); font: 700 11px var(--font-body); letter-spacing: 0.07em; }
 .tennis-prop-table__trust.is-flagged { color: var(--caution); }
 /* Green only on a line 48e's forward check adopted (48g). */

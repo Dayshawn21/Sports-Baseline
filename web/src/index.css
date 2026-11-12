@@ -72,6 +72,75 @@ body {
   min-width: 0;
 }
 
+/* JetBrains Mono is already fixed-width; this keeps DM Sans figures from shifting as values change. */
+table,
+.ant-table,
+.stat-chip__value,
+.page-head-period,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+/*
+ * Cards and raised panels only; small chips and 999px pills keep the plain round.
+ * A squircle at the same radius reads tighter than a round corner, so radii grow 1.5x here
+ * (14px to 21px, 10px to 15px); unsupported browsers keep today's radii.
+ */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius: 21px;
+  }
+
+  /* :root outranks the later page CSS and Ant Design's scoped component rules. */
+  :root .nfl-game-card, :root .nfl-player-card,
+  :root .ant-card, :root .ant-modal .ant-modal-content, :root .ant-popover .ant-popover-inner {
+    border-radius: 15px;
+  }
+
+  .home-card, .home-panel, .home-rec,
+  .model-section-empty, .prop-table-panel, .tennis-slate-table,
+  .sport-sheet .ant-drawer-content,
+  .nfl-model-card, .nfl-prop-stat, .nfl-slate-window, .nfl-game-card, .nfl-player-card,
+  .nhl-player-history,
+  .tennis-match-tile, .tennis-match-card, .tennis-match-empty,
+  .tennis-model-card, .tennis-model-empty, .tennis-prop-stat, .tennis-prop-evidence,
+  .tools-card,
+  .ant-card, .ant-modal-content, .ant-popover-inner {
+    corner-shape: squircle;
+  }
+}
+
+/*
+ * Touch hit areas: a transparent ::before grows small controls to 44px without changing how they look.
+ * The market pills are left out: their wrapped rows sit flush, so a taller hit area would steal a neighbour's tap.
+ */
+@media (pointer: coarse) {
+  .ant-drawer-close, .ant-modal-close, .ant-switch-small, .alt-lines-chip, .ant-tabs-tab,
+  .ant-select-selector, .ant-picker, .ant-input-affix-wrapper, .tools-card .ant-btn,
+  .board-record__live a, .slate-legend__pick a, .tennis-slate-table__toggle, .game-crumb, .nfl-player-crumb {
+    position: relative;
+  }
+
+  .ant-drawer-close::before, .ant-modal-close::before, .ant-switch-small::before, .alt-lines-chip::before,
+  .ant-tabs-tab::before, .ant-select-selector::before, .ant-picker::before,
+  /* Ant Design's input wrapper already uses ::before as a hidden height strut. */
+  .ant-input-affix-wrapper::after, .tools-card .ant-btn::before, .board-record__live a::before, .slate-legend__pick a::before,
+  .tennis-slate-table__toggle::before, .game-crumb::before, .nfl-player-crumb::before {
+    content: '';
+    position: absolute;
+    top: min(0px, calc(50% - 22px));
+    bottom: min(0px, calc(50% - 22px));
+    left: min(0px, calc(50% - 22px));
+    right: min(0px, calc(50% - 22px));
+  }
+}
+
 .page-shell {
   min-height: calc(100vh - var(--nav-height));
   background: var(--bg-app);
