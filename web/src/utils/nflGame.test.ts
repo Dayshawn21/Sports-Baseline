@@ -62,10 +62,15 @@ describe('hasKickedOff', () => {
 
 describe('conditionsLabel', () => {
   it('names a dome, a forecast, and a missing forecast', () => {
-    expect(conditionsLabel({ ...OUTDOOR, venueType: 'dome' })).toBe('Indoor')
-    expect(conditionsLabel(OUTDOOR)).toBe('86°F · wind 12 mph')
-    expect(conditionsLabel({ ...OUTDOOR, forecastFor: null })).toBe('Forecast unavailable')
-    expect(conditionsLabel({ ...OUTDOOR, windMph: null })).toBe('86°F · wind -- mph')
+    expect(conditionsLabel({ ...OUTDOOR, venueType: 'dome', precipitationProbability: 90 })).toBe('Indoor')
+    expect(conditionsLabel(OUTDOOR)).toBe('86°F · wind 12 mph · -- rain')
+    expect(conditionsLabel({ ...OUTDOOR, forecastFor: null, precipitationProbability: 90 })).toBe('Forecast unavailable')
+    expect(conditionsLabel({ ...OUTDOOR, windMph: null })).toBe('86°F · wind -- mph · -- rain')
+  })
+
+  it('adds the rounded rain chance, including a dry forecast', () => {
+    expect(conditionsLabel({ ...OUTDOOR, precipitationProbability: 79.6 })).toBe('86°F · wind 12 mph · 80% rain')
+    expect(conditionsLabel({ ...OUTDOOR, precipitationProbability: 0 })).toBe('86°F · wind 12 mph · 0% rain')
   })
 })
 

@@ -29,7 +29,8 @@ export function conditionsLabel(weather: NflWeather): string {
   if (!weather.forecastFor) return 'Forecast unavailable'
   const temperature = weather.temperatureF === null ? MISSING : weather.temperatureF.toFixed(0)
   const wind = weather.windMph === null ? MISSING : weather.windMph.toFixed(0)
-  return `${temperature}°F · wind ${wind} mph`
+  const rain = weather.precipitationProbability === null ? MISSING : `${weather.precipitationProbability.toFixed(0)}%`
+  return `${temperature}°F · wind ${wind} mph · ${rain} rain`
 }
 
 export function recordLabel(context: NflTeamContext | null): string {
