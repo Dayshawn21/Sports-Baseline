@@ -53,11 +53,7 @@ function Probability({ card }: { card: NbaPropCard }) {
 }
 
 function Sample({ card }: { card: NbaPropCard }) {
-  const count = card.count === null ? '--' : card.count > 0 ? `over ${card.overCount} of ${card.count}` : 'No earlier games'
-  return <>
-    <span>{card.flagText ?? 'Reference only'}</span>
-    <small>{count}</small>
-  </>
+  return <span>{card.flagText ?? 'Reference only'}</span>
 }
 
 /** The bars and the stat strip read the same games against the same main line. */

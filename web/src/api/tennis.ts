@@ -1,5 +1,5 @@
 import client from './client'
-import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, ProjectionHistory, PredictionsResponse, PropsAuditResponse, PropsResponse } from '~/types/tennis'
+import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, ProjectionHistory, PredictionsResponse, PropsAuditResponse, PropsResponse, TennisPropReasonsResponse } from '~/types/tennis'
 
 export async function fetchPredictionsToday(params?: {
   date?: string
@@ -18,6 +18,11 @@ export async function fetchPrizePicksProps(): Promise<PropsResponse> {
 
 export async function fetchPrizePicksPropsAudit(): Promise<PropsAuditResponse> {
   const { data } = await client.get<PropsAuditResponse>('/tennis/props/prizepicks/audit')
+  return data
+}
+
+export async function fetchTennisPropReasons(propId: number): Promise<TennisPropReasonsResponse> {
+  const { data } = await client.get<TennisPropReasonsResponse>(`/tennis/props/prizepicks/${propId}/reasons`)
   return data
 }
 
