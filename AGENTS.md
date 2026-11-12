@@ -126,6 +126,11 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
 - Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
   [--version props-v3] [--as-of YYYY-MM-DD]` (read-only; the first real run
   needs a separate yes in chat)
+- Tennis shrinkage diagnostic (66a): `python -m app.backtest.tennis_shrink_diagnostic
+  --live | --history [--data-dir DIR]` (read-only exploration, never a verdict)
+- Tennis shrinkage forward check (66a): `python -m app.backtest.tennis_shrink_check
+  [--score --slice ATP+WTA|CHALLENGER]` (counts only by default; each slice's
+  first `--score` run needs a separate yes in chat)
 - Tennis prop adoption (48g): `python -m app.ingest.tennis_prop_adoption
   [--version props-v3] [--as-of YYYY-MM-DD] [--dry-run]` (stores the adopted
   slices the props page ranks; the first real run, dry run included, needs a

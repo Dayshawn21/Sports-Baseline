@@ -42,6 +42,9 @@ fails instead of reading as an empty board. One throttled league keeps the
 others' lines and skips pruning.
 
 `predictions` persists predictions and then PrizePicks projection snapshots.
+Since 66a, each prediction with a market price also writes a `shrink-v1`
+shadow row to `prediction_shadows` in the same transaction. The shadow is
+never served, and it needs migration `0054`.
 After both succeed, its dependent job freezes the ELO shadow comparison.
 Choosing `tennis-elo-comparison` runs only that dependent operation, even though
 the prediction job is skipped. Prediction or snapshot failure blocks the

@@ -93,6 +93,27 @@ per command; read this file before running, scheduling or changing one.
   break-even by 3 SE, and a reject is final for that version. Undecided slices
   print size only, no running hit rate. The first real run needs a separate
   yes in chat; changing a rule constant means a new rule name and sample.
+- Tennis shrinkage diagnostic (66a): `python -m app.backtest.tennis_shrink_diagnostic
+  --live | --history [--data-dir DIR]`. Read-only exploration, never a verdict.
+  `--live` replays `ensemble-v3` on settled live matches that never had a v3
+  prediction; `--history` applies v3 to the Valuebetennis Pinnacle open, 2023
+  to 2026-09-30 (the CSVs live in the main checkout's `api/data/valuebetennis`).
+  Both print log loss and CLV by ensemble-market gap bucket and score the
+  frozen `shrink-v1` rule; neither may retune it. Run once each for 66a.
+- Tennis shrinkage forward check (66a): `python -m app.backtest.tennis_shrink_check
+  [--as-of YYYY-MM-DD] [--score --slice ATP+WTA|CHALLENGER]`. Read-only.
+  `tennis-shrink-check-v1`, pre-registered in `app/core/tennis_shrink.py`
+  (commit `5d99a7f0`): the `shrink-v1` shadow (at a 3+ point gap to the
+  market, keep half the gap) is stored in `prediction_shadows` beside each
+  prediction with a market price by the daily predictions job. The default
+  prints counts only (coverage, affected matches, days, status) and reads no
+  result. `--score` refuses until a slice has 400 affected settled matches on
+  30 UTC days with 98% coverage, then locks that sample once and adopts only
+  if the shadow beats the served model by more than 2 SE; `keep served` is
+  final for `shrink-v1`. Each slice pins its served version (`ATP+WTA`
+  `ensemble-v3+lgbm-v6`, `CHALLENGER` `ensemble-v3+lgbm-none`); a version
+  change interrupts the slice. The first `--score` run per slice needs a
+  separate yes in chat. Needs migration `0054`.
 - Tennis prop adoption (48g): `python -m app.ingest.tennis_prop_adoption
   [--version props-v3] [--as-of YYYY-MM-DD] [--dry-run]`. Runs the 48e check
   the same way and stores only the adopted slice keys and counts (no hit
