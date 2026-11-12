@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptedPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
-import { buildTennisPropBoard, compareLines, filterTennisBoardCategories, tennisBoardPath, tennisPlayerOptions, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, compareLines, DEFAULT_TENNIS_CONTEXT_FILTER, lineTypeApplies, parseTennisContextFilter, tennisContextMatches, withTennisContextFilter, filterTennisBoardCategories, tennisBoardPath, tennisPlayerOptions, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
 const prediction: MatchPrediction = {
   matchId: 10, startUtc: '2026-09-21T16:00:00Z', p1Name: 'Aryna Sabalenka', p2Name: 'Coco Gauff', tour: 'WTA', surface: 'Hard', tournament: 'Beijing', round: 'R32',
@@ -59,9 +59,9 @@ describe('buildTennisPropBoard', () => {
     const challenger: MatchPrediction = { ...prediction, matchId: 12, tour: 'CHALLENGER' }
     const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 12 })]
 
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'wta').flatMap(category => category.rateable).map(row => row.id)).toEqual([1])
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'wta_125').flatMap(category => category.rateable).map(row => row.id)).toEqual([2])
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'challenger').flatMap(category => category.rateable).map(row => row.id)).toEqual([3])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'wta' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([1])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'wta_125' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([2])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'challenger' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([3])
   })
 
   it('puts unrateable lines in the separate all-lines bucket', () => {
@@ -90,7 +90,7 @@ describe('buildTennisPropBoard', () => {
   })
 
   it('breaks a start-time tie by player, then stat, and puts lines with no start last', () => {
-    const line = (id: number, overrides: Partial<TennisBoardLine>): TennisBoardLine => ({ ...prop(id), matchup: null, tournament: null, tour: null, ...overrides })
+    const line = (id: number, overrides: Partial<TennisBoardLine>): TennisBoardLine => ({ ...prop(id), matchup: null, tournament: null, tour: null, bestOf: null, ...overrides })
     const at = '2026-09-21T16:00:00Z'
     const rows = [
       line(1, { startTime: null, playerName: 'Ana' }),
@@ -106,6 +106,22 @@ describe('buildTennisPropBoard', () => {
     expect(row.matchup).toBe('Aryna Sabalenka vs Coco Gauff')
     expect(row.tournament).toBe('Beijing')
     expect(row.surface).toBe('Hard')
+  })
+
+  it('takes the best-of format from the line first, then its match, else null', () => {
+    const slam: MatchPrediction = { ...prediction, bestOf: 3 }
+    const rows = enrichTennisPropLines([
+      prop(1, { bestOf: 5 }),
+      prop(2, { matchId: null, playerName: 'Coco Gauff' }),
+      prop(3, { matchId: 99 }),
+    ], [slam], 'all')
+    expect(rows.map(row => row.bestOf)).toEqual([5, 3, null])
+  })
+
+  it('gives a moneyline row its match format', () => {
+    const match: MatchPrediction = { ...prediction, bestOf: 5, p1WinProb: .6, p2WinProb: .4, p1OddsAmerican: -150, p2OddsAmerican: 130 }
+    const rows = enrichTennisPropLines(moneylineBoardRows([match]), [match], 'all')
+    expect(rows.map(row => row.bestOf)).toEqual([5, 5])
   })
 
   it('labels PrizePicks payout tiers and leaves priced sources unlabeled', () => {
@@ -282,5 +298,77 @@ describe('tennis player picker', () => {
   it('builds the board address with every chosen player', () => {
     expect(tennisBoardPath([])).toBe('/tennis/props')
     expect(tennisBoardPath(['Coco Gauff', 'Borna Gojo'])).toBe('/tennis/props?player=Coco+Gauff&player=Borna+Gojo')
+  })
+
+  it('keeps the context filters in the return path', () => {
+    expect(tennisBoardPath(['Coco Gauff'], { surface: 'clay', bestOf: 'all', tour: 'wta', lineType: 'demon' }))
+      .toBe('/tennis/props?player=Coco+Gauff&surface=clay&tour=wta&line=demon')
+  })
+})
+
+describe('tennis context filters (64a)', () => {
+  const filter = (overrides: Partial<typeof DEFAULT_TENNIS_CONTEXT_FILTER>) => ({ ...DEFAULT_TENNIS_CONTEXT_FILTER, ...overrides })
+  const ids = (board: ReturnType<typeof buildTennisPropBoard>) => board.flatMap(category => [...category.rateable, ...category.other]).map(line => line.id).sort((a, b) => a - b)
+  const clay: MatchPrediction = { ...prediction, matchId: 11, surface: 'Clay', bestOf: 5, tour: 'ATP' }
+  const hard: MatchPrediction = { ...prediction, bestOf: 3 }
+
+  it('narrows by surface case-insensitively and keeps a row with no surface only under all', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 99 })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ surface: 'clay' })))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ surface: 'hard' })))).toEqual([1])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all'))).toEqual([1, 2, 3])
+  })
+
+  it('narrows by best-of and keeps a row with no format only under all', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 99 })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ bestOf: '5' })))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ bestOf: '3' })))).toEqual([1])
+  })
+
+  it('keeps goblins hidden by default and shows them, unrated, only under Goblin', () => {
+    const rows = [prop(1), prop(2, { oddsType: 'demon' }), prop(3, { oddsType: 'goblin' })]
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all'))).toEqual([1, 2])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'standard' })))).toEqual([1])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'demon' })))).toEqual([2])
+    const [goblins] = buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'goblin' }))
+    expect(goblins.rateable).toEqual([])
+    expect(goblins.other.map(line => line.id)).toEqual([3])
+  })
+
+  it('drops rows with no PrizePicks tier under a line-type choice', () => {
+    const rows = [prop(1), prop(2, { source: 'draftkings' }), prop(3, { source: 'model', oddsType: 'unpriced' })]
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all'))).toEqual([1, 2, 3])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'standard' })))).toEqual([1])
+  })
+
+  it('composes every filter', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 11, oddsType: 'demon' })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', { surface: 'clay', bestOf: '5', tour: 'atp', lineType: 'standard' }))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', { surface: 'clay', bestOf: '3', tour: 'atp', lineType: 'standard' }))).toEqual([])
+  })
+
+  it('matches a single enriched line the same way', () => {
+    const [line] = enrichTennisPropLines([prop(1, { matchId: 11 })], [clay], 'all')
+    expect(tennisContextMatches(line, filter({ surface: 'clay', bestOf: '5', tour: 'atp' }))).toBe(true)
+    expect(tennisContextMatches(line, filter({ tour: 'wta' }))).toBe(false)
+  })
+
+  it('applies line type only while PrizePicks rows can show', () => {
+    expect((['all', 'prizepicks', 'dk', 'market', 'model'] as const).map(lineTypeApplies)).toEqual([true, true, false, false, false])
+  })
+
+  it('reads unknown or missing params as the defaults', () => {
+    expect(parseTennisContextFilter(new URLSearchParams())).toEqual(DEFAULT_TENNIS_CONTEXT_FILTER)
+    expect(parseTennisContextFilter(new URLSearchParams('surface=carpet&bo=7&tour=itf&line=all'))).toEqual(DEFAULT_TENNIS_CONTEXT_FILTER)
+    expect(parseTennisContextFilter(new URLSearchParams('surface=clay&bo=5&tour=wta_125&line=goblin')))
+      .toEqual({ surface: 'clay', bestOf: '5', tour: 'wta_125', lineType: 'goblin' })
+  })
+
+  it('writes only non-default filters and leaves other params alone', () => {
+    const start = new URLSearchParams('player=Coco+Gauff&market=aces&surface=grass')
+    const written = withTennisContextFilter(start, filter({ bestOf: '5', lineType: 'demon' }))
+    expect(written.toString()).toBe('player=Coco+Gauff&market=aces&bo=5&line=demon')
+    expect(parseTennisContextFilter(written)).toEqual(filter({ bestOf: '5', lineType: 'demon' }))
+    expect(start.get('surface')).toBe('grass')
   })
 })

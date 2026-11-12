@@ -74,6 +74,8 @@ class PropLine(_CamelModel):
     break_even_pct: Optional[float] = None   # hit rate this price needs to break even
     matches_count: Optional[int] = None    # rolling stats sample size
     surface: Optional[str] = None          # match surface (Hard / Clay / Grass)
+    # The linked match's stored format; null when unlinked, never the projection's fallback of 3.
+    best_of: Optional[int] = None
     market_total_games: Optional[float] = None      # market total used for match-length context
     expected_service_points: Optional[float] = None # service-point volume used for serve props
     projection_source: Optional[str] = None         # market_total | model_total

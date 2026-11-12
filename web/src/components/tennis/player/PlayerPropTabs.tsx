@@ -75,7 +75,7 @@ function useBoardTabs(playerId: number, playerName: string) {
       ...moneylineBoardRows(matches ?? []),
       ...winASetBoardRows(bestPicks.data?.matches ?? []),
     ]
-    return playerMarketTabs(buildTennisPropBoard(props, matches ?? [], 'all', 'all'), playerId, playerName)
+    return playerMarketTabs(buildTennisPropBoard(props, matches ?? [], 'all'), playerId, playerName)
   }, [prizePicks.data, draftKings.data, matches, bestPicks.data, playerId, playerName])
   return {
     tabs,

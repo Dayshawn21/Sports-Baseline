@@ -39,6 +39,7 @@ class MatchPrediction(_CamelModel):
     h2h_p2_wins: int = Field(alias="h2hP2Wins")
     p1_id: Optional[int] = None
     p2_id: Optional[int] = None
+    best_of: int = 3
 
 
 class PredictionsResponse(_CamelModel):

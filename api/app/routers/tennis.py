@@ -150,6 +150,7 @@ def _to_schema(o: PredictionOutput) -> MatchPrediction:
         h2h_p2_wins=o.h2h_p2_wins,
         p1_id=o.p1_id,
         p2_id=o.p2_id,
+        best_of=o.best_of,
     )
 
 

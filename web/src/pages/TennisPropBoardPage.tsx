@@ -9,16 +9,17 @@ import { useBestPicks } from '~/hooks/useBestPicks'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { parsePlayerFilter, visibleMarket, withPropListFilters } from '~/utils/propFilters'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
-import { buildTennisPropBoard, filterTennisBoardCategories, moneylineBoardRows, tennisBoardPath, tennisPlayerOptions, winASetBoardRows, type TennisPropSource, type TennisTourFilter } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, filterTennisBoardCategories, lineTypeApplies, moneylineBoardRows, parseTennisContextFilter, tennisBoardPath, tennisPlayerOptions, winASetBoardRows, withTennisContextFilter, type TennisPropSource } from '~/utils/tennisPropBoard'
 import './tennis-prop-board.css'
 import './tennis-prop-board-filters.css'
 
 export default function TennisPropBoardPage() {
   const [source, setSource] = useState<TennisPropSource>('all')
-  const [tour, setTour] = useState<TennisTourFilter>('all')
   const [market, setMarket] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [params, setParams] = useSearchParams()
+  const filter = useMemo(() => parseTennisContextFilter(params), [params])
+  const effectiveFilter = useMemo(() => lineTypeApplies(source) ? filter : { ...filter, lineType: 'default' as const }, [filter, source])
   const predictions = useTennisToday()
   const bestPicks = useBestPicks()
   const prizePicks = usePrizePicksProps()
@@ -29,7 +30,7 @@ export default function TennisPropBoardPage() {
     ...moneylineBoardRows(predictions.data?.matches ?? []),
     ...winASetBoardRows(bestPicks.data?.matches ?? []),
   ], [prizePicks.data, draftKings.data, predictions.data, bestPicks.data])
-  const categories = useMemo(() => buildTennisPropBoard(props, predictions.data?.matches ?? [], source, tour), [props, predictions.data, source, tour])
+  const categories = useMemo(() => buildTennisPropBoard(props, predictions.data?.matches ?? [], source, effectiveFilter), [props, predictions.data, source, effectiveFilter])
   const visibleLineCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length + category.other.length, 0), [categories])
   const rateableCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length, 0), [categories])
   const players = useMemo(() => parsePlayerFilter(params), [params])
@@ -43,7 +44,8 @@ export default function TennisPropBoardPage() {
   const loading = prizePicks.isLoading || draftKings.isLoading || predictions.isLoading || bestPicks.isLoading
   const allFailed = prizePicks.isError && draftKings.isError
 
-  useEffect(() => { setMarket(null) }, [source, tour])
+  const filterKey = withTennisContextFilter(new URLSearchParams(), effectiveFilter).toString()
+  useEffect(() => { setMarket(null) }, [source, filterKey])
   if (loading) return <LoadingState message="Loading current tennis prop board..." />
   if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch() }} />
 
@@ -51,17 +53,18 @@ export default function TennisPropBoardPage() {
     <PropBoardHead lines={visibleLineCount} rateable={rateableCount} markets={categories.length} />
     {(prizePicks.isError || draftKings.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={filtered} selected={category.market} onSelect={setMarket} />}
-    <PropBoardFilters source={source} tour={tour} showAll={showAll} players={players} playerNames={playerNames} onSource={setSource} onTour={setTour} onShowAll={setShowAll}
+    <PropBoardFilters source={source} filter={filter} showAll={showAll} players={players} playerNames={playerNames} onSource={setSource}
+      onFilter={value => setParams(withTennisContextFilter(params, value), { replace: true })} onShowAll={setShowAll}
       onPlayers={value => setParams(withPropListFilters(params, { player: value }), { replace: true })} />
-    {noMatches ? <div className="tennis-prop-empty-state">No lines for these players. Try a different source or tour.</div> : category ? <section className="prop-table-panel" aria-label={`${category.label} prop lines`}>
+    {noMatches ? <div className="tennis-prop-empty-state">No lines for these players. Try a different source, tour, surface, format or line type.</div> : category ? <section className="prop-table-panel" aria-label={`${category.label} prop lines`}>
       <div className="tennis-prop-availability">
         <p role="status">Rated lines: {category.rateable.length}. Lines for review: {category.other.length}{category.other.length > 0 ? showAll ? ' (shown).' : ' (hidden).' : '.'}</p>
         {category.other.length > 0 && <button type="button" className="tennis-prop-text-action" aria-expanded={showAll} aria-controls="tennis-prop-lines" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide lines for review' : 'Show lines for review'} ({category.other.length})</button>}
       </div>
       <p className="tennis-prop-evidence-hint">Open a row for the player's recent matches, projection inputs, and quality notes.</p>
-      <TennisPropTable category={category} pathFor={row => propPlayerPath(row, predictions.data?.matches ?? [])} from={tennisBoardPath(players)}
+      <TennisPropTable category={category} pathFor={row => propPlayerPath(row, predictions.data?.matches ?? [])} from={tennisBoardPath(players, effectiveFilter)}
         rateable={category.rateable.map(row => ({ row, rated: true }))}
         other={showAll ? category.other.map(row => ({ row, rated: false })) : []} />
-    </section> : <div className="tennis-prop-empty-state">No tennis prop lines are available for these filters. Try a different source or tour.</div>}
+    </section> : <div className="tennis-prop-empty-state">No tennis prop lines are available for these filters. Try a different source, tour, surface, format or line type.</div>}
   </div></div>
 }
