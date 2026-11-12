@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import NbaPropBoardMarket from '~/components/nba/NbaPropBoardMarket'
 import { NbaSlateDigest } from '~/components/nba/NbaSlateDigest'
 import BoardFilterBar from '~/components/shared/BoardFilterBar'
+import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
-import { useNbaPropBoard, useNbaSlateGaps } from '~/hooks/useNba'
+import { useNbaModelRanking, useNbaPropBoard, useNbaSlateGaps } from '~/hooks/useNba'
+import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaBoardMarket, nbaBoardPath, nbaPropBoard } from '~/utils/nbaPropBoard'
 import { nbaSlateDigest, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
@@ -34,6 +36,8 @@ export default function NbaPropBoardPage() {
   // The slate's own digest request, so both strips always agree.
   const gaps = useNbaSlateGaps(board.data?.date ?? null)
   const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
+  const ranking = useNbaModelRanking()
+  const record = rankingBoardRecord('nba', ranking.data, recordStatus(ranking))
   if (board.isLoading) return <LoadingState message="Loading NBA prop board..." />
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
   const { date, previousDate, nextDate } = board.data
@@ -50,6 +54,7 @@ export default function NbaPropBoardPage() {
       stats={<section className="page-head__stats" aria-label="Prop board summary">
         <StatChip value={gameCount} label="Games" /><StatChip value={rowCount} label="Player-market rows" />
       </section>} />
+    <BoardRecordStrip record={record} />
     <NbaSlateDigest items={digest} />
     <nav className="nfl-prop-pills" aria-label="Prop categories">
       {filtered.map(item => <button key={item.market} type="button"

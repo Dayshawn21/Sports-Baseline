@@ -4,10 +4,13 @@ import { NflLineOnlyTable } from '~/components/nfl/NflLineOnlyProps'
 import { NflMarketPills, NflPropBoardFilters, NflPropBoardHead } from '~/components/nfl/NflPropBoardControls'
 import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
+import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useNflCurrentWeek, useNflSlate, useNflWeekLineOnlyProps } from '~/hooks/useNfl'
+import { useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import { useRestoreOpenedRow } from '~/hooks/useRestoreOpenedRow'
+import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
 import { formatKickoffTime, marketLabel } from '~/utils/nflLabels'
 import { buildNflPropBoard, filterNflBoardCategories, filterNflPropBoardGames } from '~/utils/nflPropBoard'
 import { slateDigest } from '~/utils/nflSlate'
@@ -55,6 +58,9 @@ export default function NflPropBoardPage() {
   const category = selected?.category ?? null
   const otherCategory = filteredOther.find(item => item.market === selectedMarket)
   const noMatches = filtering && !filtered.some(item => item.rateable.length > 0 || (showAll && item.other.length > 0)) && filteredOther.length === 0
+  // The board serves v4, so the strip reads v4's season record, not the week's.
+  const ranking = useNflModelRanking(activeSeason)
+  const record = rankingBoardRecord('nfl', ranking.data, recordStatus(ranking))
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
   if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL prop board..." />
   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
@@ -62,6 +68,7 @@ export default function NflPropBoardPage() {
       lineOnlyCount={otherCategories.reduce((total, item) => total + item.count, 0)}
       onSeason={value => update({ season: value, week: activeWeek, games: [], market: null, players: [], team: ALL })}
       onWeek={value => update({ season: activeSeason, week: value, games: [], market: null, players: [], team: ALL })} />
+    <BoardRecordStrip record={record} />
     <NflSlateDigest items={digest} />
     <NflMarketPills categories={pills} selected={selectedMarket} onSelect={value => update({ market: value })} />
     <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll} showLineToggle={!otherCategory} players={players} playerNames={playerNames} team={team} teams={teams}

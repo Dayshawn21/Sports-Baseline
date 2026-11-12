@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MarketPills, PropBoardFilters, PropBoardHead } from '~/components/tennis/TennisPropBoardControls'
 import { TennisPropTable } from '~/components/tennis/TennisPropTable'
+import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
+import { useModelPropTiers } from '~/hooks/useModelTrackRecord'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { recordStatus, tennisBoardRecord } from '~/utils/boardRecord'
 import { parsePlayerFilter, visibleMarket, withPropListFilters } from '~/utils/propFilters'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
 import { buildTennisPropBoard, filterTennisBoardCategories, lineTypeApplies, moneylineBoardRows, parseTennisContextFilter, tennisBoardPath, tennisPlayerOptions, winASetBoardRows, withTennisContextFilter, type TennisPropSource } from '~/utils/tennisPropBoard'
@@ -43,6 +46,8 @@ export default function TennisPropBoardPage() {
   const noMatches = filtering && filtered.every(item => item.rateable.length + item.other.length === 0)
   const loading = prizePicks.isLoading || draftKings.isLoading || predictions.isLoading || bestPicks.isLoading
   const allFailed = prizePicks.isError && draftKings.isError
+  const propTiers = useModelPropTiers()
+  const record = tennisBoardRecord(propTiers.data, recordStatus(propTiers))
 
   const filterKey = withTennisContextFilter(new URLSearchParams(), effectiveFilter).toString()
   useEffect(() => { setMarket(null) }, [source, filterKey])
@@ -51,6 +56,7 @@ export default function TennisPropBoardPage() {
 
   return <div className="page-shell tennis-prop-board"><div className="page-container is-wide">
     <PropBoardHead lines={visibleLineCount} rateable={rateableCount} markets={categories.length} />
+    <BoardRecordStrip record={record} />
     {(prizePicks.isError || draftKings.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={filtered} selected={category.market} onSelect={setMarket} />}
     <PropBoardFilters source={source} filter={filter} showAll={showAll} players={players} playerNames={playerNames} onSource={setSource}
