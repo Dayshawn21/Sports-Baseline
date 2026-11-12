@@ -115,17 +115,36 @@ changed after any data is read.
 | Field | Fixed choice |
 |---|---|
 | Start | The first full UTC day after the first production shadow row is written (recorded in Step 8). No earlier match can enter, and the rule is never applied retroactively to stored rows. |
-| Population | Settled singles matches whose last pre-start served prediction is `ensemble-v3+lgbm-v6` and has a stored `shrink-v1` shadow, a market price at prediction, and a completed score (`is_completed_score`). Retirements and walkovers are excluded and counted. |
+| Population | Settled singles matches whose last pre-start served prediction carries the slice's pinned version (`ATP+WTA`: `ensemble-v3+lgbm-v6`; `CHALLENGER`: `ensemble-v3+lgbm-none`, amendment A1) and has a stored `shrink-v1` shadow, a market price at prediction, and a completed score (`is_completed_score`). Retirements and walkovers are excluded and counted. |
 | Slices | `ATP+WTA` and `CHALLENGER` (D4), each judged on its own |
 | Affected | `abs(p1_ensemble_prob - p1_market_prob) >= 0.03` on the served row |
 | Coverage | For each slice, served predictions with a market price that have no shadow row. Required at 98% or more, otherwise the slice is blocked for review. This prevents the writer from silently dropping matches. |
-| Sample | Affected matches ordered by `start_utc`, through the first whole UTC start day that reaches **400** affected matches and **30** distinct start days, with a 3-day settlement lag. An unresolved match blocks its day and every later day. The sample is locked once, with no rolling or repeated verdict. |
+| Sample | Affected matches ordered by `start_utc`, through the first whole UTC start day that reaches **400** affected matches and **30** distinct start days, with a 3-day settlement lag. An unresolved match blocks its day and every later day. A match still unresolved 14 days after its start is dropped and counted as "never resolved" (amendment A2). The sample is locked once, with no rolling or repeated verdict. |
 | Metric | Paired per-match log loss, shadow minus served (`paired_loss_difference`) |
 | Gate | `adopt` if `mean + 2.0 * SE < 0`, otherwise `keep served`. A finite SE is required. |
 | Version continuity | If the served version changes before a slice locks, that slice stops accruing at the change, is reported as `accruing (interrupted)`, and needs a new rule version. Versions are never pooled. |
 | Verdict | Below the floors: `accruing`, with counts only. At the lock: `adopt` or `keep served`. A `keep served` is final for `shrink-v1`. Extending the sample to seek a pass is not allowed. |
 | Context, at the lock only | Shadow minus market at prediction, Brier, CLV of the served and shadow gaps on affected matches, and the gap-bucket split. Context never changes the verdict. |
 | What `adopt` means | It authorizes 66b to serve `shrink-v1` for that slice under a new ensemble version. It is not evidence of a betting edge, and moneyline picks stay off. |
+
+### Pre-activation amendments (owner-approved 2026-11-11, before any shadow row existed)
+
+Both amendments were found while writing Step 7, from row counts and stored
+version strings. No outcome, score or loss was read to find them. The rule
+(`shrink-v1`: threshold, weight, form) and the gate are unchanged from
+`5d99a7f0`.
+
+- **A1 - pinned version per slice.** Challenger predictions are stored as
+  `ensemble-v3+lgbm-none`, because there is no LightGBM model for Challenger.
+  So a single `ensemble-v3+lgbm-v6` pin would have left the Challenger slice
+  empty.
+- **A2 - matches that never resolve.** Of the 1,809 matches since 2026-10-01
+  with a prediction and a start more than 4 days ago, 11 are stuck
+  `scheduled` and 1 is `completed` with no winner. Under "unresolved blocks
+  every later day", one stale affected match would freeze a slice forever.
+  A match still unresolved 14 days after its start is now dropped and
+  counted. Its outcome is unknown, so dropping it does not select on
+  results.
 
 ## Build loop
 
@@ -239,7 +258,7 @@ because its hash is the proof that the rule came first.
   - A local run against a disposable or dev database is shown only if you
     approve it. Otherwise it is proven by tests only and the first real write
     happens in Step 8.
-- [ ] **Step 7 - Forward check CLI.** Add a repository loader that returns the
+- [x] **Step 7 - Forward check CLI.** Add a repository loader that returns the
   served row joined to its shadow, split into two functions:
   - a **count loader** that selects no winner, score or closing-price column
   - a **score loader** that is used only under `--score`
@@ -412,6 +431,12 @@ The final gate is the Verify command from the repo root. Real-data runs
     `prediction_shadows` exists and is empty.
   - Until this branch merges, Neon is ahead of master's migrations. No other
     item may take `0054`; this is claimed in the side-session notes.
+- Forward check (Step 7, 2026-11-11): `python -m app.backtest.tennis_shrink_check`
+  on the live database printed `tennis-shrink-check-v1: no shrink-v1 shadow rows yet;
+  nothing is active. Affected 0.` Verify passed (web green, API 6,167 passed).
+  - Not built: the spec's lock-time CLV context. The loaders carry no closing
+    price, and it never affects the verdict. The diagnostic and the model
+    page still give CLV.
 - Activation timestamp and start date: _(Step 8)_
 
 ## Draft critique and changes
