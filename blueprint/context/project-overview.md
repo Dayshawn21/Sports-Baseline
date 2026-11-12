@@ -211,6 +211,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 20 | NBA support | Complete |
 | 42 | NBA prop board | 42a-42d complete; hosted responses confirmed 2026-10-23 |
 | 44 | NBA over probability, second method | 44a complete; 44b waits for 2026-27 weeks 1-4 |
+| 65 | NBA injury-aware minutes | Planned 2026-11-11; 65a specced (development backtest and pre-registration), 65b-65c open |
 | 45 | NHL support | 45a-45f complete locally and pushed; context migration/write/read and remote acceptance pending |
 | 21 | WNBA support | Planned |
 | 22 | Three-way market support | Planned |
