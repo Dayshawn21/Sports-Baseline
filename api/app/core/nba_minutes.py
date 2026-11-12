@@ -5,7 +5,9 @@ Pure: no DB, no I/O, no clock; the caller passes the roster history.
 from __future__ import annotations
 
 import datetime as dt
+from collections import defaultdict
 from collections.abc import Sequence
+from itertools import groupby
 from dataclasses import dataclass, field
 from statistics import fmean
 from typing import Literal
@@ -13,7 +15,7 @@ from typing import Literal
 from app.core.nba_line_only import line_only_value
 from app.core.nba_projection_backtest import (
     ARMS, MIN_PRIOR_GAMES, MIN_PRIOR_MINUTES, MINUTES_WINDOW, REFERENCE_ARM, REFERENCE_GAMES, NbaHistoryRow,
-    prior_minutes,
+    eligible_minutes, prior_minutes,
 )
 from app.nba.markets import NbaPropMarket
 
@@ -85,11 +87,17 @@ class RosterIndex:
     latest_team: dict[int, int] = field(default_factory=dict)
     team_games: dict[int, list[int]] = field(default_factory=dict)
     played_in: dict[int, set[int]] = field(default_factory=dict)
+    # Players whose latest row is for each team, so a lookup never scans the league.
+    members: dict[int, set[int]] = field(default_factory=dict)
 
     def advance(self, rows: Sequence[NbaRosterRow]) -> None:
         """Add one date's rows, after every game on that date has been projected."""
         for row in rows:
+            previous = self.latest_team.get(row.player_id)
+            if previous is not None and previous != row.team_id:
+                self.members[previous].discard(row.player_id)
             self.latest_team[row.player_id] = row.team_id
+            self.members.setdefault(row.team_id, set()).add(row.player_id)
             games = self.team_games.setdefault(row.team_id, [])
             if not games or games[-1] != row.game_id:
                 games.append(row.game_id)
@@ -119,8 +127,8 @@ def availability(index: RosterIndex, player_id: int, team_id: int, available_ids
         return Availability(teammates=(), team_changed=True)
     window_games = [game for game, _, _ in window]
     teammates = []
-    for mate, team in index.latest_team.items():
-        if mate == player_id or team != team_id:
+    for mate in index.members.get(team_id, ()):
+        if mate == player_id:
             continue
         minutes = index.recent_minutes(mate)
         if minutes is None or minutes < ROTATION_MINUTES:
@@ -225,3 +233,53 @@ def fit_rotation_coefficient(cases: Sequence[FitCase]) -> float:
 
 def k_in_range(k: float) -> bool:
     return FIT_K_RANGE[0] <= k <= FIT_K_RANGE[1]
+
+
+@dataclass(frozen=True)
+class Situation:
+    """One eligible player-game with both availability sources, computed before its date's rows are added."""
+
+    row: NbaHistoryRow
+    prior: tuple[NbaHistoryRow, ...]
+    prior_minutes: float
+    previous_game: Availability
+    # Leaks the game's own box score: a diagnostic ceiling, never a verdict input.
+    oracle: Availability
+
+
+def situations(
+    history: Sequence[NbaHistoryRow], roster: Sequence[NbaRosterRow], seasons: frozenset[int],
+) -> list[Situation]:
+    """Walk both histories a date at a time; inputs are only rows dated strictly before each game.
+
+    `history` and `roster` are the same box-score rows in date order (20f's projection rows
+    and this item's roster rows).
+    """
+    index = RosterIndex()
+    played: dict[int, list[NbaHistoryRow]] = defaultdict(list)
+    roster_by_date = {day: list(rows) for day, rows in groupby(roster, key=lambda r: r.game_date)}
+    found: list[Situation] = []
+    for day, same_day in groupby(history, key=lambda r: r.game_date):
+        rows = list(same_day)
+        day_roster = roster_by_date.get(day, [])
+        team_of = {(r.player_id, r.game_id): r.team_id for r in day_roster}
+        in_game: dict[int, set[int]] = defaultdict(set)
+        for r in day_roster:
+            if not r.did_not_play:
+                in_game[r.game_id].add(r.player_id)
+        for row in rows:
+            prior = played[row.player_id]
+            minutes = eligible_minutes(row, prior) if row.season in seasons else None
+            team = team_of.get((row.player_id, row.game_id))
+            if minutes is None or team is None:
+                continue
+            found.append(Situation(
+                row=row, prior=tuple(prior[-REFERENCE_GAMES:]), prior_minutes=minutes,
+                previous_game=availability(index, row.player_id, team, index.previous_game_players(team)),
+                oracle=availability(index, row.player_id, team, frozenset(in_game[row.game_id])),
+            ))
+        for row in rows:
+            if not row.did_not_play:
+                played[row.player_id].append(row)
+        index.advance(day_roster)
+    return found

@@ -8,7 +8,7 @@ from app.core.nba_minutes import (
     MAX_MINUTE_SHIFT, MAX_MINUTES, NBA_MINUTES_FIRST_HISTORY_SEASON, NBA_MINUTES_MODEL_VERSION, ROTATION_MINUTES,
     FIT_K_RANGE, MIN_FIT_CASES, Availability, FitCase, NbaRosterRow, RosterIndex, TeammateAvailability, availability, fit_rotation_coefficient,
     k_in_range, minutes_change,
-    project_minutes_line,
+    project_minutes_line, situations,
 )
 from app.core.nba_projection import project_line
 from app.core.nba_projection_backtest import NbaHistoryRow
@@ -257,3 +257,25 @@ def test_the_fit_refuses_below_the_minimum_informative_cases() -> None:
 def test_a_coefficient_outside_the_range_stops_the_feature() -> None:
     assert k_in_range(0.0) and k_in_range(2.0) and k_in_range(0.7)
     assert not k_in_range(-0.01) and not k_in_range(2.01)
+
+
+def test_situations_use_only_earlier_dates_and_keep_both_sources() -> None:
+    days = 22
+    history = []
+    roster = []
+    for g in range(1, days + 1):
+        mate_plays = g != days
+        for player, plays in ((STAR, True), (MATE, mate_plays)):
+            if not plays:
+                continue
+            history.append(replace(_history(1)[0], player_id=player, game_id=g, game_date=START + timedelta(days=g)))
+            roster.append(_row(player, g))
+
+    found = situations(history, roster, frozenset({2024}))
+    last = [s for s in found if s.row.game_id == days and s.row.player_id == STAR][0]
+
+    # The mate sits tonight: the previous game cannot know it, the oracle can.
+    assert last.previous_game.team_delta == 0.0
+    assert last.oracle.out_player_ids == (MATE,)
+    assert len(last.prior) == 20 and all(r.game_date < last.row.game_date for r in last.prior)
+    assert {s.row.game_id for s in found if s.row.player_id == STAR} == set(range(11, days + 1))
