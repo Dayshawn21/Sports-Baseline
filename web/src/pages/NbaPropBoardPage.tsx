@@ -1,3 +1,4 @@
+import { Select } from 'antd'
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NbaPropBoardMarket from '~/components/nba/NbaPropBoardMarket'
@@ -14,6 +15,7 @@ import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaBoardMarket, nbaBoardPath, nbaPropBoard } from '~/utils/nbaPropBoard'
 import { nbaSlateDigest, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import { activeOutFilter, filterTeammateOut, parseOutFilter, teammateOutOptions, type NbaTeammateOutOption } from '~/utils/nbaTeammateOut'
 import { boardPlayerOptions, filterBoardMarkets, isFiltering, visibleMarket } from '~/utils/propFilters'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
@@ -27,9 +29,11 @@ export default function NbaPropBoardPage() {
   const market = nbaBoardMarket(params.get('market'), groups)
   const games = board.data?.games
   const { filter, teams, onPlayers, onTeam, onGames } = useBoardFilters(games)
-  const filtered = useMemo(() => filterBoardMarkets(groups, filter), [groups, filter])
-  const players = useMemo(() => boardPlayerOptions(groups, filter), [groups, filter])
-  const shownMarket = visibleMarket(market, filtered.map(item => ({ market: item.market, count: item.rows.length })), isFiltering(filter))
+  const outOptions = useMemo(() => teammateOutOptions(games ?? []), [games])
+  const out = activeOutFilter(parseOutFilter(params), outOptions)
+  const filtered = useMemo(() => filterTeammateOut(filterBoardMarkets(groups, filter), out), [groups, filter, out])
+  const players = useMemo(() => boardPlayerOptions(filterTeammateOut(groups, out), filter), [groups, filter, out])
+  const shownMarket = visibleMarket(market, filtered.map(item => ({ market: item.market, count: item.rows.length })), isFiltering(filter) || out !== null)
   const group = filtered.find(item => item.market === shownMarket)!
   const rowCount = groups.reduce((sum, item) => sum + item.rows.length, 0)
   const filteredCount = filtered.reduce((sum, item) => sum + item.rows.length, 0)
@@ -42,6 +46,12 @@ export default function NbaPropBoardPage() {
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
   const { date, previousDate, nextDate } = board.data
   const gameCount = board.data.games.length
+  const selectOut = (value: string | undefined) => {
+    const next = new URLSearchParams(params)
+    if (value === undefined) next.delete('out')
+    else next.set('out', value)
+    setParams(next, { replace: true })
+  }
   const selectMarket = (value: string) => {
     const next = new URLSearchParams(params)
     if (requested === null) next.delete('date')
@@ -63,11 +73,19 @@ export default function NbaPropBoardPage() {
         {nbaMarketLabel(item.market)}<em>{item.rows.length}</em>
       </button>)}
     </nav>
-    {rowCount > 0 && <BoardFilterBar games={board.data.games} teams={teams} playerNames={players} filter={filter} onPlayers={onPlayers} onTeam={onTeam} onGames={onGames} />}
+    {rowCount > 0 && <BoardFilterBar games={board.data.games} teams={teams} playerNames={players} filter={filter} onPlayers={onPlayers} onTeam={onTeam} onGames={onGames}>
+      <Select aria-label="Teammate out" allowClear showSearch optionFilterProp="label" value={out?.id} onChange={selectOut} disabled={outOptions.length === 0}
+        placeholder={outOptions.length === 0 ? 'No players listed out' : 'Teammate out'}
+        options={outOptions.map(option => ({ value: option.id, label: outLabel(option) }))} />
+    </BoardFilterBar>}
     <p className="nba-prop-board__legend">Reference only, no picks. The strip above lists the day's largest gaps; rows below follow tip time, then player name, and are not ranked. Gaps are projection minus line; P(over) is served for eligible assists lines. Dates follow the Eastern game calendar; tip times are CT.</p>
     {gameCount === 0 ? <div className="nfl-empty">No NBA games on this date.</div>
       : rowCount === 0 ? <div className="nfl-empty">NBA games are scheduled on this date, but no prop lines are available.</div>
-        : filteredCount === 0 ? <div className="nfl-empty">No lines match these filters. Clear the search or choose another team or game.</div>
+        : filteredCount === 0 ? <div className="nfl-empty">No lines match these filters. Clear the search or choose another team, game or teammate out.</div>
           : <NbaPropBoardMarket key={`${requested}:${date}:${shownMarket}`} group={group} date={date} />}
   </div></div>
+}
+
+function outLabel(option: NbaTeammateOutOption): string {
+  return `${option.playerName} (${option.team}, ${option.status}${option.stale ? ', stale report' : ''})`
 }
