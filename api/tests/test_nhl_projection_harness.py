@@ -1,3 +1,4 @@
+import dataclasses
 import datetime as dt
 
 import pytest
@@ -76,3 +77,63 @@ def test_goalie_cases_without_a_toi_bucket_still_print_an_all_row() -> None:
     text = report(2024, {"reference": [case(1, "goalie_saves", 25.0, 30.0, toi=None)]})
     assert "goalie_saves / all" in text
     assert "goalie_saves / 12-16 min" not in text
+
+
+def matchup_case(game_id: int, market: str, projection: float, actual: float, found: bool | None) -> NhlReplayCase:
+    return dataclasses.replace(case(game_id, market, projection, actual), opposing_starter_found=found)
+
+
+def test_opposing_goalie_arms_parse_beside_the_reference() -> None:
+    assert parse_arms("reference,opp_goalie_b05,opp_goalie_b10") == ["reference", "opp_goalie_b05", "opp_goalie_b10"]
+    with pytest.raises(ValueError, match="arms must include reference"):
+        parse_arms("opp_goalie_b05")
+    with pytest.raises(ValueError):
+        parse_arms("reference,opp_goalie")
+
+
+def test_a_reference_only_report_has_no_opposing_goalie_lines() -> None:
+    text = report(2024, {"reference": [case(1, "points", 1.0, 1.0)]})
+    assert "Opposing-goalie" not in text and "Exponent pick" not in text
+
+
+def test_opposing_goalie_report_names_the_rule_caveat_count_and_adjusted_markets_only() -> None:
+    reference = [case(1, "points", 1.0, 2.0), case(2, "points", 1.0, 0.0), case(1, "hits", 2.0, 3.0)]
+    b05 = [
+        matchup_case(1, "points", 1.5, 2.0, True), matchup_case(2, "points", 0.8, 0.0, False),
+        matchup_case(1, "hits", 2.0, 3.0, True),
+    ]
+    text = report(2024, {"reference": reference, "opp_goalie_b05": b05})
+    assert "nhl-opp-goalie-v1" in text and "clipped to [0.80, 1.25]" in text
+    assert "Opposing-goalie caveat" in text
+    assert "no opposing starter row (scored with m = 1): 1 of 2." in text
+    paired_section = text.split("Arm opp_goalie_b05 against reference")[1].split("Exponent pick")[0]
+    assert "points" in paired_section and "hits" not in paired_section
+
+
+def selection_row(text: str, market: str) -> list[str]:
+    section = text.split("Exponent pick per market")[1]
+    [row] = [line for line in section.splitlines() if line.strip().startswith(market)]
+    return row.split()
+
+
+def test_selection_picks_the_lowest_mae_beta() -> None:
+    reference = [case(1, "points", 1.0, 2.0)]
+    b05 = [matchup_case(1, "points", 1.4, 2.0, True)]
+    b10 = [matchup_case(1, "points", 1.8, 2.0, True)]
+    text = report(2024, {"reference": reference, "opp_goalie_b05": b05, "opp_goalie_b10": b10})
+    assert selection_row(text, "points") == ["points", "1.0000", "0.6000", "0.2000", "1"]
+
+
+def test_selection_ties_go_to_the_smaller_beta_and_no_gain_picks_zero() -> None:
+    reference = [case(1, "points", 1.0, 2.0), case(1, "shots_on_goal", 3.0, 3.0)]
+    b05 = [matchup_case(1, "points", 3.0, 2.0, True), matchup_case(1, "shots_on_goal", 3.5, 3.0, True)]
+    b10 = [matchup_case(1, "points", 3.0, 2.0, True), matchup_case(1, "shots_on_goal", 4.0, 3.0, True)]
+    text = report(2024, {"reference": reference, "opp_goalie_b05": b05, "opp_goalie_b10": b10})
+    assert selection_row(text, "points")[-1] == "0"
+    assert selection_row(text, "shots_on_goal")[-1] == "0"
+    tied = report(2024, {
+        "reference": [case(1, "goals", 1.0, 2.0)],
+        "opp_goalie_b05": [matchup_case(1, "goals", 3.0, 2.0, True)],
+        "opp_goalie_b10": [matchup_case(1, "goals", 3.0, 2.0, True)],
+    })
+    assert selection_row(tied, "goals")[-1] == "0"
