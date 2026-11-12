@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom'
 import type { NflSeasonWeek } from '~/types/nfl'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
+import { AltLinesChip } from '~/components/shared/AltLinesChip'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { StatStrip } from '~/components/shared/StatStrip'
 import '~/components/shared/prop-table.css'
 import { useNflLineOnlyProps } from '~/hooks/useNfl'
 import { marketLabel } from '~/utils/nflLabels'
 import { lineOnlyBars, lineOnlyGroups, mainRung, type NflLineOnlyGroup, type NflLineOnlyRow } from '~/utils/nflLineOnly'
 import type { NflPositionFilter } from '~/utils/nflPositions'
 import { gamePropRowMatches, type GamePropFilter } from '~/utils/propFilters'
+import { REFERENCE, groupAltLines, statStrip } from '~/utils/propRowVisuals'
 import './nfl-prop-table.css'
 
 function rungLabel(line: number, oddsType: string | null): string {
@@ -16,16 +19,17 @@ function rungLabel(line: number, oddsType: string | null): string {
 
 function Row({ row, market, week }: { row: NflLineOnlyRow, market: string, week: NflSeasonWeek | null }) {
   const main = mainRung(row)
-  const others = row.rungs.filter(rung => rung !== main)
+  const alts = groupAltLines(row.rungs)?.alts.map(rung => rungLabel(rung.line, rung.oddsType)) ?? []
   return <tr>
     <td className="prop-table__player">
       <Link className="prop-table__open" to={nflPlayerMarketLink(row.playerId, market, week)}>{row.playerName}</Link>
       <small>{row.position ?? '--'} · {marketLabel(market)}</small>
     </td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? ''}</small></td>
-    <td className="nfl-line-only-table__also" data-label="also">{others.length ? others.map(rung => rungLabel(rung.line, rung.oddsType)).join(' · ') : '--'}</td>
+    <td className="nfl-line-only-table__also" data-label="also">{alts.length ? <AltLinesChip labels={alts} context={marketLabel(market)} /> : '--'}</td>
     <td>
       <MiniBars interactive bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${bar.value} vs ${bar.opponentTeam ?? '--'}`} />
+      <StatStrip cells={statStrip(row.recent.flatMap(game => game.value === null ? [] : [game.value]), main.line, REFERENCE)} />
     </td>
     <td className="prop-table__end is-num">{row.count ? `over ${row.overCount} of ${row.count}` : '--'}</td>
   </tr>

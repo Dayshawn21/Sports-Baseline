@@ -1,6 +1,7 @@
 import { Popover } from 'antd'
 import { useState, type CSSProperties } from 'react'
 import type { NflRecentBar, NflRecentBars } from '~/utils/nflPropCards'
+import { REFERENCE, barTone, type RowSignal } from '~/utils/propRowVisuals'
 import './prop-table.css'
 
 interface Props {
@@ -11,15 +12,22 @@ interface Props {
   valueLabel?: (bar: NflRecentBar) => string
   lineLabel?: string
   showOpponents?: boolean
+  /** Only an adopted row's bars take a signal color; every board passes reference today. */
+  signal?: RowSignal
 }
 
-/** Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Grayscale only. */
-export function MiniBars({ bars: { bars, linePct }, title, empty, interactive = false, valueLabel, lineLabel, showOpponents = false }: Props) {
+function barClass(bar: NflRecentBar, signal: RowSignal): string {
+  const tone = barTone(signal, bar.vsLine)
+  return `is-${bar.vsLine ?? 'none'}${tone === 'neutral' ? '' : ` is-tone-${tone}`}`
+}
+
+/** Last games, oldest to newest, on one scale with the line; the dashed mark is the line. Gray unless the row is adopted. */
+export function MiniBars({ bars: { bars, linePct }, title, empty, interactive = false, valueLabel, lineLabel, showOpponents = false, signal = REFERENCE }: Props) {
   const [open, setOpen] = useState(false)
   if (!bars.length) return <span className="mini-bars__empty">{empty}</span>
   const style = linePct === null ? undefined : { '--line': `${linePct}%` } as CSSProperties
   const chart = <span className={`mini-bars${linePct === null ? '' : ' has-line'}${valueLabel ? ' has-values' : ''}`} style={style} aria-label={interactive ? undefined : `Last ${bars.length} games`} aria-hidden={interactive || undefined}>
-    {bars.map((bar, index) => <span key={index} className={`is-${bar.vsLine ?? 'none'}`} style={{ '--h': `${bar.heightPct}%` } as CSSProperties} title={title(bar)}>
+    {bars.map((bar, index) => <span key={index} className={barClass(bar, signal)} style={{ '--h': `${bar.heightPct}%` } as CSSProperties} title={title(bar)}>
       {valueLabel && <span className="mini-bars__value">{valueLabel(bar)}</span>}
     </span>)}
   </span>

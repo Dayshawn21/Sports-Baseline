@@ -1,13 +1,17 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AltLinesChip } from '~/components/shared/AltLinesChip'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { ProbabilityRing } from '~/components/shared/ProbabilityRing'
+import { StatStrip } from '~/components/shared/StatStrip'
 import { NbaInjuryTag } from '~/components/nba/NbaInjury'
-import type { NbaInjury, NbaInjuryReport } from '~/types/nba'
+import type { NbaInjury, NbaInjuryReport, NbaLineOnlyRecent } from '~/types/nba'
 import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
-import { lineOnlyBars, mainRung } from '~/utils/nflLineOnly'
+import { lineOnlyBars, mainRung, type NflLineOnlyRung } from '~/utils/nflLineOnly'
 import type { NbaPropCard } from '~/utils/nbaProps'
 import { nbaBoardGameLabels, type NbaBoardGameContext, type NbaBoardRow } from '~/utils/nbaPropBoard'
+import { REFERENCE, groupAltLines, probabilityRing, statStrip } from '~/utils/propRowVisuals'
 import '~/components/shared/prop-table.css'
 import './nba-prop-table.css'
 
@@ -33,12 +37,19 @@ function Player({ playerName, position, team, market, to, linkState, injury, fre
   </span>
 }
 
-function Line({ card }: { card: NbaPropCard }) {
+function Line({ card, market }: { card: NbaPropCard, market: string }) {
   const payout = card.main.oddsType && card.main.oddsType !== 'standard' ? card.main.oddsType : 'standard'
   return <>
     <b>{card.main.line}</b>
-    <small>{payout}{card.also.length ? ` · Also ${card.also.join(', ')}` : ''}</small>
+    <AltLinesChip labels={card.also} context={nbaMarketLabel(market)} />
+    <small>{payout}</small>
   </>
+}
+
+function Probability({ card }: { card: NbaPropCard }) {
+  const text = card.projectionRow?.pOver ?? null
+  if (text === null) return <>--</>
+  return <><ProbabilityRing ring={probabilityRing(card.main.pOver === null ? null : card.main.pOver * 100, REFERENCE)} />{text}</>
 }
 
 function Sample({ card }: { card: NbaPropCard }) {
@@ -46,6 +57,16 @@ function Sample({ card }: { card: NbaPropCard }) {
   return <>
     <span>{card.flagText ?? 'Reference only'}</span>
     <small>{count}</small>
+  </>
+}
+
+/** The bars and the stat strip read the same games against the same main line. */
+function RecentGames({ row, market }: { row: { rungs: NflLineOnlyRung[], recent: NbaLineOnlyRecent[] }, market: string }) {
+  const values = row.recent.flatMap(game => game.value === null ? [] : [game.value])
+  const line = row.rungs.length ? mainRung(row).line : null
+  return <>
+    <MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} />
+    <StatStrip cells={statStrip(values, line, REFERENCE)} />
   </>
 }
 
@@ -78,11 +99,11 @@ function PropRow({ card, market, pathFor, linkState, game, now, injuryReport, st
   const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
   return <tr className="is-row" onClick={event => followFromRow(event, () => navigate(to, { state: linkState }))}>
     <td className="prop-table__lead"><Player playerName={card.playerName} position={card.position} team={card.team} market={market} to={to} linkState={linkState} injury={card.injury} freshness={freshness} /></td>
-    <td className="nba-prop-table__line" data-label="line"><Line card={card} /></td>
+    <td className="nba-prop-table__line" data-label="line"><Line card={card} market={market} /></td>
     <td className="is-num" data-label="model">{card.projectionRow?.projection ?? '--'}</td>
     <td className="prop-table__end is-num" data-label="gap">{card.projectionRow?.gap ?? '--'}</td>
-    <td className="is-num" data-label="P(over)">{card.projectionRow?.pOver ?? '--'}</td>
-    <td><MiniBars bars={lineOnlyBars(card)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
+    <td className="is-num" data-label="P(over)"><Probability card={card} /></td>
+    <td><RecentGames row={card} market={market} /></td>
     <td className="nba-prop-table__sample"><Sample card={card} /></td>
     {game && <GameCells game={game} now={now ?? new Date()} />}
   </tr>
@@ -121,13 +142,13 @@ function LineOnlyRow({ row, market, pathFor, linkState, game, now, injuryReport,
   const to = pathFor(row.playerId)
   const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
   const main = mainRung(row)
-  const also = row.rungs.filter(rung => rung !== main).map(rung => rungText(rung.line, rung.oddsType)).join(' · ')
+  const alts = groupAltLines(row.rungs)?.alts.map(rung => rungText(rung.line, rung.oddsType)) ?? []
   const count = row.count === null ? '--' : row.count > 0 ? `over ${row.overCount} of ${row.count}` : 'No earlier games'
   return <tr className="is-row" onClick={event => followFromRow(event, () => navigate(to, { state: linkState }))}>
     <td className="prop-table__lead"><Player playerName={row.playerName} position={row.position} team={row.team} market={market} to={to} linkState={linkState} injury={row.injury} freshness={freshness} /></td>
     <td className="is-num" data-label="line">{main.line}<small>{main.oddsType ?? 'standard'}</small></td>
-    <td className="nba-line-only-table__also" data-label="also">{also || '--'}</td>
-    <td><MiniBars bars={lineOnlyBars(row)} empty="No earlier games" title={bar => `${nbaRecentValueLabel(market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
+    <td className="nba-line-only-table__also" data-label="also">{alts.length ? <AltLinesChip labels={alts} context={nbaMarketLabel(market)} /> : '--'}</td>
+    <td><RecentGames row={row} market={market} /></td>
     <td className="prop-table__end" data-label="recent">{count}</td>
     {game && <GameCells game={game} now={now ?? new Date()} />}
   </tr>

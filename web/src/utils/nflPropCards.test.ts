@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { NflHistoryResult } from '~/types/nfl'
 import type { NflBoardLine } from '~/utils/nflPropBoard'
-import { formBars, nflPropCard, pickLabel, recentBars } from '~/utils/nflPropCards'
+import { formBars, nflPropCard, pickLabel, recentBars, recentStatStrip } from '~/utils/nflPropCards'
+import { REFERENCE } from '~/utils/propRowVisuals'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -202,5 +203,31 @@ describe('formBars below zero', () => {
   it('still marks above, below and push against a negative line', () => {
     const drawn = formBars(games(1, -1, -3), row({ line: -1 }))
     expect(drawn.bars.map(bar => bar.vsLine)).toEqual(['below', 'push', 'above'])
+  })
+})
+
+describe('recentStatStrip', () => {
+  const keys = (cells: ReturnType<typeof recentStatStrip>) => cells.map(cell => [cell.key, cell.value])
+
+  it('reads the five-game form against a full-game line', () => {
+    expect(keys(recentStatStrip(row({ line: 50, recentForm: games(60, 50, 20, 70, 80) }), REFERENCE)))
+      .toEqual([['l5', '3/5'], ['avg', '56.0'], ['diff', '+6.0']])
+  })
+
+  it('adds L10 from the ten-game sample when it is served', () => {
+    const long = games(60, 50, 20, 70, 80, 10, 10, 10, 10, 90)
+    expect(keys(recentStatStrip(row({ line: 50, recentForm: games(60, 50, 20, 70, 80), recentFormLong: long }), REFERENCE)))
+      .toEqual([['l5', '3/5'], ['l10', '4/10'], ['avg', '41.0'], ['diff', '-9.0']])
+  })
+
+  it('shows nothing where the bars draw no line', () => {
+    expect(recentStatStrip(row({ market: 'anytime_touchdown', line: 0.5, recentForm: games(1, 0) }), REFERENCE)).toEqual([])
+    expect(recentStatStrip(row({ segment: 'first_half', line: 20.5, recentForm: games(30, 15) }), REFERENCE)).toEqual([])
+    expect(recentStatStrip(row({ line: null, recentForm: games(30) }), REFERENCE)).toEqual([])
+    expect(recentStatStrip(row({ line: 50 }), REFERENCE)).toEqual([])
+  })
+
+  it('stays gray on a reference row', () => {
+    expect(recentStatStrip(row({ line: 5, recentForm: games(60, 50) }), REFERENCE).every(cell => cell.tone === 'neutral')).toBe(true)
   })
 })

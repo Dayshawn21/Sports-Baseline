@@ -29,9 +29,18 @@
   background: var(--text-primary);
 }
 
+/* Hollow, not a darker fill: --text-muted sits too close to the default bar gray to read as a different state. */
 .mini-bars > span.is-below {
-  background: var(--text-muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--text-muted);
 }
+
+.mini-bars > span.is-push {
+  background: var(--text-secondary);
+}
+
+.mini-bars > span.is-tone-positive { background: var(--positive); box-shadow: none; }
+.mini-bars > span.is-tone-negative { background: var(--negative); box-shadow: none; }
 
 .mini-bars.has-line::after {
   content: "";
@@ -39,6 +48,7 @@
   right: 0;
   bottom: var(--line);
   left: 0;
+  z-index: 1;
   border-top: 1px dashed var(--text-secondary);
 }
 
@@ -57,6 +67,29 @@
 .mini-bars-history p { margin: 0 0 8px; color: var(--text-secondary); }
 .mini-bars-history p:last-child { margin: 8px 0 0; }
 .mini-bars-history ol { margin: 0; padding-left: 20px; font-family: var(--font-mono); }
+
+.alt-lines-chip {
+  display: inline-flex; align-items: center; min-height: 22px; margin-left: 6px; padding: 0 7px;
+  border: 1px solid var(--border-card); border-radius: 999px; background: var(--bg-raised);
+  color: var(--text-secondary); font: 500 11px/1 var(--font-mono); white-space: nowrap; cursor: pointer; vertical-align: middle;
+}
+.alt-lines-chip:hover, .alt-lines-chip[aria-expanded="true"] { border-color: var(--text-muted); color: var(--text-primary); }
+.alt-lines-chip:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.alt-lines { max-width: 260px; margin: 0; padding: 0; list-style: none; color: var(--text-primary); font: 400 13px/1.7 var(--font-mono); }
+
+.prob-ring { display: inline-block; flex: none; margin-right: 6px; vertical-align: -5px; }
+.prob-ring circle { fill: none; stroke-width: 3; }
+.prob-ring__track { stroke: var(--border-card); }
+.prob-ring__arc { stroke: var(--text-secondary); }
+.prob-ring.is-tone-positive .prob-ring__arc { stroke: var(--positive); }
+.prob-ring__tick { stroke: var(--text-primary); stroke-width: 1.5; }
+
+.stat-strip { display: flex; gap: 6px; margin: 6px 0 0; white-space: nowrap; }
+.stat-strip > div { min-width: 0; }
+.stat-strip dt { color: var(--text-muted); font: 500 11px/1.2 var(--font-mono); }
+.stat-strip dd { margin: 0; color: var(--text-primary); font: 500 11px/1.3 var(--font-mono); }
+.stat-strip .is-tone-positive dd { color: var(--positive); }
+.stat-strip .is-tone-negative dd { color: var(--negative); }
 
 /* One prop line per row, after the slate tables (38b). Each sport sets its column widths and signal colors;
    this file adds none. Below 1100px rows wrap to two lines: cells with order 1 to 2 lead, the rest follow. */

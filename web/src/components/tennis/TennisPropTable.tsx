@@ -1,9 +1,11 @@
 import { Tooltip } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
-import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
+import { ProbabilityRing } from '~/components/shared/ProbabilityRing'
 import type { TennisBoardCategory, TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard, type TennisPropCardModel } from '~/utils/tennisPropCards'
 import { tourTone } from '~/utils/tennisSlate'
+import { probabilityRing, tennisRowSignal, type RowSignal } from '~/utils/propRowVisuals'
 import '~/components/shared/prop-table.css'
 import '~/components/tennis/tennis-slate.css'
 import './tennis-prop-table.css'
@@ -42,14 +44,9 @@ function Line({ card }: { card: TennisPropCardModel }) {
   </>
 }
 
-function HitAgainstBreakEven({ card }: { card: TennisPropCardModel }) {
-  const hasComparison = card.hitPct != null && card.breakEvenPct != null
-  const style = hasComparison
-    ? { '--p': `${card.hitPct}%`, '--be': `${card.breakEvenPct}%` } as CSSProperties
-    : undefined
+function HitAgainstBreakEven({ card, signal }: { card: TennisPropCardModel, signal: RowSignal }) {
   return <>
-    <span>{card.hitPct == null ? '--' : `${card.hitPct.toFixed(0)}%`}</span>
-    {hasComparison && <span className="tennis-prop-table__prob" style={style}><span /></span>}
+    <span><ProbabilityRing ring={probabilityRing(card.hitPct, signal, card.breakEvenPct)} />{card.hitPct == null ? '--' : `${card.hitPct.toFixed(0)}%`}</span>
     <small>{card.breakEvenLabel ?? 'Break-even --'}</small>
     {card.marginText && <small className="tennis-prop-table__margin">{card.marginText}</small>}
   </>
@@ -87,7 +84,7 @@ function PropRow({ item: { row, rated }, path, from }: PropRowProps) {
     <td className="tennis-prop-table__line"><Line card={card} /></td>
     <td className="is-num" data-label="model">{card.projectionText}</td>
     <td className="is-num tennis-prop-table__gap" data-label="gap">{card.gapText ?? '--'}</td>
-    <td className="tennis-prop-table__hit" data-label="P(over)"><HitAgainstBreakEven card={card} /></td>
+    <td className="tennis-prop-table__hit" data-label="P(over)"><HitAgainstBreakEven card={card} signal={tennisRowSignal(row)} /></td>
     <td className={`prop-table__end is-num tennis-prop-table__ev${card.evTone ? ` is-${card.evTone}` : ''}`} data-label="EV">{card.evText}</td>
     <td><Trust card={card} />
       {path && <Link to={path} state={{ from }} className="tennis-prop-text-action tennis-prop-table__evidence" aria-label={`Open ${card.playerName}'s page, ${market}, ${card.valueText}`}>Open player</Link>}

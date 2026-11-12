@@ -6,6 +6,7 @@ import { edgeShare, isConfidentSample, type NflBoardLine } from '~/utils/nflProp
 import { edgeLabel, edgePctLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference } from '~/utils/nflTargets'
+import { statStrip, type RowSignal, type StatCell } from '~/utils/propRowVisuals'
 
 const TD_MARKET = 'anytime_touchdown'
 const DEPTH_FLAGS = ['depth_promoted', 'depth_demoted', 'depth_new']
@@ -112,6 +113,13 @@ export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now
  */
 export function recentBars(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'segment'>): NflRecentBars {
   return formBars(row.recentForm, row)
+}
+
+/** The stat strip under the bars, on the same terms: only where the bars draw a line, from up to ten games when served. */
+export function recentStatStrip(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'recentFormLong' | 'segment'>, signal: RowSignal): StatCell[] {
+  if (row.line === null || recentBars(row).linePct === null) return []
+  const sample = row.recentFormLong?.values.length ? row.recentFormLong : row.recentForm
+  return statStrip(sample.values.map(game => game.value), row.line, signal)
 }
 
 /** The same bars for any newest-first sample of the row's market. */
