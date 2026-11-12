@@ -6,7 +6,7 @@ import pytest
 from app.core import nhl_over_probability_fit as fit
 from app.core.nhl_projection import Availability, GoalieAvailability, project_line
 from app.core.nhl_projection_backtest import NHL_PROJECTION_REFERENCE_VERSION, NhlHistoryRow
-from app.core.nhl_prop_predictions import NhlFreezeLine, prediction_row, settle_frozen
+from app.core.nhl_prop_predictions import NhlFreezeLine, frozen_actual, prediction_row, settle_frozen
 from app.nhl.markets import NhlLineOnlyMarket
 
 NOW = dt.datetime(2026, 10, 24, 17, 0, tzinfo=dt.UTC)
@@ -161,3 +161,27 @@ def test_a_whole_number_line_can_push() -> None:
 
 def test_a_goalie_market_reads_the_goalie_row_not_the_skater_row() -> None:
     assert settle_frozen("goalie_saves", 24.5, _skater(), _goalie(saves=20), game_has_box_scores=True) == "under"
+
+
+def test_frozen_actual_reads_the_skater_value() -> None:
+    assert frozen_actual("shots_on_goal", _skater(shots=5), None, game_has_box_scores=True) == 5
+
+
+def test_frozen_actual_reads_time_on_ice_in_minutes() -> None:
+    assert frozen_actual("time_on_ice", _skater(time_on_ice_seconds=1290), None, game_has_box_scores=True) == 21.5
+
+
+def test_frozen_actual_reads_a_goalie_market_from_the_goalie_row() -> None:
+    assert frozen_actual("goalie_saves", _skater(), _goalie(saves=31), game_has_box_scores=True) == 31
+
+
+def test_frozen_actual_voids_a_goalie_who_did_not_start() -> None:
+    assert frozen_actual("goals_allowed", None, _goalie(started=False), game_has_box_scores=True) == "void_dnp"
+
+
+def test_frozen_actual_waits_for_an_unloaded_game() -> None:
+    assert frozen_actual("points", _skater(), None, game_has_box_scores=False) == "stats_not_loaded"
+
+
+def test_frozen_actual_never_reads_a_missing_stat_as_zero() -> None:
+    assert frozen_actual("hits", _skater(hits=None), None, game_has_box_scores=True) == "missing_stat"

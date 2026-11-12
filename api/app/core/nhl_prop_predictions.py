@@ -52,11 +52,11 @@ def prediction_row(line: NhlFreezeLine, projection: NhlLineProjection, now: date
     )
 
 
-def settle_frozen(
-    market: str, line: float, skater_row: Mapping[str, int | None] | None,
+def frozen_actual(
+    market: str, skater_row: Mapping[str, int | None] | None,
     goalie_row: Mapping[str, int | bool | None] | None, game_has_box_scores: bool,
-) -> str:
-    """The frozen line's outcome: over, under or push, else why it is not a call.
+) -> float | str:
+    """The frozen line's result in the market's unit, else why it is not a call.
 
     A game with no box-score rows at all has not loaded yet, which must never read
     as every player sitting out. With the game loaded, a skater with no row did not
@@ -74,6 +74,13 @@ def settle_frozen(
             return "void_dnp"
         stats = skater_row
     value = nhl_stat_value(nhl_market, stats)
-    if value is None:
-        return "missing_stat"
-    return settle(value, line)
+    return "missing_stat" if value is None else value
+
+
+def settle_frozen(
+    market: str, line: float, skater_row: Mapping[str, int | None] | None,
+    goalie_row: Mapping[str, int | bool | None] | None, game_has_box_scores: bool,
+) -> str:
+    """The frozen line's outcome: over, under or push, else why it is not a call (see `frozen_actual`)."""
+    actual = frozen_actual(market, skater_row, goalie_row, game_has_box_scores)
+    return actual if isinstance(actual, str) else settle(actual, line)

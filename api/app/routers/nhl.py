@@ -9,13 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.pool import get_db
 from app.schemas.nhl import (
     NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlModelRankingResponse, NhlPlayerPropsResponse,
-    NhlPropBoardResponse, NhlSlateResponse,
+    NhlProjectionHistoryResponse, NhlPropBoardResponse, NhlSlateResponse,
 )
 from app.season_query import optional_model_season
 from app.services.nhl import track_record
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
+from app.services.nhl.projection_history import build_projection_history
 from app.services.nhl.prop_board_cache import cached_prop_board_json
 from app.services.nhl.slate import cached_slate
 
@@ -63,6 +64,14 @@ async def get_player_props(
     if props is None:
         raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
     return props
+
+
+@router.get("/players/{player_id}/projection-history", response_model=NhlProjectionHistoryResponse)
+async def get_player_projection_history(player_id: int, db: AsyncSession = Depends(get_db)) -> NhlProjectionHistoryResponse:
+    history = await build_projection_history(db, player_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
+    return NhlProjectionHistoryResponse.model_validate(history)
 
 
 @router.get("/model/ranking", response_model=NhlModelRankingResponse)

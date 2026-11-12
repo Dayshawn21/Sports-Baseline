@@ -236,3 +236,27 @@ class NhlPlayerPropsResponse(_CamelModel):
 
 class NhlModelRankingResponse(PropRankingResponse):
     """27i's rule on NHL's frozen pre-puck-drop rows (56d), in NFL's 27j shape; a later NHL adoption item reads it."""
+
+
+class NhlProjectionHistoryPointSchema(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+    game_id: int
+    game_date: dt.date
+    season: int
+    opponent_id: int
+    opponent_name: str
+    """The opposing team's code."""
+    stat: NhlLineOnlyMarket
+    line: float
+    projection: float | None
+    """The nhl-reference-v1 projection frozen before puck drop; null for a gated line, never recomputed."""
+    actual: float
+    snapshot_at: AwareDatetime
+
+
+class NhlProjectionHistoryResponse(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+    projection_version: str
+    points: list[NhlProjectionHistoryPointSchema]
+    unsettled: int
+    """Frozen lines on completed games whose box score has not loaded or lacks the stat yet."""

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { NhlPlayerProjectionHistory } from '~/components/nhl/NhlPlayerProjectionHistory'
 import { NhlPlayerPropTabs } from '~/components/nhl/NhlPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
@@ -14,7 +15,7 @@ import type { NhlPlayerProps } from '~/types/nhl'
 import { isNotFound } from '~/utils/httpError'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { parseNhlGameId } from '~/utils/nhlGame'
-import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus } from '~/utils/nhlPlayer'
+import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus, nhlPlayerTabs, nhlSelectedMarket } from '~/utils/nhlPlayer'
 import { injuryTone } from '~/utils/playerPage'
 import { playerGameLog } from '~/utils/playerGameLog'
 import './nfl-slate.css'
@@ -70,6 +71,8 @@ export default function NhlPlayerPage() {
       log={playerGameLog(player.markets, NHL_LOG_MARKETS)} label={nhlLogLabel} valueText={nhlLogValue}
       seasonStartMonth={NHL_SEASON_START_MONTH} recordNote="No graded record for this player yet. NHL projections are reference only."
     />}
+    <NhlPlayerProjectionHistory playerId={player.playerId} playerName={player.name}
+      openMarket={nhlSelectedMarket(params, nhlPlayerTabs(player.markets))} />
     <PlayerFooter>{nhlPlayerFooter(player)}</PlayerFooter>
   </PlayerPageShell>
 }
