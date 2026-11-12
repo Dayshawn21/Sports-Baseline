@@ -18,6 +18,7 @@ from sqlalchemy import RowMapping, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nba_line_only import LINE_ONLY_COLUMNS
+from app.core.nba_minutes import NBA_MINUTES_FIRST_HISTORY_SEASON, NbaRosterRow
 from app.core.nba_projection_backtest import REFERENCE_GAMES, NbaHistoryRow
 from app.core.nba_prop_predictions import NbaFreezeLine, settle_frozen
 from app.core.nba_slate import NbaResult
@@ -740,6 +741,30 @@ async def get_projection_history(db: AsyncSession, seasons: Sequence[int]) -> li
         ORDER BY g.game_date, g.id, s.player_id
     """), {"seasons": list(seasons)})
     return [_history_row(row) for row in rows.mappings()]
+
+
+async def get_roster_history(db: AsyncSession, seasons: Sequence[int]) -> list[NbaRosterRow]:
+    """Every served box-score row of the seasons with the row's own team, oldest first (item 65).
+
+    The team is the box-score row's, never `sport_players.team_id`, which is last-write-wins.
+    """
+    if any(season < NBA_MINUTES_FIRST_HISTORY_SEASON for season in seasons):
+        raise ValueError(f"nba-minutes history starts in {NBA_MINUTES_FIRST_HISTORY_SEASON}")
+    rows = await db.execute(text(f"""
+        SELECT s.player_id, s.game_id, s.team_id, g.season, g.game_date, s.did_not_play, s.minutes
+        FROM nba_player_game_stats s
+        JOIN sport_games g ON g.sport = 'nba' AND g.id = s.game_id
+        WHERE g.season = ANY(:seasons) AND {_SERVED_GAME_TYPES}
+        ORDER BY g.game_date, g.id, s.player_id
+    """), {"seasons": list(seasons)})
+    return [
+        NbaRosterRow(
+            player_id=row["player_id"], game_id=row["game_id"], team_id=row["team_id"], season=row["season"],
+            game_date=row["game_date"], did_not_play=row["did_not_play"],
+            minutes=None if row["minutes"] is None else float(row["minutes"]),
+        )
+        for row in rows.mappings()
+    ]
 
 
 async def get_prior_games(

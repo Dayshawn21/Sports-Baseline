@@ -1,3 +1,4 @@
+import dataclasses
 import datetime as dt
 
 import pytest
@@ -121,3 +122,10 @@ def test_reference_uses_every_game_when_ten_to_nineteen_exist() -> None:
 def test_both_arms_score_the_same_cases() -> None:
     rows = [skater(day) for day in range(15)]
     assert [case.key for case in run(rows, REFERENCE_ARM)] == [case.key for case in run(rows, LAST_10_ARM)]
+
+
+@pytest.mark.parametrize("arm", [REFERENCE_ARM, LAST_10_ARM])
+def test_matchup_fields_leave_existing_arms_unchanged(arm: str) -> None:
+    rows = [skater(day, shots=day % 5) for day in range(25)] + [goalie(day, saves=20 + day) for day in range(12)]
+    with_matchup = [dataclasses.replace(row, team_id=1, opponent_team_id=2) for row in rows]
+    assert run(with_matchup, arm) == run(rows, arm)

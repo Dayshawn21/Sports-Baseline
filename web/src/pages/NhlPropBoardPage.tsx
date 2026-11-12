@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NhlPropBoardMarket from '~/components/nhl/NhlPropBoardMarket'
 import BoardFilterBar from '~/components/shared/BoardFilterBar'
+import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
-import { useNhlPropBoard } from '~/hooks/useNhl'
+import { useNhlModelRanking, useNhlPropBoard } from '~/hooks/useNhl'
+import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
 import { nhlMarketLabel } from '~/utils/nhlLineOnly'
 import { nhlBoardMarket, nhlBoardPath, nhlPropBoard } from '~/utils/nhlPropBoard'
 import { parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
@@ -29,6 +31,8 @@ export default function NhlPropBoardPage() {
   const group = filtered.find(item => item.market === shownMarket)!
   const rowCount = groups.reduce((sum, item) => sum + item.rows.length, 0)
   const filteredCount = filtered.reduce((sum, item) => sum + item.rows.length, 0)
+  const ranking = useNhlModelRanking()
+  const record = rankingBoardRecord('nhl', ranking.data, recordStatus(ranking))
   if (board.isLoading) return <LoadingState message="Loading NHL prop board..." />
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
   const { date, previousDate, nextDate, games } = board.data
@@ -44,6 +48,7 @@ export default function NhlPropBoardPage() {
       stats={<section className="page-head__stats" aria-label="Prop board summary">
         <StatChip value={games.length} label="Games" /><StatChip value={rowCount} label="Player-market rows" />
       </section>} />
+    <BoardRecordStrip record={record} />
     <nav className="nfl-prop-pills" aria-label="Prop categories">
       {filtered.map(item => <button key={item.market} type="button"
         className={[item.market === shownMarket && 'is-selected', item.rows.length === 0 && 'is-empty'].filter(Boolean).join(' ')}

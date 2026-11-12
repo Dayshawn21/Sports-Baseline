@@ -115,3 +115,13 @@
   .tennis-player-splits { padding: var(--space-3) var(--space-4) var(--space-4); }
   .tennis-player-split { grid-template-columns: 104px minmax(0, 1fr) 52px; gap: var(--space-3); }
 }
+
+.tennis-player-history {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.tennis-player-history__note {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}

@@ -17,6 +17,9 @@ from statistics import fmean
 from typing import Literal
 
 from app.core.nfl_projection_backtest import PairedDiff
+from app.core.nhl_goalie_adjustment import (
+    ADJUSTED_MARKETS, GoalieRecord, Matchup, adjusted_value, goalie_record,
+)
 from app.core.nhl_player_values import GOALIE_MARKETS, nhl_stat_value
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -75,6 +78,9 @@ class NhlHistoryRow:
     is_goalie: bool
     started: bool
     stats: Mapping[str, int | None]
+    # The opposing-goalie arm (67a) needs the matchup; every other arm ignores both.
+    team_id: int | None = None
+    opponent_team_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -88,6 +94,8 @@ class NhlReplayCase:
     prior_toi_minutes: float | None
     projection: float
     actual: float
+    # Set only by an opposing-goalie arm on a skater case; None everywhere else.
+    opposing_starter_found: bool | None = None
 
     @property
     def key(self) -> tuple[int, int, str]:
@@ -119,10 +127,42 @@ def window_mean(games: int) -> Arm:
     return arm
 
 
+# An opposing-goalie arm also reads what is known about the starter the skater faces.
+MatchupArm = Callable[[Sequence[NhlHistoryRow], NhlLineOnlyMarket, Matchup], float | None]
+
+
+def opp_goalie_arm(beta_by_market: Mapping[NhlLineOnlyMarket, float]) -> MatchupArm:
+    """The reference projection scaled by the opposing starter's multiplier to each market's exponent."""
+    def arm(prior: Sequence[NhlHistoryRow], market: NhlLineOnlyMarket, matchup: Matchup) -> float | None:
+        value = window_mean(REFERENCE_GAMES)(prior, market)
+        if value is None:
+            return None
+        return adjusted_value(value, market, matchup.multiplier(), beta_by_market.get(market, 0.0))
+    return arm
+
+
 ARMS: dict[str, Arm] = {
     REFERENCE_ARM: window_mean(REFERENCE_GAMES),
     LAST_10_ARM: window_mean(LAST_10_GAMES),
 }
+
+# 67a's development arms: every adjusted market at one exponent, for the per-market pick on 2024-25.
+OPP_GOALIE_B05_ARM = "opp_goalie_b05"
+OPP_GOALIE_B10_ARM = "opp_goalie_b10"
+MATCHUP_ARM_BETAS: dict[str, float] = {OPP_GOALIE_B05_ARM: 0.5, OPP_GOALIE_B10_ARM: 1.0}
+MATCHUP_ARMS: dict[str, MatchupArm] = {
+    name: opp_goalie_arm({market: beta for market in ADJUSTED_MARKETS}) for name, beta in MATCHUP_ARM_BETAS.items()
+}
+
+# The pre-registered pick from the 2024-25 development run (67a Step 6), committed before any
+# holdout read: beta 0 had the lowest MAE in every adjusted market, so `opp_goalie` would equal
+# `reference` and is not registered as an arm.
+OPP_GOALIE_BETA_BY_MARKET: dict[NhlLineOnlyMarket, float] = {market: 0.0 for market in ADJUSTED_MARKETS}
+
+
+def opp_goalie_holdout_candidates() -> list[NhlLineOnlyMarket]:
+    """The markets the one holdout run would score: those whose development pick adjusts at all."""
+    return [market for market in BACKTEST_MARKETS if OPP_GOALIE_BETA_BY_MARKET.get(market, 0.0) > 0]
 
 
 def prior_toi_minutes(prior: Sequence[NhlHistoryRow]) -> float | None:
@@ -150,7 +190,9 @@ def _markets_for(row: NhlHistoryRow) -> list[NhlLineOnlyMarket]:
     ]
 
 
-def _cases_for(row: NhlHistoryRow, prior: Sequence[NhlHistoryRow], arm: Arm) -> list[NhlReplayCase]:
+def _cases_for(
+    row: NhlHistoryRow, prior: Sequence[NhlHistoryRow], arm: Arm, starter_found: bool | None = None,
+) -> list[NhlReplayCase]:
     minutes = None if row.is_goalie else prior_toi_minutes(prior)
     cases = []
     for market in _markets_for(row):
@@ -161,8 +203,45 @@ def _cases_for(row: NhlHistoryRow, prior: Sequence[NhlHistoryRow], arm: Arm) -> 
         cases.append(NhlReplayCase(
             player_id=row.player_id, game_id=row.game_id, game_date=row.game_date, game_type=row.game_type,
             market=market.value, prior_toi_minutes=minutes, projection=projection, actual=actual,
+            opposing_starter_found=starter_found,
         ))
     return cases
+
+
+@dataclass
+class _LeagueTotals:
+    saves: int = 0
+    shots: int = 0
+
+    def save_pct(self) -> float | None:
+        return self.saves / self.shots if self.shots else None
+
+    def add(self, record: GoalieRecord) -> None:
+        self.saves += record.saves
+        self.shots += record.shots
+
+
+def _starters(rows: Sequence[NhlHistoryRow]) -> dict[tuple[int, int], int]:
+    """(game, team) to the goalie who started for that team; a relief goalie never counts."""
+    starters: dict[tuple[int, int], int] = {}
+    for row in rows:
+        if row.is_goalie and row.started and row.team_id is not None:
+            starters.setdefault((row.game_id, row.team_id), row.player_id)
+    return starters
+
+
+def _matchup(
+    row: NhlHistoryRow, starters: Mapping[tuple[int, int], int],
+    played: Mapping[int, Sequence[NhlHistoryRow]], league: float | None,
+) -> Matchup:
+    starter = None if row.opponent_team_id is None else starters.get((row.game_id, row.opponent_team_id))
+    if starter is None:
+        return Matchup(None, league)
+    return Matchup(goalie_record([start.stats for start in played.get(starter, [])]), league)
+
+
+def _matchup_bound(arm: MatchupArm, matchup: Matchup) -> Arm:
+    return lambda prior, market: arm(prior, market, matchup)
 
 
 def replay_cases(history: Iterable[NhlHistoryRow], season: int, arm: Arm) -> list[NhlReplayCase]:
@@ -172,15 +251,50 @@ def replay_cases(history: Iterable[NhlHistoryRow], season: int, arm: Arm) -> lis
     date is not an input. A goalie's inputs are his starts only, matching how the market
     settles. `history` must be in date order.
     """
+    return _replay(history, season, lambda row, starters, played, league: (arm, None))
+
+
+def replay_matchup_cases(history: Iterable[NhlHistoryRow], season: int, arm: MatchupArm) -> list[NhlReplayCase]:
+    """`replay_cases` for an opposing-goalie arm: the same cases, each skater's projection given its matchup.
+
+    The opposing starter is the opponent's goalie who started the game, which is known only after
+    it (the backtest's hindsight caveat). His record and the league's save percentage come from
+    starts dated strictly before the game, under the same same-day rule as every prior game.
+    """
+    def arm_for(
+        row: NhlHistoryRow, starters: Mapping[tuple[int, int], int],
+        played: Mapping[int, Sequence[NhlHistoryRow]], league: float | None,
+    ) -> tuple[Arm, bool | None]:
+        if row.is_goalie:
+            return _matchup_bound(arm, Matchup(None, None)), None
+        matchup = _matchup(row, starters, played, league)
+        return _matchup_bound(arm, matchup), matchup.opposing_goalie is not None
+
+    return _replay(history, season, arm_for)
+
+
+# Picks the arm for one case from the day's starters, prior starts and league save percentage.
+_ArmFor = Callable[
+    [NhlHistoryRow, Mapping[tuple[int, int], int], Mapping[int, Sequence[NhlHistoryRow]], float | None],
+    tuple[Arm, bool | None],
+]
+
+
+def _replay(history: Iterable[NhlHistoryRow], season: int, arm_for: _ArmFor) -> list[NhlReplayCase]:
     played: dict[int, list[NhlHistoryRow]] = defaultdict(list)
+    league = _LeagueTotals()
     cases: list[NhlReplayCase] = []
     for _, same_day in groupby(history, key=lambda row: row.game_date):
         rows = list(same_day)
+        starters = _starters(rows)
         for row in rows:
             prior = played[row.player_id]
             if row.season == season and eligible_case(row, prior):
-                cases.extend(_cases_for(row, prior, arm))
+                arm, found = arm_for(row, starters, played, league.save_pct())
+                cases.extend(_cases_for(row, prior, arm, found))
         for row in rows:
             if row.started:
                 played[row.player_id].append(row)
+            if row.is_goalie and row.started:
+                league.add(goalie_record([row.stats]))
     return cases

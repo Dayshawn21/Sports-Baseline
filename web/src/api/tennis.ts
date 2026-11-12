@@ -1,5 +1,5 @@
 import client from './client'
-import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, PredictionsResponse, PropsAuditResponse, PropsResponse } from '~/types/tennis'
+import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, ProjectionHistory, PredictionsResponse, PropsAuditResponse, PropsResponse } from '~/types/tennis'
 
 export async function fetchPredictionsToday(params?: {
   date?: string
@@ -97,5 +97,10 @@ export async function fetchPlayerMatches(playerId: number, limit = 20): Promise<
 
 export async function fetchPlayerProps(playerId: number): Promise<PlayerProps> {
   const { data } = await client.get<PlayerProps>(`/tennis/players/${playerId}/props`)
+  return data
+}
+
+export async function fetchProjectionHistory(playerId: number): Promise<ProjectionHistory> {
+  const { data } = await client.get<ProjectionHistory>(`/tennis/players/${playerId}/projection-history`)
   return data
 }

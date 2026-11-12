@@ -58,3 +58,10 @@ def test_length_derived_stats_are_not_suppressed_on_best_of_five():
     enriched = _enriched("Total Games", "22.5", 5)
     assert "bo5_unsupported_stat" not in enriched.data_quality_flags
     assert enriched.recommendation is not None
+
+
+@pytest.mark.parametrize("best_of", [3, 5, None])
+def test_the_line_reports_the_stored_format_not_the_fallback(best_of):
+    enriched = _enriched("Aces", "6.5", best_of)
+    assert enriched.best_of == best_of
+    assert enriched.model_dump(by_alias=True)["bestOf"] == best_of

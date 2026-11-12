@@ -8,6 +8,7 @@ export interface TennisBoardLine extends PropLine {
   matchup: string | null
   tournament: string | null
   tour: string | null
+  bestOf: number | null
   reason?: string | null
 }
 
@@ -33,6 +34,79 @@ export const TENNIS_TOUR_FILTERS: Array<{ value: TennisTourFilter, label: string
   { value: 'challenger', label: 'Challenger' },
   { value: 'wta_125', label: 'WTA 125' },
 ]
+
+export type TennisSurfaceFilter = 'all' | 'hard' | 'clay' | 'grass'
+export type TennisBestOfFilter = 'all' | '3' | '5'
+/** `default` is today's board: standard and demon lines, goblins hidden unless adopted. */
+export type TennisLineTypeFilter = 'default' | 'standard' | 'demon' | 'goblin'
+
+export interface TennisContextFilter {
+  surface: TennisSurfaceFilter
+  bestOf: TennisBestOfFilter
+  tour: TennisTourFilter
+  lineType: TennisLineTypeFilter
+}
+
+export const DEFAULT_TENNIS_CONTEXT_FILTER: TennisContextFilter = { surface: 'all', bestOf: 'all', tour: 'all', lineType: 'default' }
+
+export const TENNIS_SURFACE_FILTERS: Array<{ value: TennisSurfaceFilter, label: string }> = [
+  { value: 'all', label: 'All surfaces' },
+  { value: 'hard', label: 'Hard' },
+  { value: 'clay', label: 'Clay' },
+  { value: 'grass', label: 'Grass' },
+]
+
+export const TENNIS_BEST_OF_FILTERS: Array<{ value: TennisBestOfFilter, label: string }> = [
+  { value: 'all', label: 'Any format' },
+  { value: '3', label: 'Best of 3' },
+  { value: '5', label: 'Best of 5' },
+]
+
+export const TENNIS_LINE_TYPE_FILTERS: Array<{ value: TennisLineTypeFilter, label: string }> = [
+  { value: 'default', label: 'Standard + demon' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'demon', label: 'Demon' },
+  { value: 'goblin', label: 'Goblin' },
+]
+
+const CONTEXT_PARAMS = { surface: 'surface', bestOf: 'bo', tour: 'tour', lineType: 'line' } as const
+
+function parseOption<T extends string>(value: string | null, options: ReadonlyArray<{ value: T }>, fallback: T): T {
+  return options.find(option => option.value === value)?.value ?? fallback
+}
+
+/** An unknown value, as from an old or edited link, reads as that filter's default. */
+export function parseTennisContextFilter(params: URLSearchParams): TennisContextFilter {
+  return {
+    surface: parseOption(params.get(CONTEXT_PARAMS.surface), TENNIS_SURFACE_FILTERS, 'all'),
+    bestOf: parseOption(params.get(CONTEXT_PARAMS.bestOf), TENNIS_BEST_OF_FILTERS, 'all'),
+    tour: parseOption(params.get(CONTEXT_PARAMS.tour), TENNIS_TOUR_FILTERS, 'all'),
+    lineType: parseOption(params.get(CONTEXT_PARAMS.lineType), TENNIS_LINE_TYPE_FILTERS, 'default'),
+  }
+}
+
+/** Writes each filter that differs from its default and leaves every other param alone. */
+export function withTennisContextFilter(params: URLSearchParams, filter: TennisContextFilter): URLSearchParams {
+  const next = new URLSearchParams(params)
+  for (const key of Object.keys(CONTEXT_PARAMS) as Array<keyof TennisContextFilter>) {
+    if (filter[key] === DEFAULT_TENNIS_CONTEXT_FILTER[key]) next.delete(CONTEXT_PARAMS[key])
+    else next.set(CONTEXT_PARAMS[key], filter[key])
+  }
+  return next
+}
+
+/** Line type is a PrizePicks payout tier, so it applies only while PrizePicks rows can show. */
+export function lineTypeApplies(source: TennisPropSource): boolean {
+  return source === 'all' || source === 'prizepicks'
+}
+
+/** A null surface or format passes only "all"; a row with no PrizePicks tier passes only the default line type. */
+export function tennisContextMatches(line: TennisBoardLine, filter: TennisContextFilter): boolean {
+  return (filter.surface === 'all' || normalized(line.surface) === filter.surface)
+    && (filter.bestOf === 'all' || line.bestOf === Number(filter.bestOf))
+    && tourMatches(line, filter.tour)
+    && (filter.lineType === 'default' || payoutTier(line) === filter.lineType)
+}
 
 const MARKET_LABELS: Record<string, string> = {
   aces: 'Aces',
@@ -327,6 +401,7 @@ export function enrichTennisPropLines(props: PropLine[], predictions: MatchPredi
       tournament: match?.tournament ?? null,
       tour: match?.tourLabel ?? match?.tour ?? null,
       surface: line.surface ?? match?.surface ?? null,
+      bestOf: line.bestOf ?? match?.bestOf ?? null,
       startTime: line.startTime ?? match?.startUtc ?? null,
     }
   })
@@ -338,10 +413,12 @@ function isBoardRateable(line: PropLine): boolean {
 }
 
 export function buildTennisPropBoard(
-  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, tour: TennisTourFilter = 'all', includeAlternates = false,
+  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource,
+  filter: TennisContextFilter = DEFAULT_TENNIS_CONTEXT_FILTER, includeAlternates = false,
 ): TennisBoardCategory[] {
   const byMarket = new Map<string, TennisBoardLine[]>()
-  for (const line of enrichTennisPropLines(props, predictions, source, includeAlternates).filter(line => tourMatches(line, tour))) {
+  const lines = enrichTennisPropLines(props, predictions, source, includeAlternates || filter.lineType === 'goblin')
+  for (const line of lines.filter(line => tennisContextMatches(line, filter))) {
     const market = normalized(line.statType)
     byMarket.set(market, [...(byMarket.get(market) ?? []), line])
   }
@@ -362,8 +439,8 @@ export function filterTennisBoardCategories(categories: TennisBoardCategory[], p
   return categories.map(category => ({ ...category, rateable: category.rateable.filter(keep), other: category.other.filter(keep) }))
 }
 
-export function tennisBoardPath(players: readonly string[]): string {
-  const search = withPropListFilters(new URLSearchParams(), { player: players }).toString()
+export function tennisBoardPath(players: readonly string[], filter: TennisContextFilter = DEFAULT_TENNIS_CONTEXT_FILTER): string {
+  const search = withTennisContextFilter(withPropListFilters(new URLSearchParams(), { player: players }), filter).toString()
   return search === '' ? '/tennis/props' : `/tennis/props?${search}`
 }
 

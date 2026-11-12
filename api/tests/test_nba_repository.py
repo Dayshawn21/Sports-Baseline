@@ -8,13 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
 from app.core.nba_line_only import LINE_ONLY_COLUMNS
+from app.core.nba_minutes import NbaRosterRow
 from app.core.nba_projection_backtest import NbaHistoryRow
 from app.core.nba_prop_predictions import NbaFreezeLine
 from app.core.prop_ranking_check import FrozenLine
 from app.repositories.nba import (
     NBA_MODELLED_MARKET_FILTER, get_current_week, get_finished_weeks, get_frozen_coverage, get_frozen_gradeable_lines,
     get_date_line_only_lines, get_date_modelled_lines,
-    get_line_only_lines, get_modelled_lines, get_prior_games, get_projection_history, get_team_players,
+    get_line_only_lines, get_modelled_lines, get_prior_games, get_projection_history, get_roster_history,
+    get_team_players,
     get_week_modelled_lines,
 )
 
@@ -63,6 +65,32 @@ def test_projection_history_reads_served_nba_games_of_the_seasons() -> None:
     assert "ORDER BY g.game_date, g.id, s.player_id" in session.statement
     # DNP rows stay in: the replay must see that a player sat.
     assert "did_not_play" in session.statement and "NOT s.did_not_play" not in session.statement
+
+
+def test_roster_history_reads_the_box_score_team_of_served_nba_games() -> None:
+    row = {
+        "player_id": 7, "game_id": 11, "team_id": 3, "season": 2024, "game_date": date(2024, 11, 2),
+        "did_not_play": False, "minutes": 31.5,
+    }
+    session = _RecordingSession([row, {**row, "player_id": 8, "did_not_play": True, "minutes": None}])
+
+    played, sat = asyncio.run(get_roster_history(cast(AsyncSession, session), (2023, 2024)))
+
+    assert session.params == {"seasons": [2023, 2024]}
+    assert "g.sport = 'nba'" in session.statement
+    assert "g.game_type IN ('REG', 'PIN', 'PST')" in session.statement
+    assert "s.team_id" in session.statement and "sport_players" not in session.statement
+    assert "ORDER BY g.game_date, g.id, s.player_id" in session.statement
+    assert played == NbaRosterRow(7, 11, 3, 2024, date(2024, 11, 2), False, 31.5)
+    assert sat.did_not_play and sat.minutes is None
+
+
+def test_roster_history_refuses_seasons_before_the_history_floor() -> None:
+    session = _RecordingSession([])
+
+    with pytest.raises(ValueError, match="2023"):
+        asyncio.run(get_roster_history(cast(AsyncSession, session), (2022, 2023)))
+    assert session.statement == ""
 
 
 def test_projection_history_maps_rows_with_stats_readable_by_settlement() -> None:

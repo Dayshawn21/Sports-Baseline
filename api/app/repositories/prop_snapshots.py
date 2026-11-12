@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -197,3 +197,50 @@ async def get_prop_check_snapshots(db: AsyncSession, version: str) -> list[PropC
         {"version": version, "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY},
     )
     return [build_prop_check_snapshot(dict(r)) for r in rows.mappings().all()]
+
+
+@dataclass(frozen=True)
+class ProjectionHistorySnapshot:
+    """A finished match's latest pre-start standard line for one player, with the projection frozen on it (60a)."""
+
+    snapshot_id: int
+    match_id: int
+    stat_type: str
+    line: float
+    projection: float | None
+    snapshot_at: datetime
+    player_is_p1: bool
+    score: str | None
+    best_of: int | None
+    match_date: date | None
+    tournament: str | None
+    round: str | None
+    surface: str | None
+    opponent_id: int
+    opponent_name: str
+
+
+async def get_player_projection_history(
+    db: AsyncSession, player_id: int, version: str,
+) -> list[ProjectionHistorySnapshot]:
+    """The same latest pre-start snapshot per finished line that grading reads, standard lines only."""
+    rows = await db.execute(
+        text("""
+            SELECT DISTINCT ON (""" + _LINE_KEY + """)
+                s.id AS snapshot_id, s.match_id, s.stat_type, s.line, s.stat_avg AS projection, s.snapshot_at,
+                (s.player_id = m.p1_id) AS player_is_p1, m.score, m.best_of,
+                m.match_date, m.tournament, m.round, m.surface,
+                o.id AS opponent_id, o.name AS opponent_name
+            FROM prop_projection_snapshots s
+            JOIN matches m ON m.id = s.match_id
+            JOIN players o ON o.id = CASE WHEN s.player_id = m.p1_id THEN m.p2_id ELSE m.p1_id END
+            WHERE """ + _LATEST_PRESTART_FINISHED_SQL + """
+              AND s.player_id = :player_id
+              AND LOWER(COALESCE(s.odds_type, 'standard')) = 'standard'
+            ORDER BY """ + _LINE_KEY + """, s.snapshot_at DESC, s.id DESC
+        """),
+        {"version": version, "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY, "player_id": player_id},
+    )
+    return [
+        ProjectionHistorySnapshot(**{**r, "line": float(r["line"])}) for r in rows.mappings().all()
+    ]

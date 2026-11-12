@@ -1,6 +1,7 @@
 """Replay NHL prop projections against a season's box scores (item 56b).
 
     python -m app.backtest.nhl_projections [--season 2024] [--arms reference,last_10]
+    python -m app.backtest.nhl_projections --arms reference,opp_goalie_b05,opp_goalie_b10
 
 2024-25 is development and may be replayed freely. 2025-26 is the holdout, scored once
 per candidate. Only 2024-25 runs without `--holdout`; every other season is refused, so no run reads
@@ -15,11 +16,22 @@ import sys
 from collections.abc import Mapping, Sequence
 
 from app.core.nfl_projection_backtest import market_metrics, paired
+from app.core.nhl_goalie_adjustment import (
+    ADJUSTED_MARKETS,
+    GOALIE_QUALITY_STARTS,
+    MAX_MULTIPLIER,
+    MIN_MULTIPLIER,
+    NHL_OPP_GOALIE_VERSION,
+    SHRINK_SHOTS,
+    select_beta,
+)
 from app.core.nhl_projection_backtest import (
     ARMS,
     BACKTEST_MARKETS,
     DEVELOPMENT_SEASON,
     HOLDOUT_SEASON,
+    MATCHUP_ARM_BETAS,
+    MATCHUP_ARMS,
     MIN_PAIRED_CASES,
     MIN_PRIOR_GAMES,
     MIN_PRIOR_GOALIE_STARTS,
@@ -27,9 +39,11 @@ from app.core.nhl_projection_backtest import (
     MIN_RELATIVE_MAE_IMPROVEMENT,
     REFERENCE_ARM,
     STANDARD_ERRORS_REQUIRED,
+    NhlHistoryRow,
     NhlReplayCase,
     nhl_adoption_verdict,
     replay_cases,
+    replay_matchup_cases,
 )
 
 # The commit that fixed the rule, constants and arms before any NHL scoring existed.
@@ -49,10 +63,27 @@ GOALIE_CAVEAT = (
     "understates the uncertainty about who plays."
 )
 
+# The commit that fixed 67a's opposing-goalie rule and constants before any such arm was scored.
+OPP_GOALIE_PREREGISTRATION_COMMIT = "2a74cfbfbdfb2a5c828f2251fbbbf4a4371689be"
+
+OPP_GOALIE_RULE_TEXT = (
+    f"Opposing-goalie arms ({NHL_OPP_GOALIE_VERSION}): reference x m ** beta in "
+    f"{', '.join(market.value for market in BACKTEST_MARKETS if market in ADJUSTED_MARKETS)}, where "
+    f"m = (1 - shrunk save %) / (1 - league save %) clipped to [{MIN_MULTIPLIER:.2f}, {MAX_MULTIPLIER:.2f}], "
+    f"from the starter's last {GOALIE_QUALITY_STARTS} prior starts shrunk by {SHRINK_SHOTS} league-average shots. "
+    "Per market, beta is the one of 0, 0.5 and 1.0 with the lowest 2024-25 MAE, ties to the smaller; "
+    "a market that picks 0 is not a holdout candidate."
+)
+OPP_GOALIE_CAVEAT = (
+    "Opposing-goalie caveat: the starter is the goalie who actually started, known only after the game; "
+    "the served version will use ESPN's expected starter, so these gains overstate what it can earn."
+)
+
 # Prior-TOI buckets for skaters: top-six and top-pair minutes sit above the lower bucket.
 TOI_BUCKETS: tuple[tuple[str, float, float], ...] = (("12-16 min", 12.0, 16.0), ("16+ min", 16.0, float("inf")))
 
 _MARKET_ORDER = [market.value for market in BACKTEST_MARKETS]
+_ADJUSTED_ORDER = [market.value for market in BACKTEST_MARKETS if market in ADJUSTED_MARKETS]
 
 
 def season_label(season: int) -> str:
@@ -130,7 +161,10 @@ def _paired_table(arm: str, reference: Sequence[NhlReplayCase], variant: Sequenc
         f"Arm {arm} against {REFERENCE_ARM}, paired on player, game and market",
         f"  {'market':<24}{'n':>8}{'ref MAE':>10}{'arm MAE':>10}{'change':>9}{'diff':>9}{'SE':>8}  verdict",
     ]
-    for market in _markets(variant):
+    markets = _markets(variant)
+    if arm in MATCHUP_ARMS:
+        markets = [market for market in markets if market in _ADJUSTED_ORDER]
+    for market in markets:
         in_market = [case for case in variant if case.market == market]
         diff = paired(reference, in_market)
         lines.append(
@@ -141,23 +175,81 @@ def _paired_table(arm: str, reference: Sequence[NhlReplayCase], variant: Sequenc
     return lines
 
 
+def _starter_coverage(cases_by_arm: Mapping[str, Sequence[NhlReplayCase]]) -> str:
+    games: dict[tuple[int, int], bool] = {}
+    for arm, cases in cases_by_arm.items():
+        if arm in MATCHUP_ARMS:
+            for case in cases:
+                if case.opposing_starter_found is not None:
+                    games[(case.player_id, case.game_id)] = case.opposing_starter_found
+    missing = sum(not found for found in games.values())
+    return f"Skater games with no opposing starter row (scored with m = 1): {missing} of {len(games)}."
+
+
+def _selection_table(cases_by_arm: Mapping[str, Sequence[NhlReplayCase]]) -> list[str]:
+    """The pre-registered exponent pick per adjusted market, from the printed MAEs."""
+    candidates = {0.0: cases_by_arm[REFERENCE_ARM]} | {
+        MATCHUP_ARM_BETAS[arm]: cases for arm, cases in cases_by_arm.items() if arm in MATCHUP_ARMS
+    }
+    betas = sorted(candidates)
+    lines = [
+        "Exponent pick per market (lowest MAE, ties to the smaller beta)",
+        f"  {'market':<24}" + "".join(f"{'beta ' + format(beta, 'g'):>12}" for beta in betas) + f"{'pick':>8}",
+    ]
+    for market in _ADJUSTED_ORDER:
+        maes = {
+            beta: market_metrics(in_market).mae for beta, cases in candidates.items()
+            if (in_market := [case for case in cases if case.market == market])
+        }
+        if 0.0 not in maes:
+            continue
+        cells = "".join(f"{maes[beta]:>12.4f}" if beta in maes else f"{'--':>12}" for beta in betas)
+        lines.append(f"  {market:<24}{cells}{select_beta(maes):>8g}")
+    return lines
+
+
 def report(season: int, cases_by_arm: Mapping[str, Sequence[NhlReplayCase]]) -> str:
+    matchup = any(arm in MATCHUP_ARMS for arm in cases_by_arm)
     lines = _header(season)
+    if matchup:
+        lines += [
+            f"Opposing-goalie rule pre-registered in commit {OPP_GOALIE_PREREGISTRATION_COMMIT}.",
+            OPP_GOALIE_RULE_TEXT, OPP_GOALIE_CAVEAT, _starter_coverage(cases_by_arm),
+        ]
     for arm, cases in cases_by_arm.items():
         lines += ["", *_metrics_table(arm, cases)]
     reference = cases_by_arm[REFERENCE_ARM]
     for arm, cases in cases_by_arm.items():
         if arm != REFERENCE_ARM:
             lines += ["", *_paired_table(arm, reference, cases)]
+    if matchup:
+        lines += ["", *_selection_table(cases_by_arm)]
     return "\n".join(lines)
 
 
 def parse_arms(value: str) -> list[str]:
     arms = [arm.strip() for arm in value.split(",") if arm.strip()]
-    unknown = [arm for arm in arms if arm not in ARMS]
+    known = {*ARMS, *MATCHUP_ARMS}
+    unknown = [arm for arm in arms if arm not in known]
     if unknown or REFERENCE_ARM not in arms:
-        raise ValueError(f"arms must include {REFERENCE_ARM} and come from {sorted(ARMS)}; got {arms}")
+        raise ValueError(f"arms must include {REFERENCE_ARM} and come from {sorted(known)}; got {arms}")
     return arms
+
+
+def check_holdout_arms(arms: Sequence[str], holdout: bool) -> None:
+    """The opposing-goalie development arms never touch the holdout; only a committed pick could, and none exists."""
+    development = [arm for arm in arms if arm in MATCHUP_ARMS]
+    if holdout and development:
+        raise ValueError(
+            f"refused on the holdout: {', '.join(development)} (2024-25 development arms; "
+            "the committed pick has no holdout candidate)",
+        )
+
+
+def replay_arm(history: Sequence[NhlHistoryRow], season: int, arm: str) -> list[NhlReplayCase]:
+    if arm in MATCHUP_ARMS:
+        return replay_matchup_cases(history, season, MATCHUP_ARMS[arm])
+    return replay_cases(history, season, ARMS[arm])
 
 
 async def _main(season: int, arms: Sequence[str], seasons: tuple[int, int]) -> None:
@@ -169,7 +261,7 @@ async def _main(season: int, arms: Sequence[str], seasons: tuple[int, int]) -> N
     async with SessionLocal() as db:
         await db.execute(text("SET TRANSACTION READ ONLY"))
         history = await get_projection_history(db, seasons)
-    print(report(season, {arm: replay_cases(history, season, ARMS[arm]) for arm in arms}))
+    print(report(season, {arm: replay_arm(history, season, arm) for arm in arms}))
 
 
 if __name__ == "__main__":
@@ -181,6 +273,7 @@ if __name__ == "__main__":
     try:
         arm_names = parse_arms(args.arms)
         read_seasons = seasons_to_read(args.season, args.holdout)
+        check_holdout_arms(arm_names, args.holdout)
     except ValueError as error:
         parser.error(str(error))
     if sys.platform == "win32":

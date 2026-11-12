@@ -37,7 +37,7 @@ def _skater(**overrides: object) -> dict[str, object]:
         "player_id": 7, "game_id": 11, "season": 2024, "game_date": date(2024, 10, 9), "game_type": "REG",
         "position": "C", "started": True, "goals": 1, "assists": 0, "points": 1, "shots": 4,
         "power_play_points": 0, "blocked_shots": 1, "plus_minus": -1, "hits": 2, "faceoffs_won": 9,
-        "time_on_ice_seconds": 1110,
+        "time_on_ice_seconds": 1110, "team_id": 1, "opponent_team_id": 2,
     }
     return {**row, **overrides}
 
@@ -45,7 +45,8 @@ def _skater(**overrides: object) -> dict[str, object]:
 def _goalie(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
         "player_id": 30, "game_id": 11, "season": 2024, "game_date": date(2024, 10, 9), "game_type": "REG",
-        "position": "G", "started": True, "saves": 28, "goals_against": 2, "time_on_ice_seconds": 3600,
+        "position": "G", "started": True, "saves": 28, "shots_against": 30, "goals_against": 2,
+        "time_on_ice_seconds": 3600, "team_id": 2, "opponent_team_id": 1,
     }
     return {**row, **overrides}
 
@@ -87,6 +88,30 @@ def test_rows_carry_stats_that_settle_like_the_player_page() -> None:
     assert goalie.is_goalie and goalie.started
     assert nhl_stat_value(NhlLineOnlyMarket.GOALIE_SAVES, goalie.stats) == 28
     assert nhl_stat_value(NhlLineOnlyMarket.GOALS_ALLOWED, goalie.stats) == 2
+
+
+def test_rows_carry_the_matchup_and_shots_against() -> None:
+    session = _RecordingSession([_skater()], [_goalie()])
+
+    skater, goalie = asyncio.run(get_projection_history(cast(AsyncSession, session), (2024,)))
+
+    assert (skater.team_id, skater.opponent_team_id) == (1, 2)
+    assert (goalie.team_id, goalie.opponent_team_id) == (2, 1)
+    assert goalie.stats["shots_against"] == 30
+    for statement in session.statements:
+        assert "s.team_id, s.opponent_team_id" in statement
+    assert "s.shots_against" in session.statements[1] and "s.shots_against" not in session.statements[0]
+
+
+def test_prior_rows_carry_the_matchup() -> None:
+    session = _RecordingSession([_skater()], [_goalie()])
+
+    by_player = asyncio.run(get_prior_history(cast(AsyncSession, session), [7, 30], date(2026, 10, 24)))
+
+    assert by_player[7][0].opponent_team_id == 2
+    assert by_player[30][0].stats["shots_against"] == 30
+    for statement in session.statements:
+        assert "s.team_id, s.opponent_team_id" in statement
 
 
 def test_skaters_and_goalies_are_merged_oldest_first() -> None:

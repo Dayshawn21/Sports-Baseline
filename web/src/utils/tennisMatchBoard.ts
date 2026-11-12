@@ -1,5 +1,5 @@
 import type { MatchBestPicks, MatchDetail, PropLine } from '~/types/tennis'
-import { buildTennisPropBoard, type TennisPropSource } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, DEFAULT_TENNIS_CONTEXT_FILTER, type TennisPropSource } from '~/utils/tennisPropBoard'
 import { isFinished } from '~/utils/tennisMatch'
 import { anglePicks, bestBetPicks, composeUnifiedMatches } from '~/utils/unifiedTennis'
 
@@ -22,5 +22,5 @@ export function matchPropCategories(
   const lines = props.filter(line => line.matchId === detail.matchId && (playerId == null ||
     (player != null && (line.playerId != null ? line.playerId === player.playerId
       : line.playerName?.trim().toLowerCase() === player.name.trim().toLowerCase()))))
-  return buildTennisPropBoard(lines, detail.prediction ? [detail.prediction] : [], source, 'all', true)
+  return buildTennisPropBoard(lines, detail.prediction ? [detail.prediction] : [], source, DEFAULT_TENNIS_CONTEXT_FILTER, true)
 }

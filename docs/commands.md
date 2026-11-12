@@ -209,6 +209,17 @@ per command; read this file before running, scheduling or changing one.
   refuses every other season (2025-26 is the holdout and 2026-27's window reads it)
   and `--holdout` needs a separate yes in chat. Backtest only: nothing
   is served or stored.
+- NHL opposing-goalie arms (67a):
+  `python -m app.backtest.nhl_projections --arms reference,opp_goalie_b05,opp_goalie_b10`.
+  Scales the reference projection in Shots on Goal, Points, Goals, Assists and
+  Power Play Points by the opposing starter's shrunk save percentage against the
+  league's, under the rule pre-registered in commit
+  `2a74cfbfbdfb2a5c828f2251fbbbf4a4371689be`; the report adds a missing-starter
+  count and the per-market exponent pick (about 100 s). The 2024-25 run picked
+  `beta = 0` in all five markets (`OPP_GOALIE_BETA_BY_MARKET`), so there is no
+  `opp_goalie` arm and no holdout candidate; the 2025-26 holdout was not read for
+  this input. A different metric or input ships as a new version under its own
+  pre-registration, never as a retune of `nhl-opp-goalie-v1`.
 
 ## Ask Lineform (`api/`, 47)
 

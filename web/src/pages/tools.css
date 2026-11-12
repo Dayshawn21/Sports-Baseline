@@ -1,0 +1,25 @@
+/* /tools calculators. Outputs stay in the default text color: user-entered numbers, not model signals. */
+.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; align-items: start; }
+.tools-card { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: var(--radius); min-width: 0; }
+.tools-card__head { display: grid; gap: 4px; }
+.tools-card__title { margin: 0; color: var(--text-primary); font: 700 16px var(--font-body); }
+.tools-card__hint { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.tools-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tools-field { display: grid; gap: 6px; min-width: 0; }
+.tools-field__label { color: var(--text-secondary); font: 600 11px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; }
+.tools-results { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border-card); }
+.tools-results__rows { display: grid; gap: 8px; margin: 0; }
+.tools-results__rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.tools-results__rows dt { color: var(--text-secondary); font-size: 13px; }
+.tools-results__rows dd { margin: 0; color: var(--text-primary); font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.tools-results__reason { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.tools-legs { display: grid; gap: 8px; }
+.tools-leg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.tools-leg .ant-btn { color: var(--text-secondary); }
+.tools-entry-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tools-entry-table th { padding: 0 0 6px; color: var(--text-secondary); font: 600 11px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; text-align: right; }
+.tools-entry-table td { padding: 6px 0; border-top: 1px solid var(--border-subtle); color: var(--text-primary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.tools-entry-table th:first-child, .tools-entry-table td:first-child { text-align: left; }
+@media (max-width: 420px) {
+  .tools-field-row { grid-template-columns: minmax(0, 1fr); }
+}

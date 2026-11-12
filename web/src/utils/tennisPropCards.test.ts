@@ -10,7 +10,7 @@ function row(overrides: Partial<TennisBoardLine> = {}): TennisBoardLine {
     fetchedAt: '2026-09-28T10:00:00Z', startTime: '2026-09-29T05:10:00Z', pOver: 0.66, pUnder: 0.34, confidence: null, recommendation: 'OVER',
     statAvg: 13.4, evPct: 14.4, hitProbability: 0.66, breakEvenPct: 57.7, matchesCount: 34, surface: 'Hard', opponentStatAvg: 0.61,
     dataQualityFlags: [], projectionStatus: 'ok', audit: { playerResolved: true, matchLinked: true, statsFresh: true, sampleSize: 34, opponentStatsFound: true, predictionFound: true, projectionFound: true },
-    matchup: 'Ben Shelton vs Jakub Mensik', tournament: 'Tokyo', tour: 'ATP',
+    matchup: 'Ben Shelton vs Jakub Mensik', tournament: 'Tokyo', tour: 'ATP', bestOf: 3,
     ...overrides,
   }
 }
@@ -22,7 +22,7 @@ const prediction: MatchPrediction = {
 }
 
 function boardRow(line: ReturnType<typeof moneylineBoardRows>[number]): TennisBoardLine {
-  return { ...line, matchup: null, tournament: null, tour: 'ATP' }
+  return { ...line, matchup: null, tournament: null, tour: 'ATP', bestOf: null }
 }
 
 describe('propCard', () => {

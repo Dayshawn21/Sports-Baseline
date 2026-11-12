@@ -46,6 +46,7 @@ const ADMIN_PATH = '/admin'
 const APP_NAME = 'Lineform'
 
 const EXTRA_LINKS = [
+  { key: '/tools', label: 'Tools' },
   { key: '/how-it-works', label: 'How it works' },
   { key: ADMIN_PATH, label: 'Admin' },
 ]
