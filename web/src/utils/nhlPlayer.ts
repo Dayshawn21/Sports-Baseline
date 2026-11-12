@@ -15,7 +15,7 @@ export interface NhlFormSample {
 
 const SHORT_WINDOW_GAMES = 5
 const OPPONENT_BARS = 10
-const GOALIE_MARKETS = new Set(['goalie_saves', 'goals_allowed'])
+export const GOALIE_MARKETS = new Set(['goalie_saves', 'goals_allowed'])
 
 /** 0-based month a new season-year begins: NHL games run October to June, so January to June belong to the season that began the year before. */
 export const NHL_SEASON_START_MONTH = 7
