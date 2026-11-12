@@ -202,3 +202,12 @@ async def get_graded_predictions(db: AsyncSession) -> list[GradedPrediction]:
         """)
     )
     return [build_graded_prediction(dict(r)) for r in rows.mappings().all()]
+
+
+async def get_match_ids_with_model_prefix(db: AsyncSession, prefix: str) -> set[int]:
+    """Matches with any prediction, pre-start or not, whose model_version starts with prefix."""
+    rows = await db.execute(
+        text("SELECT DISTINCT match_id FROM predictions WHERE model_version LIKE :pattern"),
+        {"pattern": prefix.replace("%", r"\%").replace("_", r"\_") + "%"},
+    )
+    return {r[0] for r in rows.fetchall()}

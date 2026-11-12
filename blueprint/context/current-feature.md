@@ -166,7 +166,7 @@ because its hash is the proof that the rule came first.
     the version string; bucket edges; the verdict at the floor, below it, at
     `mean + 2SE` exactly 0 (this reads `keep served`), and with a missing SE.
   - The commit exists before any Step 2 code runs against data.
-- [ ] **Step 2 - Live diagnostic (`--live`).** Add
+- [x] **Step 2 - Live diagnostic (`--live`).** Add
   `app/backtest/tennis_shrink_diagnostic.py` with a pure `live_report(rows)`:
   - Keep `get_graded_predictions` rows for matches that have **no**
     `ensemble-v3` prediction at all, and take the latest pre-start row per
@@ -184,7 +184,7 @@ because its hash is the proof that the rule came first.
     bucket assignment, that the shrink difference is zero below the threshold,
     and the section headers.
   - One read-only run on the live database is pasted under Evidence.
-- [ ] **Step 3 - History diagnostic (`--history`).** In the same module, add
+- [x] **Step 3 - History diagnostic (`--history`).** In the same module, add
   a pure `history_report(cases)` over `ClosingLineCase`:
   - Seasons 2023 onward. Read it through `--data-dir`; the CSVs live in the
     main checkout's `api/data/valuebetennis`.
@@ -198,7 +198,7 @@ because its hash is the proof that the rule came first.
   - A synthetic-case test checks that 2022 is excluded, that the open (not the
     close) feeds the blend, and the buckets.
   - One run is pasted under Evidence.
-- [ ] **Step 4 - Diagnostic review gate (no code).** Present both reports.
+- [x] **Step 4 - Diagnostic review gate (no code).** Present both reports.
   For each slice, flag any slice where shrink-v1 minus v3 on the history's
   affected cases is worse by more than 2 SE (`mean - 2SE > 0`). You decide,
   per slice, whether to **continue** or **drop** it. The rule stays as
@@ -339,9 +339,70 @@ The final gate is the Verify command from the repo root. Real-data runs
   `app/core/tennis_shrink.py`, `tests/test_tennis_shrink.py` and this spec.
   No diagnostic or forward data had been read for item 66 before it. Verify
   passed before the commit: web verify green, API 6,123 passed.
-- Diagnostic `--live`: _(Step 2)_
-- Diagnostic `--history`: _(Step 3)_
-- Slice decisions: _(Step 4)_
+- Diagnostic `--live` (run once 2026-11-11, read-only, exploration only):
+  `python -m app.backtest.tennis_shrink_diagnostic --live`.
+  - Rows: 3,374 settled graded matches. 1,823 are scorable by 26d's live
+    filter. 987 were dropped for having any `ensemble-v3` prediction. That
+    leaves 836, from 2026-08-26 to 2026-10-01: ATP 208, WTA 230, Challenger
+    398.
+  - ATP: no v3 gap of 3+ points, matching the count above.
+  - In the table, the affected (3+) rows are paired log loss ± one SE, with
+    negative favoring the first forecast. The CLV columns are moved prices,
+    the share that moved toward v3, and the mean move in points.
+
+    | Slice | n | v3 - market | shrink-v1 - v3 | CLV moved | Toward | Mean |
+    |---|---|---|---|---|---|---|
+    | ATP+WTA (WTA only) | 63 | +0.0047 ± 0.0112 | -0.0033 ± 0.0056 | 21 | 33.3% | -0.26 |
+    | CHALLENGER | 134 | -0.0016 ± 0.0081 | -0.0003 ± 0.0042 | 74 | 36.5% | -0.66 |
+
+  - WTA by bucket: the 3-5 bucket is shrink -0.0001 ± 0.0051 (n 47). The 5+
+    bucket is -0.0130 ± 0.0166 (n 16, CLV toward 16.7%).
+  - Below 3 points, the CLV toward rate is 44-68% in every group.
+  - Reading: the motivating CLV pattern shows up outside the motivating
+    sample. Moved prices go against v3 at 3+ points in both slices,
+    strongest in Challenger. The log-loss effect of the rule is within one
+    SE everywhere. Nothing here is a verdict, and the Step 4 stop test reads
+    the history diagnostic.
+- Diagnostic `--history` (run once 2026-11-11, exploration only):
+  `python -m app.backtest.tennis_shrink_diagnostic --history --data-dir <main checkout>/api/data/valuebetennis`.
+  - Rows: 467,485 cases in all. 54,884 were kept: 26c's scored ATP and WTA
+    sets plus its Challenger set, 2023 to 2026-09-30, with an opening price.
+  - Two exclusions:
+    - 2022, the season the coefficients were fitted on.
+    - Matches on or after 2026-10-01. This exclusion was added in this step
+      because Valuebetennis 2026 holds the same matches as the motivating
+      sample, priced by Pinnacle.
+  - ELO is gated at a 15-point gap to the open (no prior-match count).
+  - In the table, the affected (3+) rows are paired log loss ± one SE. The
+    market is the de-vigged Pinnacle open, and CLV is open to close.
+
+    | Slice | n | v3 - open | shrink-v1 - v3 | CLV moved | Toward | Mean | v3 - close (reference) |
+    |---|---|---|---|---|---|---|---|
+    | ATP+WTA (WTA only) | 2,242 | +0.0021 ± 0.0022 | -0.0024 ± 0.0011 | 2,238 | 48.8% | -0.32 | +0.0049 ± 0.0028 |
+    | CHALLENGER | 9,124 | -0.0029 ± 0.0009 | +0.0005 ± 0.0005 | 8,638 | 59.4% | +0.31 | +0.0012 ± 0.0011 |
+
+  - WTA by bucket: the 3-5 bucket is shrink -0.0010 ± 0.0012 (n 1,552). The
+    5+ bucket is -0.0055 ± 0.0024 (n 690, CLV toward 45.6%, mean -0.66).
+  - ATP has no 3+ gaps here either.
+  - **Step 4 stop test** (drop a slice if shrink-v1 minus v3 on the
+    history's affected cases has `mean - 2SE > 0`):
+    - ATP+WTA: -0.0046, not triggered.
+    - CHALLENGER: -0.0005, not triggered.
+  - Reading:
+    - WTA agrees with the live pattern. On Pinnacle, the rule beats v3 by
+      about 2.2 SE, mostly from the 5+ bucket.
+    - Challenger disagrees. On Pinnacle, v3 beats the open at 3+ points by
+      about 3 SE, and the close moved toward v3 59.4% of the time, the
+      opposite of the live 36.5% on DraftKings and FanDuel prices. The rule
+      is about 1 SE worse there.
+    - So the live Challenger pattern may be a soft-book effect rather than
+      v3 being wrong.
+    - None of this is a verdict, and the rule is unchanged.
+- Slice decisions (owner, 2026-11-11): **continue both** `ATP+WTA` and
+  `CHALLENGER`. Neither tripped the stop test. Challenger's history result
+  (v3 ahead of the Pinnacle open) is noted as a reason the forward check may
+  read `keep served`, not as a reason to drop it. The rule is unchanged from
+  `5d99a7f0`.
 - Activation timestamp and start date: _(Step 8)_
 
 ## Draft critique and changes
