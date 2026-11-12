@@ -9,7 +9,7 @@ import type { NbaInjury, NbaInjuryReport, NbaLineOnlyRecent } from '~/types/nba'
 import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
 import { lineOnlyBars, mainRung, type NflLineOnlyRung } from '~/utils/nflLineOnly'
-import type { NbaPropCard } from '~/utils/nbaProps'
+import { P_OVER_NOT_FITTED_NOTE, pOverNotFitted, type NbaPropCard } from '~/utils/nbaProps'
 import { nbaBoardGameLabels, type NbaBoardGameContext, type NbaBoardRow } from '~/utils/nbaPropBoard'
 import { REFERENCE, groupAltLines, probabilityRing, statStrip } from '~/utils/propRowVisuals'
 import '~/components/shared/prop-table.css'
@@ -52,9 +52,6 @@ function Probability({ card }: { card: NbaPropCard }) {
   return <><ProbabilityRing ring={probabilityRing(card.main.pOver === null ? null : card.main.pOver * 100, REFERENCE)} />{text}</>
 }
 
-function Sample({ card }: { card: NbaPropCard }) {
-  return <span>{card.flagText ?? 'Reference only'}</span>
-}
 
 /** The bars and the stat strip read the same games against the same main line. */
 function RecentGames({ row, market }: { row: { rungs: NflLineOnlyRung[], recent: NbaLineOnlyRecent[] }, market: string }) {
@@ -89,7 +86,7 @@ function GameCells({ game, now }: { game: NbaBoardGameContext, now: Date }) {
   </>
 }
 
-function PropRow({ card, market, pathFor, linkState, game, now, injuryReport, startUtc }: RowContextProps & { card: NbaPropCard }) {
+function PropRow({ card, market, pathFor, linkState, game, now, injuryReport, startUtc, showNote }: RowContextProps & { card: NbaPropCard, showNote: boolean }) {
   const navigate = useNavigate()
   const to = pathFor(card.playerId)
   const freshness = nbaInjuryFreshness(game?.injuryReport ?? injuryReport, game?.startUtc ?? startUtc ?? null, now ?? new Date())
@@ -100,16 +97,24 @@ function PropRow({ card, market, pathFor, linkState, game, now, injuryReport, st
     <td className="prop-table__end is-num" data-label="gap">{card.projectionRow?.gap ?? '--'}</td>
     <td className="is-num" data-label="P(over)"><Probability card={card} /></td>
     <td><RecentGames row={card} market={market} /></td>
-    <td className="nba-prop-table__sample"><Sample card={card} /></td>
+    {showNote && <td className="nba-prop-table__note">{card.flagText}</td>}
     {game && <GameCells game={game} now={now ?? new Date()} />}
   </tr>
 }
 
-const COLUMNS: Array<[string, ReactNode]> = [
+const BASE_COLUMNS: Array<[string, ReactNode]> = [
   ['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'],
-  ['probability', 'P(over)'], ['bars', 'Last 5'], ['sample', 'Sample'],
+  ['probability', 'P(over)'], ['bars', 'Last 5'],
 ]
 const NUMERIC = new Set(['model', 'gap', 'probability'])
+
+function modelledColumns(showNote: boolean): Array<[string, ReactNode]> {
+  return showNote ? [...BASE_COLUMNS, ['note', 'Note']] : BASE_COLUMNS
+}
+
+function POverNote({ cards }: { cards: NbaPropCard[] }) {
+  return pOverNotFitted(cards) ? <p className="nba-prop-table__note-line">{P_OVER_NOT_FITTED_NOTE}</p> : null
+}
 
 /** One row per player and market, preserving NBA's existing card order and gray display rules. */
 interface ModelledTableProps {
@@ -122,11 +127,13 @@ interface ModelledTableProps {
 }
 
 export function NbaPropTable({ market, cards, pathFor, injuryReport, startUtc, now }: ModelledTableProps) {
-  return <table className="prop-table nba-prop-table" aria-label={`${nbaMarketLabel(market)} props`}>
-    <colgroup>{COLUMNS.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
-    <thead><tr>{COLUMNS.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
-    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} pathFor={pathFor} injuryReport={injuryReport} startUtc={startUtc} now={now} />)}</tbody>
-  </table>
+  const showNote = cards.some(card => card.flagText)
+  const columns = modelledColumns(showNote)
+  return <><POverNote cards={cards} /><table className="prop-table nba-prop-table" aria-label={`${nbaMarketLabel(market)} props`}>
+    <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
+    <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
+    <tbody>{cards.map(card => <PropRow key={card.playerId} card={card} market={market} pathFor={pathFor} injuryReport={injuryReport} startUtc={startUtc} now={now} showNote={showNote} />)}</tbody>
+  </table></>
 }
 
 function rungText(line: number, oddsType: string | null): string {
@@ -184,15 +191,17 @@ type BoardTableProps = {
 export function NbaBoardTable(props: BoardTableProps) {
   const { market, pathFor, linkState, now } = props
   const modelled = props.kind === 'modelled'
+  const cards = props.kind === 'modelled' ? props.rows.map(item => item.row) : []
+  const showNote = cards.some(card => card.flagText)
   const columns: Array<[string, ReactNode]> = [
-    ...(modelled ? COLUMNS : LINE_ONLY_COLUMNS), ['game', 'Game'], ['tip', 'Tip / status'],
+    ...(modelled ? modelledColumns(showNote) : LINE_ONLY_COLUMNS), ['game', 'Game'], ['tip', 'Tip / status'],
   ]
-  return <table className={`prop-table nba-board-table ${modelled ? 'nba-prop-table' : 'nba-line-only-table'}`} aria-label={`${nbaMarketLabel(market)} ${modelled ? 'props' : 'other lines'}`}>
+  return <><POverNote cards={cards} /><table className={`prop-table nba-board-table ${modelled ? 'nba-prop-table' : 'nba-line-only-table'}`} aria-label={`${nbaMarketLabel(market)} ${modelled ? 'props' : 'other lines'}`}>
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) || (!modelled && key === 'line') ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>{props.kind === 'modelled'
-      ? props.rows.map(item => <PropRow key={item.key} card={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
+      ? props.rows.map(item => <PropRow key={item.key} card={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} showNote={showNote} />)
       : props.rows.map(item => <LineOnlyRow key={item.key} row={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
     }</tbody>
-  </table>
+  </table></>
 }

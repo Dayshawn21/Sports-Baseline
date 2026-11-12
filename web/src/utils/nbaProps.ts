@@ -36,6 +36,7 @@ export interface NbaPropCard {
   projectionRow: NbaProjectionRow | null
   gamesInSample: number
   priorMinutes: number | null
+  /** The main rung's own note. "P(over) not fitted" is market-wide, so the table says it once (`pOverNotFitted`). */
   flagText: string | null
   recent: NbaLineOnlyRecent[]
   overCount: number | null
@@ -56,6 +57,12 @@ const FLAG_TEXT: Record<NbaPropFlag, string> = {
 
 export function nbaPropFlagText(flag: NbaPropFlag): string {
   return FLAG_TEXT[flag]
+}
+
+export const P_OVER_NOT_FITTED_NOTE = 'P(over) is not fitted for this market yet. Model and gap are reference only.'
+
+export function pOverNotFitted(cards: Pick<NbaPropCard, 'main'>[]): boolean {
+  return cards.some(card => card.main.flags.includes('no_over_probability'))
 }
 
 function marketRank(market: string): number {
@@ -99,7 +106,7 @@ function card(playerLines: NbaPropLine[]): NbaPropCard {
     .map(line => ({ line: line.line, oddsType: line.oddsType, pOver: line.pOver, pUnder: line.pUnder, gap: line.gap, flags: line.flags }))
     .sort((a, b) => a.line - b.line)
   const main = mainRung({ rungs })
-  const flag = main.flags[0]
+  const flag = main.flags.find(name => name !== 'no_over_probability')
   return {
     playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team, injury: first.injury ?? null,
     rungs, main, also: rungs.filter(rung => rung !== main).map(rungLabel),

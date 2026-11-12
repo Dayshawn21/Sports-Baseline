@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NbaLineOnlyRecent, NbaPropLine } from '~/types/nba'
 import { lineOnlyBars } from '~/utils/nflLineOnly'
-import { NBA_PROP_MARKETS, nbaPropFlagText, nbaPropGroups, rungLabel, signedGap } from '~/utils/nbaProps'
+import { NBA_PROP_MARKETS, nbaPropFlagText, nbaPropGroups, pOverNotFitted, rungLabel, signedGap } from '~/utils/nbaProps'
 
 function recent(...values: Array<number | null>): NbaLineOnlyRecent[] {
   return values.map((value, index) => ({ gameDate: `2026-05-${String(20 - index).padStart(2, '0')}`, opponent: 'NY', value }))
@@ -68,10 +68,15 @@ describe('nbaPropGroups', () => {
     expect(card.flagText).toBeNull()
   })
 
-  it('prints the projection row without P(over), saying why', () => {
-    const [card] = nbaPropGroups([points({})])[0].cards
-    expect(card.projectionRow).toEqual({ projection: '24.2', gap: '-0.3', pOver: null, pUnder: null })
-    expect(card.flagText).toBe('P(over) not fitted for this market')
+  it('prints the projection row without P(over), leaving the market-wide reason to the table', () => {
+    const cards = nbaPropGroups([points({})])[0].cards
+    expect(cards[0].projectionRow).toEqual({ projection: '24.2', gap: '-0.3', pOver: null, pUnder: null })
+    expect(cards[0].flagText).toBeNull()
+    expect(pOverNotFitted(cards)).toBe(true)
+  })
+
+  it('says nothing market-wide when the market has a fit', () => {
+    expect(pOverNotFitted(nbaPropGroups([line({})])[0].cards)).toBe(false)
   })
 
   it('an Also rung without P(over) prints the line alone', () => {

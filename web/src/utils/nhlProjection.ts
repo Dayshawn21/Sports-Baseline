@@ -2,6 +2,7 @@ import type { NhlLineOnlyMarket, NhlProjection, NhlProjectionFlag } from '~/type
 
 export const NHL_PROJECTION_CAPTION = 'Reference projection: 20-game average, not a pick'
 export const NHL_PROBABILITY_CAPTION = 'P(over): model estimate for that line, not a pick'
+export const NHL_WHOLE_LINE_NOTE = 'Whole-number lines show no P(over).'
 
 // These flags belong to one line, not to a market's projection, so the projection note leaves them out.
 const LINE_FLAGS: ReadonlySet<NhlProjectionFlag> = new Set<NhlProjectionFlag>(['integer_line', 'no_over_probability'])

@@ -9,7 +9,7 @@ import { nhlTimeLabel } from '~/utils/nhlGame'
 import { nhlOddsTypeCounts, nhlPropListGroups, nhlSharedFetchedAt, type NhlPropListGroup, type NhlPropListRow } from '~/utils/nhlLineOnly'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
 import {
-  NHL_PROBABILITY_CAPTION, NHL_PROJECTION_CAPTION, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
+  NHL_PROBABILITY_CAPTION, NHL_WHOLE_LINE_NOTE, NHL_PROJECTION_CAPTION, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
 } from '~/utils/nhlProjection'
 
 function alternates(row: NhlPropListRow): string {
@@ -22,12 +22,13 @@ function alternates(row: NhlPropListRow): string {
 function MarketTable({ group, gameDate }: { group: NhlPropListGroup, gameDate: string }) {
   const covers = group.rows.some(row => row.coversProbability)
   const weakNote = nhlProbabilityNote(group.market)
+  const wholeNote = group.rows.some(entry => entry.standardWholeLine) ? ` ${NHL_WHOLE_LINE_NOTE}` : ''
   const sharedFetchedAt = nhlSharedFetchedAt(group.rows)
   const perRowUpdated = sharedFetchedAt === null
   return <section className="nhl-prop-group" aria-labelledby={`nhl-props-${group.market}`}>
     <h3 id={`nhl-props-${group.market}`}>{group.label} <small>{group.rows.length} {group.rows.length === 1 ? 'player' : 'players'}</small></h3>
     {(covers || !perRowUpdated) && <p className="nhl-prop-caption">
-      {covers && <>{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{weakNote && ` ${weakNote}`} </>}
+      {covers && <>{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{wholeNote}{weakNote && ` ${weakNote}`} </>}
       {!perRowUpdated && <>Updated <time dateTime={sharedFetchedAt}>{nhlTimeLabel(sharedFetchedAt, true)}</time>.</>}
     </p>}
     <table className="nhl-prop-table" aria-label={`${group.label} lines`}>

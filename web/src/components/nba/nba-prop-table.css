@@ -5,7 +5,7 @@
 .nba-prop-table col.is-gap { width: 84px; }
 .nba-prop-table col.is-probability { width: 92px; }
 .nba-prop-table col.is-bars { width: 120px; }
-.nba-prop-table col.is-sample { width: 190px; }
+.nba-prop-table col.is-note { width: 190px; }
 
 .nba-prop-table__player { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .nba-prop-table__player > span:last-child { min-width: 0; }
@@ -19,7 +19,10 @@
   font: 600 11px var(--font-display); letter-spacing: 0.05em;
 }
 .nba-prop-table__line b { font-weight: 600; }
-.nba-prop-table td.nba-prop-table__sample { color: var(--text-secondary); white-space: normal; overflow-wrap: anywhere; }
+.nba-prop-table td.nba-prop-table__note { color: var(--text-secondary); white-space: normal; overflow-wrap: anywhere; }
+.nba-prop-table__note-line {
+  margin: 0; padding: 12px 12px 10px; color: var(--text-muted); font: 12px/1.4 var(--font-body);
+}
 .nba-prop-table td.nba-prop-table__line small { white-space: normal; overflow-wrap: anywhere; }
 
 .nba-line-only-table col.is-player { width: auto; }
@@ -37,7 +40,7 @@
 .nba-board-table col.is-gap { width: 65px; }
 .nba-board-table col.is-probability { width: 72px; }
 .nba-board-table col.is-bars { width: 135px; }
-.nba-board-table col.is-sample { width: 140px; }
+.nba-board-table col.is-note { width: 140px; }
 .nba-board-table col.is-game { width: 105px; }
 .nba-board-table col.is-tip { width: 155px; }
 .nba-board-table__game a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }

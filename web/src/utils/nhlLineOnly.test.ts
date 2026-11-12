@@ -137,14 +137,22 @@ it('marks a row as covered by the fit when a line is a whole number, and not whe
   expect(hidden.coversProbability).toBe(false)
 })
 
-it('carries the whole-number reason for the standard rung only', () => {
+it('marks a whole-number standard line for the table to say once, keeping the rung reason for the player page', () => {
   const base = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: 0.5, pOver: null }
   const [row] = nhlPropListGroups([
     line({ providerPropId: 'a', line: 2, projection: { ...base, flags: ['integer_line'] } }),
     line({ providerPropId: 'b', line: 3.5, oddsType: 'demon', projection: { ...base, pOver: 0.3, flags: [] } }),
   ]).flatMap(entry => entry.rows)
-  expect(row.standardProbabilityNote).toBe('Whole-number line: no P(over)')
+  expect(row.standardWholeLine).toBe(true)
+  expect(row.standardProbabilityNote).toBeNull()
   expect(row.rungs.map(rung => rung.probabilityNote)).toEqual(['Whole-number line: no P(over)', null])
+})
+
+it('keeps a standard line\'s other P(over) reason on the row', () => {
+  const base = { modelVersion: 'nhl-reference-v1', value: 3, gamesInSample: 20, gap: 0.5, pOver: null }
+  const [row] = nhlPropListGroups([line({ line: 2.5, projection: { ...base, flags: ['no_over_probability'] } })]).flatMap(entry => entry.rows)
+  expect(row.standardWholeLine).toBe(false)
+  expect(row.standardProbabilityNote).toBe('No P(over) for this line')
 })
 
 it('rebuilds each line from the market projection plus its own gap, P(over) and line flags', () => {

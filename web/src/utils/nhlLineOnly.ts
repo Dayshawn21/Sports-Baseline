@@ -84,7 +84,9 @@ export interface NhlPropListRow {
   standardGap: number | null
   /** The standard line's P(over); alternates never show one on the board or game page. */
   standardPOver: number | null
+  /** Why the standard line has no P(over), other than being a whole number (the table says that once). */
   standardProbabilityNote: string | null
+  standardWholeLine: boolean
   /** True when the market's fit covers any of the player's lines, so the column is worth drawing. */
   coversProbability: boolean
   /** One per player and market: the value does not depend on the line. */
@@ -111,6 +113,10 @@ function rungsFor(lines: readonly NhlLineOnlyLine[]): NhlPropRung[] {
     }))
 }
 
+function standardFlags(lines: readonly NhlLineOnlyLine[]): NhlLineOnlyLine['projection']['flags'] {
+  return lines.find(entry => entry.oddsType === 'standard')?.projection.flags ?? []
+}
+
 function newestFetch(lines: readonly NhlLineOnlyLine[]): string {
   return lines.reduce((newest, entry) => Date.parse(entry.fetchedAt) > Date.parse(newest) ? entry.fetchedAt : newest, lines[0].fetchedAt)
 }
@@ -135,7 +141,8 @@ export function nhlPropListGroups(lines: readonly NhlLineOnlyLine[]): NhlPropLis
         standard: rungs.find(rung => rung.oddsType === 'standard')?.label ?? null,
         standardGap: rungs.find(rung => rung.oddsType === 'standard')?.gap ?? null,
         standardPOver: rungs.find(rung => rung.oddsType === 'standard')?.pOver ?? null,
-        standardProbabilityNote: rungs.find(rung => rung.oddsType === 'standard')?.probabilityNote ?? null,
+        standardProbabilityNote: nhlLineProbabilityNote(standardFlags(offerings).filter(flag => flag !== 'integer_line')),
+        standardWholeLine: standardFlags(offerings).includes('integer_line'),
         coversProbability: offerings.some(entry => nhlCoversProbability(entry.projection)),
         projection: first.projection,
         fetchedAt: newestFetch(offerings),

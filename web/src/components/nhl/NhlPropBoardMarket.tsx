@@ -7,7 +7,7 @@ import { nhlBoardGameStatus, type NhlBoardMarket } from '~/utils/nhlPropBoard'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
 import { REFERENCE, probabilityRing } from '~/utils/propRowVisuals'
 import {
-  NHL_PROBABILITY_CAPTION, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
+  NHL_PROBABILITY_CAPTION, NHL_WHOLE_LINE_NOTE, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
 } from '~/utils/nhlProjection'
 
 function alternates(rungs: NhlBoardMarket['rows'][number]['row']['rungs']): string[] {
@@ -22,9 +22,10 @@ export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMar
   const now = new Date()
   const covers = group.rows.some(entry => entry.row.coversProbability)
   const weakNote = nhlProbabilityNote(group.market)
+  const wholeNote = group.rows.some(entry => entry.row.standardWholeLine) ? ` ${NHL_WHOLE_LINE_NOTE}` : ''
   if (group.rows.length === 0) return <p className="nfl-empty">No {label.toLowerCase()} lines on this date.</p>
   return <section className="nhl-prop-board__rows" aria-label={`${label} lines`}>
-    {covers && <p className="nhl-prop-board__caption">{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{weakNote && ` ${weakNote}`}</p>}
+    {covers && <p className="nhl-prop-board__caption">{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{wholeNote}{weakNote && ` ${weakNote}`}</p>}
     <table className="nhl-prop-board__table">
       <thead><tr>
         <th scope="col">Player</th><th scope="col">Game</th><th scope="col">Puck drop</th>
