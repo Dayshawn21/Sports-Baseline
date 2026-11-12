@@ -23,6 +23,7 @@ import NotFoundPage from '~/pages/NotFoundPage'
 const HomePage = lazy(() => import('~/pages/HomePage'))
 const ParlaysPage = lazy(() => import('~/pages/ParlaysPage'))
 const HowItWorksPage = lazy(() => import('~/pages/HowItWorksPage'))
+const ToolsPage = lazy(() => import('~/pages/ToolsPage'))
 const AdminPage = lazy(() => import('~/pages/AdminPage'))
 
 const { Header, Content } = Layout
@@ -234,6 +235,7 @@ export default function App() {
                     <Route path="/live-odds" element={<Navigate to="/" replace />} />
                     <Route path="/bets" element={<Navigate to="/" replace />} />
                     <Route path="/parlays" element={<ParlaysPage />} />
+                    <Route path="/tools" element={<ToolsPage />} />
                     <Route path="/how-it-works" element={<HowItWorksPage />} />
                     <Route path="/admin" element={<AdminPage />} />
                     <Route path="*" element={<NotFoundPage />} />

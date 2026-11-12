@@ -160,17 +160,18 @@ describe('shellNav', () => {
   })
 
   it('shows no views off the sport pages', () => {
-    for (const path of ['/how-it-works', '/admin', '/parlays']) {
+    for (const path of ['/tools', '/how-it-works', '/admin', '/parlays']) {
       const nav = shellNav(path, true)
       expect(nav.views).toEqual([])
       expect(active(nav.sports)).toEqual([])
     }
     expect(active(shellNav('/how-it-works', false).links).map(link => link.key)).toEqual(['/how-it-works'])
+    expect(active(shellNav('/tools', false).links).map(link => link.key)).toEqual(['/tools'])
   })
 
   it('hides Admin from visitors and shows it to the owner', () => {
-    expect(shellNav('/', false).links.map(link => link.label)).toEqual(['How it works'])
-    expect(shellNav('/', true).links.map(link => link.label)).toEqual(['How it works', 'Admin'])
+    expect(shellNav('/', false).links.map(link => link.label)).toEqual(['Tools', 'How it works'])
+    expect(shellNav('/', true).links.map(link => link.label)).toEqual(['Tools', 'How it works', 'Admin'])
   })
 })
 
@@ -198,6 +199,7 @@ describe('documentTitle', () => {
   })
 
   it('names the other pages and falls back to the app name', () => {
+    expect(documentTitle('/tools')).toBe('Tools · Lineform')
     expect(documentTitle('/how-it-works')).toBe('How it works · Lineform')
     expect(documentTitle('/admin')).toBe('Admin · Lineform')
     expect(documentTitle('/parlays')).toBe('Lineform')
@@ -207,10 +209,14 @@ describe('documentTitle', () => {
 
 describe('phoneMenuItems', () => {
   it('holds Home and the closing links, leaving sports and views to the picker and views row', () => {
-    expect(phoneMenuItems(false)).toEqual([{ key: '/', label: 'Home' }, { key: '/how-it-works', label: 'How it works' }])
+    expect(phoneMenuItems(false)).toEqual([
+      { key: '/', label: 'Home' },
+      { key: '/tools', label: 'Tools' },
+      { key: '/how-it-works', label: 'How it works' },
+    ])
   })
 
   it('adds Admin for the owner', () => {
-    expect(phoneMenuItems(true).map(item => item.label)).toEqual(['Home', 'How it works', 'Admin'])
+    expect(phoneMenuItems(true).map(item => item.label)).toEqual(['Home', 'Tools', 'How it works', 'Admin'])
   })
 })
