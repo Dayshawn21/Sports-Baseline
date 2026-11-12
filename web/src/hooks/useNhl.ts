@@ -1,5 +1,5 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlModelRanking, fetchNhlPlayerProps, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlModelRanking, fetchNhlPlayerProps, fetchNhlProjectionHistory, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
 import type { PropRankingRecord } from '~/types/propRanking'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
@@ -47,6 +47,16 @@ export function nhlPlayerPropsQuery(playerId: number | null, date: string | null
   })
 }
 
+export function nhlProjectionHistoryQuery(playerId: number | null) {
+  const id = validNhlPlayerId(playerId) ? playerId : null
+  return queryOptions({
+    queryKey: ['nhl', 'player', id, 'projection-history'],
+    queryFn: id === null ? skipToken : () => fetchNhlProjectionHistory(id),
+    staleTime: STALE_TIME,
+    retry: retryUnlessNotFound,
+  })
+}
+
 export function nhlPropBoardQuery(date: string | null) {
   const requested = parseSlateDate(date)
   return queryOptions({
@@ -71,6 +81,10 @@ export function useNhlLineOnlyProps(gameId: number | null) {
 
 export function useNhlPlayerProps(playerId: number | null, date: string | null) {
   return useQuery(nhlPlayerPropsQuery(playerId, date))
+}
+
+export function useNhlProjectionHistory(playerId: number | null) {
+  return useQuery(nhlProjectionHistoryQuery(playerId))
 }
 
 export function useNhlPropBoard(date: string | null) {

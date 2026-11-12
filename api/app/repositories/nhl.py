@@ -14,6 +14,7 @@ from app.core.nhl_odds import NHL_ODDS_BOOKS, NhlGameMarket
 from app.core.nhl_player_values import NHL_FIRST_HISTORY_SEASON
 from app.core.nhl_records import NhlResult
 from app.core.nhl_projection_backtest import REFERENCE_GAMES, SERVED_GAME_TYPES, NhlHistoryRow
+from app.core.nhl_projection_history import NhlProjectionHistoryLine
 from app.core.nhl_prop_predictions import NhlFreezeLine, settle_frozen
 from app.core.prop_ranking_check import FrozenLine
 from app.ingest.nhl_api import NhlGame, NhlGoalieGame, NhlSkaterGame
@@ -663,18 +664,86 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
     return [_frozen_line(row) for row in rows.mappings()]
 
 
-def _frozen_line(row: RowMapping) -> FrozenLine:
+def _settle_rows(row: RowMapping) -> tuple[dict[str, int | None] | None, dict[str, int | bool | None] | None]:
     skater = {column: row[f"s_{column}"] for column in _SKATER_VALUE_COLUMNS} if row["has_skater_row"] else None
     goalie = (
         {column: row[f"g_{column}"] for column in (*_GOALIE_VALUE_COLUMNS, "started", "time_on_ice_seconds")}
         if row["has_goalie_row"] else None
     )
+    return skater, goalie
+
+
+def _frozen_line(row: RowMapping) -> FrozenLine:
+    skater, goalie = _settle_rows(row)
     return FrozenLine(
         line_id=row["id"], period=row["week"], player_id=row["player_id"], game_id=row["game_id"],
         market=row["market"], odds_type=row["odds_type"],
         outcome=settle_frozen(row["market"], float(row["line"]), skater, goalie, bool(row["game_has_box_scores"])),
         p_over=row["p_over"], p_under=row["p_under"], model_version=row["model_version"],
         over_probability_version=row["over_probability_version"],
+    )
+
+
+# The first season 56c4 froze. It keeps the read off the 2025-26 holdout (`HOLDOUT_SEASON`).
+NHL_PROJECTION_HISTORY_FIRST_SEASON = 2026
+
+
+async def get_player_projection_history(
+    db: AsyncSession, player_id: int, model_version: str, first_season: int,
+) -> list[NhlProjectionHistoryLine]:
+    """One player's frozen standard full-game lines on completed `REG` games, with what settles them (60b).
+
+    The filters and ordering are `get_frozen_gradeable_lines`', so the chart shows exactly
+    the frozen rows the forward check grades; only the player, floor, version and
+    standard-line filters are added.
+    """
+    statement = text(f"""
+        WITH frozen AS (
+            SELECT DISTINCT ON (l.provider, l.provider_prop_id)
+                   l.id, l.game_id, g.season, g.game_date, l.market, l.line, l.fetched_at, l.player_id, p.projection
+            FROM sport_prop_predictions p
+            JOIN sport_prop_lines l ON l.sport = 'nhl' AND l.id = p.prop_line_id
+            JOIN sport_games g ON g.sport = 'nhl' AND g.id = l.game_id
+            WHERE p.sport = 'nhl' AND p.model_version = :model_version AND l.player_id = :player_id
+              AND g.season >= :first_season AND g.game_type = 'REG' AND g.week IS NOT NULL
+              AND g.status = 'completed' AND l.provider_prop_id IS NOT NULL
+              AND l.segment = 'full_game' AND l.market IN :markets
+              AND COALESCE(lower(l.odds_type), 'standard') = 'standard'
+              AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
+            ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
+        ),
+        loaded_games AS (
+            SELECT game_id FROM nhl_skater_game_stats WHERE game_id IN (SELECT game_id FROM frozen)
+            UNION
+            SELECT game_id FROM nhl_goalie_game_stats WHERE game_id IN (SELECT game_id FROM frozen)
+        )
+        SELECT frozen.*, opp.id AS opponent_id, opp.team_code AS opponent_code,
+               sk.player_id IS NOT NULL AS has_skater_row, {_SKATER_SETTLE_COLUMNS},
+               gk.player_id IS NOT NULL AS has_goalie_row, {_GOALIE_SETTLE_COLUMNS},
+               lg.game_id IS NOT NULL AS game_has_box_scores
+        FROM frozen
+        LEFT JOIN nhl_skater_game_stats sk ON sk.player_id = frozen.player_id AND sk.game_id = frozen.game_id
+        LEFT JOIN nhl_goalie_game_stats gk ON gk.player_id = frozen.player_id AND gk.game_id = frozen.game_id
+        LEFT JOIN sport_teams opp ON opp.sport = 'nhl' AND opp.id = COALESCE(sk.opponent_team_id, gk.opponent_team_id)
+        LEFT JOIN loaded_games lg ON lg.game_id = frozen.game_id
+        ORDER BY frozen.game_date, frozen.game_id, frozen.market, frozen.fetched_at, frozen.id
+    """).bindparams(bindparam("markets", expanding=True))
+    rows = await db.execute(statement, {
+        "player_id": player_id, "model_version": model_version, "first_season": first_season,
+        "markets": _MARKET_VALUES,
+    })
+    return [_history_line(row) for row in rows.mappings()]
+
+
+def _history_line(row: RowMapping) -> NhlProjectionHistoryLine:
+    skater, goalie = _settle_rows(row)
+    return NhlProjectionHistoryLine(
+        line_id=int(row["id"]), game_id=int(row["game_id"]), season=int(row["season"]),
+        game_date=row["game_date"], market=str(row["market"]), line=float(row["line"]),
+        fetched_at=row["fetched_at"],
+        projection=None if row["projection"] is None else float(row["projection"]),
+        opponent_id=row["opponent_id"], opponent_code=row["opponent_code"],
+        skater_row=skater, goalie_row=goalie, game_has_box_scores=bool(row["game_has_box_scores"]),
     )
 
 

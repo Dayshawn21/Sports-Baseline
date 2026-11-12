@@ -6,3 +6,13 @@
 .nhl-player-evidence .nhl-game-context-teams > * { padding: 4px 16px 4px 0; }
 .nhl-player-evidence .nhl-game-context-teams > * + * { padding-left: 16px; }
 .nhl-player-evidence .nhl-game-context-source { padding: 8px 0 0; }
+
+.nhl-player-history {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+}
+.nhl-player-history__note { margin: var(--space-3) 0 0; color: var(--text-muted); font-size: 12px; }
+/* Twelve NHL markets outgrow a phone; keep each label whole and let the switch scroll instead of squeezing. */
+.nhl-player-history .nfl-prop-detail__switch button { flex: none; }

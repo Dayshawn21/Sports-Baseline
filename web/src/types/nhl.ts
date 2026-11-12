@@ -234,3 +234,26 @@ export interface NhlPlayerProps {
   goalies: NhlGoalieContext | null
   markets: NhlPlayerMarket[]
 }
+
+/** One settled frozen line on the player page's projection history (60b). */
+export interface NhlProjectionHistoryPoint {
+  gameId: number
+  gameDate: string
+  season: number
+  opponentId: number
+  /** The opposing team's code. */
+  opponentName: string
+  stat: NhlLineOnlyMarket
+  line: number
+  /** Frozen before puck drop; null for a gated line, never recomputed. */
+  projection: number | null
+  actual: number
+  snapshotAt: string
+}
+
+export interface NhlProjectionHistory {
+  projectionVersion: string
+  points: NhlProjectionHistoryPoint[]
+  /** Frozen lines on completed games whose box score has not loaded or lacks the stat yet. */
+  unsettled: number
+}

@@ -1,7 +1,7 @@
 import client from './client'
 import type { PropRankingRecord } from '~/types/propRanking'
 import type {
-  NhlGameDetail, NhlLineOnlyProps, NhlLineOnlyWireProps, NhlPlayerProps, NhlPropBoardResponse, NhlPropBoardWireResponse,
+  NhlGameDetail, NhlLineOnlyProps, NhlLineOnlyWireProps, NhlPlayerProps, NhlProjectionHistory, NhlPropBoardResponse, NhlPropBoardWireResponse,
   NhlSlateResponse,
 } from '~/types/nhl'
 import { nhlJoinProjections } from '~/utils/nhlLineOnly'
@@ -24,6 +24,11 @@ export async function fetchNhlLineOnlyProps(gameId: number): Promise<NhlLineOnly
 
 export async function fetchNhlPlayerProps(playerId: number, date: string | null): Promise<NhlPlayerProps> {
   const { data } = await client.get<NhlPlayerProps>(`/nhl/players/${playerId}/props`, { params: date === null ? {} : { date } })
+  return data
+}
+
+export async function fetchNhlProjectionHistory(playerId: number): Promise<NhlProjectionHistory> {
+  const { data } = await client.get<NhlProjectionHistory>(`/nhl/players/${playerId}/projection-history`)
   return data
 }
 
