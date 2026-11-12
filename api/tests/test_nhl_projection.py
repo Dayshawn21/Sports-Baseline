@@ -1,3 +1,4 @@
+import dataclasses
 import datetime as dt
 
 import pytest
@@ -182,3 +183,11 @@ def test_out_type_statuses_are_the_stored_espn_vocabulary_and_exclude_day_to_day
 def test_eligibility_flag_wins_over_the_gate() -> None:
     served = project(skater_games(3), NhlLineOnlyMarket.HITS, 1.5, "C", Availability(None, "Out", "fresh"))
     assert served.flags == ("few_prior_games",)
+
+
+@pytest.mark.parametrize("market", list(NhlLineOnlyMarket))
+def test_matchup_fields_leave_the_served_projection_unchanged(market: NhlLineOnlyMarket) -> None:
+    prior = goalie_games(8) if market in GOALIE_MARKETS else skater_games(25)
+    with_matchup = [dataclasses.replace(game, team_id=1, opponent_team_id=2) for game in prior]
+    position = "G" if market in GOALIE_MARKETS else "C"
+    assert project(with_matchup, market, 2.5, position) == project(prior, market, 2.5, position)
