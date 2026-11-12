@@ -150,7 +150,10 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   (migration `0050` must be applied before real writes and nonempty NHL reads)
 - NHL projection backtest (56b): `python -m app.backtest.nhl_projections [--season 2024] [--arms reference,last_10]`
   (read-only; development is 2024-25; any run that reads the 2025-26 holdout
-  needs `--holdout` and a separate yes in chat)
+  needs `--holdout` and a separate yes in chat). The opposing-goalie arms
+  `opp_goalie_b05` and `opp_goalie_b10` (67a, rule in `2a74cfbf`) picked
+  `beta = 0` in every market on 2024-25, so `opp_goalie` has no holdout candidate
+  and the 2025-26 holdout was not read for it
 
 ### Ask Lineform (`api/`, 47)
 

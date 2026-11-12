@@ -236,6 +236,16 @@ def parse_arms(value: str) -> list[str]:
     return arms
 
 
+def check_holdout_arms(arms: Sequence[str], holdout: bool) -> None:
+    """The opposing-goalie development arms never touch the holdout; only a committed pick could, and none exists."""
+    development = [arm for arm in arms if arm in MATCHUP_ARMS]
+    if holdout and development:
+        raise ValueError(
+            f"refused on the holdout: {', '.join(development)} (2024-25 development arms; "
+            "the committed pick has no holdout candidate)",
+        )
+
+
 def replay_arm(history: Sequence[NhlHistoryRow], season: int, arm: str) -> list[NhlReplayCase]:
     if arm in MATCHUP_ARMS:
         return replay_matchup_cases(history, season, MATCHUP_ARMS[arm])
@@ -263,6 +273,7 @@ if __name__ == "__main__":
     try:
         arm_names = parse_arms(args.arms)
         read_seasons = seasons_to_read(args.season, args.holdout)
+        check_holdout_arms(arm_names, args.holdout)
     except ValueError as error:
         parser.error(str(error))
     if sys.platform == "win32":

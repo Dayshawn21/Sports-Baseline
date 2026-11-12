@@ -4,7 +4,8 @@ import datetime as dt
 import pytest
 
 from app.backtest.nhl_projections import (
-    OPP_GOALIE_PREREGISTRATION_COMMIT, PREREGISTRATION_COMMIT, parse_arms, report, season_label, seasons_to_read,
+    OPP_GOALIE_PREREGISTRATION_COMMIT, PREREGISTRATION_COMMIT, check_holdout_arms, parse_arms, report, season_label,
+    seasons_to_read,
 )
 from app.core.nhl_projection_backtest import NhlReplayCase
 
@@ -140,3 +141,14 @@ def test_selection_ties_go_to_the_smaller_beta_and_no_gain_picks_zero() -> None:
         "opp_goalie_b10": [matchup_case(1, "goals", 3.0, 2.0, True)],
     })
     assert selection_row(tied, "goals")[-1] == "0"
+
+
+@pytest.mark.parametrize("arms", [["reference", "opp_goalie_b05"], ["reference", "opp_goalie_b10"]])
+def test_development_goalie_arms_are_refused_on_the_holdout(arms: list[str]) -> None:
+    with pytest.raises(ValueError, match="refused on the holdout"):
+        check_holdout_arms(arms, holdout=True)
+    check_holdout_arms(arms, holdout=False)
+
+
+def test_existing_arms_still_run_on_the_holdout() -> None:
+    check_holdout_arms(["reference", "last_10"], holdout=True)
