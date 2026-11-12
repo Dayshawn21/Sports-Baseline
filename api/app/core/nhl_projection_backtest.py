@@ -154,6 +154,16 @@ MATCHUP_ARMS: dict[str, MatchupArm] = {
     name: opp_goalie_arm({market: beta for market in ADJUSTED_MARKETS}) for name, beta in MATCHUP_ARM_BETAS.items()
 }
 
+# The pre-registered pick from the 2024-25 development run (67a Step 6), committed before any
+# holdout read: beta 0 had the lowest MAE in every adjusted market, so `opp_goalie` would equal
+# `reference` and is not registered as an arm.
+OPP_GOALIE_BETA_BY_MARKET: dict[NhlLineOnlyMarket, float] = {market: 0.0 for market in ADJUSTED_MARKETS}
+
+
+def opp_goalie_holdout_candidates() -> list[NhlLineOnlyMarket]:
+    """The markets the one holdout run would score: those whose development pick adjusts at all."""
+    return [market for market in BACKTEST_MARKETS if OPP_GOALIE_BETA_BY_MARKET.get(market, 0.0) > 0]
+
 
 def prior_toi_minutes(prior: Sequence[NhlHistoryRow]) -> float | None:
     """Mean time on ice over the last 10 prior games with TOI stored; NULL games are ignored."""

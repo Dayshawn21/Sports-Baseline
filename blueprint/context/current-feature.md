@@ -170,12 +170,12 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   selection rule to the printed MAEs. *Done when:* tests cover the arm parser, the
   report on tiny fixed cases (including the selection table and its tie rule) and
   that the holdout guard is unchanged (2024 only without `--holdout`).
-- [ ] **Step 5 - Pre-registration commit** - commit Steps 1-4 on the branch before
+- [x] **Step 5 - Pre-registration commit** - commit Steps 1-4 on the branch before
   any opposing-goalie arm is scored on any season, then record its hash as
   `OPP_GOALIE_PREREGISTRATION_COMMIT` and print it in the header. Needs a yes in
   chat to commit. *Done when:* the commit exists, its diff contains every constant
   above, and no scoring output exists yet.
-- [ ] **Step 6 - Development run and the committed pick** - run
+- [x] **Step 6 - Development run and the committed pick** - run
   `python -m app.backtest.nhl_projections --season 2024 --arms reference,opp_goalie_b05,opp_goalie_b10`
   read-only; paste the output under Results; apply the selection rule; add
   `OPP_GOALIE_BETA_BY_MARKET` and the `opp_goalie` arm; commit before any holdout
@@ -195,6 +195,59 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   (local, untracked) gets the finding if present; the build plan's 67b and 67c are
   confirmed or marked not built from the verdict. *Done when:* Verify passes and
   `/invariants-review` is clean.
+
+
+## Results
+
+**Development run (Step 6)**, `python -m app.backtest.nhl_projections --season 2024 --arms reference,opp_goalie_b05,opp_goalie_b10`
+(2026-11-11, read-only transaction, about 100 s). Seasons queried: 2023 and 2024 only; no 2025-26 or
+2026-27 row was read. Run after the rule was pre-registered in `2a74cfbf`.
+
+- **Reference unchanged:** every `reference` row equals 56b's recorded 2024-25 run (Shots on Goal n 42,362, MAE 1.081; Points 0.550), so the history change in Step 2 moved nothing.
+- **Coverage:** every one of the 42,362 skater games found its opposing starter row; none was scored with `m = 1`.
+- **Spot check:** player 362949, game 63001 on 2025-01-15, opposing starter 363395. Replay: 481 saves on 542 shots over his last 20 starts, league .903085, shrunk .897591, `m` 1.0567. Raw SQL (his last 20 starts before the date, seasons 2023 and 2024, `REG`/`PST`; every start in those seasons before the date for the league): 481 of 542, league 108,465 / 120,105 = .903085. Equal.
+- **Pick (the pre-registered rule):** `beta = 0` in all five markets. Both exponents raise MAE everywhere; the largest move is Shots on Goal at `beta` 1.0 (+0.27%), and Points, Assists and Goals change only in the fourth decimal. `OPP_GOALIE_BETA_BY_MARKET` records 0 for every market, so `opp_goalie` would equal `reference` and is not registered as an arm.
+- **Read:** on this rule the opposing starter's save percentage carries no MAE gain for skater props. MAE rewards the median, and for low counts (Goals median 0, Points median 0 or 1) a few percent on the mean rarely moves the median, so MAE is a blunt test of a mean adjustment; that is a reason a later, separately pre-registered item might score the same input on a likelihood metric, not a reason to retune this one. Shots on Goal, the one market with room to move, got worse, as its prior expected.
+
+```
+NHL projection backtest, 2024-25 (development: replay and fit freely)
+
+Pre-registered in commit 237c2bcc01caf68495c88982eedd4cdbf57da2a0.
+Adopt a market only with >= 300 paired holdout cases, MAE at least 1% lower than reference, and a paired mean |error| difference below zero by more than 2 standard errors.
+Cases: skaters with >= 10 prior games and >= 12 mean TOI minutes over the last 10; goalies who started with >= 5 prior starts; Faceoffs Won for centers only.
+Goalie caveat: a goalie is a case only because he started, which is known after the game, so goalie error understates the uncertainty about who plays.
+Opposing-goalie rule pre-registered in commit 2a74cfbfbdfb2a5c828f2251fbbbf4a4371689be.
+Opposing-goalie arms (nhl-opp-goalie-v1): reference x m ** beta in shots_on_goal, points, assists, goals, power_play_points, where m = (1 - shrunk save %) / (1 - league save %) clipped to [0.80, 1.25], from the starter's last 20 prior starts shrunk by 1000 league-average shots. Per market, beta is the one of 0, 0.5 and 1.0 with the lowest 2024-25 MAE, ties to the smaller; a market that picks 0 is not a holdout candidate.
+Opposing-goalie caveat: the starter is the goalie who actually started, known only after the game; the served version will use ESPN's expected starter, so these gains overstate what it can earn.
+Skater games with no opposing starter row (scored with m = 1): 0 of 42362.
+
+
+Arm opp_goalie_b05 against reference, paired on player, game and market
+  market                         n   ref MAE   arm MAE   change     diff      SE  verdict
+  shots_on_goal              42362     1.081     1.082   +0.09%   +0.001   0.000  reject
+  points                     42362     0.550     0.550   +0.01%   +0.000   0.000  reject
+  assists                    42362     0.425     0.425   +0.00%   +0.000   0.000  reject
+  goals                      42362     0.280     0.280   +0.02%   +0.000   0.000  reject
+  power_play_points          42362     0.174     0.175   +0.06%   +0.000   0.000  reject
+
+Arm opp_goalie_b10 against reference, paired on player, game and market
+  market                         n   ref MAE   arm MAE   change     diff      SE  verdict
+  shots_on_goal              42362     1.081     1.084   +0.27%   +0.003   0.000  reject
+  points                     42362     0.550     0.550   +0.05%   +0.000   0.000  reject
+  assists                    42362     0.425     0.425   +0.03%   +0.000   0.000  reject
+  goals                      42362     0.280     0.280   +0.07%   +0.000   0.000  reject
+  power_play_points          42362     0.174     0.175   +0.13%   +0.000   0.000  reject
+
+Exponent pick per market (lowest MAE, ties to the smaller beta)
+  market                        beta 0    beta 0.5      beta 1    pick
+  shots_on_goal                 1.0815      1.0824      1.0844       0
+  points                        0.5502      0.5502      0.5504       0
+  assists                       0.4252      0.4252      0.4253       0
+  goals                         0.2801      0.2801      0.2803       0
+  power_play_points             0.1744      0.1745      0.1747       0
+```
+
+**Holdout (Step 7):** no candidate. Every market picked `beta = 0`, so under the rule there is nothing to score and the 2025-26 holdout stays unread for this input.
 
 ## Files / areas
 

@@ -3,10 +3,10 @@ from collections.abc import Sequence
 
 import pytest
 
-from app.core.nhl_goalie_adjustment import GoalieRecord, Matchup, goalie_multiplier, goalie_record
+from app.core.nhl_goalie_adjustment import ADJUSTED_MARKETS, GoalieRecord, Matchup, goalie_multiplier, goalie_record
 from app.core.nhl_projection_backtest import (
-    ARMS, REFERENCE_ARM, MatchupArm, NhlHistoryRow, NhlReplayCase, opp_goalie_arm, replay_cases,
-    replay_matchup_cases,
+    ARMS, OPP_GOALIE_BETA_BY_MARKET, REFERENCE_ARM, MatchupArm, NhlHistoryRow, NhlReplayCase, opp_goalie_arm,
+    opp_goalie_holdout_candidates, replay_cases, replay_matchup_cases,
 )
 from app.nhl.markets import NhlLineOnlyMarket
 
@@ -130,3 +130,8 @@ def test_an_empty_exponent_map_reproduces_reference() -> None:
     reference = replay_cases(rows, 2024, ARMS[REFERENCE_ARM])
     adjusted = replay_matchup_cases(rows, 2024, opp_goalie_arm({}))
     assert [(case.key, case.projection) for case in adjusted] == [(case.key, case.projection) for case in reference]
+
+
+def test_the_committed_development_pick_leaves_no_holdout_candidate() -> None:
+    assert OPP_GOALIE_BETA_BY_MARKET == {market: 0.0 for market in ADJUSTED_MARKETS}
+    assert opp_goalie_holdout_candidates() == []

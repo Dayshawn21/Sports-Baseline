@@ -63,6 +63,9 @@ GOALIE_CAVEAT = (
     "understates the uncertainty about who plays."
 )
 
+# The commit that fixed 67a's opposing-goalie rule and constants before any such arm was scored.
+OPP_GOALIE_PREREGISTRATION_COMMIT = "2a74cfbfbdfb2a5c828f2251fbbbf4a4371689be"
+
 OPP_GOALIE_RULE_TEXT = (
     f"Opposing-goalie arms ({NHL_OPP_GOALIE_VERSION}): reference x m ** beta in "
     f"{', '.join(market.value for market in BACKTEST_MARKETS if market in ADJUSTED_MARKETS)}, where "
@@ -209,7 +212,10 @@ def report(season: int, cases_by_arm: Mapping[str, Sequence[NhlReplayCase]]) -> 
     matchup = any(arm in MATCHUP_ARMS for arm in cases_by_arm)
     lines = _header(season)
     if matchup:
-        lines += [OPP_GOALIE_RULE_TEXT, OPP_GOALIE_CAVEAT, _starter_coverage(cases_by_arm)]
+        lines += [
+            f"Opposing-goalie rule pre-registered in commit {OPP_GOALIE_PREREGISTRATION_COMMIT}.",
+            OPP_GOALIE_RULE_TEXT, OPP_GOALIE_CAVEAT, _starter_coverage(cases_by_arm),
+        ]
     for arm, cases in cases_by_arm.items():
         lines += ["", *_metrics_table(arm, cases)]
     reference = cases_by_arm[REFERENCE_ARM]

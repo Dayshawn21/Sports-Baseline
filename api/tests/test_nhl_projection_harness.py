@@ -4,7 +4,7 @@ import datetime as dt
 import pytest
 
 from app.backtest.nhl_projections import (
-    PREREGISTRATION_COMMIT, parse_arms, report, season_label, seasons_to_read,
+    OPP_GOALIE_PREREGISTRATION_COMMIT, PREREGISTRATION_COMMIT, parse_arms, report, season_label, seasons_to_read,
 )
 from app.core.nhl_projection_backtest import NhlReplayCase
 
@@ -94,6 +94,7 @@ def test_opposing_goalie_arms_parse_beside_the_reference() -> None:
 def test_a_reference_only_report_has_no_opposing_goalie_lines() -> None:
     text = report(2024, {"reference": [case(1, "points", 1.0, 1.0)]})
     assert "Opposing-goalie" not in text and "Exponent pick" not in text
+    assert OPP_GOALIE_PREREGISTRATION_COMMIT not in text
 
 
 def test_opposing_goalie_report_names_the_rule_caveat_count_and_adjusted_markets_only() -> None:
@@ -104,6 +105,8 @@ def test_opposing_goalie_report_names_the_rule_caveat_count_and_adjusted_markets
     ]
     text = report(2024, {"reference": reference, "opp_goalie_b05": b05})
     assert "nhl-opp-goalie-v1" in text and "clipped to [0.80, 1.25]" in text
+    assert f"pre-registered in commit {OPP_GOALIE_PREREGISTRATION_COMMIT}" in text
+    assert PREREGISTRATION_COMMIT in text
     assert "Opposing-goalie caveat" in text
     assert "no opposing starter row (scored with m = 1): 1 of 2." in text
     paired_section = text.split("Arm opp_goalie_b05 against reference")[1].split("Exponent pick")[0]
