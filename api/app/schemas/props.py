@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -98,3 +98,43 @@ class PropsResponse(_CamelModel):
 
 class PropsAuditResponse(PropsResponse):
     summary: PropsAuditSummary
+
+
+class PropReasonSchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    key: str
+    text: str
+
+
+class RecentValueSchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    match_date: date
+    opponent_name: str
+    surface: Optional[str] = None
+    best_of: int
+    value: int
+
+
+class RecentSummarySchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    matches: int
+    over: int
+    under: int
+    push: int
+    average: float
+    median: float
+
+
+class TennisPropReasonsResponse(_CamelModel):
+    """Why a line could go over or under (63): reference, never a pick."""
+
+    prop_id: int
+    player_id: Optional[int]
+    stat_type: str
+    line: float
+    version: str
+    recent: list[RecentValueSchema]   # oldest first, the chart's order
+    summary: Optional[RecentSummarySchema]
+    over: list[PropReasonSchema]
+    under: list[PropReasonSchema]
+    caveats: list[PropReasonSchema]

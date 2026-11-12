@@ -44,47 +44,9 @@ class Prop:
     p2_tour: Optional[str] = None
 
 
-async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
-    query = """
-        WITH latest_props AS (
-            SELECT DISTINCT ON (
-                p.source,
-                COALESCE(
-                    p.player_id::text,
-                    NULLIF(p.raw_json ->> 'player_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
-                ),
-                p.start_time,
-                p.stat_type,
-                p.line,
-                COALESCE(p.odds_type, '')
-            )
-                p.*
-            FROM props p
-            WHERE p.fetched_at >= now() - interval '24 hours'
-              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
-    """
-    params: dict = {}
-    if source:
-        query += " AND p.source = :source"
-        params["source"] = source
-    query += """
-            ORDER BY
-                p.source,
-                COALESCE(
-                    p.player_id::text,
-                    NULLIF(p.raw_json ->> 'player_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
-                ),
-                p.start_time,
-                p.stat_type,
-                p.line,
-                COALESCE(p.odds_type, ''),
-                p.fetched_at DESC,
-                p.id DESC
-        )
+# The board's columns and its match re-linking, shared so one prop read by id
+# carries exactly the inputs the board enriched it with.
+_PROP_SELECT = """
         SELECT
             p.id,
             p.player_id,
@@ -174,11 +136,67 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
         ) relinked ON TRUE
         LEFT JOIN players mp1 ON mp1.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p1_id ELSE m.p1_id END
         LEFT JOIN players mp2 ON mp2.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p2_id ELSE m.p2_id END
+"""
+
+
+async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
+    query = """
+        WITH latest_props AS (
+            SELECT DISTINCT ON (
+                p.source,
+                COALESCE(
+                    p.player_id::text,
+                    NULLIF(p.raw_json ->> 'player_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
+                ),
+                p.start_time,
+                p.stat_type,
+                p.line,
+                COALESCE(p.odds_type, '')
+            )
+                p.*
+            FROM props p
+            WHERE p.fetched_at >= now() - interval '24 hours'
+              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
     """
+    params: dict = {}
+    if source:
+        query += " AND p.source = :source"
+        params["source"] = source
+    query += """
+            ORDER BY
+                p.source,
+                COALESCE(
+                    p.player_id::text,
+                    NULLIF(p.raw_json ->> 'player_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
+                ),
+                p.start_time,
+                p.stat_type,
+                p.line,
+                COALESCE(p.odds_type, ''),
+                p.fetched_at DESC,
+                p.id DESC
+        )
+    """
+    query += _PROP_SELECT
     query += " ORDER BY p.start_time ASC NULLS LAST, p.player_id, p.stat_type"
 
     rows = await db.execute(text(query), params)
     return [Prop(*r) for r in rows.fetchall()]
+
+
+async def get_prizepicks_prop(db: AsyncSession, prop_id: int) -> Prop | None:
+    """One stored PrizePicks line by id, on any date, shaped as the board reads it."""
+    query = """
+        WITH latest_props AS (
+            SELECT p.* FROM props p WHERE p.id = :prop_id AND p.source = 'prizepicks'
+        )
+    """ + _PROP_SELECT
+    row = (await db.execute(text(query), {"prop_id": prop_id})).first()
+    return Prop(*row) if row else None
 
 
 _BOOK_KEY_SQL = "CASE WHEN LOWER(mo.book) IN ('betonline.ag', 'betonline') THEN 'bet365' ELSE LOWER(mo.book) END"

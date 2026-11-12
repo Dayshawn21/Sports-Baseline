@@ -48,9 +48,21 @@ from app.repositories.matches import (
     get_prediction_win_probs,
 )
 from app.repositories.players import PlayerRollingStats, get_rolling_stats_batch_all_surfaces
-from app.repositories.props import Prop, get_today_match_odds_as_props, get_today_props
-from app.schemas.props import PropAudit, PropLine, PropsAuditResponse, PropsAuditSummary, PropsResponse
+from app.core.tennis_prop_reasons import REASONS_VERSION
+from app.repositories.props import Prop, get_prizepicks_prop, get_today_match_odds_as_props, get_today_props
+from app.schemas.props import (
+    PropAudit,
+    PropLine,
+    PropReasonSchema,
+    PropsAuditResponse,
+    PropsAuditSummary,
+    PropsResponse,
+    RecentSummarySchema,
+    RecentValueSchema,
+    TennisPropReasonsResponse,
+)
 from app.services.tennis import prop_adoption
+from app.services.tennis.prop_reasons import build_prop_reasons
 
 logger = logging.getLogger(__name__)
 
@@ -595,6 +607,30 @@ async def get_prizepicks_props(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.exception("PrizePicks props failed")
         raise HTTPException(status_code=500, detail="PrizePicks props are temporarily unavailable.") from e
+
+
+@router.get("/prizepicks/{prop_id:int}/reasons", response_model=TennisPropReasonsResponse)
+async def get_prizepicks_prop_reasons(prop_id: int, db: AsyncSession = Depends(get_db)) -> TennisPropReasonsResponse:
+    prop = await get_prizepicks_prop(db, prop_id)
+    if prop is None:
+        raise HTTPException(status_code=404, detail="PrizePicks line not found")
+    if prop.line is None:
+        raise HTTPException(status_code=422, detail="This line has no number to compare against")
+    [line] = await _enrich_props(db, [prop], now=datetime.now(UTC))
+    result = await build_prop_reasons(db, prop, line)
+    reasons = result.reasons
+    return TennisPropReasonsResponse(
+        prop_id=prop.id,
+        player_id=prop.player_id,
+        stat_type=prop.stat_type,
+        line=float(prop.line),
+        version=REASONS_VERSION,
+        recent=[RecentValueSchema.model_validate(v) for v in result.chart],
+        summary=RecentSummarySchema.model_validate(reasons.summary) if reasons.summary else None,
+        over=[PropReasonSchema.model_validate(r) for r in reasons.over],
+        under=[PropReasonSchema.model_validate(r) for r in reasons.under],
+        caveats=[PropReasonSchema.model_validate(r) for r in reasons.caveats],
+    )
 
 
 @router.get("/dk", response_model=PropsResponse)

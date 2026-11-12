@@ -225,6 +225,7 @@ Checked items record completed work, including explicitly retired surfaces.
 | 56 | NHL prop board and model | 56a complete 2026-11-04 (`/nhl/board`, line-only, not deployed); 56b complete 2026-11-04 (backtest harness, rule pre-registered in `237c2bcc`, 2025-26 holdout unread); 56c-56d not yet specced |
 | 57 | One slate shape for every sport | Planned 2026-11-08; 57a-57d open (from the 2026-11-08 Impeccable critique of the slate) |
 | 58 | Team logos | Complete 2026-11-09; NBA, NHL and NFL slate rows, game heroes and home cards, display only, ESPN image CDN with a code-badge fallback |
+| 63 | Why over / Why under on tennis props | Complete 2026-11-11; deterministic `app/core/tennis_prop_reasons.py` (`reasons-v1`), lazy `GET /tennis/props/prizepicks/{id}/reasons`, gray reference on the tennis prop board and match page, no LLM, not deployed |
 
 24 leaf items remain, with these gates:
 
@@ -2598,7 +2599,7 @@ without reading everything. Quality flags and EV ranking cut the list down.
 | Prefix | Endpoints |
 |---|---|
 | `/tennis` | `predictions/today`, `predictions/best-picks`, `matches/{id}`, `matches/{id}/odds-history?market=moneyline\|total_games`, `matches/{id}/recent-form`, `model/predictions`, `model/prizepicks-lines`, `model/prop-tiers`, `players/{id}`, `players/{id}/serve-return`, `players/{id}/matches?limit=`, `players/{id}/props`, `bankroll/today`, `parlays/suggested` |
-| `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `dk` (`bet` removed 2026-10-27) |
+| `/tennis/props` | `top`, `prizepicks`, `prizepicks/audit`, `prizepicks/{id}/reasons` (63, read-only, one line's Why over / Why under), `dk` (`bet` removed 2026-10-27) |
 | `/nfl` | `current-week`, `games`, `games/{id}`, `games/{id}/line-only-props`, `players/{id}`, `projections`, `slate`, `game-notes`, `model/ranking?season=&model_version=`, `model/prop-lines?season=`, `model/game-line-clv?season=`, `model/over-probability-fit` |
 | `/nba` | `slate?date=`, `slate/gaps?date=`, `props?date=`, `games/{id}`, `games/{id}/props`, `games/{id}/line-only-props`, `model/ranking?season=` |
 | `/nhl` | `slate?date=`, `games/{id}`, `games/{id}/line-only-props` (45e/45f; context tables required for nonempty slate/detail) |

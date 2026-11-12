@@ -250,6 +250,43 @@ export interface PropsResponse {
   props: PropLine[]
 }
 
+export interface PropReason {
+  key: string
+  text: string
+}
+
+export interface PropReasonRecentValue {
+  matchDate: string
+  opponentName: string
+  surface: string | null
+  bestOf: number
+  value: number
+}
+
+export interface PropReasonSummary {
+  matches: number
+  over: number
+  under: number
+  push: number
+  average: number
+  median: number
+}
+
+/** Why a PrizePicks line could go over or under (63): reference, never a pick. */
+export interface TennisPropReasonsResponse {
+  propId: number
+  playerId: number | null
+  statType: string
+  line: number
+  version: string
+  /** Oldest first, at most 10: the chart's order. */
+  recent: PropReasonRecentValue[]
+  summary: PropReasonSummary | null
+  over: PropReason[]
+  under: PropReason[]
+  caveats: PropReason[]
+}
+
 export interface PropsAuditSummary {
   totalProps: number
   unresolvedPlayerCount: number

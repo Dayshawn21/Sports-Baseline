@@ -137,12 +137,12 @@ async def build_player_matches(
     # never shrinks the 52-week splits.
     window = await match_repo.get_player_matches(db, player_id, since=today - timedelta(days=RECORD_WINDOW_DAYS))
     return PlayerMatches(
-        log=await _match_log(db, player_id, limit),
+        log=await match_log(db, player_id, limit),
         record=record_splits([record_row(r) for r in window], today),
     )
 
 
-async def _match_log(db: AsyncSession, player_id: int, limit: int) -> list[MatchLogEntry]:
+async def match_log(db: AsyncSession, player_id: int, limit: int) -> list[MatchLogEntry]:
     rows = await match_repo.get_player_matches(db, player_id, limit=limit)
     # join_box_score matches on opponent and set score, never on date: box scores
     # are dated by tournament start.
