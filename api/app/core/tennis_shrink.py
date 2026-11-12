@@ -1,7 +1,7 @@
 """Shrink the served tennis ensemble toward the market at large gaps (66a, `shrink-v1`).
 
-Pre-registered: the rule and the forward check below are frozen by the commit that
-added this module, before any data was read for item 66. Editing any constant
+Pre-registered: the rule and the forward check below are frozen by commit
+`5d99a7f0`, which added this module before any data was read for item 66. Editing any constant
 invalidates `tennis-shrink-check-v1`; a changed rule is a new version with a fresh
 forward sample. Pure math, no I/O.
 """

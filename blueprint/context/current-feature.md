@@ -144,7 +144,7 @@ because its hash is the proof that the rule came first.
 
 ## Build steps
 
-- [ ] **Step 1 - Pre-registration commit.** Add `app/core/tennis_shrink.py`
+- [x] **Step 1 - Pre-registration commit.** Add `app/core/tennis_shrink.py`
   (pure, no I/O):
   - constants `SHRINK_VERSION = "shrink-v1"`, `SHRINK_THRESHOLD = 0.03`,
     `SHRINK_WEIGHT = 0.5`, `CHECK_VERSION = "tennis-shrink-check-v1"`,
@@ -334,7 +334,11 @@ The final gate is the Verify command from the repo root. Real-data runs
 
 ## Evidence
 
-- Pre-registration commit: _(Step 1)_
+- Pre-registration commit: `5d99a7f0` (`5d99a7f0f39c076ddc2c06482ed275c4236be39c`),
+  2026-11-11, on `feature/tennis-shrinkage`. It holds only
+  `app/core/tennis_shrink.py`, `tests/test_tennis_shrink.py` and this spec.
+  No diagnostic or forward data had been read for item 66 before it. Verify
+  passed before the commit: web verify green, API 6,123 passed.
 - Diagnostic `--live`: _(Step 2)_
 - Diagnostic `--history`: _(Step 3)_
 - Slice decisions: _(Step 4)_
