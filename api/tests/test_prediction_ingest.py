@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from app.ingest.predictions import prediction_insert_args
+import pytest
+
+from app.ingest.predictions import prediction_insert_args, shadow_insert_args
 from app.services.tennis.predictor import PredictionOutput
 
 
@@ -64,3 +66,47 @@ def test_prediction_insert_args_passes_through_a_missing_snapshot() -> None:
     prediction.feature_snapshot = None
 
     assert prediction_insert_args(prediction, "v4")["feature_snapshot"] is None
+
+
+SERVED = "ensemble-v3+lgbm-v6"
+
+
+def test_no_shadow_without_a_market_price() -> None:
+    prediction = _prediction()
+    prediction.p1_market_prob = None
+
+    assert shadow_insert_args(prediction, SERVED) is None
+
+
+def test_no_shadow_without_a_served_probability() -> None:
+    prediction = _prediction()
+    prediction.p1_win_prob = None
+
+    assert shadow_insert_args(prediction, SERVED) is None
+
+
+def test_shadow_equals_served_below_the_threshold() -> None:
+    prediction = _prediction()
+    prediction.p1_win_prob, prediction.p1_market_prob = 0.60, 0.58
+
+    assert shadow_insert_args(prediction, SERVED) == {"model_version": "ensemble-v3+lgbm-v6+shrink-v1", "p1_prob": 0.60}
+
+
+def test_shadow_keeps_half_the_gap_at_three_points() -> None:
+    prediction = _prediction()  # served 0.63, market 0.58
+
+    shadow = shadow_insert_args(prediction, SERVED)
+
+    assert shadow is not None
+    assert shadow["model_version"] == "ensemble-v3+lgbm-v6+shrink-v1"
+    assert shadow["p1_prob"] == pytest.approx(0.605)
+
+
+def test_the_shadow_never_changes_the_served_row() -> None:
+    prediction = _prediction()
+    before = prediction_insert_args(prediction, "v6")
+
+    shadow_insert_args(prediction, before["model_version"])
+
+    assert prediction_insert_args(prediction, "v6") == before
+    assert before["p1_ensemble_prob"] == 0.63

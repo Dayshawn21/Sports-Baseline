@@ -4,7 +4,7 @@ from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
-from app.repositories.predictions import insert_prediction
+from app.repositories.predictions import insert_prediction, insert_prediction_shadow
 
 
 class _Result:
@@ -51,3 +51,18 @@ def test_insert_prediction_serializes_jsonb_parameters() -> None:
     assert session.params["flags"] == ["stale_odds"]
     assert "CAST(:weights AS jsonb)" in session.statement
     assert "CAST(:snap AS jsonb)" in session.statement
+
+
+def test_insert_prediction_shadow_writes_only_the_shadow_table() -> None:
+    session = _RecordingSession()
+
+    asyncio.run(insert_prediction_shadow(
+        cast(AsyncSession, session), prediction_id=7,
+        model_version="ensemble-v3+lgbm-v6+shrink-v1", p1_prob=0.615,
+    ))
+
+    statement = " ".join(session.statement.split())
+    assert statement == (
+        "INSERT INTO prediction_shadows (prediction_id, model_version, p1_prob) VALUES (:pid, :mv, :p)"
+    )
+    assert session.params == {"pid": 7, "mv": "ensemble-v3+lgbm-v6+shrink-v1", "p": 0.615}

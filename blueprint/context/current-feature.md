@@ -207,7 +207,7 @@ because its hash is the proof that the rule came first.
   *Done when:* your decision per slice is recorded under Evidence. If both
   slices are dropped, the item stops here and goes to `/complete` as "dropped
   at diagnostic", with no storage built.
-- [ ] **Step 5 - Shadow table.** Add the next free migration number (check
+- [x] **Step 5 - Shadow table.** Add the next free migration number (check
   sibling worktrees first; master's highest is `0053`). It creates
   `prediction_shadows`:
   - `id`
@@ -224,7 +224,7 @@ because its hash is the proof that the rule came first.
   - A recorded-SQL test covers the insert.
   - The migration upgrade and downgrade are shown, then applied to Neon as one
     manual command after your yes.
-- [ ] **Step 6 - Writer.** In `app/ingest/predictions.py`, a pure
+- [x] **Step 6 - Writer.** In `app/ingest/predictions.py`, a pure
   `shadow_insert_args(prediction, served_version)` returns `None` without a
   market price. Otherwise it returns `shrink_toward_market` under
   `shadow_version(served_version)`. `persist_predictions` writes the shadow in
@@ -403,6 +403,15 @@ The final gate is the Verify command from the repo root. Real-data runs
   (v3 ahead of the Pinnacle open) is noted as a reason the forward check may
   read `keep served`, not as a reason to drop it. The rule is unchanged from
   `5d99a7f0`.
+- Shadow table (Step 5, 2026-11-11): migration `0054_prediction_shadows`
+  was applied to Neon after the owner's yes and a passing Verify (web green,
+  API 6,141 passed).
+  - The command was `alembic -c <scratch ini> upgrade 0054`, with
+    `script_location` set to this worktree's migrations.
+  - Before: head `0053`, no table. After: head `0054`, and
+    `prediction_shadows` exists and is empty.
+  - Until this branch merges, Neon is ahead of master's migrations. No other
+    item may take `0054`; this is claimed in the side-session notes.
 - Activation timestamp and start date: _(Step 8)_
 
 ## Draft critique and changes

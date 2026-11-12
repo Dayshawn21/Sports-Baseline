@@ -46,6 +46,17 @@ async def insert_prediction(
     return row.scalar_one()
 
 
+async def insert_prediction_shadow(db: AsyncSession, prediction_id: int, model_version: str, p1_prob: float) -> None:
+    """A shadow beside a served prediction; never read by a serving path."""
+    await db.execute(
+        text("""
+            INSERT INTO prediction_shadows (prediction_id, model_version, p1_prob)
+            VALUES (:pid, :mv, :p)
+        """),
+        {"pid": prediction_id, "mv": model_version, "p": p1_prob},
+    )
+
+
 @dataclass(frozen=True)
 class StoredPrediction:
     """A match's last prediction made before it started, with the moneyline it saw."""

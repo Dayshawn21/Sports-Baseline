@@ -9,9 +9,10 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional, TypedDict
 
+from app.core.tennis_shrink import shadow_version, shrink_toward_market
 from app.db.pool import SessionLocal
 from app.ml.registry import ModelRegistry
-from app.repositories.predictions import insert_prediction
+from app.repositories.predictions import insert_prediction, insert_prediction_shadow
 from app.services.tennis.ensemble import ENSEMBLE_VERSION
 from app.services.tennis.predictor import PredictionOutput, predict_today
 
@@ -49,6 +50,22 @@ def prediction_insert_args(
     }
 
 
+class ShadowInsertArgs(TypedDict):
+    model_version: str
+    p1_prob: float
+
+
+def shadow_insert_args(prediction: PredictionOutput, served_version: str) -> Optional[ShadowInsertArgs]:
+    """The 66a shrink-v1 shadow. Stored even when it equals the served value, so
+    coverage can be counted; none without a market price or a served probability."""
+    if prediction.p1_win_prob is None or prediction.p1_market_prob is None:
+        return None
+    return {
+        "model_version": shadow_version(served_version),
+        "p1_prob": shrink_toward_market(prediction.p1_win_prob, prediction.p1_market_prob),
+    }
+
+
 async def persist_predictions() -> int:
     registry = ModelRegistry(MODELS_DIR)
     today = date.today()
@@ -57,13 +74,11 @@ async def persist_predictions() -> int:
     async with SessionLocal() as db:
         predictions = await predict_today(db, registry, target_dates)
         for prediction in predictions:
-            await insert_prediction(
-                db,
-                **prediction_insert_args(
-                    prediction,
-                    registry.get_lgbm_version(prediction.tour),
-                ),
-            )
+            args = prediction_insert_args(prediction, registry.get_lgbm_version(prediction.tour))
+            prediction_id = await insert_prediction(db, **args)
+            shadow = shadow_insert_args(prediction, args["model_version"])
+            if shadow is not None:
+                await insert_prediction_shadow(db, prediction_id, **shadow)
         await db.commit()
 
     return len(predictions)
