@@ -611,3 +611,27 @@ export interface PlayerProps {
   rows: PastProp[]
   summary: { hits: number, misses: number }
 }
+
+/** A finished match's standard line with the props-v3 projection frozen before it and the settled result (60a). */
+export interface ProjectionHistoryPoint {
+  matchId: number
+  matchDate: string | null
+  tournament: string | null
+  round: string | null
+  surface: string | null
+  opponentId: number
+  opponentName: string
+  stat: string
+  line: number
+  /** Null when no projection was frozen; never recomputed. */
+  projection: number | null
+  actual: number
+  snapshotAt: string
+}
+
+export interface ProjectionHistory {
+  projectionVersion: string
+  points: ProjectionHistoryPoint[]
+  /** Finished lines whose result has not settled (box score not joined, or no settlement source). */
+  unsettled: number
+}

@@ -33,6 +33,8 @@ from app.schemas.tennis import (
     PastPropSummarySchema,
     PlayerMatchesResponse,
     PlayerPropsResponse,
+    ProjectionHistoryPointSchema,
+    ProjectionHistoryResponse,
     PlayerRecordSchema,
     PlayerNextMatchSchema,
     PlayerServeReturnResponse,
@@ -61,6 +63,7 @@ from app.services.tennis.match_detail import (
     winner_side,
 )
 from app.services.tennis.predictor import PredictionOutput
+from app.services.tennis.projection_history import build_projection_history
 from app.services.tennis import track_record
 from app.services.tennis.player_detail import (
     MatchLogEntry,
@@ -328,6 +331,18 @@ async def get_player_props(player_id: int, db: AsyncSession = Depends(get_db)) -
         projection_version=props.projection_version,
         rows=[PastPropSchema.model_validate(row) for row in props.rows],
         summary=PastPropSummarySchema(hits=props.hits, misses=props.misses),
+    )
+
+
+@router.get("/players/{player_id:int}/projection-history", response_model=ProjectionHistoryResponse)
+async def get_player_projection_history(player_id: int, db: AsyncSession = Depends(get_db)) -> ProjectionHistoryResponse:
+    history = await build_projection_history(db, player_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return ProjectionHistoryResponse(
+        projection_version=history.projection_version,
+        points=[ProjectionHistoryPointSchema.model_validate(point) for point in history.points],
+        unsettled=history.unsettled,
     )
 
 
