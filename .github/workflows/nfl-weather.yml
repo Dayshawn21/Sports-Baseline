@@ -2,13 +2,17 @@ name: NFL Game Weather
 
 # Free Open-Meteo forecasts for outdoor games in the next 7 days, shown on the
 # NFL matchup bar. Display only: weather never feeds a projection, edge or rank.
-# 14:00 UTC lands before every kickoff window, including Sunday's 17:00 UTC.
+# GitHub starts schedules hours late (3 to 9h for the old 14:00 UTC slot), so
+# the daily run sits off the hour at 11:17 UTC to land before Sunday's 17:00 or
+# 18:00 UTC kickoffs, and a 19:17 UTC run on Sunday, Monday and Thursday
+# refreshes the primetime games. Games fetched in the last 3 hours are skipped.
 #
 # September through February only, matching the NFL data ingest.
 on:
   # GitHub pauses schedules in a public repo after 60 days with no commit.
   schedule:
-    - cron: "0 14 * 1,2,9-12 *"
+    - cron: "17 11 * 1,2,9-12 *"
+    - cron: "17 19 * 1,2,9-12 0,1,4"
   workflow_dispatch:
 
 permissions:

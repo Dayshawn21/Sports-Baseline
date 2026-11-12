@@ -10,7 +10,7 @@
 
 .game-hero {
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 24px;
-  max-width: 640px; padding-top: 6px;
+  padding-top: 6px;
 }
 .game-hero__team { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .game-hero__team.is-home { flex-direction: row-reverse; text-align: right; }
@@ -18,7 +18,7 @@
 .game-hero__name strong { display: block; color: var(--text-primary); font: 700 26px/1.1 var(--font-display); }
 .game-hero__name small { display: block; min-height: 1.4em; color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
 
-.game-hero__mid { display: grid; justify-items: center; gap: 2px; max-width: 220px; text-align: center; }
+.game-hero__mid { display: grid; justify-items: center; gap: 2px; max-width: 360px; text-align: center; }
 .game-hero__mid small { color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono); }
 .game-hero__big { color: var(--text-primary); font: 600 18px/1.2 var(--font-display); white-space: nowrap; }
 .game-hero__score { display: flex; gap: 18px; color: var(--text-primary); font: 500 28px/1.1 var(--font-mono); }
