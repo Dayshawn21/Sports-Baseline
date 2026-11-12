@@ -25,6 +25,7 @@ export interface MatchPrediction {
   h2hP2Wins: number
   p1Id?: number | null
   p2Id?: number | null
+  bestOf?: number
 }
 
 export interface PredictionsResponse {
@@ -68,6 +69,7 @@ export interface PropLine {
   breakEvenPct?: number | null     // hit rate this price needs to break even
   matchesCount?: number | null     // rolling stats sample size
   surface?: string | null          // match surface (Hard / Clay / Grass)
+  bestOf?: number | null           // linked match's stored format; null when unlinked
   marketTotalGames?: number | null       // market total used for match-length context
   expectedServicePoints?: number | null  // service-point volume used for serve props
   projectionSource?: 'market_total' | 'model_total' | string | null
@@ -608,4 +610,28 @@ export interface PlayerProps {
   projectionVersion: string
   rows: PastProp[]
   summary: { hits: number, misses: number }
+}
+
+/** A finished match's standard line with the props-v3 projection frozen before it and the settled result (60a). */
+export interface ProjectionHistoryPoint {
+  matchId: number
+  matchDate: string | null
+  tournament: string | null
+  round: string | null
+  surface: string | null
+  opponentId: number
+  opponentName: string
+  stat: string
+  line: number
+  /** Null when no projection was frozen; never recomputed. */
+  projection: number | null
+  actual: number
+  snapshotAt: string
+}
+
+export interface ProjectionHistory {
+  projectionVersion: string
+  points: ProjectionHistoryPoint[]
+  /** Finished lines whose result has not settled (box score not joined, or no settlement source). */
+  unsettled: number
 }

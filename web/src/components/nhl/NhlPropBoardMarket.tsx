@@ -1,17 +1,19 @@
 import { Link } from 'react-router-dom'
+import { AltLinesChip } from '~/components/shared/AltLinesChip'
+import { ProbabilityRing } from '~/components/shared/ProbabilityRing'
 import { nhlPuckDropLabel } from '~/utils/nhlGame'
 import { nhlMarketLabel } from '~/utils/nhlLineOnly'
 import { nhlBoardGameStatus, type NhlBoardMarket } from '~/utils/nhlPropBoard'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
+import { REFERENCE, probabilityRing } from '~/utils/propRowVisuals'
 import {
   NHL_PROBABILITY_CAPTION, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
 } from '~/utils/nhlProjection'
 
-function alternates(rungs: NhlBoardMarket['rows'][number]['row']['rungs']): string {
+function alternates(rungs: NhlBoardMarket['rows'][number]['row']['rungs']): string[] {
   return rungs
     .filter(rung => rung.oddsType !== 'standard')
     .map(rung => `${rung.oddsTypeLabel} ${rung.label}${rung.gap === null ? '' : ` (${nhlGapLabel(rung.gap)})`}`)
-    .join(' / ')
 }
 
 /** One market's rows, each opening that player's page on this date and market; values stay gray and unranked. */
@@ -30,6 +32,7 @@ export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMar
       </tr></thead>
       <tbody>{group.rows.map(({ key, game, row }) => {
         const status = nhlBoardGameStatus(game, now)
+        const others = alternates(row.rungs)
         return <tr key={key}>
           <td>
             <Link className="nhl-prop-board__player" to={nhlPlayerPath(row.playerId, { date, market: group.market })}>{row.playerName}</Link>
@@ -40,8 +43,8 @@ export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMar
           <td className="nhl-prop-board__line">{row.standard ?? '--'}</td>
           <td className="nhl-prop-board__line">{nhlProjectionValue(row.projection)}{nhlProjectionNote(row.projection) && <small>{nhlProjectionNote(row.projection)}</small>}</td>
           <td className="nhl-prop-board__line">{nhlGapLabel(row.standardGap)}</td>
-          {covers && <td className="nhl-prop-board__line">{nhlPercentLabel(row.standardPOver)}{row.standardProbabilityNote && <small>{row.standardProbabilityNote}</small>}</td>}
-          <td>{alternates(row.rungs) || '--'}</td>
+          {covers && <td className="nhl-prop-board__line"><ProbabilityRing ring={probabilityRing(row.standardPOver === null ? null : row.standardPOver * 100, REFERENCE)} />{nhlPercentLabel(row.standardPOver)}{row.standardProbabilityNote && <small>{row.standardProbabilityNote}</small>}</td>}
+          <td>{others.length ? <AltLinesChip labels={others} context={label} /> : '--'}</td>
         </tr>
       })}</tbody>
     </table>

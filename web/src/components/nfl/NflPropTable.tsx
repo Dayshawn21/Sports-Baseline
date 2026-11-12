@@ -2,15 +2,17 @@ import { Tag, Tooltip } from 'antd'
 import type { MouseEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { StatStrip } from '~/components/shared/StatStrip'
 import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { FLAG_LABELS, formatHistoryValue, marketLabel } from '~/utils/nflLabels'
 import type { NflSeasonWeek } from '~/types/nfl'
 import type { NflBoardCategory, NflBoardLine } from '~/utils/nflPropBoard'
 import { openedRowKey } from '~/utils/nflOpenedRow'
 import { FROM_BOARD, nflPlayerMarketLink } from '~/utils/nflPlayer'
-import { nflPropCard, recentBars, type NflPropCardModel } from '~/utils/nflPropCards'
+import { nflPropCard, recentBars, recentStatStrip, type NflPropCardModel } from '~/utils/nflPropCards'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import { VOLUME_NOTE, volumeTableText } from '~/utils/nflVolume'
+import { REFERENCE } from '~/utils/propRowVisuals'
 import '~/components/shared/prop-table.css'
 import './nfl-prop-table.css'
 
@@ -95,7 +97,9 @@ function PropRow({ row, rateable, category, inGame, now, week }: RowProps) {
     <td className="is-num" data-label="line">{card.lineText}</td>
     <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}{volumeText && <small className="nfl-prop-table__volume" title={VOLUME_NOTE}>{volumeText}</small>}</td>
     <td className="prop-table__end is-num nfl-prop-table__gap"><Gap card={card} note={edgeNote(category)} /></td>
-    <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" valueLabel={bar => String(bar.value)} lineLabel={card.lineText} showOpponents title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
+    <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" valueLabel={bar => String(bar.value)} lineLabel={card.lineText} showOpponents title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} />
+      <StatStrip cells={recentStatStrip(row, REFERENCE)} />
+    </td>
     <td><Sample card={card} /></td>
   </tr>
 }

@@ -13,18 +13,6 @@
 .tennis-prop-table__pick.is-negative { color: var(--negative); }
 .tennis-prop-table__pick.is-none { color: var(--text-muted); }
 .tennis-prop-table__hit { white-space: normal; }
-.tennis-prop-table__prob {
-  position: relative; display: block; width: 100%; height: 4px; margin: 3px 0;
-  border-radius: 999px; background: var(--bg-raised);
-}
-.tennis-prop-table__prob > span {
-  position: absolute; inset: 0 auto 0 0; width: var(--p);
-  border-radius: 999px; background: var(--text-secondary);
-}
-.tennis-prop-table__prob::after {
-  content: ""; position: absolute; top: -2px; bottom: -2px; left: var(--be);
-  width: 1px; background: var(--text-primary);
-}
 .tennis-prop-table__ev { color: var(--text-secondary); font-weight: 600; }
 .tennis-prop-table__ev.is-positive { color: var(--positive); }
 .tennis-prop-table__ev.is-negative { color: var(--negative); }
@@ -78,7 +66,6 @@
   .tennis-prop-table td.is-num:not(.prop-table__end) { text-align: left; }
   .tennis-prop-table__line { flex: 1 1 150px; min-width: 0; }
   .tennis-prop-table__hit { flex: 1 1 118px; min-width: 100px; }
-  .tennis-prop-table__prob { max-width: 108px; }
   .tennis-prop-table__gap { min-width: 44px; }
   .tennis-prop-table td:last-child { min-width: 64px; }
 }
@@ -88,7 +75,6 @@
   .tennis-prop-table tbody tr { gap: 4px 6px; }
   .tennis-prop-table__line { flex-basis: 108px; }
   .tennis-prop-table__hit { flex: 0 1 82px; min-width: 72px; }
-  .tennis-prop-table__prob { display: none; }
   .tennis-prop-table__hit small { max-width: 82px; }
   .tennis-prop-table__gap { display: none; }
   .tennis-prop-table__mobile-gap { display: inline; }

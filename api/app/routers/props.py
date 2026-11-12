@@ -453,6 +453,7 @@ def _enrich(
         break_even_pct=break_even_pct,
         matches_count=matches_count,
         surface=prop.surface,
+        best_of=prop.best_of,
         market_total_games=round(market_total_games, 2) if market_total_games is not None else None,
         expected_service_points=round(expected_service_points, 2) if expected_service_points is not None else None,
         projection_source=projection_source if stats is not None else None,

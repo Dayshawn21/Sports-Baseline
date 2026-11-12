@@ -52,11 +52,11 @@ export function mainRung<R extends NflLineOnlyRung>(row: { rungs: R[] }): R {
   return row.rungs.find(rung => rung.oddsType === 'standard') ?? row.rungs[0]
 }
 
-/** Recent games as card bars, oldest to newest, on one scale with the standard line when there is one. */
+/** Recent games as card bars, oldest to newest, on one scale with the main rung, the line the row's Line cell shows. */
 export function lineOnlyBars(row: { rungs: NflLineOnlyRung[], recent: LineOnlyRecentValue[] }): NflRecentBars {
   const games = row.recent.flatMap(game => game.value === null ? [] : [{ value: game.value, opponentTeam: game.opponent }]).reverse()
   if (!games.length) return { bars: [], linePct: null }
-  const line = row.rungs.find(rung => rung.oddsType === 'standard')?.line ?? null
+  const line = row.rungs.length ? mainRung(row).line : null
   const scale = Math.max(line ?? 0, ...games.map(game => game.value))
   const pct = (value: number) => (scale > 0 ? Math.min(100, Math.max(0, (value / scale) * 100)) : 0)
   return {

@@ -1,0 +1,143 @@
+.projection-history {
+  margin-top: var(--space-3);
+}
+
+.projection-history__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.projection-history__legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.projection-history__key {
+  display: inline-block;
+}
+
+.projection-history__key.is-bar {
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+.projection-history__key.is-tick {
+  width: 14px;
+  border-top: 2px solid var(--text-primary);
+}
+
+.projection-history__key.is-ring {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+}
+
+/* A long history scrolls inside the chart, never the page. */
+.projection-history__scroll {
+  overflow-x: auto;
+}
+
+.projection-history__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(44px, 88px));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projection-history__plot {
+  position: relative;
+  height: 128px;
+  /* Room for the value label over a full-height column. */
+  margin-top: 28px;
+}
+
+.projection-history__bar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 60%;
+  max-width: 32px;
+  height: max(var(--h), 2px);
+  border-radius: 5px 5px 2px 2px;
+  background: var(--text-secondary);
+  transform: translateX(-50%);
+}
+
+.projection-history__col.is-above .projection-history__bar {
+  background: var(--text-primary);
+}
+
+.projection-history__col.is-below .projection-history__bar {
+  background: var(--chart-low);
+}
+
+.projection-history__val {
+  position: absolute;
+  /* Above the highest of the three marks, so the tick and ring never cover the number. */
+  bottom: calc(max(var(--h), 2px, var(--line), var(--proj, 0%)) + 8px);
+  left: 50%;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transform: translateX(-50%);
+}
+
+.projection-history__tick {
+  position: absolute;
+  bottom: var(--line);
+  left: 50%;
+  z-index: 1;
+  width: 80%;
+  max-width: 44px;
+  border-top: 2px solid var(--text-primary);
+  box-shadow: 0 0 0 1px var(--bg-card);
+  transform: translateX(-50%);
+}
+
+.projection-history__ring {
+  position: absolute;
+  bottom: var(--proj);
+  left: 50%;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+  background: var(--bg-card);
+  transform: translate(-50%, 50%);
+}
+
+.projection-history__opp {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projection-history__opp > small {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+.projection-history__empty {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}

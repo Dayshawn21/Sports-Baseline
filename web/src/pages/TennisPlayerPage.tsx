@@ -7,6 +7,7 @@ import PlayerEloCard from '~/components/tennis/player/PlayerEloCard'
 import { playerHead } from '~/components/tennis/player/PlayerHeader'
 import PlayerPropTabs from '~/components/tennis/player/PlayerPropTabs'
 import PlayerMatchLog from '~/components/tennis/player/PlayerMatchLog'
+import PlayerProjectionHistory from '~/components/tennis/player/PlayerProjectionHistory'
 import PlayerServeReturn from '~/components/tennis/player/PlayerServeReturn'
 import PlayerModelRecord, { PlayerIdentityFooter } from '~/components/tennis/player/PlayerSidebar'
 import { usePlayerDetail, usePlayerMatches } from '~/hooks/useTennisPlayer'
@@ -46,6 +47,7 @@ export default function TennisPlayerPage() {
   return (
     <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title={head.title} meta={head.meta} actions={head.actions}>
       <PlayerPropTabs playerId={detail.data.playerId} playerName={detail.data.name} />
+      <PlayerProjectionHistory playerId={detail.data.playerId} playerName={detail.data.name} />
       <h2 className="nfl-player-section-title">Season form <small>ELO, serve and return</small></h2>
       <PlayerEloCard player={detail.data} />
       <PlayerServeReturn playerId={detail.data.playerId} nextSurface={detail.data.nextMatch?.surface} />

@@ -39,6 +39,7 @@ class MatchPrediction(_CamelModel):
     h2h_p2_wins: int = Field(alias="h2hP2Wins")
     p1_id: Optional[int] = None
     p2_id: Optional[int] = None
+    best_of: int = 3
 
 
 class PredictionsResponse(_CamelModel):
@@ -569,3 +570,27 @@ class PlayerPropsResponse(_CamelModel):
     projection_version: str
     rows: list[PastPropSchema]
     summary: PastPropSummarySchema
+
+
+class ProjectionHistoryPointSchema(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+    match_id: int
+    match_date: Optional[date]
+    tournament: Optional[str]
+    round: Optional[str]
+    surface: Optional[str]
+    opponent_id: int
+    opponent_name: str
+    stat: str
+    line: float
+    projection: Optional[float]
+    """The props-v3 projection frozen before the match; null when none was made, never recomputed."""
+    actual: int
+    snapshot_at: datetime
+
+
+class ProjectionHistoryResponse(_CamelModel):
+    projection_version: str
+    points: list[ProjectionHistoryPointSchema]
+    unsettled: int
+    """Finished, fully played lines whose result has not settled yet (box score not joined, or no settlement source)."""
