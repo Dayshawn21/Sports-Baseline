@@ -486,7 +486,7 @@ _HISTORY_SKATER_COLUMNS = (
     "goals", "assists", "points", "shots", "power_play_points", "blocked_shots", "plus_minus", "hits",
     "faceoffs_won", "time_on_ice_seconds",
 )
-_HISTORY_GOALIE_COLUMNS = ("saves", "goals_against", "time_on_ice_seconds")
+_HISTORY_GOALIE_COLUMNS = ("saves", "shots_against", "goals_against", "time_on_ice_seconds")
 _HISTORY_GAME_TYPES = "g.game_type IN (" + ", ".join(f"'{game_type}'" for game_type in SERVED_GAME_TYPES) + ")"
 
 
@@ -496,7 +496,7 @@ async def _history_rows(
     started = "s.started" if goalie else "TRUE"
     rows = await db.execute(text(f"""
         SELECT s.player_id, s.game_id, g.season, g.game_date, g.game_type, p.position, {started} AS started,
-               {", ".join(f"s.{column}" for column in columns)}
+               s.team_id, s.opponent_team_id, {", ".join(f"s.{column}" for column in columns)}
         FROM {table} s
         JOIN sport_games g ON g.sport = 'nhl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nhl' AND p.id = s.player_id
@@ -512,6 +512,7 @@ def _history_row(row: RowMapping, columns: Sequence[str], goalie: bool) -> NhlHi
         game_date=row["game_date"], game_type=str(row["game_type"]), position=row["position"],
         is_goalie=goalie, started=bool(row["started"]),
         stats={column: None if row[column] is None else int(row[column]) for column in columns},
+        team_id=int(row["team_id"]), opponent_team_id=int(row["opponent_team_id"]),
     )
 
 
@@ -533,7 +534,7 @@ async def _prior_rows(
     rows = await db.execute(text(f"""
         SELECT * FROM (
             SELECT s.player_id, s.game_id, g.season, g.game_date, g.game_type, p.position, {started} AS started,
-                   {", ".join(f"s.{column}" for column in columns)},
+                   s.team_id, s.opponent_team_id, {", ".join(f"s.{column}" for column in columns)},
                    ROW_NUMBER() OVER (PARTITION BY s.player_id ORDER BY g.game_date DESC, g.id DESC) AS recency
             FROM {table} s
             JOIN sport_games g ON g.sport = 'nhl' AND g.id = s.game_id
