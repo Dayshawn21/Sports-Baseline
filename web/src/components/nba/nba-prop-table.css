@@ -32,12 +32,12 @@
 .nba-line-only-table .mini-bars__empty { white-space: normal; overflow-wrap: anywhere; }
 
 .nba-board-table col.is-player { width: 190px; }
-.nba-board-table col.is-line { width: 150px; }
+.nba-board-table col.is-line { width: 120px; }
 .nba-board-table col.is-model { width: 65px; }
 .nba-board-table col.is-gap { width: 65px; }
 .nba-board-table col.is-probability { width: 72px; }
-.nba-board-table col.is-bars { width: 90px; }
-.nba-board-table col.is-sample { width: 160px; }
+.nba-board-table col.is-bars { width: 135px; }
+.nba-board-table col.is-sample { width: 140px; }
 .nba-board-table col.is-game { width: 105px; }
 .nba-board-table col.is-tip { width: 155px; }
 .nba-board-table__game a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
