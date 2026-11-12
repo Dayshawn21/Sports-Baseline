@@ -37,7 +37,7 @@ export function GameLogBars({ row, sample, seasonStartMonth }: { row: Parameters
     </div>
     <div className="nfl-prop-detail__opps">{bars.map((bar, index) => {
       const date = formHistoryDate(bar.gameDate, now, seasonStartMonth)
-      return <span key={index}>{bar.opponentTeam ?? '--'}
+      return <span key={index} title={bar.opponentTeam ?? undefined}>{bar.opponentTeam ?? '--'}
         {date && <small title={`${date.month} ${date.day}${date.year ? ` ${date.year}` : ''}`}>{date.month}<br />{date.day}{date.year && <><br />{date.year}</>}</small>}
       </span>
     })}</div>
