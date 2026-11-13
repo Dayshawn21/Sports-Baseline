@@ -9,6 +9,7 @@ import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useLastSportView } from '~/hooks/useLastSportView'
 import { useShellShortcuts } from '~/hooks/useShellShortcuts'
+import { useSwipeToDismiss } from '~/hooks/useSwipeToDismiss'
 import { useViewTransitionLocation } from '~/hooks/useViewTransitionLocation'
 import { VIEW_SHORTCUT } from '~/utils/shellShortcuts'
 import { phoneMenuItems, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
@@ -139,6 +140,9 @@ function Nav() {
   const isMobile = useIsMobile(PHONE_HEADER_MAX_WIDTH)
   const compactSearch = useIsMobile(COMPACT_SEARCH_MAX_WIDTH)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [menuPanel, setMenuPanel] = useState<HTMLDivElement | null>(null)
+  const closeMenu = useCallback(() => setDrawerOpen(false), [])
+  useSwipeToDismiss(menuPanel, { direction: 'right', open: drawerOpen, onDismiss: closeMenu })
   const [mobileCommandOpen, setMobileCommandOpen] = useState(false)
   const adminVisible = useAdminView()
   const lastView = useLastSportView(pathname)
@@ -185,8 +189,9 @@ function Nav() {
         <Drawer
           title="Menu"
           placement="right"
-          onClose={() => setDrawerOpen(false)}
+          onClose={closeMenu}
           open={drawerOpen}
+          panelRef={setMenuPanel}
           styles={{
             header: { background: 'var(--bg-app)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' },
             body: { background: 'var(--bg-app)', padding: 0 },

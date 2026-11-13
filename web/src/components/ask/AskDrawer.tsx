@@ -4,6 +4,7 @@ import { CheckOutlined, CloseOutlined, LoadingOutlined } from '@ant-design/icons
 import AskAnswer from '~/components/ask/AskAnswer'
 import { useAskSession } from '~/hooks/useAskSession'
 import { useIsMobile } from '~/hooks/useIsMobile'
+import { useSwipeToDismiss } from '~/hooks/useSwipeToDismiss'
 import { turnAnnouncement, turnNote, type AskToolLine, type AskTurn } from '~/utils/askSession'
 import { askStarters } from '~/utils/askStarters'
 import type { Sport } from '~/utils/sportNav'
@@ -91,6 +92,9 @@ export default function AskDrawer({ open, sport, onClose, onClosed }: AskDrawerP
     if (running) stop()
     onClose()
   }
+  const [panel, setPanel] = useState<HTMLDivElement | null>(null)
+  // Phones only: the desktop drawer is 440px beside the page and closes by its X, the mask or Escape.
+  useSwipeToDismiss(panel, { direction: 'right', open, enabled: isMobile, onDismiss: close })
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -113,6 +117,7 @@ export default function AskDrawer({ open, sport, onClose, onClosed }: AskDrawerP
       width={isMobile ? '100%' : 440}
       title="Ask Lineform"
       className="ask-drawer"
+      panelRef={setPanel}
       styles={{
         header: { background: 'var(--bg-app)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' },
         body: { background: 'var(--bg-app)', padding: 0 },

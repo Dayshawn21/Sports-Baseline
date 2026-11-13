@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Drawer } from 'antd'
 import { DownOutlined } from '@ant-design/icons'
 import { Link, useLocation } from 'react-router-dom'
+import { useSwipeToDismiss } from '~/hooks/useSwipeToDismiss'
 import { VIEW_LABELS, sportViewForPath, type ShellSportTab } from '~/utils/sportNav'
 
 /**
@@ -11,9 +12,12 @@ import { VIEW_LABELS, sportViewForPath, type ShellSportTab } from '~/utils/sport
 export default function MobileSportSwitcher({ sports }: { sports: ShellSportTab[] }) {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
+  const [panel, setPanel] = useState<HTMLDivElement | null>(null)
+  const close = useCallback(() => setOpen(false), [])
   const active = sports.find(sport => sport.active)
 
   useEffect(() => setOpen(false), [pathname])
+  useSwipeToDismiss(panel, { direction: 'down', open, onDismiss: close })
 
   return (
     <>
@@ -33,8 +37,9 @@ export default function MobileSportSwitcher({ sports }: { sports: ShellSportTab[
         placement="bottom"
         height="auto"
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         rootClassName="sport-sheet"
+        panelRef={setPanel}
       >
         <nav aria-label="Sports">
           {sports.map(sport => {
