@@ -20,6 +20,8 @@ import MobileSportSwitcher from '~/components/shared/MobileSportSwitcher'
 import ShortcutsPanel from '~/components/shared/ShortcutsPanel'
 import AskLauncher from '~/components/ask/AskLauncher'
 import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
+import { routeLoadingShape } from '~/utils/routeLoading'
 import NotFoundPage from '~/pages/NotFoundPage'
 
 const HomePage = lazy(() => import('~/pages/HomePage'))
@@ -222,6 +224,17 @@ function Nav() {
   )
 }
 
+// Each page's code loads on first visit; slates and boards show their table skeleton meanwhile, not the spinner.
+function RouteFallback() {
+  const shape = routeLoadingShape(useLocation().pathname)
+  if (shape === 'spinner') return <LoadingState />
+  return <div className="page-shell nfl-slate"><div className="page-container is-wide">
+    {shape === 'slate'
+      ? <TableSkeleton label="Loading slate..." columns={8} />
+      : <TableSkeleton label="Loading prop board..." columns={8} rowHeight={74} stackedRowHeight={175} variant="board" />}
+  </div></div>
+}
+
 function AppRoutes() {
   const location = useViewTransitionLocation()
   return (
@@ -251,7 +264,7 @@ export default function App() {
             <Layout style={{ minHeight: '100vh' }}>
               <Nav />
               <Content style={{ background: 'transparent' }}>
-                <Suspense fallback={<LoadingState />}>
+                <Suspense fallback={<RouteFallback />}>
                   <AppRoutes />
                 </Suspense>
               </Content>
