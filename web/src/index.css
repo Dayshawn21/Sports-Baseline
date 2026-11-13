@@ -32,6 +32,10 @@
   --chart-mid: #6b6b75;
   --chart-low: #3a3a42;
 
+  /* loading skeleton bars on a card, and the shimmer passing over them */
+  --skeleton-base: rgba(255, 255, 255, 0.07);
+  --skeleton-shine: rgba(255, 255, 255, 0.13);
+
   /* A hovered card lifting off the black ground. */
   --shadow-lift: 0 8px 32px rgba(0, 0, 0, 0.45);
 

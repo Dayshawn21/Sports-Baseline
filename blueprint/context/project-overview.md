@@ -51,10 +51,10 @@ accounts, auth or per-user scoping to a spec unless `project-plan.md` §2 and
 
 ## Features
 
-### Where things stand (2026-11-12)
+### Where things stand (2026-11-13)
 
-- **14 leaf items are open.** Only 68c-68d (web polish; 68a complete
-  2026-11-12, 68b 2026-11-13) are buildable today; the rest wait on a forward
+- **13 leaf items are open.** Only 68d (web polish; 68a complete 2026-11-12,
+  68b and 68c 2026-11-13) is buildable today; the rest wait on a forward
   verdict, a date, or a provider.
 - **Next dated event:** 44b's 2026-27 sample (NBA weeks 1-4) is expected to be
   complete about 2026-11-17; work resumes on branch
@@ -62,7 +62,7 @@ accounts, auth or per-user scoping to a spec unless `project-plan.md` §2 and
 - **Next new sport:** 21 (WNBA). The WNBA season runs May to September, so
   sourcing can be specced now but live data will not exist until 2027.
 - **No-argument `/feature` would pick parked 16f.** Name the item instead
-  (`/feature 68c`, `/feature 21`, `/feature 44b`).
+  (`/feature 68d`, `/feature 21`, `/feature 44b`).
 
 ### What's left and what blocks it
 
@@ -79,7 +79,7 @@ accounts, auth or per-user scoping to a spec unless `project-plan.md` §2 and
 | 23 | Soccer support | 22 | |
 | 16f | Tennis set-handicap projection | Parked 2026-09-29: provider sends too few, misfiled lines | Revisit only if lines become regular |
 | 48d2, 48d3 | Store and show sportsbook tennis player props | Parked 2026-10-30: the free books send moneylines only | Revisit only if the free plan adds them |
-| 68c-68d | Interface polish: skeleton loaders, swipe-to-dismiss drawers | Nothing; build in order | Display only; no API, model, rank or color change |
+| 68d | Interface polish: swipe-to-dismiss drawers | Nothing | Display only; no API, model, rank or color change |
 
 **Open decisions found in this refresh** (owner calls, not build steps):
 
@@ -143,7 +143,7 @@ reference, never colored, ranked or picked.
 | 62 | Prop board row polish | Complete |
 | 63 | Why over / Why under on tennis props | Complete; other sports are later items |
 | 64 | Context filters on the prop boards (64a-64c) | Complete; 64b's NBA filter moves to the player page in 69 |
-| 68 | Interface polish (68a-68d) | 68a complete 2026-11-12 (CSS polish); 68b complete 2026-11-13 (view transitions); 68c-68d planned; display only |
+| 68 | Interface polish (68a-68d) | 68a complete 2026-11-12 (CSS polish); 68b (view transitions) and 68c (skeleton loaders) complete 2026-11-13; 68d planned; display only |
 | 69 | NBA teammate-out split on the player page | Complete; the props-page filter removed, board filters fixed on phones |
 | 21-23 | WNBA, three-way markets, soccer | Planned |
 

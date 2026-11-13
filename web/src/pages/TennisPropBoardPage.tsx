@@ -4,7 +4,7 @@ import { MarketPills, PropBoardFilters, PropBoardHead } from '~/components/tenni
 import { TennisPropTable } from '~/components/tennis/TennisPropTable'
 import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useModelPropTiers } from '~/hooks/useModelTrackRecord'
@@ -51,7 +51,9 @@ export default function TennisPropBoardPage() {
 
   const filterKey = withTennisContextFilter(new URLSearchParams(), effectiveFilter).toString()
   useEffect(() => { setMarket(null) }, [source, filterKey])
-  if (loading) return <LoadingState message="Loading current tennis prop board..." />
+  if (loading) return <div className="page-shell tennis-prop-board"><div className="page-container is-wide">
+    <TableSkeleton label="Loading current tennis prop board..." columns={7} rows={5} rowHeight={108} stackedRowHeight={278} variant="board" />
+  </div></div>
   if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch() }} />
 
   return <div className="page-shell tennis-prop-board"><div className="page-container is-wide">

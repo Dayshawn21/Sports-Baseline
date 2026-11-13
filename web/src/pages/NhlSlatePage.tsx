@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { NhlSlateTable } from '~/components/nhl/NhlSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
@@ -58,7 +58,7 @@ export default function NhlSlatePage() {
 
   if (slate.isLoading || slate.isError || !slate.data) return <div className="page-shell nfl-slate nhl-slate"><div className="page-container is-wide">
     <PageHead title="NHL slate" />
-    {slate.isLoading ? <LoadingState message="Loading NHL slate..." /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
+    {slate.isLoading ? <TableSkeleton label="Loading NHL slate..." columns={8} /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
   </div></div>
   const { date, previousDate, nextDate } = slate.data
   const line = gameSlateLine(slateDateLabel(date), nhlSlateSummary(games), startTimes(games.map(game => game.startUtc)), Date.now())

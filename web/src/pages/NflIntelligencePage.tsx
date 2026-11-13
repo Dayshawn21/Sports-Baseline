@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { NFL_GAPS_ORDER, nflGapLink } from '~/components/nfl/NflSlateDigest'
 import { NflSlateTable } from '~/components/nfl/NflSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
 import SlateLegend from '~/components/shared/SlateLegend'
@@ -119,7 +119,10 @@ export default function NflIntelligencePage() {
   // The old slate opened one game from ?gameId=; that game now has its own page.
   if (legacyGameId !== null) return <Navigate to={`/nfl/game/${legacyGameId}`} replace />
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
-  if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL slate..." />
+  if (activeSeason === null || activeWeek === null) return <div className="page-shell nfl-slate is-game-slate"><div className="page-container is-wide">
+    <PageHead title="NFL slate" />
+    <TableSkeleton label="Loading NFL slate..." columns={8} />
+  </div></div>
   const active = { season: activeSeason, week: activeWeek }
   const { previous, next } = nflWeekNeighbors(active)
   return <div className="page-shell nfl-slate is-game-slate"><div className="page-container is-wide">
@@ -134,7 +137,7 @@ export default function NflIntelligencePage() {
       }}
     />
     {/* A stored-snapshot miss (503 in production) keeps the page head, so Previous and Next still work. */}
-    {slate.isLoading ? <LoadingState message="Loading NFL slate..." />
+    {slate.isLoading ? <TableSkeleton label="Loading NFL slate..." columns={8} />
       : slate.isError ? <ErrorState error={slate.error} onRetry={() => slate.refetch()} />
       : games.length === 0 ? <div className="nfl-empty">
         No NFL games loaded for week {activeWeek}.{' '}

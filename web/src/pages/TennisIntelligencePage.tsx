@@ -6,7 +6,7 @@ import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
 import { usePhoneLayout } from '~/hooks/usePhoneLayout'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import SlateDatePicker from '~/components/shared/SlateDatePicker'
 import SlateLegend from '~/components/shared/SlateLegend'
@@ -196,7 +196,7 @@ export default function TennisIntelligencePage() {
             flight would show prop-linked matches as "Prediction unavailable"
             and then reshuffle them once predictions land. */}
         {primaryLoading ? (
-          <LoadingState message="Loading tennis slate..." />
+          <TableSkeleton label="Loading tennis slate..." columns={adminView ? 9 : 8} />
         ) : matches.length === 0 ? (
           <div className="nfl-empty">
             No tennis matches on {slateDateLabel(day)}.{' '}

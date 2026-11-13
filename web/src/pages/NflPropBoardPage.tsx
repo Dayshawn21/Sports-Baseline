@@ -6,7 +6,7 @@ import { NflPropTable } from '~/components/nfl/NflPropTable'
 import { NflSlateDigest } from '~/components/nfl/NflSlateDigest'
 import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import { useNflCurrentWeek, useNflSlate, useNflWeekLineOnlyProps } from '~/hooks/useNfl'
 import { useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import { useRestoreOpenedRow } from '~/hooks/useRestoreOpenedRow'
@@ -62,7 +62,9 @@ export default function NflPropBoardPage() {
   const ranking = useNflModelRanking(activeSeason)
   const record = rankingBoardRecord('nfl', ranking.data, recordStatus(ranking))
   if (currentWeek.isError && (season === null || week === null)) return <ErrorState error={currentWeek.error} onRetry={() => currentWeek.refetch()} />
-  if (activeSeason === null || activeWeek === null) return <LoadingState message="Loading NFL prop board..." />
+  if (activeSeason === null || activeWeek === null) return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
+    <TableSkeleton label="Loading NFL prop board..." columns={6} rows={5} rowHeight={157} stackedRowHeight={221} variant="board" />
+  </div></div>
   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
     <NflPropBoardHead season={activeSeason} week={activeWeek} games={availableGames.length} categories={categories}
       lineOnlyCount={otherCategories.reduce((total, item) => total + item.count, 0)}
@@ -74,9 +76,9 @@ export default function NflPropBoardPage() {
     <NflPropBoardFilters position={position} gameFilter={gameFilter} games={availableGames} showAll={showAll} showLineToggle={!otherCategory} players={players} playerNames={playerNames} team={team} teams={teams}
       onPosition={value => update({ position: value, market: null })} onGames={value => update({ games: value, team: teamAfterGames(team, value, availableGames) })} onShowAll={value => update({ showAll: value })}
       onPlayers={value => update({ players: value })} onTeam={value => update({ team: value })} />
-    {slate.isLoading && <LoadingState message="Loading prop comparisons..." />}
+    {slate.isLoading && <TableSkeleton label="Loading prop comparisons..." columns={6} rows={5} rowHeight={157} stackedRowHeight={221} variant="board" />}
     {slate.isError && <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
-    {lineOnly.isLoading && <LoadingState message="Loading other markets..." />}
+    {lineOnly.isLoading && <TableSkeleton label="Loading other markets..." columns={6} rows={3} rowHeight={157} stackedRowHeight={221} variant="board" />}
     {lineOnly.isError && <ErrorState error={lineOnly.error} onRetry={() => void lineOnly.refetch()} />}
     {noMatches && <div className="nfl-empty">No lines match these filters. Clear the search or choose another team or game.</div>}
     {!noMatches && otherCategory && <section className="nfl-prop-board__other" aria-label={`${marketLabel(otherCategory.market)} recent results`}>

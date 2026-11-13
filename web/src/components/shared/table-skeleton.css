@@ -1,0 +1,66 @@
+/* Sized like the slate window or board panel and its table, row heights passed in, so nothing jumps when rows land. */
+.table-skeleton {
+  position: relative;
+  margin-top: 28px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+.table-skeleton__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.table-skeleton__title { height: 14px; margin-bottom: 12px; }
+.table-skeleton__title .table-skeleton__bar { width: 140px; }
+.table-skeleton__head,
+.table-skeleton__row {
+  display: grid;
+  grid-template-columns: repeat(var(--skeleton-columns), minmax(0, 1fr));
+  gap: 16px;
+  align-items: center;
+}
+.table-skeleton__head { height: 26px; }
+.table-skeleton__head .table-skeleton__bar { width: 48px; height: 8px; }
+.table-skeleton__row { height: var(--skeleton-row); border-top: 1px solid var(--border-subtle); }
+.table-skeleton__bar {
+  display: block;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--skeleton-base) 0%, var(--skeleton-shine) 50%, var(--skeleton-base) 100%) 0 0 / 200% 100%;
+  animation: table-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes table-skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-skeleton__bar { animation: none; }
+}
+/* The tables turn each row into stacked lines at 1100px: a matchup line over a market line. */
+@media (max-width: 1100px) {
+  .table-skeleton__head { display: none; }
+  .table-skeleton__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 10px 12px;
+    height: var(--skeleton-row-stacked);
+  }
+  .table-skeleton__row .table-skeleton__bar { display: none; }
+  /* !important beats the varied inline width, which only suits the desktop columns. */
+  .table-skeleton__row .table-skeleton__bar:nth-child(1) { display: block; width: 22% !important; }
+  .table-skeleton__row .table-skeleton__bar:nth-child(2) { display: block; flex: 0 0 55%; }
+  .table-skeleton__row .table-skeleton__bar:nth-child(3) { display: block; flex: 0 0 70%; }
+  /* Board rows stack into tall cards (line, model, gap, last 5), so they carry two more lines. */
+  .table-skeleton.is-board .table-skeleton__row .table-skeleton__bar:nth-child(4) { display: block; flex: 0 0 45%; }
+  .table-skeleton.is-board .table-skeleton__row .table-skeleton__bar:nth-child(5) { display: block; flex: 0 0 85%; height: 28px; }
+}
+/* Phones drop the window's box, as the loaded slate does. */
+@media (max-width: 767px) {
+  .table-skeleton.is-slate { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: none; }
+}

@@ -5,7 +5,7 @@ import NhlPropBoardMarket from '~/components/nhl/NhlPropBoardMarket'
 import BoardFilterBar from '~/components/shared/BoardFilterBar'
 import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
@@ -39,7 +39,9 @@ export default function NhlPropBoardPage() {
   const filteredCount = filtered.reduce((sum, item) => sum + item.rows.length, 0)
   const ranking = useNhlModelRanking()
   const record = rankingBoardRecord('nhl', ranking.data, recordStatus(ranking))
-  if (board.isLoading) return <LoadingState message="Loading NHL prop board..." />
+  if (board.isLoading) return <div className="page-shell nfl-slate nhl-prop-board"><div className="page-container is-wide">
+    <TableSkeleton label="Loading NHL prop board..." columns={8} rowHeight={58} stackedRowHeight={76} variant="board" />
+  </div></div>
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
   const { date, previousDate, nextDate, games } = board.data
   const selectGoalie = (value: NhlGoalieFilter) => {

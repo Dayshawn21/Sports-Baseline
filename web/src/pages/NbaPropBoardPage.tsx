@@ -5,7 +5,7 @@ import { NbaSlateDigest } from '~/components/nba/NbaSlateDigest'
 import BoardFilterBar from '~/components/shared/BoardFilterBar'
 import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
@@ -38,7 +38,9 @@ export default function NbaPropBoardPage() {
   const digest = useMemo(() => nbaSlateDigest(gaps.data?.items ?? []), [gaps.data])
   const ranking = useNbaModelRanking()
   const record = rankingBoardRecord('nba', ranking.data, recordStatus(ranking))
-  if (board.isLoading) return <LoadingState message="Loading NBA prop board..." />
+  if (board.isLoading) return <div className="page-shell nfl-slate nba-prop-board"><div className="page-container is-wide">
+    <TableSkeleton label="Loading NBA prop board..." columns={9} rowHeight={74} stackedRowHeight={175} variant="board" />
+  </div></div>
   if (board.isError || !board.data) return <ErrorState error={board.error} onRetry={() => void board.refetch()} />
   const { date, previousDate, nextDate } = board.data
   const gameCount = board.data.games.length

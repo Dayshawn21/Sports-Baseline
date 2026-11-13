@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { NBA_GAPS_ORDER, nbaGapLink } from '~/components/nba/NbaSlateDigest'
 import { NbaSlateTable } from '~/components/nba/NbaSlateTable'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
 import SlateFinalsWindow from '~/components/shared/SlateFinalsWindow'
 import SlateLegend from '~/components/shared/SlateLegend'
@@ -72,7 +72,7 @@ export default function NbaSlatePage() {
   // The title stays put while the slate loads or fails, as NFL's and tennis's do.
   if (slate.isLoading || slate.isError || !slate.data) return <div className="page-shell nfl-slate nba-slate"><div className="page-container is-wide">
     <PageHead title="NBA slate" />
-    {slate.isLoading ? <LoadingState message="Loading NBA slate..." /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
+    {slate.isLoading ? <TableSkeleton label="Loading NBA slate..." columns={8} /> : <ErrorState error={slate.error} onRetry={() => void slate.refetch()} />}
   </div></div>
   const { date, previousDate, nextDate } = slate.data
   const datePath = (target: string | null) => target && `/nba?date=${target}`
