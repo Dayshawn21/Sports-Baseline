@@ -232,14 +232,15 @@ describe('nflPropDetail status and flags', () => {
 })
 
 describe('nflProjectionHero', () => {
-  it('shows the panel projection, its gap and the model facts', () => {
+  it('shows the panel projection, its gap and its sample', () => {
     const line = row()
     expect(nflProjectionHero(line, nflPropDetail(line, game(), [], NOW))).toEqual({
       label: 'Projected receiving yards',
       value: '39.1',
       delta: '+25.6 vs 13.5 line',
       reason: null,
-      facts: [{ label: 'Model', value: 'opponent-dvp-tg-blend-usage-snap-v4' }, { label: 'Sample', value: '17 games' }],
+      sample: 'based on last 17 games',
+      facts: [],
     })
   })
 

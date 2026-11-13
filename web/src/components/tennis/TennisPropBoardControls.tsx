@@ -4,15 +4,8 @@ import PlayerPicker from '~/components/shared/PlayerPicker'
 import type { TennisBoardCategory, TennisContextFilter, TennisPropSource } from '~/utils/tennisPropBoard'
 import { TENNIS_BEST_OF_FILTERS, TENNIS_LINE_TYPE_FILTERS, TENNIS_PROP_SOURCES, TENNIS_SURFACE_FILTERS, TENNIS_TOUR_FILTERS, lineTypeApplies, marketTitle } from '~/utils/tennisPropBoard'
 
-export function PropBoardHead({ lines, rateable, markets }: { lines: number, rateable: number, markets: number }) {
-  return <PageHead
-    title="Tennis props"
-    meta="Next 24 hours"
-    stats={<section className="tennis-prop-summary" aria-label="Prop board summary">
-      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Available lines</span><strong className="tennis-prop-stat__value">{lines}</strong><span className="tennis-prop-stat__sub">rated + review</span></div>
-      <div className="tennis-prop-stat"><span className="tennis-prop-stat__label">Rated lines</span><strong className="tennis-prop-stat__value">{rateable}</strong><span className="tennis-prop-stat__sub">ranked only if adopted · {markets} markets</span></div>
-    </section>}
-  />
+export function PropBoardHead() {
+  return <PageHead title="Tennis props" meta="Next 24 hours" />
 }
 
 export function MarketPills({ categories, selected, onSelect }: { categories: TennisBoardCategory[], selected: string, onSelect: (market: string) => void }) {

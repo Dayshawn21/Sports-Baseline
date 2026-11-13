@@ -20,7 +20,6 @@ export interface BoardRecordSegment {
 /** The prop board's record strip; always reference, so it carries no signal color. */
 export interface BoardRecord {
   status: HomeStatus
-  version: string | null
   graded: BoardRecordTally | null
   note: string | null
   liveSlices: number
@@ -38,8 +37,6 @@ export function recordStatus(query: { isError: boolean, isPending: boolean, data
 
 export const NO_GRADED_PICKS = 'No graded picks yet'
 
-/** Mirrors `PROJECTION_VERSION` in `api/app/services/tennis/prop_snapshots.py`; no tennis props response carries it. */
-export const TENNIS_PROP_VERSION = 'props-v3'
 export const TENNIS_CHECK_NOT_RUN = 'Forward check not run yet'
 
 function modelPath(sport: Sport): string {
@@ -55,7 +52,7 @@ function tally(slices: readonly PropRankingSlice[]): BoardRecordTally | null {
 }
 
 function emptyRecord(sport: Sport, status: HomeStatus): BoardRecord {
-  return { status, version: null, graded: null, note: null, liveSlices: 0, adoptedSlices: 0, setAside: [], modelPath: modelPath(sport) }
+  return { status, graded: null, note: null, liveSlices: 0, adoptedSlices: 0, setAside: [], modelPath: modelPath(sport) }
 }
 
 /** NFL, NBA and NHL: a rejected slice is final for its version, so it is counted as dropped, apart from the live W-L. */
@@ -75,7 +72,6 @@ export function rankingBoardRecord(
   }]
   return {
     status: 'ready',
-    version: ranking.modelVersion,
     graded,
     note: graded ? null : NO_GRADED_PICKS,
     liveSlices: live.length,
@@ -92,14 +88,13 @@ export function tennisBoardRecord(tiers: ModelPropTiersResponse | undefined, sta
   const wins = tiers.tiers.reduce((total, tier) => total + tier.hits, 0)
   return {
     status: 'ready',
-    version: TENNIS_PROP_VERSION,
     graded: null,
     note: TENNIS_CHECK_NOT_RUN,
     liveSlices: 0,
     adoptedSlices: 0,
     setAside: [{
       kind: 'retired',
-      label: `Retired: tiers (${tiers.projectionVersion})`,
+      label: 'Retired tiers',
       tally: decided === 0 ? null : { wins, losses: decided - wins, hitRate: wins / decided, baseline: tiers.breakEven },
     }],
     modelPath: modelPath('tennis'),

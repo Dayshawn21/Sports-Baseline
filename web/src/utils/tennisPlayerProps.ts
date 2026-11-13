@@ -1,7 +1,7 @@
 import type { NflHistorySample } from '~/types/nfl'
 import type { MatchPrediction, PlayerMatchLogRow, RecentMatchResult } from '~/types/tennis'
 import { playerSearch } from '~/utils/nflPlayer'
-import type { PlayerProjectionHero } from '~/utils/playerProjection'
+import { sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
 import { isMoneyline, isWinASet, marketKey, marketLabel, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard, type RecentStatBar } from '~/utils/tennisPropCards'
 
@@ -193,17 +193,14 @@ export function tennisMarketHero(rows: readonly TennisBoardLine[]): PlayerProjec
   const card = propCard(main)
   const priced = isMoneyline(main) || isWinASet(main)
   const value = main.statAvg == null ? null : card.projectionText
-  const facts = priced ? [{ label: 'Source', value: card.source }] : [
-    { label: 'Basis', value: main.projectionSource?.replaceAll('_', ' ') ?? 'Rolling player stats' },
-    { label: 'Opp allows', value: opponentAllows(main) },
-    { label: 'Sample', value: main.matchesCount == null ? '--' : `${main.matchesCount} matches` },
-  ]
+  const facts = priced ? [{ label: 'Source', value: card.source }] : [{ label: 'Opp allows', value: opponentAllows(main) }]
   const why = MISSING_PROJECTION[main.projectionStatus ?? ''] ?? 'not available for this line'
   return {
     label: priced ? 'Model win chance' : `Projected ${marketLabel(main.statType).toLowerCase()}`,
     value,
     delta: value !== null && card.gapText !== null ? `${card.gapText} vs ${card.valueText} line` : null,
     reason: value === null ? `No projection: ${why}.` : null,
+    sample: priced ? null : sampleCaption(value, main.matchesCount, 'match', 'matches'),
     facts,
   }
 }

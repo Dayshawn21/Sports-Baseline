@@ -6,7 +6,7 @@ import { nhlMarketLabel, nhlPropLineLabel } from '~/utils/nhlLineOnly'
 import { latestTime } from '~/utils/playerPage'
 import { nhlGapLabel, nhlProjectionNote } from '~/utils/nhlProjection'
 import { nhlContextSource, nhlGoalieLabel } from '~/utils/nhlContext'
-import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
+import { heroDelta, mainLine, sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
 
 export interface NhlFormSample {
   average: number | null
@@ -84,9 +84,16 @@ export function nhlSampleNote(market: Pick<NhlPlayerMarket, 'market'>): string |
   return GOALIE_MARKETS.has(market.market) ? 'Started games only' : null
 }
 
-/** The page head's status line: position, team, the opponent when there is a game, and the date. */
-export function nhlPlayerStatus(player: Pick<NhlPlayerProps, 'position' | 'team' | 'opponent' | 'date'>): string {
-  return [player.position, player.team, player.opponent ? `vs ${player.opponent}` : null, player.date].filter(Boolean).join(' · ')
+const TOI_GAMES = 10
+
+/** The page head's meta line; average TOI only when a time-on-ice line carries the player's recent games. */
+export function nhlPlayerStatus(player: Pick<NhlPlayerProps, 'position' | 'team' | 'opponent' | 'date' | 'markets'>): string {
+  const toi = player.markets.find(market => market.market === 'time_on_ice')?.recent
+    .slice(0, TOI_GAMES).flatMap(game => game.value === null ? [] : [game.value]) ?? []
+  return [
+    player.position, player.team, player.opponent ? `vs ${player.opponent}` : null, player.date,
+    toi.length === 0 ? null : `${(toi.reduce((sum, value) => sum + value, 0) / toi.length).toFixed(1)} min TOI`,
+  ].filter(Boolean).join(' · ')
 }
 
 /** The injury report as the shared context helpers take it; the player endpoint's block has no source field of its own. */
@@ -105,26 +112,9 @@ export function nhlProjectionHero(market: NhlPlayerMarket): PlayerProjectionHero
     value,
     delta: heroDelta(value, line && { line: nhlPropLineLabel(market.market, line.line), gap: line.gap === null ? null : nhlGapLabel(line.gap), oddsType: line.oddsType }),
     reason: value === null ? `No projection: ${note === null ? 'not served for this market today' : note.charAt(0).toLowerCase() + note.slice(1)}.` : note,
-    facts: [
-      { label: 'Model', value: projection.modelVersion },
-      { label: 'Sample', value: `${projection.gamesInSample} games` },
-    ],
+    sample: sampleCaption(value, projection.gamesInSample),
+    facts: [],
   }
-}
-
-const TOI_GAMES = 10
-
-/** The page head's chips: the 20-game sample, average TOI when a time-on-ice line carries the player's recent games, then the market count. */
-export function nhlHeadChips(player: Pick<NhlPlayerProps, 'markets'>): PlayerHeadChip[] {
-  if (player.markets.length === 0) return []
-  const games = Math.max(...player.markets.map(market => market.projection.gamesInSample))
-  const toi = player.markets.find(market => market.market === 'time_on_ice')?.recent
-    .slice(0, TOI_GAMES).flatMap(game => game.value === null ? [] : [game.value]) ?? []
-  return [
-    ...(games > 0 ? [{ value: String(games), label: 'Games in sample' }] : []),
-    ...(toi.length > 0 ? [{ value: (toi.reduce((sum, value) => sum + value, 0) / toi.length).toFixed(1), label: `Avg TOI, last ${toi.length}` }] : []),
-    { value: String(player.markets.length), label: player.markets.length === 1 ? 'Prop market' : 'Prop markets' },
-  ]
 }
 
 /** "BOS goalie: Name, Confirmed" for the other team's starter; null when the report is unavailable or the opponent is unknown. */

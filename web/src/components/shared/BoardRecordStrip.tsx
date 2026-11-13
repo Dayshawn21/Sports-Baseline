@@ -11,7 +11,6 @@ export default function BoardRecordStrip({ record }: { record: BoardRecord }) {
     <div className="board-record__live">
       <b>Record</b>
       {record.status !== 'ready' ? <span>{STATUS_TEXT[record.status]}</span> : <>
-        {record.version && <span className="board-record__version" title={record.version}>{record.version}</span>}
         {record.graded ? <>
           <span className="board-record__num">{tallyText(record.graded)}</span>
           <span>{picks} graded · {record.adoptedSlices} of {record.liveSlices} live slices adopted</span>

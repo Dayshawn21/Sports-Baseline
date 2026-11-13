@@ -110,10 +110,10 @@ h3 {
   .home-card, .home-panel, .home-rec,
   .model-section-empty, .prop-table-panel, .tennis-slate-table,
   .sport-sheet .ant-drawer-content,
-  .nfl-model-card, .nfl-prop-stat, .nfl-slate-window, .nfl-game-card, .nfl-player-card,
+  .nfl-model-card, .nfl-slate-window, .nfl-game-card, .nfl-player-card,
   .nhl-player-history,
   .tennis-match-tile, .tennis-match-card, .tennis-match-empty,
-  .tennis-model-card, .tennis-model-empty, .tennis-prop-stat, .tennis-prop-evidence,
+  .tennis-model-card, .tennis-model-empty, .tennis-prop-evidence,
   .tools-card,
   .ant-card, .ant-modal-content, .ant-popover-inner {
     corner-shape: squircle;

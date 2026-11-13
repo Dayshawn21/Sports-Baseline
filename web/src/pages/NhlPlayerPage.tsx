@@ -6,7 +6,6 @@ import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvide
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { PlayerContextSections } from '~/components/shared/PlayerContextSections'
-import { PlayerHeadChips } from '~/components/shared/PlayerHeadChips'
 import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import { PlayerTag } from '~/components/shared/PlayerTag'
@@ -15,7 +14,7 @@ import type { NhlPlayerProps } from '~/types/nhl'
 import { isNotFound } from '~/utils/httpError'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { parseNhlGameId } from '~/utils/nhlGame'
-import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus, nhlPlayerTabs, nhlSelectedMarket } from '~/utils/nhlPlayer'
+import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus, nhlPlayerTabs, nhlSelectedMarket } from '~/utils/nhlPlayer'
 import { injuryTone } from '~/utils/playerPage'
 import { playerGameLog } from '~/utils/playerGameLog'
 import './nfl-slate.css'
@@ -62,7 +61,7 @@ export default function NhlPlayerPage() {
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
   return <PlayerPageShell sportClass="nhl-player" crumb={<Crumb player={player} />} title={player.name} meta={nhlPlayerStatus(player)}
-    stats={<PlayerHeadChips chips={nhlHeadChips(player)} />} notice={<AvailabilityLine player={player} />}>
+    notice={<AvailabilityLine player={player} />}>
     <NhlPlayerPropTabs key={player.playerId} player={player} />
     {player.markets.length === 0 && <div className="nfl-player-empty">
       {player.name} has no prop lines on {player.date}. <Link to={`/nhl?date=${player.date}`}>Open the NHL slate for that date</Link>.

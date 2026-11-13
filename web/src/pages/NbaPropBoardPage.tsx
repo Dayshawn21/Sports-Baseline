@@ -7,13 +7,13 @@ import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
-import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
 import { useNbaModelRanking, useNbaPropBoard, useNbaSlateGaps } from '~/hooks/useNba'
 import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaBoardMarket, nbaBoardPath, nbaPropBoard } from '~/utils/nbaPropBoard'
 import { nbaSlateDigest, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import { countPart } from '~/utils/slatePeriod'
 import { boardPlayerOptions, filterBoardMarkets, isFiltering, visibleMarket } from '~/utils/propFilters'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
@@ -51,11 +51,8 @@ export default function NbaPropBoardPage() {
     setParams(next)
   }
   return <div className="page-shell nfl-slate nba-prop-board"><div className="page-container is-wide">
-    <PageHead title="NBA props" meta={slateDateLabel(date)}
-      period={{ label: 'Prop board date', previous: nbaBoardPath(previousDate, market), next: nbaBoardPath(nextDate, market) }}
-      stats={<section className="page-head__stats" aria-label="Prop board summary">
-        <StatChip value={gameCount} label="Games" /><StatChip value={rowCount} label="Player-market rows" />
-      </section>} />
+    <PageHead title="NBA props" meta={`${slateDateLabel(date)} · ${countPart(gameCount, 'game')}`}
+      period={{ label: 'Prop board date', previous: nbaBoardPath(previousDate, market), next: nbaBoardPath(nextDate, market) }} />
     <BoardRecordStrip record={record} />
     <NbaSlateDigest items={digest} />
     <nav className="nfl-prop-pills" aria-label="Prop categories">

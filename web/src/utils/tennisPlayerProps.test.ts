@@ -207,10 +207,10 @@ describe('tennisMarketHero', () => {
     opponentStatAvg: 3.1, opponentMatchesCount: 23, matchesCount: 45, projectionStatus: 'ok', ...overrides,
   })
 
-  it('reads the first line: projection, basis, opponent and sample, and the gap to its line', () => {
+  it('reads the first line: projection, opponent and sample, and the gap to its line', () => {
     expect(tennisMarketHero([ace(), ace({ line: '12.5' })])).toEqual({
       label: 'Projected aces', value: '8.2', delta: '-6.3 vs 14.5 line', reason: null,
-      facts: [{ label: 'Basis', value: 'model total' }, { label: 'Opp allows', value: '3.1 avg · 23 matches' }, { label: 'Sample', value: '45 matches' }],
+      sample: 'based on last 45 matches', facts: [{ label: 'Opp allows', value: '3.1 avg · 23 matches' }],
     })
   })
 

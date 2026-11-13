@@ -21,14 +21,14 @@ function ranking(slices: PropRankingSlice[], frozenRows = 100): PropRankingRecor
 describe('rankingBoardRecord', () => {
   it('keeps the loading and error states with no figures and the sport model link', () => {
     expect(rankingBoardRecord('nba', undefined, 'loading')).toEqual({
-      status: 'loading', version: null, graded: null, note: null, liveSlices: 0, adoptedSlices: 0, setAside: [], modelPath: '/nba/model',
+      status: 'loading', graded: null, note: null, liveSlices: 0, adoptedSlices: 0, setAside: [], modelPath: '/nba/model',
     })
     expect(rankingBoardRecord('nfl', undefined, 'error')).toMatchObject({ status: 'error', graded: null, modelPath: '/nfl/model' })
   })
 
   it('reads no graded picks when nothing is frozen or every slice is still empty', () => {
     const empty = rankingBoardRecord('nhl', ranking([], 0), 'ready')
-    expect(empty).toMatchObject({ status: 'ready', version: 'nba-reference-v1', graded: null, note: NO_GRADED_PICKS, liveSlices: 0 })
+    expect(empty).toMatchObject({ status: 'ready', graded: null, note: NO_GRADED_PICKS, liveSlices: 0 })
     const accruing = rankingBoardRecord('nhl', ranking([slice({}), slice({ side: 'under' }), slice({ oddsType: 'goblin' }), slice({ oddsType: 'demon' })]), 'ready')
     expect(accruing).toMatchObject({ graded: null, note: NO_GRADED_PICKS, liveSlices: 4, adoptedSlices: 0, setAside: [], modelPath: '/nhl/model' })
   })
@@ -95,14 +95,14 @@ function tiers(rows: TrackTierRow[]): ModelPropTiersResponse {
 
 describe('tennisBoardRecord', () => {
   it('keeps loading and error with no figures and the tennis model link', () => {
-    expect(tennisBoardRecord(undefined, 'loading')).toMatchObject({ status: 'loading', version: null, setAside: [], modelPath: '/tennis/model' })
+    expect(tennisBoardRecord(undefined, 'loading')).toMatchObject({ status: 'loading', setAside: [], modelPath: '/tennis/model' })
     expect(tennisBoardRecord(undefined, 'error')).toMatchObject({ status: 'error', graded: null })
   })
 
-  it('names the served version with no live record, and an empty retired record without a tally', () => {
+  it('shows no live record, and an empty retired record without a tally', () => {
     expect(tennisBoardRecord(tiers([tier('LOCK', 0, 0), tier('STRONG', 0, 0), tier('LEAN', 0, 0)]), 'ready')).toEqual({
-      status: 'ready', version: 'props-v3', graded: null, note: TENNIS_CHECK_NOT_RUN, liveSlices: 0, adoptedSlices: 0,
-      setAside: [{ kind: 'retired', label: 'Retired: tiers (props-v2)', tally: null }], modelPath: '/tennis/model',
+      status: 'ready', graded: null, note: TENNIS_CHECK_NOT_RUN, liveSlices: 0, adoptedSlices: 0,
+      setAside: [{ kind: 'retired', label: 'Retired tiers', tally: null }], modelPath: '/tennis/model',
     })
   })
 
@@ -110,6 +110,6 @@ describe('tennisBoardRecord', () => {
     // 240 + 109 + 302 = 651 decided; 124 + 51 + 156 = 331 hits.
     const record = tennisBoardRecord(tiers([tier('LOCK', 240, 124), tier('STRONG', 109, 51), tier('LEAN', 302, 156)]), 'ready')
     expect(record.graded).toBeNull()
-    expect(record.setAside).toEqual([{ kind: 'retired', label: 'Retired: tiers (props-v2)', tally: { wins: 331, losses: 320, hitRate: 331 / 651, baseline: 0.5774 } }])
+    expect(record.setAside).toEqual([{ kind: 'retired', label: 'Retired tiers', tally: { wins: 331, losses: 320, hitRate: 331 / 651, baseline: 0.5774 } }])
   })
 })

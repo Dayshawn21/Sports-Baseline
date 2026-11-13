@@ -1,7 +1,6 @@
 /* The NFL model track record (33d). Color comes only from is-positive / is-negative on a server signal. */
 .nfl-model__none { margin-top: var(--space-5); }
 .nfl-model__stats .stat-chip__label { font-size: 11px; }
-.nfl-model__stats .stat-chip:last-child .stat-chip__value { font: 500 16px/1.4 var(--font-mono); }
 
 .nfl-model-heading {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 28px 0 12px;
@@ -91,8 +90,6 @@
 @media (max-width: 600px) {
   .nfl-model-rate { grid-template-columns: 104px minmax(0, 1fr) 96px; gap: 8px; }
   .nfl-model-rate.is-plain { grid-template-columns: minmax(0, 1fr) auto; }
-  .nfl-model .nfl-model__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nfl-model__stats .stat-chip:last-child { grid-column: 1 / -1; }
 }
 
 .nfl-model-volume-loss { margin-top: var(--space-3); }

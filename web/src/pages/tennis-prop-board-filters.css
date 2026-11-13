@@ -1,42 +1,5 @@
 /* Tennis prop board head and controls (build-plan 31c), after prototypes/tennis-props.html. */
 
-.tennis-prop-summary {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.tennis-prop-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 168px;
-  padding: var(--space-3) var(--space-5);
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius);
-}
-
-.tennis-prop-stat__label {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.tennis-prop-stat__value {
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.tennis-prop-stat__sub {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
 .tennis-prop-pills {
   display: flex;
   flex-wrap: wrap;
@@ -157,11 +120,6 @@
 }
 
 @media (max-width: 860px) {
-  .tennis-prop-stat {
-    flex: 1;
-    min-width: 0;
-  }
-
   .tennis-prop-toggle {
     margin-left: 0;
   }

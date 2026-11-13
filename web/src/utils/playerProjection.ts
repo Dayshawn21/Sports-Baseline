@@ -1,3 +1,5 @@
+import { countPart } from '~/utils/slatePeriod'
+
 /** The projection block at the top of a player's market panel, shared by every sport. */
 export interface PlayerProjectionHero {
   label: string
@@ -6,6 +8,8 @@ export interface PlayerProjectionHero {
   /** "-7.7 vs 237.5 line" against the main line; null when there is no number or no line. */
   delta: string | null
   reason: string | null
+  /** "based on last 20 games"; null when there is no projection or no sample to name. */
+  sample: string | null
   facts: { label: string, value: string }[]
 }
 
@@ -22,5 +26,8 @@ export function heroDelta(value: string | null, line: HeroLine | null): string |
   return `${line.gap} vs ${line.line}${kind} line`
 }
 
-/** One stat chip in a player page head. */
-export interface PlayerHeadChip { value: string, label: string }
+/** The projection's sample in plain words; null with no projection or an empty sample. */
+export function sampleCaption(value: string | null, count: number | null | undefined, singular = 'game', plural = `${singular}s`): string | null {
+  if (value === null || count == null || count <= 0) return null
+  return `based on last ${countPart(count, singular, plural)}`
+}

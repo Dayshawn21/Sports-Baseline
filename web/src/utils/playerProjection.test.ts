@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { heroDelta, mainLine } from '~/utils/playerProjection'
+import { heroDelta, mainLine, sampleCaption } from '~/utils/playerProjection'
 
 describe('mainLine', () => {
   it('prefers the standard rung, then an untyped one, else the first', () => {
@@ -17,5 +17,19 @@ describe('heroDelta', () => {
     expect(heroDelta('229.8', { line: '237.5', gap: null, oddsType: 'standard' })).toBeNull()
     expect(heroDelta('229.8', null)).toBeNull()
     expect(heroDelta('1.4', { line: '0.5', gap: '+0.9', oddsType: 'goblin' })).toBe('+0.9 vs 0.5 goblin line')
+  })
+})
+
+describe('sampleCaption', () => {
+  it('names the sample in plain words', () => {
+    expect(sampleCaption('14.6', 20)).toBe('based on last 20 games')
+    expect(sampleCaption('14.6', 1)).toBe('based on last 1 game')
+    expect(sampleCaption('8.2', 45, 'match', 'matches')).toBe('based on last 45 matches')
+  })
+
+  it('is null with no projection or no sample', () => {
+    expect(sampleCaption(null, 20)).toBeNull()
+    expect(sampleCaption('14.6', null)).toBeNull()
+    expect(sampleCaption('14.6', 0)).toBeNull()
   })
 })

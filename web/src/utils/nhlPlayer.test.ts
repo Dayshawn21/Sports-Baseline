@@ -4,7 +4,7 @@ import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, 
 import { nhlContextSource } from '~/utils/nhlContext'
 import { nhlTimeLabel } from '~/utils/nhlGame'
 import {
-  NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlHeadChips, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag,
+  NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag,
   nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
 } from '~/utils/nhlPlayer'
 
@@ -102,11 +102,16 @@ describe('nhlSampleNote', () => {
 
 describe('nhlPlayerStatus', () => {
   it('joins position, team, opponent and date', () => {
-    expect(nhlPlayerStatus({ position: 'C', team: 'LAK', opponent: 'WSH', date: '2026-11-02' })).toBe('C · LAK · vs WSH · 2026-11-02')
+    expect(nhlPlayerStatus({ position: 'C', team: 'LAK', opponent: 'WSH', date: '2026-11-02', markets: [] })).toBe('C · LAK · vs WSH · 2026-11-02')
+  })
+
+  it('adds average TOI from a time-on-ice line, skipping games without a value', () => {
+    const toi = market({ market: 'time_on_ice', recent: [game(30, 20), game(29, null), game(28, 18)] })
+    expect(nhlPlayerStatus({ position: 'D', team: 'LAK', opponent: 'WSH', date: '2026-11-02', markets: [market(), toi] })).toBe('D · LAK · vs WSH · 2026-11-02 · 19.0 min TOI')
   })
 
   it('leaves out what is missing', () => {
-    expect(nhlPlayerStatus({ position: null, team: 'LAK', opponent: null, date: '2026-11-02' })).toBe('LAK · 2026-11-02')
+    expect(nhlPlayerStatus({ position: null, team: 'LAK', opponent: null, date: '2026-11-02', markets: [market()] })).toBe('LAK · 2026-11-02')
   })
 })
 
@@ -157,27 +162,12 @@ describe('nhlProjectionHero', () => {
     }))
     expect(hero).toEqual({
       label: 'Projected shots on goal', value: '2.9', delta: '-0.6 vs 3.5 line', reason: null,
-      facts: [{ label: 'Model', value: 'nhl-reference-v1' }, { label: 'Sample', value: '20 games' }],
+      sample: 'based on last 20 games', facts: [],
     })
   })
 
   it('names the flag when there is no number', () => {
     expect(nhlProjectionHero(market())).toMatchObject({ value: null, delta: null, reason: 'No projection: too few games.' })
-  })
-})
-
-describe('nhlHeadChips', () => {
-  it('shows the largest sample, average TOI from a time-on-ice line, and the market count', () => {
-    const toi = market({ market: 'time_on_ice', recent: [game(30, 20), game(29, null), game(28, 18)] })
-    const sampled = market({ projection: { modelVersion: 'v1', value: 2, gamesInSample: 20, gap: null, pOver: null, flags: [] } })
-    expect(nhlHeadChips({ markets: [toi, sampled] })).toEqual([
-      { value: '20', label: 'Games in sample' }, { value: '19.0', label: 'Avg TOI, last 2' }, { value: '2', label: 'Prop markets' },
-    ])
-  })
-
-  it('drops a zero sample and a missing TOI line', () => {
-    expect(nhlHeadChips({ markets: [market()] })).toEqual([{ value: '1', label: 'Prop market' }])
-    expect(nhlHeadChips({ markets: [] })).toEqual([])
   })
 })
 

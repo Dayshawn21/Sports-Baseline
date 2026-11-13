@@ -684,7 +684,6 @@ export default function ParlaysPage() {
 
         {data && (
           <div className="page-head__stats">
-            <StatChip value={data.totalMatchesScanned} label="Scanned" />
             <StatChip value={data.singlesCount} label="Singles" />
             <StatChip value={data.parlaysCount} label="Parlays" color="var(--text-primary)" />
           </div>

@@ -1,44 +1,7 @@
 /* NFL prop board (build-plan 31d), after prototypes/nfl-prop-board.html. */
 
-.nfl-prop-summary {
-  display: flex;
-  gap: var(--space-3);
-}
-
 .nfl-prop-board__other > .prop-table-panel + .prop-table-panel {
   margin-top: var(--space-4);
-}
-
-.nfl-prop-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 168px;
-  padding: var(--space-3) var(--space-5);
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius);
-}
-
-.nfl-prop-stat__label {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.nfl-prop-stat__value {
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.nfl-prop-stat__sub {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 12px;
 }
 
 .nfl-prop-pills {
@@ -154,38 +117,7 @@
 }
 
 @media (max-width: 860px) {
-  .nfl-prop-stat {
-    flex: 1;
-    min-width: 0;
-  }
-
   .nfl-prop-toggle {
     margin-left: 0;
-  }
-}
-
-/* Three tiles across a phone squeeze each caption to a word per line, so they stack as rows instead. */
-@media (max-width: 560px) {
-  .nfl-prop-summary {
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .nfl-prop-stat {
-    display: grid;
-    grid-template-columns: minmax(64px, auto) 1fr;
-    align-items: center;
-    column-gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .nfl-prop-stat__value {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  .nfl-prop-stat__label,
-  .nfl-prop-stat__sub {
-    grid-column: 2;
   }
 }

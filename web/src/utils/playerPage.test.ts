@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { PAYOUT_TIER_NOTE, injuryTone, latestTime, marketCountLabel, payoutTierNote } from '~/utils/playerPage'
+import { PAYOUT_TIER_NOTE, injuryTone, latestTime, payoutTierNote } from '~/utils/playerPage'
 
-describe('marketCountLabel', () => {
-  it('uses the singular only for one market', () => {
-    expect(marketCountLabel(1)).toBe('1 market')
-    expect(marketCountLabel(2)).toBe('2 markets')
-    expect(marketCountLabel(0)).toBe('0 markets')
-  })
-})
 describe('injuryTone', () => {
   it('is plain with no designation', () => {
     expect(injuryTone(null)).toBe('default')

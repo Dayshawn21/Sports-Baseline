@@ -31,7 +31,7 @@ function Rungs({ market }: { market: NbaPlayerMarket }) {
 /** One market's tab on the player page: the gray reference projection when modelled, recent form, its lines, then the injury and opponent evidence, closed. */
 export function NbaPlayerMarketSection({ id, player, market }: { id: string, player: NbaPlayerProps, market: NbaPlayerMarket }) {
   const modelled = market.kind === 'modelled'
-  const hero = nbaProjectionHero(market, player.modelVersion)
+  const hero = nbaProjectionHero(market)
   return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
       <h3 id={`${id}-title`} className="nfl-player-prop__title">{nbaMarketLabel(market.market)}{!modelled && <small>reference</small>}</h3>

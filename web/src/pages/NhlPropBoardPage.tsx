@@ -7,7 +7,6 @@ import BoardRecordStrip from '~/components/shared/BoardRecordStrip'
 import ErrorState from '~/components/shared/ErrorState'
 import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
-import StatChip from '~/components/shared/StatChip'
 import { useBoardFilters } from '~/hooks/useBoardFilters'
 import { useNhlModelRanking, useNhlPropBoard, useNhlSlate } from '~/hooks/useNhl'
 import { rankingBoardRecord, recordStatus } from '~/utils/boardRecord'
@@ -15,6 +14,7 @@ import { filterStartingGoalie, goalieSides, NHL_GOALIE_FILTERS, parseGoalieFilte
 import { nhlMarketLabel } from '~/utils/nhlLineOnly'
 import { nhlBoardMarket, nhlBoardPath, nhlPropBoard } from '~/utils/nhlPropBoard'
 import { parseSlateDate, slateDateLabel } from '~/utils/nhlSlate'
+import { countPart } from '~/utils/slatePeriod'
 import { boardPlayerOptions, filterBoardMarkets, isFiltering, visibleMarket } from '~/utils/propFilters'
 import './nfl-slate.css'
 import './nfl-prop-board.css'
@@ -58,11 +58,8 @@ export default function NhlPropBoardPage() {
     setParams(next)
   }
   return <div className="page-shell nfl-slate nhl-prop-board"><div className="page-container is-wide">
-    <PageHead title="NHL props" meta={slateDateLabel(date)}
-      period={{ label: 'Prop board date', previous: nhlBoardPath(previousDate, market), next: nhlBoardPath(nextDate, market) }}
-      stats={<section className="page-head__stats" aria-label="Prop board summary">
-        <StatChip value={games.length} label="Games" /><StatChip value={rowCount} label="Player-market rows" />
-      </section>} />
+    <PageHead title="NHL props" meta={`${slateDateLabel(date)} · ${countPart(games.length, 'game')}`}
+      period={{ label: 'Prop board date', previous: nhlBoardPath(previousDate, market), next: nhlBoardPath(nextDate, market) }} />
     <BoardRecordStrip record={record} />
     <nav className="nfl-prop-pills" aria-label="Prop categories">
       {filtered.map(item => <button key={item.market} type="button"

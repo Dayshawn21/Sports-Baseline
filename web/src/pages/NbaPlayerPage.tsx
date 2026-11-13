@@ -7,7 +7,6 @@ import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvide
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { PlayerContextSections } from '~/components/shared/PlayerContextSections'
-import { PlayerHeadChips } from '~/components/shared/PlayerHeadChips'
 import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import { useNbaPlayerProps } from '~/hooks/useNba'
 import type { NbaPlayerProps } from '~/types/nba'
@@ -15,7 +14,7 @@ import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nbaGame'
 import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel } from '~/utils/nbaLineOnly'
-import { NBA_LOG_MARKETS, NBA_SEASON_START_MONTH, nbaHeadChips, nbaPlayerFooter, nbaPlayerStatus } from '~/utils/nbaPlayer'
+import { NBA_LOG_MARKETS, NBA_SEASON_START_MONTH, nbaPlayerFooter, nbaPlayerStatus } from '~/utils/nbaPlayer'
 import { playerGameLog } from '~/utils/playerGameLog'
 import { arrivedFromBoard } from '~/utils/nflPlayer'
 import './nfl-slate.css'
@@ -62,7 +61,7 @@ export default function NbaPlayerPage() {
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
   return <PlayerPageShell sportClass="nba-player" crumb={<Crumb player={player} />} title={player.name} meta={nbaPlayerStatus(player)}
-    stats={<PlayerHeadChips chips={nbaHeadChips(player)} />} notice={<InjuryLine player={player} />}>
+    notice={<InjuryLine player={player} />}>
     <NbaPlayerPropTabs key={player.playerId} player={player} />
     {player.markets.length === 0 && <div className="nfl-player-empty">
       {player.name} has no prop lines on {player.date}. <Link to={`/nba/props?date=${player.date}`}>Open the NBA props board for that date</Link>.

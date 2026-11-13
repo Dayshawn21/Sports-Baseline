@@ -7,11 +7,11 @@ export function PlayerProjectionHero({ hero }: { hero: Hero }) {
     <span className="player-projection__label">{hero.label}</span>
     <div className="player-projection__row">
       <strong className={hero.value === null ? 'is-none' : undefined}>{hero.value ?? 'No projection'}</strong>
-      <dl className="player-projection__facts">
+      {hero.facts.length > 0 && <dl className="player-projection__facts">
         {hero.facts.map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
-      </dl>
+      </dl>}
     </div>
-    {hero.delta && <p className="player-projection__delta">{hero.delta}</p>}
+    {(hero.delta || hero.sample) && <p className="player-projection__delta">{[hero.delta, hero.sample].filter(Boolean).join(' · ')}</p>}
     {hero.reason && <p className="player-projection__reason">{hero.reason}</p>}
   </section>
 }

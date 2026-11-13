@@ -66,8 +66,7 @@ export default function NflPropBoardPage() {
     <TableSkeleton label="Loading NFL prop board..." columns={6} rows={5} rowHeight={157} stackedRowHeight={221} variant="board" />
   </div></div>
   return <div className="page-shell nfl-slate nfl-prop-board"><div className="page-container is-wide">
-    <NflPropBoardHead season={activeSeason} week={activeWeek} games={availableGames.length} categories={categories}
-      lineOnlyCount={otherCategories.reduce((total, item) => total + item.count, 0)}
+    <NflPropBoardHead season={activeSeason} week={activeWeek} games={availableGames.length}
       onSeason={value => update({ season: value, week: activeWeek, games: [], market: null, players: [], team: ALL })}
       onWeek={value => update({ season: activeSeason, week: value, games: [], market: null, players: [], team: ALL })} />
     <BoardRecordStrip record={record} />

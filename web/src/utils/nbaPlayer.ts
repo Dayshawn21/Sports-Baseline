@@ -4,7 +4,7 @@ import { nbaInjuryTime } from '~/utils/nbaInjuries'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { latestTime } from '~/utils/playerPage'
 import { nbaPropFlagText, signedGap } from '~/utils/nbaProps'
-import { heroDelta, mainLine, type PlayerHeadChip, type PlayerProjectionHero } from '~/utils/playerProjection'
+import { heroDelta, mainLine, sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
 
 export type NbaFormWindow = '5' | '10' | 'opp'
 
@@ -68,9 +68,13 @@ export function nbaStandardLine(market: NbaPlayerMarket): number | null {
   return market.lines.find(rung => rung.oddsType === 'standard')?.line ?? null
 }
 
-/** The page head's status line: position, team, the opponent when there is a game, and the date. */
-export function nbaPlayerStatus(player: Pick<NbaPlayerProps, 'position' | 'team' | 'opponent' | 'date'>): string {
-  return [player.position, player.team, player.opponent ? `vs ${player.opponent}` : null, player.date].filter(Boolean).join(' · ')
+/** The page head's meta line; minutes come from the model's sample, the same for every market. */
+export function nbaPlayerStatus(player: Pick<NbaPlayerProps, 'position' | 'team' | 'opponent' | 'date' | 'markets'>): string {
+  const minutes = player.markets.find(market => market.priorMinutes !== null)?.priorMinutes
+  return [
+    player.position, player.team, player.opponent ? `vs ${player.opponent}` : null, player.date,
+    minutes == null ? null : `${minutes.toFixed(1)} min`,
+  ].filter(Boolean).join(' · ')
 }
 
 /** A probability as a whole percent; null stays a dash, never zero. */
@@ -123,32 +127,18 @@ function nbaMissingReason(market: NbaPlayerMarket): string {
 }
 
 /** A modelled market's projection block; null for a line-only market, which has no model to show. */
-export function nbaProjectionHero(market: NbaPlayerMarket, modelVersion: string): PlayerProjectionHero | null {
+export function nbaProjectionHero(market: NbaPlayerMarket): PlayerProjectionHero | null {
   if (market.kind !== 'modelled') return null
   const value = market.projection === null ? null : market.projection.toFixed(1)
   const line = mainLine(market.lines)
-  const facts = [
-    { label: 'Model', value: modelVersion },
-    { label: 'Sample', value: market.gamesInSample === null ? '--' : `${market.gamesInSample} games` },
-  ]
   return {
     label: `Projected ${nbaMarketLabel(market.market).toLowerCase()}`,
     value,
     delta: heroDelta(value, line && { line: String(line.line), gap: line.gap === null ? null : signedGap(line.gap), oddsType: line.oddsType }),
     reason: value === null ? nbaMissingReason(market) : null,
-    facts,
+    sample: sampleCaption(value, market.gamesInSample),
+    facts: [],
   }
-}
-
-/** The page head's chips: the model's sample and minutes (the same for every market), then how many markets have lines. */
-export function nbaHeadChips(player: Pick<NbaPlayerProps, 'markets'>): PlayerHeadChip[] {
-  if (player.markets.length === 0) return []
-  const sampled = player.markets.find(market => market.gamesInSample !== null)
-  return [
-    ...(sampled?.gamesInSample == null ? [] : [{ value: String(sampled.gamesInSample), label: 'Games in sample' }]),
-    ...(sampled?.priorMinutes == null ? [] : [{ value: sampled.priorMinutes.toFixed(1), label: 'Avg minutes' }]),
-    { value: String(player.markets.length), label: player.markets.length === 1 ? 'Prop market' : 'Prop markets' },
-  ]
 }
 
 /** Single-stat markets for the joined game log; combos and double-double repeat these. */

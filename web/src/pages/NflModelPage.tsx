@@ -20,10 +20,9 @@ function Summary({ ranking, clv }: { ranking: NflModelRanking | undefined, clv: 
   const counts = summaryCounts(ranking, clv)
   const verdictLabel = counts.gameLinePasses ? `Game-line verdicts, ${counts.gameLinePasses}` : 'Game-line verdicts'
   return <section className="page-head__stats nfl-model__stats" aria-label="Summary">
-    <StatChip value={counts.slicesAdopted} label="V4 prop slices adopted" />
+    <StatChip value={counts.slicesAdopted} label="Prop slices adopted" />
     <StatChip value={counts.gameLineVerdicts} label={verdictLabel} />
-    <StatChip value={counts.lastSettledWeek} label="V4 last settled week" />
-    <StatChip value={ranking?.modelVersion ?? '\u2014'} label="V4 projection version" />
+    <StatChip value={counts.lastSettledWeek} label="Last settled week" />
   </section>
 }
 
@@ -48,7 +47,7 @@ export default function NflModelPage() {
   return <div className="page-shell nfl-model"><div className="page-container is-wide">
     <PageHead
       title="Track record"
-      meta={season !== null && <>{season} season{gradedAt && <> · v4 last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
+      meta={season !== null && <>{season} season{gradedAt && <> · last graded{fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
       stats={season !== null && <Summary ranking={ranking.data} clv={clv.data} />}
     />
     {season === null

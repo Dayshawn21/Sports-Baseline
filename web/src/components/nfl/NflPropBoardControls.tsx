@@ -4,37 +4,26 @@ import GamePicker from '~/components/shared/GamePicker'
 import PlayerPicker from '~/components/shared/PlayerPicker'
 import type { NflPropGame } from '~/types/nfl'
 import { NFL_SEASON_OPTIONS, NFL_WEEK_OPTIONS, formatKickoffTime, marketLabel } from '~/utils/nflLabels'
-import type { NflBoardCategory } from '~/utils/nflPropBoard'
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { countPart } from '~/utils/slatePeriod'
 import { ALL } from '~/utils/propFilters'
 
 interface HeadProps {
   season: number
   week: number
   games: number
-  categories: NflBoardCategory[]
-  lineOnlyCount?: number
   onSeason: (season: number) => void
   onWeek: (week: number) => void
 }
 
-export function NflPropBoardHead({ season, week, games, categories, lineOnlyCount = 0, onSeason, onWeek }: HeadProps) {
-  const comparisons = categories.filter(category => !isTargetsReference(category.market))
-  const rateable = comparisons.reduce((total, category) => total + category.rateable.length, 0)
-  const references = categories.filter(category => isTargetsReference(category.market)).reduce((total, category) => total + category.rateable.length, 0)
+export function NflPropBoardHead({ season, week, games, onSeason, onWeek }: HeadProps) {
   return <PageHead
     title="NFL props"
-    meta={`${season} · Week ${week}`}
+    meta={`${season} · Week ${week} · ${countPart(games, 'game')}`}
     actions={<>
       <Select aria-label="Season" value={season} onChange={onSeason} options={NFL_SEASON_OPTIONS} />
       <Select aria-label="Week" value={week} onChange={onWeek} options={NFL_WEEK_OPTIONS} />
     </>}
-    stats={<section className="nfl-prop-summary" aria-label="Prop board summary">
-      <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Games</span><strong className="nfl-prop-stat__value">{games}</strong><span className="nfl-prop-stat__sub">upcoming with lines</span></div>
-      <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Rateable</span><strong className="nfl-prop-stat__value">{rateable}</strong><span className="nfl-prop-stat__sub">across {comparisons.length} markets{references > 0 ? ` · ${references} reference lines` : ''}</span></div>
-      <div className="nfl-prop-stat"><span className="nfl-prop-stat__label">Other markets</span><strong className="nfl-prop-stat__value">{lineOnlyCount}</strong><span className="nfl-prop-stat__sub">recent results only</span></div>
-    </section>}
   />
 }
 

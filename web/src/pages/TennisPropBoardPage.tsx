@@ -34,8 +34,6 @@ export default function TennisPropBoardPage() {
     ...winASetBoardRows(bestPicks.data?.matches ?? []),
   ], [prizePicks.data, draftKings.data, predictions.data, bestPicks.data])
   const categories = useMemo(() => buildTennisPropBoard(props, predictions.data?.matches ?? [], source, effectiveFilter), [props, predictions.data, source, effectiveFilter])
-  const visibleLineCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length + category.other.length, 0), [categories])
-  const rateableCount = useMemo(() => categories.reduce((total, category) => total + category.rateable.length, 0), [categories])
   const players = useMemo(() => parsePlayerFilter(params), [params])
   const filtered = useMemo(() => filterTennisBoardCategories(categories, players), [categories, players])
   const playerNames = useMemo(() => tennisPlayerOptions(categories, players), [categories, players])
@@ -57,7 +55,7 @@ export default function TennisPropBoardPage() {
   if (allFailed) return <ErrorState error={prizePicks.error ?? draftKings.error} onRetry={() => { void prizePicks.refetch(); void draftKings.refetch() }} />
 
   return <div className="page-shell tennis-prop-board"><div className="page-container is-wide">
-    <PropBoardHead lines={visibleLineCount} rateable={rateableCount} markets={categories.length} />
+    <PropBoardHead />
     <BoardRecordStrip record={record} />
     {(prizePicks.isError || draftKings.isError || predictions.isError || bestPicks.isError) && <div className="tennis-prop-notice" role="status">Some data could not be loaded. Available current lines are still shown.</div>}
     {category && <MarketPills categories={filtered} selected={category.market} onSelect={setMarket} />}

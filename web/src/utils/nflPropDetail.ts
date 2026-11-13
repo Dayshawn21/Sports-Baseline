@@ -10,7 +10,7 @@ import { formDateText, formHistoryDate } from '~/utils/nflFormWindow'
 import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
-import type { PlayerProjectionHero } from '~/utils/playerProjection'
+import { sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
 
 export interface NflDetailRow {
   label: string
@@ -184,9 +184,7 @@ export function nflProjectionHero(row: NflSlateLine, detail: Pick<NflPropDetailM
     value,
     delta: value === null || row.line === null ? null : detail.deltaText,
     reason: value === null ? 'No projection for this market this week.' : null,
-    facts: [
-      { label: 'Model', value: row.projectionModelVersion },
-      { label: 'Sample', value: `${row.gamesInSample} games` },
-    ],
+    sample: sampleCaption(value, row.gamesInSample),
+    facts: [],
   }
 }

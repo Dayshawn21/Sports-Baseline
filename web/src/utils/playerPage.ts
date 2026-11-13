@@ -1,7 +1,3 @@
-export function marketCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'market' : 'markets'}`
-}
-
 export const PAYOUT_TIER_NOTE = 'Goblin and demon are PrizePicks payout tiers: a goblin line sits below the standard line and pays less, a demon line sits above it and pays more. Both take the over only. The tier is not a signal.'
 
 /** The goblin and demon explainer when any of a lines table's type labels is one, else null. */

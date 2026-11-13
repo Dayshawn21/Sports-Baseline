@@ -22,7 +22,7 @@ function ranking(verdicts: PropRankingSlice['verdict'][], lastSettledWeek: numbe
 describe('propModelSummary', () => {
   it('shows a placeholder for every figure until the check loads', () => {
     expect(propModelSummary(undefined)).toEqual({
-      slicesAdopted: '—', lastSettledWeek: '—', projectionVersion: '—', overProbabilityVersion: '—',
+      slicesAdopted: '—', lastSettledWeek: '—',
     })
   })
 
@@ -31,7 +31,6 @@ describe('propModelSummary', () => {
 
     expect(summary).toEqual({
       slicesAdopted: '0 of 4', lastSettledWeek: 'None yet',
-      projectionVersion: 'nba-reference-v1', overProbabilityVersion: 'nba-pover-v1',
     })
   })
 

@@ -7,7 +7,6 @@ import { fmtDateCT, fmtTimeCT } from '~/utils/format'
 import { isNotFound } from '~/utils/httpError'
 import { propModelSummary } from '~/utils/propModel'
 import './nfl-model.css'
-import './nba-model.css'
 
 export default function NhlModelPage() {
   const ranking = useNhlModelRanking()
@@ -20,11 +19,9 @@ export default function NhlModelPage() {
     <PageHead
       title="Track record"
       meta={season !== undefined && <>{season} season{gradedAt && <> · last graded {fmtDateCT(gradedAt)} {fmtTimeCT(gradedAt)}</>}</>}
-      stats={!notFound && <section className="page-head__stats nfl-model__stats nba-model__stats" aria-label="Summary">
+      stats={!notFound && <section className="page-head__stats nfl-model__stats" aria-label="Summary">
         <StatChip value={summary.slicesAdopted} label="Prop slices adopted" />
         <StatChip value={summary.lastSettledWeek} label="Last settled week" />
-        <StatChip value={summary.projectionVersion} label="Projection version" />
-        <StatChip value={summary.overProbabilityVersion} label="P(over) version" />
       </section>}
     />
     {notFound
