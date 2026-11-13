@@ -339,3 +339,59 @@ version and forward validation.
 - CRLF registry CSVs were found only in `.claude/worktrees/sports-drawer-pages-747c69` (re-checked out to LF; its 59 registry tests pass), `.claude/worktrees/55-home-page` and the leftover `fix-f26-ask-spend-cap-ae1ff5` worktree. The main checkout and the other worktrees were already LF.
 - The last two are on commits without the `eol=lf` rule (`2ce4cf00`, `c0728da0`). Their `tennis_elo_identities.csv` differs from `master`, so a merge rewrites it as LF, but their `tennis_elo_local_overrides.csv` is byte-identical to `master` in git and still CRLF on disk (11 CR bytes each), so a merge leaves it CRLF: the exact case this finding describes.
 - To close: after either checkout next merges `master`, delete its `tennis_elo_local_overrides.csv` and run `git checkout -- api/app/ingest/data/tennis_elo_local_overrides.csv`, or remove the leftover worktree. Not done here, since both checkouts belong to other work.
+
+### F-43 [P2] fixed - Prop board caches key the default date and the same explicit date separately, so returning to today rebuilds the board
+
+**File:** api/app/services/nba/prop_board_cache.py:41; api/app/services/nhl/prop_board_cache.py:38
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- `_BOARDS.get((requested, today), ...)` keys on the raw request, so `/nba/props` and `/nba/props?date=2026-11-13` are two builds of one body. Measured on production: default warm at 0.18 s while explicit today took 1.14 s (NBA) and 0.52 s (NHL) on first hit.
+- The previous/next date links always carry an explicit date, so stepping away and back to today pays a cold build. The web query keys (`['nba', 'prop-board', null]` vs the date) also miss each other, so the client refetches too.
+**Suggested fix:** resolve the requested date to the board date first (one `get_game_dates` read, or a short memo of it) and key the cache on the resolved date. Optionally seed the dated web query key from the default response.
+**Resolution:** Fixed on `fix/prop-board-cache` (2026-11-13): both board caches key on the resolved date, and the default date is memoized per `today` for 5 minutes. Unit-tested; not yet re-reviewed or measured on production.
+
+### F-44 [P2] fixed - Every prop board date is rebuilt on request each 5 minutes, and the first visitor pays 1-2 s
+
+**File:** api/app/services/nba/prop_board_cache.py:19; api/app/services/nhl/prop_board_cache.py:18; api/app/services/serial_build_cache.py:46
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- `SerialBuildCache` drops an entry at its 5-minute TTL and rebuilds inside the request. Uncached dates on production: NBA 0.99 s and 1.95 s TTFB, NHL 1.03 s, against 0.15-0.3 s warm. The NBA build runs eight sequential reads (`prop_board.py:23-36`).
+- Builds share one lock, so a cold NBA board also queues any other date's request behind it. This is the most likely source of the "a little slow" loads, since it hits whoever arrives first after each expiry.
+**Suggested fix:** serve the stale body while one background rebuild runs (stale-while-revalidate) in `SerialBuildCache`, so only a process's very first request waits. A longer TTL is a cheaper partial fix, since lines ingest on a schedule rather than continuously.
+**Resolution:** Fixed on `fix/prop-board-cache` (2026-11-13): `SerialBuildCache` gained an opt-in `max_stale_seconds`. Both board caches serve an expired body for up to 30 minutes while one background rebuild runs on its own session. A process's first build, and any after 30 idle minutes, still runs inline. Unit-tested; not yet re-reviewed or measured on production.
+
+### F-45 [P2] open - The board request waits for the lazy page chunk before it starts
+
+**File:** web/src/routes/sportPages.tsx:19; web/src/routes/sportPages.tsx:23; web/src/pages/NbaPropBoardPage.tsx:25
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- The query starts only when the lazily imported page mounts. On a direct load (desktop, headless Chromium) the NBA chunk set (54 files) finished at 230-400 ms but `/nba/props` started at 455-580 ms; NHL started at 420-580 ms. The API answers in about 100 ms, so the chunk wait is the larger share.
+- Phones pay this on slower parse and network.
+**Suggested fix:** start the board query beside the chunk import, for example a `prefetchQuery(nbaPropBoardQuery(date))` fired from the route or the nav link (NHL already exposes `nhlPropBoardQuery`; NBA needs the same `queryOptions` factory).
+**Resolution:**
+
+### F-46 [P2] open - The NBA board ships 3 MB of JSON and costs a 200-260 ms main-thread task to show one market
+
+**File:** api/app/services/nba/prop_board.py:40; web/src/pages/NbaPropBoardPage.tsx:26
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- The 2026-11-13 body is 3.0 MB raw (124 KB gzipped) for 4,432 lines, though one market (about 95 rows) renders. Each line repeats its player's `injury` object (about 360 B, roughly 1.6 MB of the body) across every market.
+- After the response lands, a 207-259 ms long task runs on a fast desktop: grouping and filtering every market, React render, about 75 ms of forced layout (first read is rc-select's `scrollWidth` in `BoardFilterBar`) and 30-45 ms of GC. A mid-range phone runs several times slower. The NHL board (190 KB raw) costs 60-80 ms and is fine.
+**Suggested fix:** send injuries once per player (or per game, as `injuryReport` already is) and join them on the client, as `nhlJoinProjections` does for NHL projections. That roughly halves the body, parse and GC. Per-market fetching is the larger option if the task stays heavy on phones.
+**Resolution:**
+
+### F-47 [P3] open - The NBA slate digest waits for the board, then re-renders the page
+
+**File:** web/src/pages/NbaPropBoardPage.tsx:37
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:** `useNbaSlateGaps(board.data?.date ?? null)` only starts once the board has rendered (measured start at 907-943 ms, done about 65 ms later), and its arrival triggers a second 57-84 ms task that re-renders the whole page including the table. NHL's goalie slate query waits the same way but is needed for its filter.
+**Suggested fix:** when the URL carries a date, start the gaps query with it at mount; memoize the market table so the digest update does not re-render it.
+**Resolution:**
+
+### F-48 [P3] unverified - The API re-gzips the 3 MB NBA board on every request
+
+**File:** api/app/main.py:102; api/app/services/nba/prop_board_cache.py:27
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:** the cache holds uncompressed bytes and `GZipMiddleware` compresses each response, on the 0.5-CPU Render plan. Warm TTFB was 0.15-0.37 s against about 0.13 s for the tiny ranking route, so some of that gap may be compression. Not profiled on the server.
+**Suggested fix:** time a warm request with and without `Accept-Encoding: gzip` first. If compression is the gap, cache the gzipped body beside the raw one. F-46 shrinks this either way.
+**Resolution:**

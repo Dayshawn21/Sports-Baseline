@@ -1,5 +1,5 @@
-"""The NBA board cache shares one build per date, keys the default date by
-today, and serves the bytes the response model would have sent."""
+"""The NBA board cache shares one build per resolved date, serves an expired
+board while rebuilding it, and serves the bytes the response model would have sent."""
 import asyncio
 import datetime as dt
 
@@ -7,6 +7,7 @@ import pytest
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 
+from app.repositories import nba as nba_repo
 from app.schemas.nba import NbaPropBoardResponse
 from app.services.nba import prop_board_cache
 from app.services.nba.prop_board import prop_board_response
@@ -32,10 +33,10 @@ def _board(date: dt.date) -> NbaPropBoardResponse:
 @pytest.fixture
 def clock(monkeypatch: pytest.MonkeyPatch) -> Clock:
     clock = Clock()
-    cache: SerialBuildCache[bytes] = SerialBuildCache(
-        prop_board_cache.CACHE_TTL_SECONDS, prop_board_cache.FAILURE_TTL_SECONDS, prop_board_cache.MAX_ENTRIES, clock,
-    )
-    monkeypatch.setattr(prop_board_cache, "_BOARDS", cache)
+    ttls = (prop_board_cache.CACHE_TTL_SECONDS, prop_board_cache.FAILURE_TTL_SECONDS, prop_board_cache.MAX_ENTRIES, clock)
+    boards: SerialBuildCache[bytes] = SerialBuildCache(*ttls, max_stale_seconds=prop_board_cache.MAX_STALE_SECONDS)
+    monkeypatch.setattr(prop_board_cache, "_BOARDS", boards)
+    monkeypatch.setattr(prop_board_cache, "_DEFAULT_DATES", SerialBuildCache[dt.date](*ttls))
     return clock
 
 
@@ -43,7 +44,8 @@ def clock(monkeypatch: pytest.MonkeyPatch) -> Clock:
 def builds(monkeypatch: pytest.MonkeyPatch) -> list[tuple[dt.date | None, dt.date]]:
     builds: list[tuple[dt.date | None, dt.date]] = []
 
-    async def build_prop_board(_db, requested, today):
+    async def build_prop_board(session, requested, today):
+        assert isinstance(session, FakeSession)
         builds.append((requested, today))
         await asyncio.sleep(0.01)
         if requested == dt.date(1999, 1, 1):
@@ -51,36 +53,68 @@ def builds(monkeypatch: pytest.MonkeyPatch) -> list[tuple[dt.date | None, dt.dat
         return _board(requested or today)
 
     monkeypatch.setattr(prop_board_cache, "build_prop_board", build_prop_board)
+    monkeypatch.setattr(prop_board_cache, "SessionLocal", FakeSession)
     return builds
+
+
+class FakeSession:
+    async def __aenter__(self) -> "FakeSession":
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        return None
+
+
+@pytest.fixture
+def date_reads(monkeypatch: pytest.MonkeyPatch) -> list[None]:
+    """Game dates are TODAY and TOMORROW; a read through BROKEN_DB fails."""
+    reads: list[None] = []
+
+    async def get_game_dates(db):
+        reads.append(None)
+        if db is BROKEN_DB:
+            raise RuntimeError("read failed")
+        return [TODAY, TOMORROW]
+
+    monkeypatch.setattr(nba_repo, "get_game_dates", get_game_dates)
+    return reads
+
+
+BROKEN_DB = object()
 
 
 def _get(requested: dt.date | None, today: dt.date = TODAY):
     return prop_board_cache.cached_prop_board_json(None, requested, today)
 
 
-@pytest.mark.usefixtures("clock")
+@pytest.mark.usefixtures("clock", "date_reads")
 class TestCachedPropBoard:
     def test_a_burst_for_one_date_builds_once(self, builds):
         async def burst():
-            return await asyncio.gather(*(_get(DATE) for _ in range(10)))
+            return await asyncio.gather(*(_get(TODAY) for _ in range(10)))
 
         bodies = asyncio.run(burst())
-        assert builds == [(DATE, TODAY)]
-        assert len(set(bodies)) == 1 and bodies[0] == prop_board_cache.board_json(_board(DATE))
+        assert builds == [(TODAY, TODAY)]
+        assert len(set(bodies)) == 1 and bodies[0] == prop_board_cache.board_json(_board(TODAY))
 
-    def test_explicit_dates_and_the_default_are_separate_keys(self, builds):
-        for requested, today in [(DATE, TODAY), (None, TODAY), (DATE, TODAY), (None, TODAY), (None, TOMORROW)]:
+    def test_the_default_and_its_explicit_date_share_one_build(self, builds, date_reads):
+        for requested, today in [(TODAY, TODAY), (None, TODAY), (None, TODAY), (TODAY, TODAY), (None, TOMORROW)]:
             asyncio.run(_get(requested, today))
-        assert builds == [(DATE, TODAY), (None, TODAY), (None, TOMORROW)]
+        assert builds == [(TODAY, TODAY), (TOMORROW, TOMORROW)]
+        assert len(date_reads) == 2
 
-    def test_a_board_is_rebuilt_only_after_it_expires(self, builds, clock):
-        asyncio.run(_get(DATE))
-        clock.now = prop_board_cache.CACHE_TTL_SECONDS - 1
-        asyncio.run(_get(DATE))
-        assert len(builds) == 1
-        clock.now = prop_board_cache.CACHE_TTL_SECONDS + 1
-        asyncio.run(_get(DATE))
-        assert len(builds) == 2
+    def test_an_expired_board_is_served_while_one_rebuild_runs(self, builds, clock):
+        async def scenario():
+            first = await _get(TODAY)
+            clock.now = prop_board_cache.CACHE_TTL_SECONDS - 1
+            await _get(TODAY)
+            assert len(builds) == 1
+            clock.now = prop_board_cache.CACHE_TTL_SECONDS + 1
+            assert await asyncio.gather(_get(TODAY), _get(TODAY)) == [first, first]
+            await asyncio.sleep(0.05)
+            assert len(builds) == 2
+
+        asyncio.run(scenario())
 
     def test_a_failed_build_returns_none_then_retries(self, builds, clock):
         failing = dt.date(1999, 1, 1)
@@ -90,6 +124,10 @@ class TestCachedPropBoard:
         clock.now = prop_board_cache.FAILURE_TTL_SECONDS + 1
         assert asyncio.run(_get(failing)) is None
         assert len(builds) == 2
+
+    def test_a_failed_date_read_returns_none_without_building(self, builds):
+        assert asyncio.run(prop_board_cache.cached_prop_board_json(BROKEN_DB, None, TODAY)) is None
+        assert builds == []
 
 
 def test_cached_bytes_match_what_the_response_model_sent():
