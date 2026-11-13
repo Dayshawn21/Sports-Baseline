@@ -117,6 +117,26 @@ h3 {
 }
 
 /*
+ * Page crossfade between sport pages (useViewTransitionLocation); short so a click still feels instant.
+ * The group is included because the transition overlay takes clicks until its longest animation ends.
+ */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease;
+}
+
+/* The hook already skips the API under reduced motion; this covers a setting changed mid-fade. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/*
  * Touch hit areas: a transparent ::before grows small controls to 44px without changing how they look.
  * The market pills are left out: their wrapped rows sit flush, so a taller hit area would steal a neighbour's tap.
  */

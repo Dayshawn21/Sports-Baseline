@@ -9,6 +9,7 @@ import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useLastSportView } from '~/hooks/useLastSportView'
 import { useShellShortcuts } from '~/hooks/useShellShortcuts'
+import { useViewTransitionLocation } from '~/hooks/useViewTransitionLocation'
 import { VIEW_SHORTCUT } from '~/utils/shellShortcuts'
 import { phoneMenuItems, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
@@ -216,6 +217,25 @@ function Nav() {
   )
 }
 
+function AppRoutes() {
+  const location = useViewTransitionLocation()
+  return (
+    <Routes location={location}>
+      <Route path="/" element={<HomePage />} />
+      {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
+      <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
+      <Route path="/props" element={<Navigate to="/" replace />} />
+      <Route path="/live-odds" element={<Navigate to="/" replace />} />
+      <Route path="/bets" element={<Navigate to="/" replace />} />
+      <Route path="/parlays" element={<ParlaysPage />} />
+      <Route path="/tools" element={<ToolsPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  )
+}
+
 export default function App() {
   const reducedMotion = usePrefersReducedMotion()
   return (
@@ -227,19 +247,7 @@ export default function App() {
               <Nav />
               <Content style={{ background: 'transparent' }}>
                 <Suspense fallback={<LoadingState />}>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
-                    <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
-                    <Route path="/props" element={<Navigate to="/" replace />} />
-                    <Route path="/live-odds" element={<Navigate to="/" replace />} />
-                    <Route path="/bets" element={<Navigate to="/" replace />} />
-                    <Route path="/parlays" element={<ParlaysPage />} />
-                    <Route path="/tools" element={<ToolsPage />} />
-                    <Route path="/how-it-works" element={<HowItWorksPage />} />
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Routes>
+                  <AppRoutes />
                 </Suspense>
               </Content>
             </Layout>
