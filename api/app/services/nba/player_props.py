@@ -12,10 +12,12 @@ from typing import cast
 from app.core.nba_line_only import line_only_value
 from app.core.nba_names import espn_team_code
 from app.core.nba_projection_backtest import NBA_PROJECTION_MODEL_VERSION, NbaHistoryRow
+from app.core.nba_teammate_split import classify_games
 from app.nba.markets import NBA_MARKETS, nba_market
 from app.schemas.nba import (
     NbaInjuryReportSchema, NbaLineOnlyLineSchema, NbaPlayerGameRefSchema, NbaPlayerGameSchema, NbaPlayerMarketSchema,
-    NbaPlayerPropsResponse, NbaPlayerRungSchema, NbaPropLineSchema, NbaTeamStatsContextSchema,
+    NbaInjurySchema, NbaPlayerPropsResponse, NbaPlayerRungSchema, NbaPropLineSchema, NbaSplitGameSchema,
+    NbaSplitTeammateSchema, NbaTeammateSplitSchema, NbaTeamStatsContextSchema,
 )
 from app.services.nba.injuries import injury_index
 from app.services.nba.line_only_props import line_only_props
@@ -127,3 +129,36 @@ def _opponent_games(market: str, rows: Sequence[Mapping[str, object]]) -> list[N
         )
         for row in rows[:OPPONENT_GAMES_LIMIT]
     ]
+
+
+def teammate_split(
+    season: int,
+    team: str,
+    markets: Sequence[str],
+    teammates: Sequence[NbaInjurySchema],
+    stale: bool,
+    game_rows: Sequence[Mapping[str, object]],
+    teammate_rows: Mapping[int, tuple[dt.date, set[int]]],
+) -> NbaTeammateSplitSchema:
+    """The player's season games once, with each listed-out teammate's side of every game."""
+    games = [
+        NbaSplitGameSchema(
+            game_id=cast(int, row["game_id"]), game_date=cast(dt.date, row["game_date"]),
+            opponent=cast(str | None, row["opponent"]),
+            values={
+                market: line_only_value(nba_market(market), cast(Mapping[str, int | bool | None], row))
+                for market in markets
+            },
+        )
+        for row in game_rows
+    ]
+    sided = []
+    for entry in teammates:
+        player_id = cast(int, entry.player_id)
+        first_date, played = teammate_rows.get(player_id, (None, set()))
+        sided.append(NbaSplitTeammateSchema(
+            player_id=player_id, espn_athlete_id=entry.espn_athlete_id, player_name=entry.player_name,
+            status=entry.status, stale=stale, first_team_game_date=first_date,
+            sides=classify_games(games, first_date, played),
+        ))
+    return NbaTeammateSplitSchema(season=season, team=team, games=games, teammates=sided)

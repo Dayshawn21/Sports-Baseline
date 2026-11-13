@@ -18,3 +18,49 @@
     min-height: 44px;
   }
 }
+
+/* Owner report 2026-11-12: on phones the multi-select label sat high and in a larger size than the single selects beside it. */
+@media (max-width: 768px) {
+  .player-picker .ant-select-selector,
+  .game-picker .ant-select-selector {
+    min-height: 44px;
+  }
+
+  .player-picker .ant-select-selection-wrap,
+  .game-picker .ant-select-selection-wrap {
+    align-self: center;
+  }
+
+  .player-picker .ant-select-selection-placeholder,
+  .game-picker .ant-select-selection-placeholder,
+  .player-picker .ant-select-selection-item,
+  .game-picker .ant-select-selection-item,
+  .nfl-prop-filter-bar .ant-select-single .ant-select-selection-item,
+  .nfl-prop-filter-bar .ant-select-single .ant-select-selection-placeholder {
+    font-size: 14px;
+  }
+}
+
+/* Ant Design shows the clear control only on hover, which a touch screen never has. */
+@media (hover: none) {
+  .ant-select-allow-clear .ant-select-clear {
+    inset-inline-end: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    font-size: 16px;
+    background: transparent;
+    opacity: 1;
+  }
+
+  .ant-select-allow-clear:has(.ant-select-clear) .ant-select-arrow {
+    visibility: hidden;
+  }
+
+  .ant-select-allow-clear:has(.ant-select-clear) .ant-select-selector {
+    padding-inline-end: 44px;
+  }
+}

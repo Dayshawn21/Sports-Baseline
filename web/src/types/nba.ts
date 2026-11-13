@@ -285,4 +285,35 @@ export interface NbaPlayerProps {
   injuryReport: NbaInjuryReport
   teamStats: NbaTeamStatsContext | null
   markets: NbaPlayerMarket[]
+  teammateSplit: NbaTeammateSplit | null
+}
+
+export type NbaSplitSide = 'with' | 'without' | 'before'
+
+export interface NbaSplitGame {
+  gameId: number
+  gameDate: string
+  opponent: string | null
+  /** Keyed by the response's market names; null when a stat the market needs was not loaded. */
+  values: Record<string, number | null>
+}
+
+export interface NbaSplitTeammate {
+  playerId: number
+  espnAthleteId: string
+  playerName: string
+  status: string
+  stale: boolean
+  /** Null when he has no box-score row for the team, so no game can be judged. */
+  firstTeamGameDate: string | null
+  /** One per game in `NbaTeammateSplit.games`. */
+  sides: NbaSplitSide[]
+}
+
+/** This season's played games split by teammates listed out tonight: reference only (69). */
+export interface NbaTeammateSplit {
+  season: number
+  team: string
+  games: NbaSplitGame[]
+  teammates: NbaSplitTeammate[]
 }

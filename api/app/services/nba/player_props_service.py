@@ -7,12 +7,13 @@ from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nba_teammate_split import split_teammates
 from app.core.slate_dates import slate_date
 from app.repositories import nba as nba_repo
-from app.schemas.nba import NbaPlayerPropsResponse
+from app.schemas.nba import NbaInjuryReportSchema, NbaPlayerPropsResponse, NbaTeammateSplitSchema
 from app.services.nba.injuries import load_injury_reports
 from app.services.nba.player_props import (
-    OPPONENT_GAMES_LIMIT, RECENT_GAMES_LIMIT, opponent_code, player_props_response, resolve_team,
+    OPPONENT_GAMES_LIMIT, RECENT_GAMES_LIMIT, opponent_code, player_props_response, resolve_team, teammate_split,
 )
 from app.services.nba.team_stats import load_team_stats, team_stats_schema
 
@@ -42,7 +43,27 @@ async def build_player_props(
     )
     report = (await load_injury_reports(db, [game], as_of))[cast(int, game["game_id"])]
     context = team_stats_schema((await load_team_stats(db, [game]))[cast(int, game["game_id"])])
-    return player_props_response(player, date, game, *lines, prior, recent, opponent_rows, report, context)
+    response = player_props_response(player, date, game, *lines, prior, recent, opponent_rows, report, context)
+    response.teammate_split = await _teammate_split(db, response, cast(int, game["season"]), report)
+    return response
+
+
+async def _teammate_split(
+    db: AsyncSession, response: NbaPlayerPropsResponse, season: int, report: NbaInjuryReportSchema,
+) -> NbaTeammateSplitSchema | None:
+    """None unless someone on the player's team is listed out; otherwise two queries bounded by one season."""
+    team = response.team
+    if team is None or response.opponent is None:
+        return None
+    teammates = split_teammates(report.injuries, team, response.player_id)
+    if not teammates:
+        return None
+    games = await nba_repo.get_season_games_for_team(db, response.player_id, team, season, response.date)
+    teammate_ids = [cast(int, entry.player_id) for entry in teammates]
+    game_ids = [cast(int, row["game_id"]) for row in games]
+    rows = await nba_repo.get_teammate_rows(db, teammate_ids, team, game_ids, response.date)
+    markets = [market.market for market in response.markets]
+    return teammate_split(season, team, markets, teammates, report.freshness == "stale", games, rows)
 
 
 def _without_game(line: Mapping[str, object]) -> dict[str, object]:

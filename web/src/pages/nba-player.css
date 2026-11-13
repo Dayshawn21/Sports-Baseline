@@ -8,3 +8,16 @@
 .nba-player-yesno { margin: 0; padding: 0; list-style: none; }
 .nba-player-yesno li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font: 400 12px var(--font-mono); }
 .nba-player-yesno b { color: var(--text-primary); font-weight: 600; }
+
+.nba-split .nfl-prop-detail__section-head h3 { flex: none; white-space: nowrap; }
+.nba-split .nba-split-picker.ant-select { width: 280px; max-width: 100%; margin-bottom: 10px; }
+.nba-split-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 8px; }
+.nba-split-sides div { padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; }
+.nba-split-sides dt { color: var(--text-muted); font: 500 11px var(--font-body); text-transform: uppercase; letter-spacing: 0.04em; }
+.nba-split-sides dd { margin: 4px 0 0; color: var(--text-primary); font: 500 13px var(--font-mono); }
+.nba-split-note { margin: 6px 0; color: var(--text-muted); font: 400 12px var(--font-body); }
+
+@media (max-width: 768px) {
+  .nba-split .nba-split-picker.ant-select { width: 100%; height: 44px; }
+  .nba-split-sides { grid-template-columns: minmax(0, 1fr); }
+}

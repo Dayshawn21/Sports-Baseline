@@ -142,8 +142,9 @@ reference, never colored, ranked or picked.
 | 61 | Calculators page (`/tools`) | Complete |
 | 62 | Prop board row polish | Complete |
 | 63 | Why over / Why under on tennis props | Complete; other sports are later items |
-| 64 | Context filters on the prop boards (64a-64c) | Complete |
+| 64 | Context filters on the prop boards (64a-64c) | Complete; 64b's NBA filter moves to the player page in 69 |
 | 68 | Interface polish (68a-68d) | 68a complete 2026-11-12 (CSS polish); 68b-68d planned; display only |
+| 69 | NBA teammate-out split on the player page | Complete; the props-page filter removed, board filters fixed on phones |
 | 21-23 | WNBA, three-way markets, soccer | Planned |
 
 Unless an archive says otherwise, recent items (50 onward) are complete on
@@ -949,7 +950,7 @@ and Model views.
 |---|---|---|---|---|
 | Tennis | `/tennis` | `/tennis/props` (source, tour, surface, format and line-type filters; Why over / Why under panel) | `/tennis/model` | `/tennis/match/:matchId`, `/tennis/player/:playerId` (props as tabs, projection history) |
 | NFL | `/nfl` (opens the current week) | `/nfl/props` | `/nfl/model` | `/nfl/game/:gameId`, `/nfl/player/:playerId` (model and line-only markets as tabs) |
-| NBA | `/nba` (`?date=`) | `/nba/props` (teammate-out filter) | `/nba/model` | `/nba/game/:gameId`, `/nba/player/:playerId` |
+| NBA | `/nba` (`?date=`) | `/nba/props` | `/nba/model` | `/nba/game/:gameId`, `/nba/player/:playerId` (teammate-out split, 69) |
 | NHL | `/nhl` (`?date=`) | `/nhl/props` (starting-goalie filter) | `/nhl/model` | `/nhl/game/:gameId`, `/nhl/player/:playerId` (projection history) |
 
 Player-page state lives in the URL (`?market=`, `?form=10|opp`, history

@@ -1,6 +1,7 @@
 import { NbaInjuryEvidence } from '~/components/nba/NbaInjury'
 import { NbaOpponentEvidence } from '~/components/nba/NbaOpponentEvidence'
 import { NbaPlayerFormSection } from '~/components/nba/NbaPlayerFormSection'
+import { NbaTeammateSplitSection } from '~/components/nba/NbaTeammateSplitSection'
 import { PlayerEvidence } from '~/components/shared/PlayerEvidence'
 import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
 import { PlayerProjectionHero } from '~/components/shared/PlayerProjectionHero'
@@ -41,6 +42,7 @@ export function NbaPlayerMarketSection({ id, player, market }: { id: string, pla
     <div className="nfl-player-prop__body">
       {hero && <PlayerProjectionHero hero={hero} />}
       <NbaPlayerFormSection market={market} opponent={player.opponent} />
+      <NbaTeammateSplitSection split={player.teammateSplit} market={market} />
       <Rungs market={market} />
       <PlayerEvidence contents="Injury report, opponent allowed">
         <NbaInjuryEvidence injury={player.injury} report={player.injuryReport} startUtc={player.game?.startUtc ?? null} now={new Date()} />

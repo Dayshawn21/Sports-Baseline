@@ -9,7 +9,7 @@ import { formBars } from '~/utils/nflPropCards'
 const DOUBLE_DOUBLE = 'double_double'
 
 /** A double-double game is a yes or no, so it is a dated list rather than bars against a line. */
-function YesNoList({ sample }: { sample: ReturnType<typeof formSample> }) {
+export function YesNoList({ sample }: { sample: ReturnType<typeof formSample> }) {
   const now = new Date()
   return <ul className="nba-player-yesno" aria-label={`${sample.values.length} games`}>
     {sample.values.map((game, index) => <li key={index}>

@@ -10,7 +10,9 @@ from app.core.nba_line_only import LINE_ONLY_COLUMNS
 from app.core.nba_projection_backtest import NbaHistoryRow
 from app.repositories import nba as nba_repo
 from app.repositories import nba_injuries as injury_repo
-from app.services.nba.player_props import OPPONENT_GAMES_LIMIT, player_props_response
+from app.schemas.nba import NbaInjuryReportSchema, NbaInjurySchema
+from app.services.nba import player_props_service
+from app.services.nba.player_props import OPPONENT_GAMES_LIMIT, player_props_response, teammate_split
 from app.services.nba.player_props_service import build_player_props
 from app.services.nba.props import props_response
 
@@ -189,3 +191,76 @@ def test_service_gives_empty_markets_for_a_date_without_a_line(monkeypatch: pyte
         call.get_player(db, 1), call.get_game_dates(db), call.get_player_date_modelled_lines(db, 1, DATE),
         call.get_player_date_line_only_lines(db, 1, DATE),
     ]
+
+
+def _injury(player_id: int | None, name: str, team: str = "NY", status: str = "Out") -> NbaInjurySchema:
+    return NbaInjurySchema(
+        espn_athlete_id=str(1000 + (player_id or 0)), player_id=player_id, player_name=name, team=team,
+        athlete_team=None, status=status, detail=None, source_updated_at=None, return_date=None, fetched_at=FETCHED,
+    )
+
+
+def _season_game(game_id: int, day: int, **stats: int | None) -> dict[str, object]:
+    return {**_box(day, **stats), "game_id": game_id}
+
+
+def test_teammate_split_values_follow_each_market_and_sides_follow_the_rows() -> None:
+    games = [_season_game(3, 15, points=30, assists=None), _season_game(2, 10, points=20, assists=4),
+             _season_game(1, 5, points=10, assists=2)]
+    split = teammate_split(
+        2025, "NY", ["points", "assists"], [_injury(5, "Bo"), _injury(6, "Cy")], True, games,
+        {5: (dt.date(2026, 4, 8), {2})},
+    )
+    assert [game.values for game in split.games] == [
+        {"points": 30.0, "assists": None}, {"points": 20.0, "assists": 4.0}, {"points": 10.0, "assists": 2.0},
+    ]
+    bo, cy = split.teammates
+    assert bo.sides == ["without", "with", "before"] and bo.stale and bo.first_team_game_date == dt.date(2026, 4, 8)
+    assert cy.sides == ["before", "before", "before"] and cy.first_team_game_date is None
+    dumped = split.model_dump(by_alias=True)
+    assert {"gameId", "gameDate"} <= set(dumped["games"][0]) and {"firstTeamGameDate", "espnAthleteId"} <= set(dumped["teammates"][0])
+
+
+def _report(*injuries: NbaInjurySchema) -> NbaInjuryReportSchema:
+    return NbaInjuryReportSchema(fetched_at=FETCHED, freshness="fresh", injuries=list(injuries))
+
+
+def _service_with_report(monkeypatch: pytest.MonkeyPatch, report: NbaInjuryReportSchema, **extra: object) -> Mock:
+    monkeypatch.setattr(player_props_service, "load_injury_reports", AsyncMock(return_value={7: report}))
+    return _service_repository(
+        monkeypatch, get_player=PLAYER, get_game_dates=[DATE],
+        get_player_date_modelled_lines=[{**_line("assists", 4.5), "game_id": 7}],
+        get_player_date_line_only_lines=[], get_games_on=[_served_game()], get_prior_games={1: _prior()},
+        get_recent_box_scores=[], get_player_games_against=[], **extra,
+    )
+
+
+def test_service_splits_by_a_teammate_listed_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    games = [_season_game(40, 19, assists=7), _season_game(30, 17, assists=3)]
+    repository = _service_with_report(
+        monkeypatch, _report(_injury(5, "Bo"), _injury(8, "Opp", team="BOS")),
+        get_season_games_for_team=games, get_teammate_rows={5: (dt.date(2025, 10, 22), {30})},
+    )
+    db = cast(AsyncSession, object())
+
+    response = asyncio.run(build_player_props(db, 1, None, DATE))
+
+    assert response is not None and response.teammate_split is not None
+    assert response.teammate_split.season == 2026 and response.teammate_split.team == "NY"
+    assert [game.values for game in response.teammate_split.games] == [{"assists": 7.0}, {"assists": 3.0}]
+    (bo,) = response.teammate_split.teammates
+    assert bo.player_name == "Bo" and bo.sides == ["without", "with"] and not bo.stale
+    assert repository.mock_calls[-2:] == [
+        call.get_season_games_for_team(db, 1, "NY", 2026, DATE), call.get_teammate_rows(db, [5], "NY", [40, 30], DATE),
+    ]
+
+
+def test_service_skips_the_split_when_nobody_on_the_team_is_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    repository = _service_with_report(
+        monkeypatch, _report(_injury(5, "Bo", status="Day-To-Day"), _injury(8, "Opp", team="BOS"), _injury(None, "Unlinked")),
+    )
+
+    response = asyncio.run(build_player_props(cast(AsyncSession, object()), 1, None, DATE))
+
+    assert response is not None and response.teammate_split is None
+    assert "get_season_games_for_team" not in {name for name, *_ in repository.mock_calls}

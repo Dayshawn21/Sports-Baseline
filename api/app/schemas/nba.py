@@ -244,6 +244,33 @@ class NbaPlayerMarketSchema(_CamelModel):
     opponent_games: list[NbaPlayerGameSchema]
 
 
+class NbaSplitGameSchema(_CamelModel):
+    game_id: int
+    game_date: dt.date
+    opponent: str | None
+    # Keyed by the response's market names; NULL when a stat the market needs was not loaded.
+    values: dict[str, float | None]
+
+
+class NbaSplitTeammateSchema(_CamelModel):
+    player_id: int
+    espn_athlete_id: str
+    player_name: str
+    status: str
+    stale: bool
+    # NULL when he has no box-score row for the team, so no game can be judged.
+    first_team_game_date: dt.date | None
+    sides: list[Literal["with", "without", "before"]]
+
+
+class NbaTeammateSplitSchema(_CamelModel):
+    """This season's played games split by teammates listed out tonight: reference only (69)."""
+    season: int
+    team: str
+    games: list[NbaSplitGameSchema]
+    teammates: list[NbaSplitTeammateSchema]
+
+
 class NbaPlayerPropsResponse(_CamelModel):
     """One player's props on a slate date: display only, never a pick, rank or signal color (53a)."""
     player_id: int
@@ -258,6 +285,7 @@ class NbaPlayerPropsResponse(_CamelModel):
     injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
     team_stats: NbaTeamStatsContextSchema | None = None
     markets: list[NbaPlayerMarketSchema]
+    teammate_split: NbaTeammateSplitSchema | None = None
 
 
 class NbaPropBoardGameSchema(_CamelModel):

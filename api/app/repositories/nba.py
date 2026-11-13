@@ -562,6 +562,41 @@ async def get_player_games_against(
     return [dict(row) for row in rows.mappings()]
 
 
+async def get_season_games_for_team(
+    db: AsyncSession, player_id: int, team: str, season: int, before: dt.date,
+) -> list[dict[str, object]]:
+    """The player's played served games for one team in one season dated before `before`, newest first (69)."""
+    columns = ", ".join(f"s.{column}" for column in LINE_ONLY_COLUMNS)
+    rows = await db.execute(text(f"""
+        SELECT s.game_id, g.game_date, opp.team_code AS opponent, s.did_not_play, {columns}
+        FROM nba_player_game_stats s
+        JOIN sport_games g ON g.sport = 'nba' AND g.id = s.game_id
+        JOIN sport_teams own ON own.sport = 'nba' AND own.id = s.team_id
+        LEFT JOIN sport_teams opp ON opp.sport = 'nba' AND opp.id = s.opponent_team_id
+        WHERE s.player_id = :player_id AND own.team_code = :team AND g.season = :season
+          AND {_SERVED_GAME_TYPES} AND g.game_date < :before AND NOT s.did_not_play
+        ORDER BY g.game_date DESC, g.start_utc DESC NULLS LAST, g.id DESC
+    """), {"player_id": player_id, "team": team, "season": season, "before": before})
+    return [dict(row) for row in rows.mappings()]
+
+
+async def get_teammate_rows(
+    db: AsyncSession, teammate_ids: Sequence[int], team: str, game_ids: Sequence[int], before: dt.date,
+) -> dict[int, tuple[dt.date, set[int]]]:
+    """Per teammate with any row for `team`: his first such game date and the ids in `game_ids` he played (69)."""
+    rows = await db.execute(text(f"""
+        SELECT s.player_id, MIN(g.game_date) AS first_date,
+               COALESCE(array_agg(s.game_id) FILTER (WHERE NOT s.did_not_play AND s.game_id = ANY(:game_ids)), '{{}}') AS played
+        FROM nba_player_game_stats s
+        JOIN sport_games g ON g.sport = 'nba' AND g.id = s.game_id
+        JOIN sport_teams own ON own.sport = 'nba' AND own.id = s.team_id
+        WHERE s.player_id = ANY(:teammate_ids) AND own.team_code = :team
+          AND {_SERVED_GAME_TYPES} AND g.game_date < :before
+        GROUP BY s.player_id
+    """), {"teammate_ids": list(teammate_ids), "team": team, "game_ids": list(game_ids), "before": before})
+    return {int(row[0]): (cast(dt.date, row[1]), {int(game_id) for game_id in row[2]}) for row in rows.fetchall()}
+
+
 async def get_current_week(db: AsyncSession, now: dt.datetime) -> tuple[int, int] | None:
     """(season, week) of the next regular-season game not yet tipped, else the latest loaded week (20g3).
 
