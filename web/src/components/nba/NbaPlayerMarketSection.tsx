@@ -15,7 +15,8 @@ function Rungs({ market }: { market: NbaPlayerMarket }) {
   const modelled = market.kind === 'modelled'
   const notes = nbaRungNotes(market.lines)
   const rows: PlayerLinesRow[] = market.lines.map((rung, index) => ({
-    key: `${rung.oddsType}-${rung.line}`,
+    // A feed can store the same tier and line twice, so the position keeps the key unique.
+    key: `${rung.oddsType}-${rung.line}-${index}`,
     type: rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard',
     line: String(rung.line),
     gap: rung.gap === null ? '--' : signedGap(rung.gap),
@@ -39,7 +40,7 @@ export function NbaPlayerMarketSection({ id, player, market }: { id: string, pla
         {modelled ? 'Reference projection only. No pick, rank, or signal.' : 'Recent results only. This market is not modelled.'}
       </span>
     </div>
-    <div className="nfl-player-prop__body">
+    <div className="nfl-player-prop__body player-market">
       {hero && <PlayerProjectionHero hero={hero} />}
       <NbaPlayerFormSection market={market} opponent={player.opponent} />
       <NbaTeammateSplitSection split={player.teammateSplit} market={market} />

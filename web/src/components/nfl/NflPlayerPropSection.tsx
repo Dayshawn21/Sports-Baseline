@@ -30,7 +30,7 @@ export function NflPlayerPropSection({ id, item, game }: { id: string, item: Nfl
       </h3>
       {gapShare && <span className="nfl-player-muted">{gapShare}</span>}
     </div>
-    <div className="nfl-player-prop__body">
+    <div className="nfl-player-prop__body player-market">
       <PlayerProjectionHero hero={nflProjectionHero(row, detail)} />
       <DetailGameLog row={row} />
       <DetailLines detail={detail} />

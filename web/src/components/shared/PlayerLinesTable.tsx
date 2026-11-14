@@ -48,7 +48,7 @@ export function PlayerLinesTable({ title = 'PrizePicks lines', columns, trailing
   const core = CORE.filter(column => columns.includes(column.key))
   const span = 2 + core.length + trailing.length
   const tierNote = payoutTierNote(rows.map(row => row.type))
-  return <section className="nfl-prop-detail__section">
+  return <section className="nfl-prop-detail__section player-lines">
     <div className="nfl-prop-detail__section-head"><h3>{title}</h3></div>
     {intro}
     <div className="player-lines__wrap">

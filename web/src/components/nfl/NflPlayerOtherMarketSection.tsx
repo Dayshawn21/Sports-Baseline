@@ -25,7 +25,7 @@ export function NflPlayerOtherMarketSection({ id, market, opponent }: { id: stri
       <h3 id={`${id}-title`} className="nfl-player-prop__title">{marketLabel(market.market)}<small>reference</small></h3>
       <span className="nfl-player-muted">{line === null ? 'No standard line' : `Line ${line.toFixed(1)}`} · Recent results only, no model comparison</span>
     </div>
-    <div className="nfl-player-prop__body">
+    <div className="nfl-player-prop__body player-market">
       <section className="nfl-prop-detail__section">
         <div className="nfl-prop-detail__section-head"><h3>{formTitle(row, window)}</h3><span>{summary}</span></div>
         <div className="nfl-prop-detail__toolbar">
@@ -34,8 +34,9 @@ export function NflPlayerOtherMarketSection({ id, market, opponent }: { id: stri
         </div>
         <GameLogBars row={barRow} sample={sample} />
       </section>
-      <PlayerLinesTable columns={[]} rows={market.lines.map(rung => ({
-        key: `${rung.oddsType}-${rung.line}`, type: rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard', line: rung.line.toFixed(1),
+      <PlayerLinesTable columns={[]} rows={market.lines.map((rung, index) => ({
+        // A feed can store the same tier and line twice, so the position keeps the key unique.
+        key: `${rung.oddsType}-${rung.line}-${index}`, type: rung.oddsType ? ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType : 'Standard', line: rung.line.toFixed(1),
       }))}>
         <p className="nfl-prop-detail__note">Reference only: no projection, gap or rank for this market.</p>
       </PlayerLinesTable>

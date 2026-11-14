@@ -288,3 +288,26 @@
   font-size: 12px;
   font-weight: 400;
 }
+
+/* Wide screens: the projection and recent form on the left, the lines they are read against beside them,
+   evidence across the bottom. The fourth row is flexible so a short left column does not stretch its sections. */
+@media (min-width: 1180px) {
+  .player-market {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-rows: repeat(3, auto) 1fr;
+    column-gap: var(--space-5);
+  }
+
+  .player-market > * { grid-column: 1; }
+
+  .player-market > .player-lines {
+    grid-column: 2;
+    grid-row: 1 / 5;
+    border-top: 0;
+    border-left: 1px solid var(--border-subtle);
+    padding-right: 0;
+  }
+
+  .player-market > .player-evidence { grid-column: 1 / -1; }
+}

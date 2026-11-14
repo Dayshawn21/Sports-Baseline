@@ -75,7 +75,7 @@ export function TennisMarketPanel({ market, rated, review, selectedId, form }: P
       <h3 className="nfl-player-prop__title">{marketTitle(market)}</h3>
       <span className="nfl-player-muted">{first ? propCard(first).startText : ''}{matchPath && <> · <Link to={matchPath}>Open match</Link></>}</span>
     </div>
-    <div className="nfl-player-prop__body">
+    <div className="nfl-player-prop__body player-market">
       {hero && <PlayerProjectionHero hero={hero} />}
       <section className="nfl-prop-detail__section">{form}</section>
       <PlayerLinesTable title="Lines" columns={['gap']} trailing={['Model', 'Side', 'Hit', 'EV']} rows={lines.map(line => linesRow(line, selectedId))}

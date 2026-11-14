@@ -15,10 +15,11 @@ import { nhlProjectionHero } from '~/utils/nhlPlayer'
 function Rungs({ market }: { market: NhlPlayerMarket }) {
   const covers = market.lines.some(rung => rung.pOver !== null || nhlLineProbabilityNote(rung.flags) !== null)
   const weakNote = nhlProbabilityNote(market.market)
-  const rows: PlayerLinesRow[] = market.lines.map(rung => {
+  const rows: PlayerLinesRow[] = market.lines.map((rung, index) => {
     const note = nhlLineProbabilityNote(rung.flags)
     return {
-      key: `${rung.oddsType}-${rung.line}`,
+      // A feed can store the same tier and line twice, so the position keeps the key unique.
+      key: `${rung.oddsType}-${rung.line}-${index}`,
       type: ODDS_TYPE_LABELS[rung.oddsType] ?? rung.oddsType,
       line: nhlPropLineLabel(market.market, rung.line),
       gap: nhlGapLabel(rung.gap),
@@ -38,7 +39,7 @@ export function NhlPlayerMarketSection({ id, player, market }: { id: string, pla
       <h3 id={`${id}-title`} className="nfl-player-prop__title">{nhlMarketLabel(market.market)}</h3>
       <span className="nfl-player-muted">{NHL_PROJECTION_CAPTION}.</span>
     </div>
-    <div className="nfl-player-prop__body">
+    <div className="nfl-player-prop__body player-market">
       <PlayerProjectionHero hero={nhlProjectionHero(market)} />
       <NhlPlayerFormSection market={market} opponent={player.opponent} />
       <Rungs market={market} />
