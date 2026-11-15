@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from app.repositories import matches as match_repo
 from app.repositories.matches import MarketTotal
-from app.routers import props as props_router
+from app.services.tennis import prop_enrichment
 from app.services.tennis import best_picks_response as target
 from app.services.tennis.best_picks import BestPick
 
@@ -81,7 +81,7 @@ def _stub_io(monkeypatch, calls: dict):
     monkeypatch.setattr(target, "build_best_picks", build)
     monkeypatch.setattr(match_repo, "get_opponent_ids", opponents)
     monkeypatch.setattr(match_repo, "get_market_totals", totals)
-    monkeypatch.setattr(props_router, "enrich_with", enrich)
+    monkeypatch.setattr(prop_enrichment, "enrich_with", enrich)
 
 
 def _run(match_date=None):

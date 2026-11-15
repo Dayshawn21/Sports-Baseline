@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from app.db.pool import SessionLocal
 from app.repositories.prop_snapshots import insert_prop_projection_snapshots
 from app.repositories.props import get_today_props
-from app.routers.props import enrich_with
+from app.services.tennis.prop_enrichment import enrich_with
 from app.services.tennis.prop_sim import load_sim_inputs, sim_prop_lines
 from app.services.tennis.prop_snapshots import (
     PROJECTION_VERSION,

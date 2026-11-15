@@ -137,7 +137,7 @@ def no_row_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         return _Session(None)
 
     monkeypatch.setattr(props_router, "get_today_props", no_props)
-    monkeypatch.setattr(props_router, "_enrich_props", no_lines)
+    monkeypatch.setattr(props_router, "enrich_props", no_lines)
     app.dependency_overrides[get_db] = session
     yield TestClient(app)
     app.dependency_overrides.pop(get_db)

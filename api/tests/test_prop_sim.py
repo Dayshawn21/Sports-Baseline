@@ -6,7 +6,8 @@ import pytest
 from app.core.tennis_match_sim import simulate_match
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import MarketTotal, enrich_with
+from app.repositories.matches import MarketTotal
+from app.services.tennis.prop_enrichment import enrich_with
 from app.schemas.props import PropLine
 from app.services.tennis import prop_sim
 from app.services.tennis.prop_sim import SIM_STATS, SimInputs, line_probabilities, sim_prop_lines, stat_values
