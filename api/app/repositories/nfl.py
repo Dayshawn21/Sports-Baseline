@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 
 from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON, SeasonGames, choose_baseline_season
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
+from app.core.nfl_espn_injuries import SEVERITY, EspnNflInjury
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
 from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
@@ -740,6 +741,42 @@ async def replace_weekly_injuries(
     )
 
 
+async def replace_espn_injuries(
+    db: AsyncSession, season: int, week: int, rows: list[tuple[str, EspnNflInjury]], fetched_at: datetime,
+) -> tuple[int, int]:
+    """Replace the week's ESPN statuses with `rows` (gsis id, entry); returns (deleted, stored).
+
+    A gsis id with no stored player is dropped by the join, not inserted.
+    """
+    deleted = await db.execute(
+        text("DELETE FROM nfl_player_espn_injuries WHERE season = :season AND week = :week RETURNING player_id"),
+        {"season": season, "week": week},
+    )
+    inserted = await db.execute(
+        text("""
+            INSERT INTO nfl_player_espn_injuries
+                (player_id, season, week, status, injury, comment, espn_updated_at, fetched_at)
+            SELECT p.id, :season, :week, v.status, v.injury, v.comment, v.espn_updated_at, :fetched_at
+            FROM unnest(
+                CAST(:player_keys AS text[]), CAST(:statuses AS text[]), CAST(:injuries AS text[]),
+                CAST(:comments AS text[]), CAST(:updated AS timestamptz[])
+            ) AS v(player_key, status, injury, comment, espn_updated_at)
+            JOIN sport_players p ON p.sport = 'nfl' AND p.source_player_id = v.player_key
+            ON CONFLICT (player_id, season, week) DO NOTHING
+            RETURNING player_id
+        """),
+        {
+            "season": season, "week": week, "fetched_at": fetched_at,
+            "player_keys": [gsis_id for gsis_id, _ in rows],
+            "statuses": [entry.status for _, entry in rows],
+            "injuries": [entry.injury for _, entry in rows],
+            "comments": [entry.comment for _, entry in rows],
+            "updated": [entry.espn_updated_at for _, entry in rows],
+        },
+    )
+    return len(deleted.fetchall()), len(inserted.fetchall())
+
+
 async def replace_weekly_depth_charts(
     db: AsyncSession, season: int, depth: list[NflverseDepthWeek],
 ) -> PlayerWeekWriteResult:
@@ -1296,10 +1333,36 @@ def _player_teams_cte(week_bound: bool = True) -> str:
 # The slate week's injury and depth rows, plus each player's most recent depth row
 # from an earlier week (any team), so a role change can be shown against it. Each
 # is at most one row per player, so joining them does not multiply slate lines.
-_AVAILABILITY_CTE = """
+def _severity_rank(column: str) -> str:
+    whens = " ".join(f"WHEN '{status}' THEN {rank}" for status, rank in SEVERITY.items())
+    return f"CASE {column} {whens} ELSE 0 END"
+
+
+# The nflverse report merged with ESPN's current statuses (fix: nfl-espn-injuries).
+# ESPN only ever makes a status more severe (`more_severe`); practice status stays
+# nflverse's. An ESPN-only player takes the team from that week's roster.
+_INJURY_REPORTS_CTE = f"""
+    injury_reports AS (
+        SELECT COALESCE(i.player_id, e.player_id) AS player_id,
+               COALESCE(i.season, e.season) AS season, COALESCE(i.week, e.week) AS week,
+               COALESCE(i.team_id, r.team_id) AS team_id,
+               CASE WHEN {_severity_rank('e.status')} > {_severity_rank('i.report_status')}
+                    THEN e.status ELSE i.report_status END AS report_status,
+               i.practice_status, COALESCE(i.primary_injury, e.injury) AS primary_injury,
+               GREATEST(i.updated_at, e.fetched_at) AS updated_at
+        FROM nfl_player_injuries i
+        FULL JOIN nfl_player_espn_injuries e
+          ON e.player_id = i.player_id AND e.season = i.season AND e.week = i.week
+        LEFT JOIN nfl_player_weekly_rosters r
+          ON i.player_id IS NULL AND r.player_id = e.player_id AND r.season = e.season AND r.week = e.week
+    )
+"""
+
+_AVAILABILITY_CTE = f"""
+    {_INJURY_REPORTS_CTE},
     week_injuries AS (
         SELECT player_id, report_status, practice_status, primary_injury
-        FROM nfl_player_injuries WHERE season = :season AND week = :week
+        FROM injury_reports WHERE season = :season AND week = :week
     ),
     week_depth AS (
         SELECT player_id, team_id, position, depth_rank
@@ -1549,12 +1612,14 @@ async def get_slate_weather(db: AsyncSession, season: int, week: int) -> dict[in
 async def get_week_game_injuries(db: AsyncSession, season: int, week: int) -> list[dict]:
     """The week's stored injury report across all positions.
 
-    The team is the one that filed the report, not the player's last-write team.
+    The team is the one that filed the report, not the player's last-write team;
+    a player only ESPN lists takes that week's roster team.
     """
-    rows = await db.execute(text("""
+    rows = await db.execute(text(f"""
+        WITH {_INJURY_REPORTS_CTE}
         SELECT i.team_id, t.team_code, p.name, COALESCE(p.position, 'UNK'),
                i.report_status, i.practice_status, i.primary_injury, p.id, i.updated_at
-        FROM nfl_player_injuries i
+        FROM injury_reports i
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
         JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id
         WHERE i.season = :season AND i.week = :week
@@ -1816,13 +1881,14 @@ async def get_week_team_qb_injuries(db: AsyncSession, season: int, week: int) ->
     Healthy players are absent from a report, so only the team's latest report
     week counts; an older Out never outlives the report that dropped it.
     """
-    rows = await db.execute(text("""
-        WITH latest AS (
-            SELECT team_id, MAX(week) AS week FROM nfl_player_injuries
+    rows = await db.execute(text(f"""
+        WITH {_INJURY_REPORTS_CTE},
+        latest AS (
+            SELECT team_id, MAX(week) AS week FROM injury_reports
             WHERE season = :season AND week <= :week GROUP BY team_id
         )
         SELECT i.team_id, i.player_id, i.week, i.report_status
-        FROM nfl_player_injuries i
+        FROM injury_reports i
         JOIN latest l ON l.team_id = i.team_id AND l.week = i.week
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
         WHERE i.season = :season AND p.position = 'QB'
@@ -2764,7 +2830,7 @@ async def get_player_profile(db: AsyncSession, player_id: int, season: int, week
     """One player's identity as of the week: team by the roster rule, depth, injury, aliases, stats loaded."""
     rows = await db.execute(
         text(f"""
-            WITH {_player_teams_cte()}
+            WITH {_player_teams_cte()}, {_INJURY_REPORTS_CTE}
             SELECT p.id, p.name, p.position, t.team_code,
                    d.position AS depth_position, d.depth_rank,
                    i.report_status, i.practice_status, i.primary_injury,
@@ -2775,7 +2841,7 @@ async def get_player_profile(db: AsyncSession, player_id: int, season: int, week
             LEFT JOIN player_teams pt ON pt.player_id = p.id
             LEFT JOIN sport_teams t ON t.sport = 'nfl' AND t.id = pt.team_id
             LEFT JOIN nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week
-            LEFT JOIN nfl_player_injuries i ON i.player_id = p.id AND i.season = :season AND i.week = :week
+            LEFT JOIN injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week
             LEFT JOIN LATERAL (
                 SELECT season, week FROM nfl_player_weekly_stats ORDER BY season DESC, week DESC LIMIT 1
             ) loaded ON TRUE

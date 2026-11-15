@@ -46,6 +46,14 @@ jobs:
           cd api
           python -m app.ingest.nfl_weather --days-ahead 7
 
+      # Rides these runs for their Sunday-morning and primetime timing: game-day
+      # injury downgrades reach ESPN long before nflverse. Display only, like weather.
+      - name: Refresh ESPN injury statuses
+        continue-on-error: true
+        run: |
+          cd api
+          python -m app.ingest.nfl_espn_injuries
+
       # Last, and even after a failed step: the hosted demo serves stored slates
       # and never builds one inside its 512 MB (37d). Needs migration 0045.
       - name: Store the current NFL slates

@@ -138,6 +138,8 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
 - NFL schedule + stats: `python -m app.ingest.nflverse --season 2024`
 - NFL props: `python -m app.ingest.prizepicks_nfl [--relink]`
 - NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14 [--dry-run]`
+- NFL ESPN injury statuses: `python -m app.ingest.nfl_espn_injuries [--dry-run]`
+  (needs migration `0055`; display only, downgrades the nflverse report, never clears it)
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025] [--days-back 3] [--dry-run]`
 - NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--dry-run]`
 - NBA props: `python -m app.ingest.prizepicks_nba [--dry-run] [--relink]`

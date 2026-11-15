@@ -161,7 +161,8 @@ def test_slate_joins_this_weeks_injury_and_depth_and_an_earlier_depth_row() -> N
     asyncio.run(get_slate_lines(cast(AsyncSession, session), 2026, 7))
 
     statement = _flat(session.statement)
-    assert "FROM nfl_player_injuries WHERE season = :season AND week = :week" in statement
+    assert "FROM injury_reports WHERE season = :season AND week = :week" in statement
+    assert "FULL JOIN nfl_player_espn_injuries e" in statement
     assert "FROM nfl_player_depth_charts WHERE season = :season AND week = :week" in statement
     # Strictly earlier: the slate week's own chart must never count as the "previous" one.
     assert "WHERE season < :season OR (season = :season AND week < :week) ORDER BY player_id, season DESC, week DESC" in statement
@@ -1393,7 +1394,7 @@ def test_game_notes_injuries_cover_all_positions_on_the_reporting_team() -> None
     assert "p.position IN" not in statement
     assert "JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id" in statement
     assert "(i.report_status IS NOT NULL OR i.practice_status IS NOT NULL)" in statement
-    assert "i.primary_injury, p.id, i.updated_at FROM nfl_player_injuries i" in statement
+    assert "i.primary_injury, p.id, i.updated_at FROM injury_reports i" in statement
     assert "JOIN sport_players p ON p.sport = 'nfl'" in statement
 
 
@@ -1482,7 +1483,7 @@ def test_player_profile_reads_the_roster_team_and_this_weeks_depth_and_injury() 
     assert params == {"player_id": 9, "season": 2026, "week": 4}
     assert "player_teams AS" in sql and "LEFT JOIN player_teams pt ON pt.player_id = p.id" in sql
     assert "nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week" in sql
-    assert "nfl_player_injuries i ON i.player_id = p.id AND i.season = :season AND i.week = :week" in sql
+    assert "injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week" in sql
     assert profile == {"id": 9, "name": "James Cook", "aliases": ["J. Cook"]}
 
 

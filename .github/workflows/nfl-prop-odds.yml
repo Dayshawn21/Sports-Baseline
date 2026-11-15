@@ -80,6 +80,13 @@ jobs:
           cd api
           python -m app.ingest.nflverse_injuries
 
+      # Game-day downgrades (a Saturday "ruled out") reach ESPN long before nflverse.
+      - name: Refresh ESPN injury statuses
+        continue-on-error: true
+        run: |
+          cd api
+          python -m app.ingest.nfl_espn_injuries
+
       - name: Refresh current-season depth charts
         continue-on-error: true
         run: |

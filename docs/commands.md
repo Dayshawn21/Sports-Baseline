@@ -46,6 +46,16 @@ per command; read this file before running, scheduling or changing one.
   run still spends the paid `/odds` call). With no upcoming game it makes no
   provider call, and it skips `/odds` unless the free `/sports` balance is at
   least `--min-requests-remaining` (default 5).
+- NFL ESPN injury statuses: `python -m app.ingest.nfl_espn_injuries [--dry-run]`
+  (ESPN keyless feed, free; needs migration `0055`). Stores the current week's
+  Out, Doubtful and Questionable statuses, mapped to players through the
+  `espn_id` column of the nflverse weekly roster file, never by name. Readers
+  show the more severe of this and the nflverse report, so ESPN downgrades a
+  player but never clears one. Display only. Offensive linemen and long snappers
+  often have no `espn_id` in nflverse and are reported as unmapped. A failed or
+  empty fetch leaves the stored week alone. The dry run reads the current week
+  and writes nothing. Run by `nfl-prop-odds.yml` and `nfl-weather.yml`, each
+  before its slate snapshot.
 - NFL ranking snapshots: `python -m app.ingest.nfl_ranking_snapshot
   [--season 2026] [--dry-run]` (stores all three `/nfl/model/ranking` versions
   in `report_snapshots` as `nfl_model_ranking_<version>`; run by the Tuesday
