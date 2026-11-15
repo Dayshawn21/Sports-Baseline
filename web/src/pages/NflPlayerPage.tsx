@@ -14,6 +14,7 @@ import { useNflOtherMarkets, useNflPlayer, useNflSlate } from '~/hooks/useNfl'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { isNotFound } from '~/utils/httpError'
+import { activeDepthLabel } from '~/utils/nflAvailability'
 import { parseGameId } from '~/utils/nflGame'
 import { arrivedFromBoard, FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
 import { injuryTone } from '~/utils/playerPage'
@@ -34,7 +35,8 @@ function injuryText(player: NflPlayerDetail): string {
 }
 
 function Availability({ player }: { player: NflPlayerDetail }) {
-  const depth = player.depthPosition !== null && player.depthRank !== null ? `Depth: ${player.depthPosition}${player.depthRank}` : 'Not on this week\'s depth chart'
+  const depthText = activeDepthLabel(player)
+  const depth = depthText !== null ? `Depth: ${depthText}` : 'Not on this week\'s depth chart'
   const team = player.team === null ? 'No team (cut or retired)' : `Week ${player.week} team: ${player.team} (roster)`
   return <div className="nfl-player-tags" role="group" aria-label="Availability and roster">
     <PlayerTag>{depth}</PlayerTag>

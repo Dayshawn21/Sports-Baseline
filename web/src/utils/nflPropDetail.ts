@@ -1,5 +1,5 @@
 import type { NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { depthLabel, injuryLabel } from '~/utils/nflAvailability'
+import { availabilityDepthLabel, injuryLabel } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence, type NflBookOddsEvidence } from '~/utils/nflBookOdds'
 import {
   BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
@@ -132,7 +132,7 @@ function status(row: NflSlateLine): NflDetailRow[] {
   return [
     { label: 'Line shape', value: `${typeLabel(row.oddsType, 'Standard')} · ${segmentLabel(row.segment)}`, note: null },
     { label: 'Injury', value: injuryLabel(row) ?? 'Clear', note: null },
-    { label: 'Depth', value: depthLabel(row) ?? 'Not listed', note: null },
+    { label: 'Depth', value: availabilityDepthLabel(row) ?? 'Not listed', note: null },
     { label: 'Trust', value: isTargetsReference(row.market) ? 'Reference' : trustLabel(row), note: null },
   ]
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { NflGameNotes, NflNoteInjury, NflTeamForm } from '~/types/nfl'
-import { depthLabel, injuryLabel, injuryTag } from '~/utils/nflAvailability'
+import { availabilityDepthLabel, injuryLabel, injuryTag } from '~/utils/nflAvailability'
 import { formLabel, injuriesByTeam, injuryGroups, restLabel } from '~/utils/nflGameNotes'
 import { fmtDateCT, fmtTimeCT } from '~/utils/format'
 
@@ -44,7 +44,7 @@ function DepthChanges({ notes }: { notes: NflGameNotes }) {
   return <Card title="Depth changes">
     {notes.depthChanges.length ? <ul className="nfl-game-side__list">{notes.depthChanges.map(row => <li key={`${row.team}-${row.playerName}`} className="nfl-game-side__row">
       <span className="nfl-game-side__team">{row.team}</span>
-      <span className="nfl-game-side__who"><b><Link to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link></b><small>{depthLabel(row)}</small></span>
+      <span className="nfl-game-side__who"><b><Link to={`/nfl/player/${row.playerId}`}>{row.playerName}</Link></b><small>{availabilityDepthLabel(row)}</small></span>
       <span className="nfl-game-tag">{CHANGE_LABELS[row.change]}</span>
     </li>)}</ul> : <Empty text="No starter or backup changes" />}
   </Card>

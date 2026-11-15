@@ -184,6 +184,8 @@ class NflPlayerDetailResponse(_CamelModel):
     week: int
     depth_position: str | None
     depth_rank: int | None
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     injury_status: str | None
     practice_status: str | None
     injury: str | None
@@ -311,6 +313,9 @@ class NflSlateLineSchema(_CamelModel):
     injury: str | None = None
     depth_position: str | None = None
     depth_rank: int | None = None
+    # Chart rank after teammates ahead who are Out; absent in slates stored before it.
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     previous_depth_position: str | None = None
     previous_depth_rank: int | None = None
     # Only RB and TE anytime-TD lines: the pre-week season-weighted share (0 to 1)
@@ -436,6 +441,8 @@ class NflNoteDepthChangeSchema(_CamelModel):
     team: str
     depth_position: str
     depth_rank: int
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     previous_depth_position: str | None
     previous_depth_rank: int | None
     change: Literal["promoted", "demoted", "new"]

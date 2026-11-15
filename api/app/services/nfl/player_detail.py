@@ -57,6 +57,7 @@ def player_detail(
         player_id=profile["id"], name=profile["name"], position=profile["position"], team=profile["team_code"],
         season=season, week=week,
         depth_position=profile["depth_position"], depth_rank=profile["depth_rank"],
+        active_depth_rank=profile.get("active_depth_rank"), out_ahead=list(profile.get("out_ahead") or []),
         injury_status=profile["report_status"], practice_status=profile["practice_status"],
         injury=profile["primary_injury"], aliases=list(profile["aliases"] or []),
         stats_through=stats_through,

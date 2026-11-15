@@ -176,6 +176,7 @@ def _serving_row(
         availability=NflAvailability(
             injury_status=row["injury_status"], depth_team_id=row["depth_team_id"],
             depth_position=row["depth_position"], depth_rank=row["depth_rank"],
+            active_depth_rank=row.get("active_depth_rank"), out_ahead=tuple(row.get("out_ahead") or ()),
             previous_depth_team_id=row["previous_depth_team_id"],
             previous_depth_position=row["previous_depth_position"], previous_depth_rank=row["previous_depth_rank"],
         ),

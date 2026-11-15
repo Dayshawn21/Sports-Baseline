@@ -87,6 +87,7 @@ def targets_slate_line(row: TargetsServingLine) -> NflSlateLineSchema:
         provider=row.provider, fetched_at=row.fetched_at, quality_flags=flags,
         injury_status=row.availability.injury_status, practice_status=row.practice_status, injury=row.injury,
         depth_position=row.availability.depth_position, depth_rank=row.availability.depth_rank,
+        active_depth_rank=row.availability.active_depth_rank, out_ahead=list(row.availability.out_ahead),
         previous_depth_position=row.availability.previous_depth_position,
         previous_depth_rank=row.availability.previous_depth_rank,
         p_over=over.p_over if over is not None else None, p_under=over.p_under if over is not None else None,

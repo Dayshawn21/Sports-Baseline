@@ -1,5 +1,5 @@
 import type { NflHistorySample } from '~/types/nfl'
-import { depthLabel, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
+import { activeDepthLabel, depthLabel, depthShifted, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence } from '~/utils/nflBookOdds'
 import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '~/utils/nflLabels'
 import { edgeShare, isConfidentSample, type NflBoardLine } from '~/utils/nflPropBoard'
@@ -99,7 +99,8 @@ export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now
     sampleText: `${row.gamesInSample}g${confident ? '' : reference ? ' unavailable' : ' thin'}`,
     thin: !confident,
     injury: injuryTag(row.injuryStatus),
-    depthText: row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,
+    depthText: depthShifted(row) ? activeDepthLabel(row)
+      : row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,
     flags: row.qualityFlags.filter(flag => flag !== 'historical_baseline'),
     why: signalSummary(row),
     bookText: td ? nflBookOddsEvidence(row, now)?.summary ?? 'No book price' : null,

@@ -122,6 +122,13 @@ describe('nflPropCard', () => {
     expect(nflPropCard(row({ injuryStatus: 'Questionable' }), 26.5, NOW).injury).toEqual({ label: 'Q', color: 'gold' })
   })
 
+  it('shows the active depth when a teammate ahead is out, with no move flag needed', () => {
+    const backup = { depthPosition: 'RB', depthRank: 2, previousDepthPosition: 'RB', previousDepthRank: 2 }
+    expect(nflPropCard(row({ ...backup, activeDepthRank: 1, outAhead: ['Kenneth Walker III'] }), 26.5, NOW).depthText)
+      .toBe('RB1 (RB2 on chart, Walker out)')
+    expect(nflPropCard(row({ ...backup, activeDepthRank: 2, outAhead: [] }), 26.5, NOW).depthText).toBeNull()
+  })
+
   it('builds an anytime-TD card from the model, books and snap share', () => {
     const td = row({ market: 'anytime_touchdown', projection: 0.52, line: 0.5, edge: null, snapShare: 0.64, snapShareGames: 12 })
     expect(nflPropCard(td, null, NOW)).toMatchObject({ kind: 'td', modelText: '52.0%', bookText: 'No book price', snapText: '64% · 12 g, season-weighted', pickLabel: '--' })

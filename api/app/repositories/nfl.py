@@ -1358,15 +1358,35 @@ _INJURY_REPORTS_CTE = f"""
     )
 """
 
+# `week_depth.active_depth_rank` is display only (fix: nfl-active-depth): the chart
+# rank minus teammates ahead at the position who are Out; an Out player has none.
+# Week-over-week moves keep comparing chart ranks, so a fill-in is not a promotion.
 _AVAILABILITY_CTE = f"""
     {_INJURY_REPORTS_CTE},
     week_injuries AS (
         SELECT player_id, report_status, practice_status, primary_injury
         FROM injury_reports WHERE season = :season AND week = :week
     ),
-    week_depth AS (
+    week_chart AS (
         SELECT player_id, team_id, position, depth_rank
         FROM nfl_player_depth_charts WHERE season = :season AND week = :week
+    ),
+    week_depth AS (
+        SELECT c.player_id, c.team_id, c.position, c.depth_rank,
+               CASE WHEN own.report_status = 'Out' THEN NULL
+                    ELSE c.depth_rank - cardinality(ahead.names) END AS active_depth_rank,
+               ahead.names AS out_ahead
+        FROM week_chart c
+        LEFT JOIN week_injuries own ON own.player_id = c.player_id
+        CROSS JOIN LATERAL (
+            SELECT ARRAY(
+                SELECT p.name FROM week_chart a
+                JOIN week_injuries ai ON ai.player_id = a.player_id AND ai.report_status = 'Out'
+                JOIN sport_players p ON p.id = a.player_id
+                WHERE a.team_id = c.team_id AND a.position = c.position AND a.depth_rank < c.depth_rank
+                ORDER BY a.depth_rank, p.name
+            ) AS names
+        ) ahead
     ),
     previous_depth AS (
         SELECT DISTINCT ON (player_id) player_id, team_id, position, depth_rank
@@ -1379,12 +1399,14 @@ _AVAILABILITY_CTE = f"""
 _AVAILABILITY_COLUMNS = """
     wi.report_status AS injury_status, wi.practice_status, wi.primary_injury AS injury,
     wd.team_id AS depth_team_id, wd.position AS depth_position, wd.depth_rank,
+    wd.active_depth_rank, wd.out_ahead,
     pd.team_id AS previous_depth_team_id, pd.position AS previous_depth_position,
     pd.depth_rank AS previous_depth_rank
 """
 
 _AVAILABILITY_FIELDS = (
     "injury_status", "practice_status", "injury", "depth_team_id", "depth_position", "depth_rank",
+    "active_depth_rank", "out_ahead",
     "previous_depth_team_id", "previous_depth_position", "previous_depth_rank",
 )
 
@@ -1641,7 +1663,7 @@ async def get_week_depth_rows(db: AsyncSession, season: int, week: int) -> list[
     rows = await db.execute(text(f"""
         WITH {_AVAILABILITY_CTE}
         SELECT wd.team_id, t.team_code, p.name, wd.position, wd.depth_rank,
-               pd.team_id, pd.position, pd.depth_rank, p.id
+               pd.team_id, pd.position, pd.depth_rank, p.id, wd.active_depth_rank, wd.out_ahead
         FROM week_depth wd
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = wd.player_id
         JOIN sport_teams t ON t.sport = 'nfl' AND t.id = wd.team_id
@@ -1650,7 +1672,8 @@ async def get_week_depth_rows(db: AsyncSession, season: int, week: int) -> list[
     return [
         {"team_id": row[0], "team": row[1], "player_name": row[2], "depth_team_id": row[0],
          "depth_position": row[3], "depth_rank": row[4], "previous_depth_team_id": row[5],
-         "previous_depth_position": row[6], "previous_depth_rank": row[7], "player_id": row[8]}
+         "previous_depth_position": row[6], "previous_depth_rank": row[7], "player_id": row[8],
+         "active_depth_rank": row[9], "out_ahead": list(row[10] or [])}
         for row in rows.fetchall()
     ]
 
@@ -2830,9 +2853,9 @@ async def get_player_profile(db: AsyncSession, player_id: int, season: int, week
     """One player's identity as of the week: team by the roster rule, depth, injury, aliases, stats loaded."""
     rows = await db.execute(
         text(f"""
-            WITH {_player_teams_cte()}, {_INJURY_REPORTS_CTE}
+            WITH {_player_teams_cte()}, {_AVAILABILITY_CTE}
             SELECT p.id, p.name, p.position, t.team_code,
-                   d.position AS depth_position, d.depth_rank,
+                   d.position AS depth_position, d.depth_rank, d.active_depth_rank, d.out_ahead,
                    i.report_status, i.practice_status, i.primary_injury,
                    ARRAY(SELECT a.alias_name FROM sport_player_aliases a
                          WHERE a.sport = 'nfl' AND a.player_id = p.id ORDER BY a.alias_name) AS aliases,
@@ -2840,7 +2863,7 @@ async def get_player_profile(db: AsyncSession, player_id: int, season: int, week
             FROM sport_players p
             LEFT JOIN player_teams pt ON pt.player_id = p.id
             LEFT JOIN sport_teams t ON t.sport = 'nfl' AND t.id = pt.team_id
-            LEFT JOIN nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week
+            LEFT JOIN week_depth d ON d.player_id = p.id
             LEFT JOIN injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week
             LEFT JOIN LATERAL (
                 SELECT season, week FROM nfl_player_weekly_stats ORDER BY season DESC, week DESC LIMIT 1

@@ -176,6 +176,7 @@ def test_availability_fields_pass_through_and_stay_null_when_absent() -> None:
     present = {
         "injury_status": "Questionable", "practice_status": "Limited Participation in Practice",
         "injury": "Hamstring", "depth_team_id": 7, "depth_position": "WR", "depth_rank": 2,
+        "active_depth_rank": 1, "out_ahead": ["Starter Out"],
         "previous_depth_team_id": 7, "previous_depth_position": "WR", "previous_depth_rank": 1,
     }
 
@@ -1422,7 +1423,18 @@ def test_game_notes_depth_rows_pair_this_week_with_a_strictly_earlier_chart() ->
     assert "WHERE season < :season OR (season = :season AND week < :week)" in statement
     assert "FROM week_depth wd" in statement
     assert "LEFT JOIN previous_depth pd ON pd.player_id = wd.player_id" in statement
-    assert "pd.depth_rank, p.id FROM week_depth wd" in statement
+    assert "pd.depth_rank, p.id, wd.active_depth_rank, wd.out_ahead FROM week_depth wd" in statement
+
+
+def test_active_depth_skips_teammates_ahead_who_are_out_and_drops_an_out_player() -> None:
+    session = _RecordingSession()
+
+    asyncio.run(nfl_repository.get_week_depth_rows(cast(AsyncSession, session), 2026, 10))
+
+    statement = _flat(session.statement)
+    assert "CASE WHEN own.report_status = 'Out' THEN NULL ELSE c.depth_rank - cardinality(ahead.names) END AS active_depth_rank" in statement
+    assert "JOIN week_injuries ai ON ai.player_id = a.player_id AND ai.report_status = 'Out'" in statement
+    assert "WHERE a.team_id = c.team_id AND a.position = c.position AND a.depth_rank < c.depth_rank" in statement
 
 
 def test_game_notes_line_movement_is_pre_kickoff_from_one_lowercase_book() -> None:
@@ -1482,7 +1494,9 @@ def test_player_profile_reads_the_roster_team_and_this_weeks_depth_and_injury() 
     [(sql, params)] = session.calls
     assert params == {"player_id": 9, "season": 2026, "week": 4}
     assert "player_teams AS" in sql and "LEFT JOIN player_teams pt ON pt.player_id = p.id" in sql
-    assert "nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week" in sql
+    assert "FROM nfl_player_depth_charts WHERE season = :season AND week = :week" in sql
+    assert "LEFT JOIN week_depth d ON d.player_id = p.id" in sql
+    assert "d.active_depth_rank, d.out_ahead" in sql
     assert "injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week" in sql
     assert profile == {"id": 9, "name": "James Cook", "aliases": ["J. Cook"]}
 

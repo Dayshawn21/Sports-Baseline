@@ -142,11 +142,14 @@ def _qb_change_schema(team: str, change: QbChange | None) -> NflQbChangeSchema |
 def _depth_changes(rows: list[dict]) -> list[NflNoteDepthChangeSchema]:
     changes = []
     for row in rows:
-        change = depth_change(NflAvailability(**{field: row[field] for field in _AVAILABILITY_FIELDS if field in row}))
+        fields = {field: row[field] for field in _AVAILABILITY_FIELDS if field in row}
+        fields["out_ahead"] = tuple(fields.get("out_ahead") or ())
+        change = depth_change(NflAvailability(**fields))
         if change is not None:
             changes.append(NflNoteDepthChangeSchema(
                 player_id=row["player_id"], player_name=row["player_name"], team=row["team"],
                 depth_position=row["depth_position"], depth_rank=row["depth_rank"],
+                active_depth_rank=row.get("active_depth_rank"), out_ahead=list(row.get("out_ahead") or []),
                 previous_depth_position=row["previous_depth_position"],
                 previous_depth_rank=row["previous_depth_rank"], change=change,
             ))

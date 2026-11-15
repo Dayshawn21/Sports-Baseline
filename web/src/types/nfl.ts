@@ -70,6 +70,9 @@ export interface NflSlateLine {
   /** This week's pre-game depth chart; null when the player is not listed. */
   depthPosition: string | null
   depthRank: number | null
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   /** The player's most recent earlier depth chart, on any team. */
   previousDepthPosition: string | null
   previousDepthRank: number | null
@@ -337,6 +340,9 @@ export interface NflPlayerDetail {
   week: number
   depthPosition: string | null
   depthRank: number | null
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   injuryStatus: string | null
   practiceStatus: string | null
   injury: string | null
@@ -406,6 +412,9 @@ export interface NflNoteDepthChange {
   team: string
   depthPosition: string
   depthRank: number
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   previousDepthPosition: string | null
   previousDepthRank: number | null
   change: 'promoted' | 'demoted' | 'new'

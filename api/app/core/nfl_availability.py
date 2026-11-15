@@ -22,6 +22,10 @@ class NflAvailability:
     previous_depth_team_id: int | None = None
     previous_depth_position: str | None = None
     previous_depth_rank: int | None = None
+    # The chart rank once teammates ahead who are Out step aside; None when this
+    # player is Out. Never used for the week-over-week move flags.
+    active_depth_rank: int | None = None
+    out_ahead: tuple[str, ...] = ()
 
 
 def availability_flags(availability: NflAvailability) -> list[str]:
