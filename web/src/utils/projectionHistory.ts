@@ -1,6 +1,6 @@
 import type { ProjectionHistoryPoint } from '~/types/tennis'
-import { playerSearch } from '~/utils/nflPlayer'
 import { marketKey, marketTitle } from '~/utils/tennisPropBoard'
+import { playerSearch } from '~/utils/playerPage'
 
 export const HISTORY_STAT_PARAM = 'hstat'
 export const HISTORY_SURFACE_PARAM = 'hsurface'

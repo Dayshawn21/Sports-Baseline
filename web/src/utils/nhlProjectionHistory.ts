@@ -1,8 +1,8 @@
 import type { NhlLineOnlyMarket, NhlProjectionHistoryPoint } from '~/types/nhl'
-import { playerSearch } from '~/utils/nflPlayer'
 import { NHL_LINE_ONLY_MARKETS, nhlMarketLabel } from '~/utils/nhlLineOnly'
 import { nhlLogValue } from '~/utils/nhlPlayer'
 import { HISTORY_OPPONENT_PARAM, HISTORY_STAT_PARAM, type HistoryOpponentOption } from '~/utils/projectionHistory'
+import { playerSearch } from '~/utils/playerPage'
 
 export const HISTORY_SEASON_PARAM = 'hseason'
 

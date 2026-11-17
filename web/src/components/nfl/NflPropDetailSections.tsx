@@ -6,10 +6,10 @@ import { FORM_PARAM, formBarLabel, formEmptyText, formHistoryDate, formOptions, 
 import { formatProjection } from '~/utils/nflLabels'
 import { formBars, type NflRecentBar } from '~/utils/nflPropCards'
 import { history, type NflDetailHistory, type NflPropDetailModel } from '~/utils/nflPropDetail'
-import { playerSearch } from '~/utils/nflPlayer'
 import { volumeReferenceModel } from '~/utils/nflVolume'
 import { PlayerLinesTable, type PlayerLinesRow } from '~/components/shared/PlayerLinesTable'
 import { SegmentSwitch } from '~/components/shared/SegmentSwitch'
+import { playerSearch } from '~/utils/playerPage'
 import '~/components/shared/player-panel.css'
 import './nfl-prop-detail.css'
 

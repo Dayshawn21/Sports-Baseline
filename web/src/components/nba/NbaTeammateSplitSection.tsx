@@ -4,11 +4,8 @@ import { YesNoList } from '~/components/nba/NbaPlayerFormSection'
 import { GameLogBars } from '~/components/nfl/NflPropDetailSections'
 import type { NbaPlayerMarket, NbaSplitTeammate, NbaTeammateSplit } from '~/types/nba'
 import { NBA_SEASON_START_MONTH, nbaChartLine } from '~/utils/nbaPlayer'
-import {
-  SMALL_SPLIT_SAMPLE, SPLIT_BAR_LIMIT, activeTeammate, marketSplit, parseOutParam, splitSideText, teammateLabel,
-  type SplitSideSummary,
-} from '~/utils/nbaTeammateSplit'
-import { playerSearch } from '~/utils/nflPlayer'
+import { SMALL_SPLIT_SAMPLE, SPLIT_BAR_LIMIT, activeTeammate, marketSplit, parseOutParam, splitSideText, teammateLabel, type SplitSideSummary } from '~/utils/nbaTeammateSplit'
+import { playerSearch } from '~/utils/playerPage'
 
 const DOUBLE_DOUBLE = 'double_double'
 

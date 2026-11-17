@@ -3,10 +3,7 @@ import type { NhlPlayerGame, NhlPlayerInjury, NhlPlayerLine, NhlPlayerMarket } f
 import { formDateText, formEmptyText, formHistoryDate, formOptions, formSample, formShortNote, type FormRow } from '~/utils/nflFormWindow'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { nhlTimeLabel } from '~/utils/nhlGame'
-import {
-  NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag,
-  nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlPlayerTabs, nhlSampleNote, nhlSelectedMarket,
-} from '~/utils/nhlPlayer'
+import { NHL_HISTORY_FROM_YEAR, NHL_SEASON_START_MONTH, nhlChartLine, nhlFormRow, nhlFormSample, nhlLogLabel, nhlLogValue, nhlNotLoadedCount, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerPath, nhlProjectionHero, nhlPlayerStatus, nhlSampleNote } from '~/utils/nhlPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'WSH'): NhlPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
 const rung = (line: number, oddsType: NhlPlayerLine['oddsType']): NhlPlayerLine => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, flags: [] })
@@ -31,21 +28,6 @@ describe('nhlPlayerPath', () => {
   it('carries the date and market when given', () => {
     expect(nhlPlayerPath(7, { date: '2026-11-02' })).toBe('/nhl/player/7?date=2026-11-02')
     expect(nhlPlayerPath(7, { date: '2026-11-02', market: 'points' })).toBe('/nhl/player/7?date=2026-11-02&market=points')
-  })
-})
-
-describe('nhlPlayerTabs and nhlSelectedMarket', () => {
-  const tabs = nhlPlayerTabs([{ market: 'points' }, { market: 'assists' }, { market: 'points' }])
-
-  it('keeps the API order and lists a market once', () => {
-    expect(tabs).toEqual(['points', 'assists'])
-  })
-
-  it('selects the asked market, else the first, else none', () => {
-    expect(nhlSelectedMarket(new URLSearchParams('market=assists'), tabs)).toBe('assists')
-    expect(nhlSelectedMarket(new URLSearchParams('market=hits'), tabs)).toBe('points')
-    expect(nhlSelectedMarket(new URLSearchParams(''), tabs)).toBe('points')
-    expect(nhlSelectedMarket(new URLSearchParams('market=points'), [])).toBeNull()
   })
 })
 

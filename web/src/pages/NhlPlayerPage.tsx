@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NhlPlayerProjectionHistory } from '~/components/nhl/NhlPlayerProjectionHistory'
 import { NhlPlayerPropTabs } from '~/components/nhl/NhlPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
@@ -14,8 +14,8 @@ import type { NhlPlayerProps } from '~/types/nhl'
 import { isNotFound } from '~/utils/httpError'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { parseNhlGameId } from '~/utils/nhlGame'
-import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus, nhlPlayerTabs, nhlSelectedMarket } from '~/utils/nhlPlayer'
-import { injuryTone } from '~/utils/playerPage'
+import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus } from '~/utils/nhlPlayer'
+import { arrivedFromBoard, injuryTone, playerTabs, selectedMarket } from '~/utils/playerPage'
 import { playerGameLog } from '~/utils/playerGameLog'
 import './nfl-slate.css'
 import './nfl-player.css'
@@ -30,7 +30,12 @@ function PlayerPageState({ children }: { children: ReactNode }) {
   return <PlayerPageShell sportClass="nhl-player" crumb={SLATE_CRUMB} title="NHL player">{children}</PlayerPageShell>
 }
 
+/** A board arrival goes back one step, so the board returns on its own date and market; otherwise the game page, or the slate. */
 function Crumb({ player }: { player: NhlPlayerProps }) {
+  const navigate = useNavigate()
+  if (arrivedFromBoard(useLocation().state)) {
+    return <Link className="nfl-player-crumb" to={`/nhl/props?date=${player.date}`} onClick={event => { event.preventDefault(); navigate(-1) }}>← NHL props</Link>
+  }
   return player.game
     ? <Link className="nfl-player-crumb" to={`/nhl/game/${player.game.gameId}`}>← {player.game.awayTeam} @ {player.game.homeTeam}</Link>
     : <Link className="nfl-player-crumb" to={`/nhl?date=${player.date}`}>← NHL slate</Link>
@@ -71,7 +76,7 @@ export default function NhlPlayerPage() {
       seasonStartMonth={NHL_SEASON_START_MONTH} recordNote="No graded record for this player yet. NHL projections are reference only."
     />}
     <NhlPlayerProjectionHistory playerId={player.playerId} playerName={player.name}
-      openMarket={nhlSelectedMarket(params, nhlPlayerTabs(player.markets))} />
+      openMarket={selectedMarket(params, playerTabs(player.markets))} />
     <PlayerFooter>{nhlPlayerFooter(player)}</PlayerFooter>
   </PlayerPageShell>
 }

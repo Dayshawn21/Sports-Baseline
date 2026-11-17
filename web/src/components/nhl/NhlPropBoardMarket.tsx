@@ -5,6 +5,7 @@ import { nhlPuckDropLabel } from '~/utils/nhlGame'
 import { nhlMarketLabel } from '~/utils/nhlLineOnly'
 import { nhlBoardGameStatus, type NhlBoardMarket } from '~/utils/nhlPropBoard'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
+import { FROM_BOARD } from '~/utils/playerPage'
 import { REFERENCE, probabilityRing } from '~/utils/propRowVisuals'
 import {
   NHL_PROBABILITY_CAPTION, NHL_WHOLE_LINE_NOTE, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
@@ -16,7 +17,7 @@ function alternates(rungs: NhlBoardMarket['rows'][number]['row']['rungs']): stri
     .map(rung => `${rung.oddsTypeLabel} ${rung.label}${rung.gap === null ? '' : ` (${nhlGapLabel(rung.gap)})`}`)
 }
 
-/** One market's rows, each opening that player's page on this date and market; values stay gray and unranked. */
+/** One market's rows, each opening that player's page on this date and market as a board arrival; values stay gray and unranked. */
 export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMarket, date: string }) {
   const label = nhlMarketLabel(group.market)
   const now = new Date()
@@ -36,7 +37,7 @@ export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMar
         const others = alternates(row.rungs)
         return <tr key={key}>
           <td>
-            <Link className="nhl-prop-board__player" to={nhlPlayerPath(row.playerId, { date, market: group.market })}>{row.playerName}</Link>
+            <Link className="nhl-prop-board__player" to={nhlPlayerPath(row.playerId, { date, market: group.market })} state={FROM_BOARD}>{row.playerName}</Link>
             <small>{row.team ?? '--'}{row.position ? ` / ${row.position}` : ''}</small>
           </td>
           <td><Link className="nhl-prop-board__game" to={`/nhl/game/${game.gameId}`}>{game.awayTeam} @ {game.homeTeam}</Link></td>

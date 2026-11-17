@@ -1,9 +1,9 @@
 import type { NflHistorySample } from '~/types/nfl'
 import type { MatchPrediction, PlayerMatchLogRow, RecentMatchResult } from '~/types/tennis'
-import { playerSearch } from '~/utils/nflPlayer'
 import { sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
 import { isMoneyline, isWinASet, marketKey, marketLabel, type TennisBoardCategory, type TennisBoardLine } from '~/utils/tennisPropBoard'
 import { propCard, type RecentStatBar } from '~/utils/tennisPropCards'
+import { playerSearch } from '~/utils/playerPage'
 
 export type TennisFormWindow = '5' | '10' | 'opp'
 

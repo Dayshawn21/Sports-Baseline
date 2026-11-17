@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { PAYOUT_TIER_NOTE, injuryTone, latestTime, payoutTierNote } from '~/utils/playerPage'
+import {
+  arrivedFromBoard, FROM_BOARD, injuryTone, latestTime, PAYOUT_TIER_NOTE, payoutTierNote, playerSearch, playerTabs, propSectionIds, selectedMarket,
+} from '~/utils/playerPage'
 
 describe('injuryTone', () => {
   it('is plain with no designation', () => {
@@ -39,5 +41,51 @@ describe('payoutTierNote', () => {
   it('is null for standard-only or other line types', () => {
     expect(payoutTierNote([])).toBeNull()
     expect(payoutTierNote(['Standard', 'PrizePicks', 'goblins'])).toBeNull()
+  })
+})
+
+describe('propSectionIds', () => {
+  it('names a section per market and numbers a repeat', () => {
+    expect(propSectionIds(['receiving_yards', 'receptions', 'receiving_yards'])).toEqual(['prop-receiving_yards', 'prop-receptions', 'prop-receiving_yards-2'])
+  })
+
+  it('is empty for no markets', () => {
+    expect(propSectionIds([])).toEqual([])
+  })
+})
+
+describe('playerSearch', () => {
+  it('changes one param and keeps the rest', () => {
+    const params = new URLSearchParams('market=receptions&form=opp')
+    expect(playerSearch(params, { market: 'receiving_yards' })).toBe('?market=receiving_yards&form=opp')
+    expect(playerSearch(params, { form: '10' })).toBe('?market=receptions&form=10')
+  })
+
+  it('removes a param set to null and encodes values', () => {
+    expect(playerSearch(new URLSearchParams('market=receptions&form=opp'), { form: null })).toBe('?market=receptions')
+    expect(playerSearch(new URLSearchParams(''), { market: 'a b' })).toBe('?market=a+b')
+    expect(playerSearch(new URLSearchParams('form=10'), { form: null })).toBe('?')
+  })
+})
+
+describe('arrivedFromBoard', () => {
+  it('is true only for the state a board row sets', () => {
+    expect(arrivedFromBoard(FROM_BOARD)).toBe(true)
+    expect([arrivedFromBoard(null), arrivedFromBoard(undefined), arrivedFromBoard({}), arrivedFromBoard({ from: 'game' }), arrivedFromBoard('board')]).toEqual([false, false, false, false, false])
+  })
+})
+
+describe('playerTabs and selectedMarket', () => {
+  const tabs = playerTabs([{ market: 'points' }, { market: 'assists' }, { market: 'points' }])
+
+  it('keeps the API order and lists a market once', () => {
+    expect(tabs).toEqual(['points', 'assists'])
+  })
+
+  it('selects the asked market, else the first, else none', () => {
+    expect(selectedMarket(new URLSearchParams('market=assists'), tabs)).toBe('assists')
+    expect(selectedMarket(new URLSearchParams('market=hits'), tabs)).toBe('points')
+    expect(selectedMarket(new URLSearchParams(''), tabs)).toBe('points')
+    expect(selectedMarket(new URLSearchParams('market=points'), [])).toBeNull()
   })
 })

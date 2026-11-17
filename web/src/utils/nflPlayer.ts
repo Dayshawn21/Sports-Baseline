@@ -7,13 +7,6 @@ export function isNflSpecialist(position: string | null): boolean {
   return position === 'K' || position === 'P'
 }
 
-/** Router state a prop board row sets, so the player page can send Back to the board instead of the slate. */
-export const FROM_BOARD = { from: 'board' } as const
-
-export function arrivedFromBoard(state: unknown): boolean {
-  return typeof state === 'object' && state !== null && (state as { from?: unknown }).from === 'board'
-}
-
 /** `week` is the week the row was opened from; without it the player page shows the current week. */
 export function nflPlayerMarketLink(playerId: number, market: string, week: NflSeasonWeek | null = null): string {
   const weekQuery = week ? `&season=${week.season}&week=${week.week}` : ''
@@ -25,27 +18,6 @@ export function playerWeekParams(params: URLSearchParams): NflSeasonWeek | null 
   const season = params.get('season') ?? ''
   const week = params.get('week') ?? ''
   return /^\d+$/.test(season) && /^\d+$/.test(week) ? { season: Number(season), week: Number(week) } : null
-}
-
-/** The query string with `updates` applied; a null value removes the key, so other params (market, form) survive a change to one. */
-export function playerSearch(params: URLSearchParams, updates: Record<string, string | null>): string {
-  const next = new URLSearchParams(params)
-  for (const [key, value] of Object.entries(updates)) {
-    if (value === null) next.delete(key)
-    else next.set(key, value)
-  }
-  const text = next.toString()
-  return text ? `?${text}` : '?'
-}
-
-/** One DOM id per prop section, in order; a market that repeats gets a numeric suffix so ids never collide. */
-export function propSectionIds(markets: string[]): string[] {
-  const seen = new Map<string, number>()
-  return markets.map(market => {
-    const count = (seen.get(market) ?? 0) + 1
-    seen.set(market, count)
-    return count === 1 ? `prop-${market}` : `prop-${market}-${count}`
-  })
 }
 
 /** The `market` param when it names a section on the page, else null. Plain `#` anchors cannot be used under HashRouter. */

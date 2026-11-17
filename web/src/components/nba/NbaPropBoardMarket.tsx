@@ -2,7 +2,7 @@ import { NbaBoardTable } from '~/components/nba/NbaPropTable'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
 import { nbaPlayerPath } from '~/utils/nbaPlayer'
 import type { NbaBoardMarket } from '~/utils/nbaPropBoard'
-import { FROM_BOARD } from '~/utils/nflPlayer'
+import { FROM_BOARD } from '~/utils/playerPage'
 
 interface Props {
   group: NbaBoardMarket

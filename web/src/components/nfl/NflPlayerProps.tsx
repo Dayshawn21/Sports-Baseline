@@ -4,8 +4,9 @@ import { NflPlayerPropSection } from '~/components/nfl/NflPlayerPropSection'
 import { PlayerMarketTabs } from '~/components/shared/PlayerMarketTabs'
 import type { NflOtherMarkets } from '~/types/nfl'
 import { marketLabel } from '~/utils/nflLabels'
-import { playerSearch, propSectionIds, selectedPropMarket, type NflPlayerWeek } from '~/utils/nflPlayer'
+import { selectedPropMarket, type NflPlayerWeek } from '~/utils/nflPlayer'
 import { playerTabs } from '~/utils/nflOtherMarkets'
+import { playerSearch, propSectionIds } from '~/utils/playerPage'
 
 export interface OtherMarketsState {
   data: NflOtherMarkets | undefined

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerRung } from '~/types/nba'
 import { nbaInjuryTime } from '~/utils/nbaInjuries'
 import { formEmptyText, formOptions, formSample, formShortNote } from '~/utils/nflFormWindow'
-import { nbaChartLine, nbaFormRow, nbaFormSample, nbaNotLoadedCount, nbaPercentText, nbaPlayerFooter, nbaPlayerPath, nbaPlayerStatus, nbaPlayerTabs, nbaProjectionHero, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaSelectedMarket, nbaStandardLine } from '~/utils/nbaPlayer'
+import { nbaChartLine, nbaFormRow, nbaFormSample, nbaNotLoadedCount, nbaPercentText, nbaPlayerFooter, nbaPlayerPath, nbaPlayerStatus, nbaProjectionHero, nbaRungNotes, NBA_HISTORY_FROM_YEAR, nbaStandardLine } from '~/utils/nbaPlayer'
 
 const game = (day: number, value: number | null, opponent: string | null = 'TOR'): NbaPlayerGame => ({ gameDate: `2026-10-${String(day).padStart(2, '0')}`, opponent, value })
 const rung = (line: number, oddsType: string | null): NbaPlayerRung => ({ line, oddsType, fetchedAt: '2026-11-02T15:00:00Z', gap: null, pOver: null, pUnder: null, overProbabilityVersion: null, flags: [] })
@@ -26,21 +26,6 @@ describe('nbaPlayerPath', () => {
   it('carries the date and market when given', () => {
     expect(nbaPlayerPath(7, { date: '2026-11-02' })).toBe('/nba/player/7?date=2026-11-02')
     expect(nbaPlayerPath(7, { date: '2026-11-02', market: 'points' })).toBe('/nba/player/7?date=2026-11-02&market=points')
-  })
-})
-
-describe('nbaPlayerTabs and nbaSelectedMarket', () => {
-  const tabs = nbaPlayerTabs([{ market: 'points' }, { market: 'assists' }, { market: 'points' }])
-
-  it('keeps the API order and lists a market once', () => {
-    expect(tabs).toEqual(['points', 'assists'])
-  })
-
-  it('selects the asked market, else the first, else none', () => {
-    expect(nbaSelectedMarket(new URLSearchParams('market=assists'), tabs)).toBe('assists')
-    expect(nbaSelectedMarket(new URLSearchParams('market=steals'), tabs)).toBe('points')
-    expect(nbaSelectedMarket(new URLSearchParams(), tabs)).toBe('points')
-    expect(nbaSelectedMarket(new URLSearchParams('market=points'), [])).toBeNull()
   })
 })
 
@@ -188,7 +173,6 @@ describe('nbaProjectionHero', () => {
     expect(nbaProjectionHero(market({ kind: 'line-only' }))).toBeNull()
   })
 })
-
 
 describe('nbaPlayerFooter', () => {
   const report = { source: 'ESPN' as const, fetchedAt: '2026-11-02T14:00:00Z', freshness: 'fresh' as const, injuries: [] }

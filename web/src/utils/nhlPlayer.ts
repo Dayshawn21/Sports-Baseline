@@ -36,17 +36,6 @@ export function nhlPlayerPath(playerId: number, options: PlayerPathOptions = {})
   return query ? `/nhl/player/${playerId}?${query}` : `/nhl/player/${playerId}`
 }
 
-/** The tabs are the response's markets in the order the API sent them, each once. */
-export function nhlPlayerTabs(markets: Pick<NhlPlayerMarket, 'market'>[]): string[] {
-  return markets.map(item => item.market).filter((market, index, all) => all.indexOf(market) === index)
-}
-
-/** The `?market=` tab when it is one of the player's markets, else the first. */
-export function nhlSelectedMarket(params: URLSearchParams, markets: string[]): string | null {
-  const asked = params.get('market')
-  return asked !== null && markets.includes(asked) ? asked : markets[0] ?? null
-}
-
 /** Games with a stored value, newest first; a game whose stat was not loaded is left out rather than drawn as zero. */
 export function nhlFormSample(games: NhlPlayerGame[]): NhlFormSample {
   const values = games.flatMap(game => game.value === null ? [] : [{ value: game.value, opponentTeam: game.opponent, gameDate: game.gameDate }])
