@@ -26,13 +26,15 @@ from app.core.odds import (
 )
 from app.core.poisson import confidence_tier
 from app.core.prop_probs import total_games_probs
+from app.core.prop_projection import compute_stat_avg
 from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_sets import set_outcomes
 from app.ml.registry import ModelRegistry
 from app.repositories import matches as match_repo
 from app.repositories import players as player_repo
-from app.services.tennis.best_picks import _compute_stat_avg, _CONF_MULT
+from app.services.tennis.best_picks import CONF_MULT
 from app.services.tennis.best_picks_response import overlay_live_moneyline, slate_predictions, target_dates
+from app.services.tennis.moneyline import moneyline_sides, odds_str
 from app.services.tennis.predictor import PredictionOutput
 
 logger = logging.getLogger(__name__)
@@ -111,12 +113,6 @@ class BankrollBuilderResult:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _odds_str(odds: Optional[int]) -> str:
-    if odds is None:
-        return "N/A"
-    return f"+{odds}" if odds > 0 else str(odds)
-
-
 def _devig_pair(p1_odds: Optional[int], p2_odds: Optional[int]) -> tuple[Optional[float], Optional[float]]:
     """Return (p1_no_vig, p2_no_vig) from American odds, or (None, None)."""
     if p1_odds is None or p2_odds is None:
@@ -128,7 +124,7 @@ def _devig_pair(p1_odds: Optional[int], p2_odds: Optional[int]) -> tuple[Optiona
 
 def _pick_score(ev: float, kelly: float, conf: str, has_market_odds: bool) -> float:
     """Composite ranking score: higher = better bankroll value."""
-    conf_mult = _CONF_MULT.get(conf, 0.5)
+    conf_mult = CONF_MULT.get(conf, 0.5)
     market_mult = 1.2 if has_market_odds else 0.8
     return ev * kelly * conf_mult * market_mult * 1000  # scale up for readability
 
@@ -138,22 +134,17 @@ def _pick_score(ev: float, kelly: float, conf: str, has_market_odds: bool) -> fl
 def _generate_ml_picks(pred: PredictionOutput) -> list[BankrollPick]:
     """Generate moneyline picks for both sides if positive EV."""
     picks: list[BankrollPick] = []
-    if pred.p1_win_prob is None or pred.p1_odds_american is None or pred.p2_odds_american is None:
+    sides = moneyline_sides(pred)
+    if sides is None:
         return picks
 
-    market_p1, market_p2 = _devig_pair(pred.p1_odds_american, pred.p2_odds_american)
-
-    for side, our_p, mkt_p, odds, name in [
-        ("p1", pred.p1_win_prob, market_p1, pred.p1_odds_american, pred.p1_name),
-        ("p2", pred.p2_win_prob, market_p2, pred.p2_odds_american, pred.p2_name),
-    ]:
-        ev = expected_value(our_p, odds)
-        kf = kelly_fraction(our_p, odds)
+    for s in sides:
+        side, our_p, mkt_p, odds, name, ev, kf = s.side, s.our_prob, s.market_prob, s.odds, s.name, s.ev, s.kelly
         assessment = assess_bettable_pick(
             our_p,
             ev,
             kf,
-            data_quality_flags=getattr(pred, "quality_flags", []) or [],
+            data_quality_flags=pred.quality_flags or [],
             odds_source="posted",
         )
         if assessment is None:
@@ -170,7 +161,7 @@ def _generate_ml_picks(pred: PredictionOutput) -> list[BankrollPick]:
             tournament=pred.tournament, round=pred.round,
             start_utc=pred.start_utc,
             bet_type="ml",
-            pick_label=f"{last_name} ML ({_odds_str(odds)})",
+            pick_label=f"{last_name} ML ({odds_str(odds)})",
             pick_side=side,
             our_prob=round(our_p, 4),
             market_prob=round(mkt_p, 4) if mkt_p else None,
@@ -181,9 +172,9 @@ def _generate_ml_picks(pred: PredictionOutput) -> list[BankrollPick]:
             confidence=conf,
             reasoning=(
                 f"Model gives {last_name} {our_p:.0%} win prob vs "
-                f"{mkt_p:.0%} implied — {ev*100:.1f}% EV at {_odds_str(odds)}"
+                f"{mkt_p:.0%} implied — {ev*100:.1f}% EV at {odds_str(odds)}"
                 if mkt_p else
-                f"Model gives {last_name} {our_p:.0%} win prob — {ev*100:.1f}% EV at {_odds_str(odds)}"
+                f"Model gives {last_name} {our_p:.0%} win prob — {ev*100:.1f}% EV at {odds_str(odds)}"
             ),
             rank_score=_pick_score(ev, kf, conf, True),
         ))
@@ -281,7 +272,7 @@ def _generate_set_picks(
                 tournament=pred.tournament, round=pred.round,
                 start_utc=pred.start_utc,
                 bet_type=straight_bet_type,
-                pick_label=f"{fav_last} {straight_bet_type} ({_odds_str(odds)})",
+                pick_label=f"{fav_last} {straight_bet_type} ({odds_str(odds)})",
                 pick_side="p1" if fav_is_p1 else "p2",
                 our_prob=round(p_sweep, 4),
                 market_prob=round(mkt_p, 4) if mkt_p else None,
@@ -322,7 +313,7 @@ def _generate_set_picks(
                 tournament=pred.tournament, round=pred.round,
                 start_utc=pred.start_utc,
                 bet_type="underdog_set",
-                pick_label=f"{dog_last} +{set_cover_line:.1f} Sets ({_odds_str(odds)})",
+                pick_label=f"{dog_last} +{set_cover_line:.1f} Sets ({odds_str(odds)})",
                 pick_side="p2" if fav_is_p1 else "p1",
                 our_prob=round(p_dog_set, 4),
                 market_prob=round(mkt_p, 4) if mkt_p else None,
@@ -368,9 +359,9 @@ def _generate_total_picks(
     # Compute expected total from both players' stats
     # win_prob must be keyword: the third positional parameter is opponent_stats, and
     # passing a float there makes serve_hold raise AttributeError on a real slate.
-    p1_expected = _compute_stat_avg("total_games", p1_stats, win_prob=pred.p1_win_prob,
+    p1_expected = compute_stat_avg("total_games", p1_stats, win_prob=pred.p1_win_prob,
                                     best_of=pred.best_of) if p1_stats else None
-    p2_expected = _compute_stat_avg("total_games", p2_stats, win_prob=pred.p2_win_prob,
+    p2_expected = compute_stat_avg("total_games", p2_stats, win_prob=pred.p2_win_prob,
                                     best_of=pred.best_of) if p2_stats else None
 
     if p1_expected is not None and p2_expected is not None:
@@ -412,7 +403,7 @@ def _generate_total_picks(
                 tournament=pred.tournament, round=pred.round,
                 start_utc=pred.start_utc,
                 bet_type="total_games",
-                pick_label=f"Over {line} Games ({_odds_str(over_odds)})",
+                pick_label=f"Over {line} Games ({odds_str(over_odds)})",
                 pick_side="over",
                 our_prob=round(p_over, 4),
                 market_prob=round(mkt_over, 4) if mkt_over else None,
@@ -442,7 +433,7 @@ def _generate_total_picks(
                 tournament=pred.tournament, round=pred.round,
                 start_utc=pred.start_utc,
                 bet_type="total_games",
-                pick_label=f"Under {line} Games ({_odds_str(under_odds)})",
+                pick_label=f"Under {line} Games ({odds_str(under_odds)})",
                 pick_side="under",
                 our_prob=round(p_under, 4),
                 market_prob=round(mkt_under, 4) if mkt_under else None,
@@ -622,7 +613,7 @@ async def build_bankroll_picks(
             all_picks.extend(_generate_total_picks(pred, match_odds, p1_stats, p2_stats))
 
     # 6. Filter: strict EV + LEAN or better
-    all_picks = [p for p in all_picks if p.confidence in _CONF_MULT and p.ev >= MIN_EV]
+    all_picks = [p for p in all_picks if p.confidence in CONF_MULT and p.ev >= MIN_EV]
 
     # 7. Rank by composite score
     all_picks.sort(key=lambda p: p.rank_score, reverse=True)

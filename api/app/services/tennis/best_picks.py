@@ -22,6 +22,7 @@ from app.core.prop_projection import compute_stat_avg as _compute_stat_avg
 from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_sets import set_outcomes
 from app.repositories.players import PlayerRollingStats
+from app.services.tennis.moneyline import moneyline_sides, odds_str
 from app.services.tennis.predictor import PredictionOutput
 
 # 26d's holdout: betting the served blend's moneyline gaps at the close lost
@@ -29,7 +30,7 @@ from app.services.tennis.predictor import PredictionOutput
 MONEYLINE_PICKS_ENABLED = False
 
 # Confidence multiplier for scoring
-_CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0, "PASS": 0.3}
+CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0, "PASS": 0.3}
 
 
 @dataclass
@@ -65,7 +66,7 @@ def _f(v) -> Optional[float]:
 def _score_pick(edge_pct: float, confidence: str, sample_size: Optional[int] = None) -> float:
     """Compute composite score for ranking picks."""
     base = abs(edge_pct)
-    conf_mult = _CONF_MULT.get(confidence, 0.5)
+    conf_mult = CONF_MULT.get(confidence, 0.5)
     sample_bonus = 1.0
     if sample_size is not None:
         if sample_size >= 20:
@@ -100,47 +101,30 @@ def _poisson_diff_cover_probs(
 
 def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     """Generate a moneyline value pick if our model has positive EV."""
-    if pred.p1_win_prob is None or pred.p1_odds_american is None or pred.p2_odds_american is None:
+    sides = moneyline_sides(pred)
+    if sides is None:
         return None
+    p1, p2 = sides
+    chosen = p1 if p1.ev > p2.ev else p2
+    ev, player, odds, our_prob, kelly = chosen.ev, chosen.name, chosen.odds, chosen.our_prob, chosen.kelly
 
-    # Check P1 edge
-    p1_ev = expected_value(pred.p1_win_prob, pred.p1_odds_american)
-    p2_ev = expected_value(pred.p2_win_prob, pred.p2_odds_american)
-
-    # Pick the side with more EV
-    if p1_ev > p2_ev:
-        ev = p1_ev
-        player = pred.p1_name
-        odds = pred.p1_odds_american
-        our_prob = pred.p1_win_prob
-    else:
-        ev = p2_ev
-        player = pred.p2_name
-        odds = pred.p2_odds_american
-        our_prob = pred.p2_win_prob
-
-    # Market implied
-    market_p1, _ = devig_two_way(
-        american_to_prob(pred.p1_odds_american),
-        american_to_prob(pred.p2_odds_american),
-    )
-    market_prob = market_p1 if player == pred.p1_name else 1 - market_p1
+    # p2's market stays 1 - p1's de-vigged prob, not p2's own, so the output keeps its last float digit.
+    market_prob = p1.market_prob if player == pred.p1_name else 1 - p1.market_prob
 
     edge_pct = round((our_prob - market_prob) / market_prob * 100, 1)
     ev_pct = round(ev * 100, 1)
-    kelly = compute_kelly_fraction(our_prob, odds)
 
     assessment = assess_bettable_pick(
         our_prob,
         ev,
         kelly,
-        data_quality_flags=getattr(pred, "quality_flags", []) or [],
+        data_quality_flags=pred.quality_flags or [],
         odds_source="posted",
     )
     if assessment is None:
         return None
     conf = assessment.confidence
-    odds_str = f"+{odds}" if odds > 0 else str(odds)
+    odds_text = odds_str(odds)
 
     last_name = player.split()[-1]
     h2h_note = ""
@@ -152,7 +136,7 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
             h2h_note = f" | H2H {player_h2h}-{opp_h2h} edge"
     reasoning = (
         f"Model gives {last_name} {our_prob:.0%} win prob vs {market_prob:.0%} implied — "
-        f"{ev_pct}% EV at {odds_str}{h2h_note}"
+        f"{ev_pct}% EV at {odds_text}{h2h_note}"
     )
 
     score = _score_pick(edge_pct, conf)
@@ -160,7 +144,7 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     return BestPick(
         pick_type="moneyline",
         label="Moneyline",
-        pick=f"{last_name} ML ({odds_str})",
+        pick=f"{last_name} ML ({odds_text})",
         player_name=player,
         edge_pct=edge_pct,
         confidence=conf,
