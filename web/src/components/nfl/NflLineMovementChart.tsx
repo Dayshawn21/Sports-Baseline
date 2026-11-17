@@ -1,8 +1,9 @@
 import type { LineMovementGame, LineMovementHistory } from '~/types/lineMovement'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { lineMovementChart } from '~/utils/nflLineMovement'
+import { CENTRAL_TZ } from '~/utils/format'
 
-const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric' })
+const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short', hour: 'numeric' })
 
 function lineText(history: LineMovementHistory, line: number, detail: LineMovementGame): string {
   return history.market === 'spread' ? spreadLabel(line, detail.homeTeam, detail.awayTeam) : line.toFixed(1)

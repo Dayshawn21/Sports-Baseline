@@ -4,9 +4,9 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import ErrorState from '~/components/shared/ErrorState'
 import { usePlayerProps } from '~/hooks/useTennisPlayer'
 import type { PastProp, PlayerDetail, PlayerMatches, WinLoss } from '~/types/tennis'
-import { fmtDateCT, fmtTimeCT } from '~/utils/format'
+import { dateWithYear, fmtDateCT, fmtTimeCT, shortDate } from '~/utils/format'
 import { marketTitle } from '~/utils/tennisPropBoard'
-import { dateWithYear, recordText, shortDate } from '~/utils/tennisPlayer'
+import { recordText } from '~/utils/tennisPlayer'
 
 const PROPS_SHOWN = 12
 

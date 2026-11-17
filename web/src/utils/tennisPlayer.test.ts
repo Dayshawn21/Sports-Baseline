@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlayerEloPoint } from '~/types/tennis'
-import { ageOn, chartSurface, defaultSurface, eloChart, metricBar, metricText, parsePlayerId, ratio, recordText, shortDate, dateWithYear } from '~/utils/tennisPlayer'
+import { ageOn, chartSurface, defaultSurface, eloChart, metricBar, metricText, parsePlayerId, ratio, recordText } from '~/utils/tennisPlayer'
 
 const NOW = new Date('2026-09-29T12:00:00Z')
 const BOX = { left: 40, right: 600, top: 20, bottom: 160 }
@@ -103,14 +103,7 @@ describe('eloChart', () => {
   })
 })
 
-describe('shortDate and ratio', () => {
-  it('formats a plain date without shifting it a day', () => {
-    expect(shortDate('2026-09-25')).toBe('Sep 25')
-    expect(shortDate('2026-01-01')).toBe('Jan 1')
-    expect(shortDate('garbage')).toBe('garbage')
-    expect(dateWithYear('2025-09-29')).toBe('Sep 29, 2025')
-  })
-
+describe('ratio', () => {
   it('shows made over chances, or a dash when either is missing', () => {
     expect(ratio(3, 4)).toBe('3/4')
     expect(ratio(0, 0)).toBe('0/0')

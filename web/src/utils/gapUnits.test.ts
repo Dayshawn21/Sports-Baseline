@@ -7,6 +7,8 @@ describe('signedGapUnits', () => {
     expect(signedGapUnits(-1.05, 'pts')).toBe('-1.1 pts')
     expect(signedGapUnits(-1.5)).toBe('-1.5')
     expect(signedGapUnits(0, 'pts')).toBe('0.0 pts')
+    expect(signedGapUnits(0.04, 'pts')).toBe('0.0 pts')
+    expect(signedGapUnits(-0.04, 'pts')).toBe('0.0 pts')
   })
 
   it('shows a dash with no gap', () => {

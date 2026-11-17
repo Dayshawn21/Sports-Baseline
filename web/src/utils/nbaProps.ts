@@ -1,6 +1,7 @@
 import type { NbaInjury, NbaLineOnlyRecent, NbaPropFlag, NbaPropLine } from '~/types/nba'
 import { NBA_LINE_ONLY_MARKETS } from '~/utils/nbaLineOnly'
 import { mainRung, overAgainstStandard } from '~/utils/nflLineOnly'
+import { fmtSigned } from '~/utils/format'
 
 /** `NbaPropMarket` order (20g2): the modelled markets, every NBA market except double-double. */
 export const NBA_PROP_MARKETS = NBA_LINE_ONLY_MARKETS.filter(market => market !== 'double_double')
@@ -81,8 +82,8 @@ function oneDecimal(value: number): string {
 }
 
 export function signedGap(gap: number): string {
-  const text = oneDecimal(gap)
-  return gap > 0 && text !== '0.0' ? `+${text}` : text
+  // Half-up like oneDecimal, so the gap always equals the shown projection minus the line.
+  return fmtSigned(Math.round(gap * 10) / 10)
 }
 
 export function rungLabel(rung: Pick<NbaPropRung, 'line' | 'oddsType' | 'pOver'>): string {

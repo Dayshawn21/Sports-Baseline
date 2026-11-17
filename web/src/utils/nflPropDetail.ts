@@ -11,6 +11,7 @@ import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLa
 import { snapShareLabel } from '~/utils/nflSnapShare'
 import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
 import { sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
+import { fmtSigned } from '~/utils/format'
 
 export interface NflDetailRow {
   label: string
@@ -56,7 +57,7 @@ export interface NflPropDetailModel {
 }
 
 function signedPct(value: number): string {
-  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
+  return fmtSigned(value, 1, '%')
 }
 
 function typeLabel(oddsType: string | null, fallback: string): string {

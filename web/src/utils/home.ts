@@ -1,5 +1,6 @@
 import { SPORTS, VIEW_LABELS, sportViews, type Sport, type SportView } from '~/utils/sportNav'
 import type { HomeGap, HomeMoneyline, HomeNextGame, HomeSource } from '~/utils/homeSources'
+import { CENTRAL_TZ, ctDayKey } from '~/utils/format'
 
 export type HomeStatus = 'loading' | 'error' | 'ready'
 
@@ -12,11 +13,9 @@ export interface HomeSportData {
   startsMs: number[]
 }
 
-const CENTRAL = 'America/Chicago'
-const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
-const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short' })
-const MONTH_DAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, month: 'short', day: 'numeric' })
-const DAY_KEY = new Intl.DateTimeFormat('en-CA', { timeZone: CENTRAL })
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', minute: '2-digit' })
+const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short' })
+const MONTH_DAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, month: 'short', day: 'numeric' })
 
 /**
  * Team games that have started and are not final, the slates' own "live" rule. Tennis is left out: its feed marks
@@ -33,7 +32,7 @@ export function nextStart(data: HomeSportData, now: number): number | null {
 }
 
 export function centralDay(startMs: number): string {
-  return DAY_KEY.format(startMs)
+  return ctDayKey(startMs)
 }
 
 export function weekdayLabel(startMs: number): string {
@@ -43,7 +42,7 @@ export function weekdayLabel(startMs: number): string {
 /** Central time of day, with the weekday when the start is not today. */
 export function startLabel(startMs: number, now: number): string {
   const clock = CLOCK.format(startMs)
-  return DAY_KEY.format(startMs) === DAY_KEY.format(now) ? clock : `${WEEKDAY.format(startMs)} ${clock}`
+  return ctDayKey(startMs) === ctDayKey(now) ? clock : `${WEEKDAY.format(startMs)} ${clock}`
 }
 
 const NOUN: Record<Sport, { one: string, many: string }> = {

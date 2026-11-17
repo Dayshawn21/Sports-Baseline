@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import ErrorState from '~/components/shared/ErrorState'
 import type { PlayerMatches } from '~/types/tennis'
 import type { UseQueryResult } from '@tanstack/react-query'
-import { ratio, shortDate } from '~/utils/tennisPlayer'
+import { ratio } from '~/utils/tennisPlayer'
+import { shortDate } from '~/utils/format'
 
 const dash = (value: number | null) => (value == null ? '—' : value)
 

@@ -1,3 +1,6 @@
+import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
+
 interface NflBookOddsFields {
   projection: number | null
   bookProbability: number | null
@@ -29,11 +32,11 @@ export function nflBookOddsEvidence(row: NflBookOddsFields, now: number): NflBoo
   const devigged = row.bookProbabilityDevigged
   const headline = devigged ?? row.bookProbability
   const label = devigged === null ? '' : ' de-vigged'
-  const summary = `${(headline * 100).toFixed(1)}%${label} · ${books} · ${formatAge(row.bookFetchedAt, now)}`
+  const summary = `${fmtPct(headline)}${label} · ${books} · ${formatAge(row.bookFetchedAt, now)}`
   const note = devigged === null
     ? (row.bookIncludesMargin ? ' · includes book margin' : '')
-    : ` · ${(row.bookProbability * 100).toFixed(1)}% raw`
+    : ` · ${fmtPct(row.bookProbability)} raw`
   if (row.projection === null) return { summary, comparison: `No model baseline${note}` }
   const gap = (row.projection - headline) * 100
-  return { summary, comparison: `Model ${gap > 0 ? '+' : ''}${gap.toFixed(1)} pts vs books${note}` }
+  return { summary, comparison: `Model ${fmtSigned(gap)} pts vs books${note}` }
 }

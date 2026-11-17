@@ -2,9 +2,10 @@ import type { NhlBook, NhlRecord, NhlSlateGame } from '~/types/nhl'
 import { fmtAmerican } from '~/utils/odds'
 import { isResultPending } from '~/utils/slateOrder'
 import { dayClockCt } from '~/utils/slatePeriod'
+import { CENTRAL_TZ, fmtSigned } from '~/utils/format'
 
 const FULL_TIME = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Chicago', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  timeZone: CENTRAL_TZ, year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 })
 
 export function validNhlGameId(value: number | null): value is number {
@@ -59,7 +60,7 @@ export function nhlBookLabel(book: NhlBook): string {
 }
 
 export function signedNhlLine(line: number): string {
-  return `${line > 0 ? '+' : ''}${Object.is(line, -0) ? '0.0' : line.toFixed(1)}`
+  return fmtSigned(line)
 }
 
 export interface NhlMarketCell {

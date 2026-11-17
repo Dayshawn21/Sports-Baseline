@@ -1,6 +1,7 @@
 import type { NbaPropBoardGame } from '~/types/nba'
 import { NBA_LINE_ONLY_MARKETS, nbaLineOnlyGroups, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
 import { nbaPropGroups, type NbaPropCard } from '~/utils/nbaProps'
+import { CENTRAL_TZ } from '~/utils/format'
 
 export type NbaBoardGameContext = Omit<NbaPropBoardGame, 'lines' | 'lineOnlyLines'>
 
@@ -29,7 +30,7 @@ export function nbaBoardPath(date: string | null, market: string): string | null
 }
 
 const TIP_FORMAT = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: '2-digit',
+  timeZone: CENTRAL_TZ, weekday: 'short', hour: 'numeric', minute: '2-digit',
 })
 
 export function nbaBoardGameLabels(game: NbaBoardGameContext, now: Date): { tip: string, status: string | null } {

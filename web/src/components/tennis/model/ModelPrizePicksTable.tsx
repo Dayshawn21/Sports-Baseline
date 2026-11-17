@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react'
 import type { ModelPrizePicksLinesResponse, TrackLineRow } from '~/types/tennis'
 import { marketTitle } from '~/utils/tennisPropBoard'
 import { rateRange, signalClass } from '~/utils/trackRecord'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 const LINE_TYPE_LABELS = { standard: 'Standard', goblin: 'Goblin', demon: 'Demon' }
 
@@ -11,15 +11,15 @@ function RangeCell({ row }: { row: TrackLineRow }) {
   if (row.overRate == null) return <td className="tennis-model-range-cell" />
   const range = rateRange(row.overRate, row.standardError)
   const style = {
-    '--p': pct(row.overRate),
-    '--lo': range ? pct(range.low) : '0%',
-    '--hi': range ? pct(range.high) : '0%',
-    '--be': row.breakEven != null ? pct(row.breakEven) : '0%',
+    '--p': fmtPct(row.overRate),
+    '--lo': range ? fmtPct(range.low) : '0%',
+    '--hi': range ? fmtPct(range.high) : '0%',
+    '--be': row.breakEven != null ? fmtPct(row.breakEven) : '0%',
   } as CSSProperties
   return (
     <td className="tennis-model-range-cell">
       <div className="tennis-model-range" style={style}
-        title={`Over ${pct(row.overRate)}${range ? `, 1 SE ${pct(range.low)} to ${pct(range.high)}` : ''}${row.breakEven != null ? `, break-even ${pct(row.breakEven)}` : ''}`}>
+        title={`Over ${fmtPct(row.overRate)}${range ? `, 1 SE ${fmtPct(range.low)} to ${fmtPct(range.high)}` : ''}${row.breakEven != null ? `, break-even ${fmtPct(row.breakEven)}` : ''}`}>
         {range && <span className="rng" />}
         {row.breakEven != null && <span className="be" />}
         <span className="pt" />
@@ -49,12 +49,12 @@ export default function ModelPrizePicksTable({ data }: { data: ModelPrizePicksLi
                 <td>{marketTitle(row.stat)}</td>
                 <td><span className={`tennis-model-tag is-${row.oddsType}`}>{LINE_TYPE_LABELS[row.oddsType]}</span></td>
                 <td>{row.settled.toLocaleString()}</td>
-                <td>{pct(row.overShare)}</td>
-                <td>{pct(row.underShare)}</td>
-                <td>{pct(row.pushShare)}</td>
+                <td>{fmtPct(row.overShare)}</td>
+                <td>{fmtPct(row.underShare)}</td>
+                <td>{fmtPct(row.pushShare)}</td>
                 <td className={signalClass(row.signal)}>
-                  {row.overRate != null ? pct(row.overRate) : '—'}
-                  {row.standardError != null && <span className="tennis-model-se"> ±{pct(row.standardError)}</span>}
+                  {row.overRate != null ? fmtPct(row.overRate) : '—'}
+                  {row.standardError != null && <span className="tennis-model-se"> ±{fmtPct(row.standardError)}</span>}
                 </td>
                 <RangeCell row={row} />
               </tr>

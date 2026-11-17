@@ -1,4 +1,5 @@
 import type { SlatePhase } from '~/utils/slateOrder'
+import { CENTRAL_TZ, ctDayKey } from '~/utils/format'
 
 /** A proposed default, confirmed at the 57a spec review: odds older than this read as stale while games remain. */
 export const STALE_ODDS_MS = 6 * 60 * 60 * 1000
@@ -89,11 +90,9 @@ export function gameSlateLine(period: string, counts: SlateCounts, startsMs: rea
   ])
 }
 
-const CENTRAL = 'America/Chicago'
-const AGE_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: CENTRAL, year: 'numeric', month: '2-digit', day: '2-digit' })
-const AGE_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
-const AGE_WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short' })
-const AGE_DATE = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, month: 'short', day: 'numeric' })
+const AGE_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', minute: '2-digit' })
+const AGE_WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short' })
+const AGE_DATE = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, month: 'short', day: 'numeric' })
 // Under six days a weekday names one day only; past that it could mean two.
 const WEEKDAY_SPAN_MS = 6 * 24 * 60 * 60 * 1000
 
@@ -109,11 +108,11 @@ export function latestTime(times: readonly (string | null | undefined)[]): numbe
  */
 export function oddsAsOf(fetchedMs: number | null, now: number): string {
   if (fetchedMs === null || !Number.isFinite(fetchedMs)) return 'odds time not stored'
-  if (AGE_DAY.format(fetchedMs) === AGE_DAY.format(now)) return `as of ${AGE_CLOCK.format(fetchedMs)}`
+  if (ctDayKey(fetchedMs) === ctDayKey(now)) return `as of ${AGE_CLOCK.format(fetchedMs)}`
   return `as of ${now - fetchedMs < WEEKDAY_SPAN_MS ? AGE_WEEKDAY.format(fetchedMs) : AGE_DATE.format(fetchedMs)}`
 }
 
-const DAY_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
+const DAY_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
 /** A start time as the slates write it: "Mon 7:15 PM CT". */
 export function dayClockCt(ms: number): string {

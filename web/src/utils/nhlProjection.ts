@@ -1,4 +1,5 @@
 import type { NhlLineOnlyMarket, NhlProjection, NhlProjectionFlag } from '~/types/nhl'
+import { fmtSigned } from '~/utils/format'
 
 export const NHL_PROJECTION_CAPTION = 'Reference projection: 20-game average, not a pick'
 export const NHL_PROBABILITY_CAPTION = 'P(over): model estimate for that line, not a pick'
@@ -30,10 +31,7 @@ export function nhlProjectionValue(projection: NhlProjection): string {
 
 /** The gap to a line, signed, in the market's unit; a dash when no number is shown. */
 export function nhlGapLabel(gap: number | null): string {
-  if (gap === null) return '-'
-  const text = Math.abs(gap).toFixed(1)
-  if (Number(text) === 0) return text
-  return `${gap > 0 ? '+' : '-'}${text}`
+  return gap === null ? '-' : fmtSigned(gap)
 }
 
 /** Why a number is missing, or what to qualify one that is shown; null when there is nothing to say. */

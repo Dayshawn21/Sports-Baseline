@@ -6,8 +6,8 @@ import {
   type VolumeSliceView,
 } from '~/utils/nflVolumeRecord'
 import { signalClass } from '~/utils/trackRecord'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 function SliceCard({ view, rule }: { view: VolumeSliceView, rule: NflModelRanking['rule'] }) {
   const { slice } = view
@@ -24,8 +24,8 @@ function SliceCard({ view, rule }: { view: VolumeSliceView, rule: NflModelRankin
         ? <dl className="nfl-model-kv">
           <div><dt>Picks</dt><dd>{slice.n} of {rule.minPicks}</dd></div>
           <div><dt>Weeks</dt><dd>{slice.weeks} of {rule.minWeeks}+</dd></div>
-          <div><dt>Hit rate</dt><dd>{slice.hitRate === null ? 'No picks yet' : pct(slice.hitRate)}</dd></div>
-          <div><dt>Break-even</dt><dd>{pct(slice.breakEven)}</dd></div>
+          <div><dt>Hit rate</dt><dd>{slice.hitRate === null ? 'No picks yet' : fmtPct(slice.hitRate)}</dd></div>
+          <div><dt>Break-even</dt><dd>{fmtPct(slice.breakEven)}</dd></div>
           {logLoss !== null && <div><dt>Log loss</dt><dd>{logLoss}</dd></div>}
         </dl>
         : <p className="nfl-model-note">No frozen sample for this payout yet.</p>}

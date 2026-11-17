@@ -2,6 +2,7 @@ import type { NflSlateLine } from '~/types/nfl'
 import { STALE_FLAG } from '~/utils/nflBaseline'
 import { formatProjection } from '~/utils/nflLabels'
 import { isTargetsReference, targetsReferenceSummary } from '~/utils/nflTargets'
+import { fmtSigned } from '~/utils/format'
 
 type SignalLine = Pick<
   NflSlateLine,
@@ -10,12 +11,12 @@ type SignalLine = Pick<
 >
 
 export function edgeLabel(edge: number | null): string {
-  return edge === null ? '--' : `${edge > 0 ? '+' : ''}${edge.toFixed(1)}`
+  return edge === null ? '--' : fmtSigned(edge)
 }
 
 /** Edge as a share of the line, the board's ranking metric made readable. */
 export function edgePctLabel(value: number | null): string {
-  return value === null ? '--' : `${value > 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
+  return value === null ? '--' : fmtSigned(value * 100, 1, '%')
 }
 
 /** Flags every normally priced line carries; they describe the method, not a problem. */
@@ -61,7 +62,7 @@ export function signalSummary(row: SignalLine): string {
   if (row.recentForm.average !== null) details.push(`Recent ${formatProjection(row.market, row.recentForm.average)} avg (${row.recentForm.values.length}g)`)
   const allowed = allowedLabel(row)
   if (allowed !== null) details.push(allowed)
-  if (row.usageAdjustmentPct !== null && Math.abs(row.usageAdjustmentPct) >= 1) details.push(`Usage ${row.usageAdjustmentPct > 0 ? '+' : ''}${row.usageAdjustmentPct.toFixed(1)}%`)
-  if (row.opponentAdjustmentPct !== null && Math.abs(row.opponentAdjustmentPct) >= 3) details.push(`Matchup ${row.opponentAdjustmentPct > 0 ? '+' : ''}${row.opponentAdjustmentPct.toFixed(1)}%`)
+  if (row.usageAdjustmentPct !== null && Math.abs(row.usageAdjustmentPct) >= 1) details.push(`Usage ${fmtSigned(row.usageAdjustmentPct, 1, '%')}`)
+  if (row.opponentAdjustmentPct !== null && Math.abs(row.opponentAdjustmentPct) >= 3) details.push(`Matchup ${fmtSigned(row.opponentAdjustmentPct, 1, '%')}`)
   return details.length ? details.join(' · ') : row.gamesInSample ? `${row.gamesInSample}-game model baseline` : 'Market comparison unavailable'
 }

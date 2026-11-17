@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react'
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import { rankingPresentation, rankingSliceStatus, sliceLabel, sliceProgress } from '~/utils/nflTrackRecord'
 import { signalClass } from '~/utils/trackRecord'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 function SliceCard({ slice, rule, referenceOnly }: {
   slice: PropRankingSlice, rule: PropRankingRecord['rule'], referenceOnly: boolean,
@@ -24,11 +24,11 @@ function SliceCard({ slice, rule, referenceOnly }: {
         <div>
           <dt>Hit rate</dt>
           <dd className={tone}>
-            {slice.hitRate === null ? status.noPicks : pct(slice.hitRate)}
+            {slice.hitRate === null ? status.noPicks : fmtPct(slice.hitRate)}
             {slice.standardError !== null && <> &plusmn; {(slice.standardError * 100).toFixed(1)}</>}
           </dd>
         </div>
-        <div><dt>Break-even</dt><dd>{pct(slice.breakEven)}</dd></div>
+        <div><dt>Break-even</dt><dd>{fmtPct(slice.breakEven)}</dd></div>
       </dl>
     </section>
   )

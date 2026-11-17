@@ -56,8 +56,8 @@ describe('pairedLossText', () => {
   })
 
   it('distinguishes singleton uncertainty from an observed zero error', () => {
-    expect(pairedLossText({ mean: 0, standardError: null, signal: 'neutral' })).toBe('+0.0000 (SE unavailable)')
-    expect(pairedLossText({ mean: 0, standardError: 0, signal: 'neutral' })).toBe('+0.0000 +/- 0.0000')
+    expect(pairedLossText({ mean: 0, standardError: null, signal: 'neutral' })).toBe('0.0000 (SE unavailable)')
+    expect(pairedLossText({ mean: 0, standardError: 0, signal: 'neutral' })).toBe('0.0000 +/- 0.0000')
   })
 })
 

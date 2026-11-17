@@ -11,15 +11,13 @@ import {
   filterNhlHistory, nhlHistoryDefaultStat, nhlHistoryFilterOptions, nhlHistorySearch, nhlHistoryStatOptions, nhlHistoryValueLabel,
   parseNhlHistoryParams, type NhlHistoryFilters,
 } from '~/utils/nhlProjectionHistory'
+import { shortDate } from '~/utils/format'
 
 const ALL = 'all'
 const FREEZE_START = '2026-11-05'
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function shortDate(iso: string | undefined): string {
-  if (!iso) return '--'
-  const [, month, day] = iso.split('-').map(Number)
-  return `${MONTHS[month - 1]} ${day}`
+function historyDate(iso: string | undefined): string {
+  return iso ? shortDate(iso) : '--'
 }
 
 function chartPoint(point: NhlProjectionHistoryPoint): ProjectionHistoryChartPoint {
@@ -34,8 +32,8 @@ function chartPoint(point: NhlProjectionHistoryPoint): ProjectionHistoryChartPoi
 }
 
 function footnote(version: string, shown: NhlProjectionHistoryPoint[], unsettled: number): string {
-  const first = shortDate(shown[0]?.gameDate)
-  const last = shortDate(shown[shown.length - 1]?.gameDate)
+  const first = historyDate(shown[0]?.gameDate)
+  const last = historyDate(shown[shown.length - 1]?.gameDate)
   const range = !shown.length ? 'no games' : first === last ? first : `${first} to ${last}`
   const pending = unsettled ? `; ${unsettled} ${unsettled === 1 ? 'line' : 'lines'} across all stats not settled yet` : ''
   return `${version} · ${range} · ${shown.length} ${shown.length === 1 ? 'game' : 'games'} charted${pending}. Reference only: projections are as frozen before each game, never recomputed.`
@@ -88,7 +86,7 @@ export function NhlPlayerProjectionHistory({ playerId, playerName, openMarket }:
           onChange={(value: number | typeof ALL) => update({ opponentId: value === ALL ? null : value })} />}
       </div>
       <ProjectionHistoryChart points={shown.map(chartPoint)} statLabel={nhlMarketLabel(stat).toLowerCase()}
-        dateLabel={point => shortDate(point.date)} valueLabel={value => nhlHistoryValueLabel(stat, value)}
+        dateLabel={point => historyDate(point.date)} valueLabel={value => nhlHistoryValueLabel(stat, value)}
         empty="No games for this stat under these filters." />
       <p className="nhl-player-history__note">{footnote(projectionVersion, shown, unsettled)}</p>
     </div>

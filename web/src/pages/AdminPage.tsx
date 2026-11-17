@@ -19,11 +19,7 @@ import { sessionAdminKey } from '~/utils/adminAuth'
 import { httpStatus, retryAfterSeconds } from '~/utils/httpError'
 import PropsAuditBanner from '~/components/tennis/PropsAuditBanner'
 import { withAlpha } from '~/utils/color'
-
-const TOUR_COLORS: Record<string, string> = {
-  ATP: 'var(--atp-blue)',
-  WTA: 'var(--wta-pink)',
-}
+import { tourColor } from '~/utils/format'
 
 const FLAG_META: Record<string, { color: string; bg: string; border: string }> = {
   elo_missing:         { color: 'var(--negative)', bg: 'var(--negative-soft)',    border: 'color-mix(in srgb, var(--negative) 30%, transparent)' },
@@ -206,7 +202,7 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
       dataIndex: 'playerName',
       key: 'player',
       render: (name: string, record) => {
-        const tourColor = TOUR_COLORS[record.tour] ?? 'var(--text-secondary)'
+        const tint = tourColor(record.tour)
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
@@ -223,9 +219,9 @@ function AdminConsole({ onSignOut }: { onSignOut?: () => void }) {
               fontWeight: 700,
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              color: tourColor,
-              background: withAlpha(tourColor, 0.094),
-              border: `1px solid ${withAlpha(tourColor, 0.208)}`,
+              color: tint,
+              background: withAlpha(tint, 0.094),
+              border: `1px solid ${withAlpha(tint, 0.208)}`,
               borderRadius: 3,
               padding: '1px 6px',
             }}>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Select, DatePicker } from 'antd'
 import { useBankrollBuilder } from '~/hooks/useBankrollBuilder'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
-import { fmtTournament, fmtTimeCT } from '~/utils/format'
+import { fmtSigned, fmtTimeCT, fmtTournament, tourColor } from '~/utils/format'
 import LoadingState from '~/components/shared/LoadingState'
 import ErrorState from '~/components/shared/ErrorState'
 import StatChip from '~/components/shared/StatChip'
@@ -11,12 +11,6 @@ import { useIsMobile } from '~/hooks/useIsMobile'
 import { withAlpha } from '~/utils/color'
 
 // ── Theme & colors ──────────────────────────────────────────────────────────
-
-const TOUR_COLORS: Record<string, string> = {
-  ATP: 'var(--atp-blue)',
-  WTA: 'var(--wta-pink)',
-  CHALLENGER: 'var(--challenger-teal)',
-}
 
 const BET_TYPE_CONFIG: Record<string, { label: string; color: string; short: string }> = {
   ml:           { label: 'Moneyline',     color: 'var(--text-secondary)', short: 'ML' },
@@ -78,8 +72,6 @@ function ConfidenceBadge({ confidence }: { confidence: string }) {
 }
 
 function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
-  const tourColor = TOUR_COLORS[pick.tour] ?? 'var(--text-secondary)'
-  const edgePositive = pick.edgePct >= 0
 
   return (
     <div
@@ -133,7 +125,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         }}>
-          <span style={{ color: tourColor, fontWeight: 600 }}>{pick.tour}</span>
+          <span style={{ color: tourColor(pick.tour), fontWeight: 600 }}>{pick.tour}</span>
           {' · '}
           {pick.p1Name.split(' ').pop()} vs {pick.p2Name.split(' ').pop()}
           {pick.tournament && <> · {fmtTournament(pick.tournament, 20)}</>}
@@ -166,7 +158,7 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
         minWidth: 52,
         textAlign: 'right',
       }}>
-        {edgePositive ? '+' : ''}{pick.edgePct.toFixed(1)}%
+        {fmtSigned(pick.edgePct, 1, '%')}
       </span>
 
       {/* EV + Kelly */}
@@ -177,14 +169,14 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
           fontWeight: 700,
           color: 'var(--text-primary)',
         }}>
-          {(pick.ev * 100).toFixed(1)}% EV
+          {fmtPct(pick.ev)} EV
         </div>
         <div style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 11,
           color: 'var(--text-muted)',
         }}>
-          {(pick.kellyFraction * 100).toFixed(1)}% stake (¼ Kelly)
+          {fmtPct(pick.kellyFraction)} stake (¼ Kelly)
         </div>
       </div>
 
@@ -205,9 +197,6 @@ function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number }) {
 
 function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
   const conf = TIER_STYLE
-  const evPct = (parlay.combinedEv * 100).toFixed(1)
-  const kellyPct = (parlay.combinedKelly * 100).toFixed(1)
-  const edgePct = parlay.combinedEdgePct.toFixed(1)
 
   return (
     <div style={{
@@ -264,7 +253,6 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
 
       {/* Legs */}
       {parlay.legs.map((leg, i) => {
-        const tourColor = TOUR_COLORS[leg.tour] ?? 'var(--text-secondary)'
         return (
           <div key={i} style={{
             padding: '10px 18px',
@@ -299,7 +287,7 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
                 fontSize: 11,
                 color: 'var(--text-secondary)',
               }}>
-                <span style={{ color: tourColor, fontWeight: 600 }}>{leg.tour}</span>
+                <span style={{ color: tourColor(leg.tour), fontWeight: 600 }}>{leg.tour}</span>
                 {' · '}
                 {leg.p1Name.split(' ').pop()} vs {leg.p2Name.split(' ').pop()}
               </div>
@@ -337,9 +325,9 @@ function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
       }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
           <StatPill label="Prob" value={fmtPct(parlay.combinedProb)} />
-          <StatPill label="Edge" value={`${parlay.combinedEdgePct > 0 ? '+' : ''}${edgePct}%`} color="var(--text-primary)" />
-          <StatPill label="EV" value={`${evPct}%`} color="var(--text-primary)" />
-          <StatPill label="¼ Kelly" value={`${kellyPct}%`} />
+          <StatPill label="Edge" value={fmtSigned(parlay.combinedEdgePct, 1, '%')} color="var(--text-primary)" />
+          <StatPill label="EV" value={fmtPct(parlay.combinedEv)} color="var(--text-primary)" />
+          <StatPill label="¼ Kelly" value={fmtPct(parlay.combinedKelly)} />
         </div>
       </div>
     </div>
@@ -375,8 +363,6 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 // ── Mobile-friendly pick card (for narrow viewports) ────────────────────────
 
 function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
-  const tourColor = TOUR_COLORS[pick.tour] ?? 'var(--text-secondary)'
-  const edgePositive = pick.edgePct >= 0
   const conf = TIER_STYLE
 
   return (
@@ -439,7 +425,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
           color: 'var(--text-secondary)',
           marginBottom: 8,
         }}>
-          <span style={{ color: tourColor, fontWeight: 600 }}>{pick.tour}</span>
+          <span style={{ color: tourColor(pick.tour), fontWeight: 600 }}>{pick.tour}</span>
           {' · '}
           {pick.p1Name.split(' ').pop()} vs {pick.p2Name.split(' ').pop()}
           {pick.tournament && <> · {fmtTournament(pick.tournament, 25)}</>}
@@ -470,7 +456,7 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            Edge: {edgePositive ? '+' : ''}{pick.edgePct.toFixed(1)}%
+            Edge: {fmtSigned(pick.edgePct, 1, '%')}
           </span>
           <span style={{
             fontFamily: 'var(--font-mono)',
@@ -478,14 +464,14 @@ function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: number }) {
             fontWeight: 700,
             color: 'var(--text-primary)',
           }}>
-            {(pick.ev * 100).toFixed(1)}% EV
+            {fmtPct(pick.ev)} EV
           </span>
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
             color: 'var(--text-muted)',
           }}>
-            {(pick.kellyFraction * 100).toFixed(1)}% stake (¼ Kelly)
+            {fmtPct(pick.kellyFraction)} stake (¼ Kelly)
           </span>
           <span style={{
             fontFamily: 'var(--font-mono)',

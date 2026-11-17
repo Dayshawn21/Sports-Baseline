@@ -8,9 +8,11 @@ import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nbaSlateSummary, type NbaSlateDigestItem } from '~/utils/nbaSlate'
 import { nflSlateSummary, type NflSlateDigestItem } from '~/utils/nflSlate'
 import { nhlSlateSummary } from '~/utils/nhlSlate'
-import { enrichTennisPropLines, isTennisRateable, marketTitle, marketWinProbabilities, payoutTier } from '~/utils/tennisPropBoard'
+import { enrichTennisPropLines, isTennisRateable, marketTitle, payoutTier } from '~/utils/tennisPropBoard'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
 import { signedGapUnits } from '~/utils/gapUnits'
+import { fmtPct } from '~/utils/odds'
+import { impliedProbFromAmerican } from '~/utils/oddsMath'
 
 /** A gray reference line; the digests' own display strings, never re-ranked across sports. */
 export interface HomeGap {
@@ -160,7 +162,6 @@ function gapOf(
   return { key, sport, playerName: item.playerName, market: item.market, matchup: item.matchup, when: item.when, line: item.line, model: item.model, gap: item.gap, share: item.gapShare, path }
 }
 
-const pct = (probability: number) => `${(probability * 100).toFixed(1)}%`
 
 interface WinSides {
   key: string
@@ -184,7 +185,7 @@ function moneylineRows(games: WinSides[], now: number): HomeMoneyline[] {
     .slice(0, GAPS_PER_SPORT)
     .map(({ game, side, diff }) => ({
       key: game.key, sport: game.sport, side: side.name, matchup: game.matchup, when: `${startLabel(game.startMs, now)} CT`,
-      market: pct(side.market), model: pct(side.model), gap: `+${(diff * 100).toFixed(1)} pp`, path: game.path,
+      market: fmtPct(side.market), model: fmtPct(side.model), gap: `+${(diff * 100).toFixed(1)} pp`, path: game.path,
     }))
 }
 
@@ -206,7 +207,7 @@ function tennisWinSides(matches: MatchPrediction[]): WinSides[] {
   return matches.flatMap(match => {
     const start = parsedStart(match.startUtc)
     if (start === null || match.p1WinProb == null || match.p2WinProb == null || match.p1OddsAmerican == null || match.p2OddsAmerican == null) return []
-    const [p1Market, p2Market] = marketWinProbabilities(match.p1OddsAmerican, match.p2OddsAmerican)
+    const [p1Market, p2Market] = impliedProbFromAmerican(match.p1OddsAmerican, match.p2OddsAmerican)
     return [{
       key: String(match.matchId), sport: 'tennis' as const, matchup: `${match.p1Name} vs ${match.p2Name}`, startMs: start,
       path: `/tennis/match/${match.matchId}`,

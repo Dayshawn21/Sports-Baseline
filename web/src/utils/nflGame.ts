@@ -1,6 +1,6 @@
 import type { NflGameOdds, NflTeamContext, NflWeather } from '~/types/nfl'
 import { spreadLabel } from '~/utils/nflGameModel'
-import { devigP1, fmtAmerican } from '~/utils/odds'
+import { devigP1, fmtAmerican, fmtPct } from '~/utils/odds'
 import { parseMatchId } from '~/utils/tennisMatch'
 
 export const parseGameId = parseMatchId
@@ -54,7 +54,7 @@ export function gameMarket(odds: NflGameOdds | null, homeTeam: string, awayTeam:
       detail: odds.book,
     },
     winProbability: {
-      value: home === null ? MISSING : `${homeTeam} ${(home * 100).toFixed(1)}%`,
+      value: home === null ? MISSING : `${homeTeam} ${fmtPct(home)}`,
       detail: home === null ? 'No moneyline' : `${fmtAmerican(odds.homeMoneyline)} / ${fmtAmerican(odds.awayMoneyline)} de-vigged`,
     },
     total: { value: odds.total === null ? MISSING : odds.total.toFixed(1), detail: odds.book },

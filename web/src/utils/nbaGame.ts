@@ -1,6 +1,6 @@
 import type { NbaSlateGame } from '~/types/nba'
 import { spreadLabel } from '~/utils/nflGameModel'
-import { fmtAmerican } from '~/utils/odds'
+import { fmtAmerican, fmtPct } from '~/utils/odds'
 
 export { parseGameId } from '~/utils/nflGame'
 
@@ -37,7 +37,7 @@ function winProbabilityCell(game: NbaSlateGame): NbaMarketCell {
   const home = `${game.homeTeam} ${fmtAmerican(homeOdds)}`
   const away = `${game.awayTeam} ${fmtAmerican(awayOdds)}`
   return {
-    value: `${team} ${(probability * 100).toFixed(1)}%`,
+    value: `${team} ${fmtPct(probability)}`,
     detail: `${homeLeads ? `${home} / ${away}` : `${away} / ${home}`} de-vigged · ${book}`,
   }
 }

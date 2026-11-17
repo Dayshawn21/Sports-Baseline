@@ -80,22 +80,6 @@ export function fmtBreakPoints(converted: number | null, created: number | null)
   return `${converted}/${created}`
 }
 
-const SHORT_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-
-/** A date-only "YYYY-MM-DD" as "Sep 25"; read in UTC so it never slips to the day before. */
-export function fmtMatchDate(isoDate: string): string {
-  const ts = Date.parse(`${isoDate}T00:00:00Z`)
-  return Number.isNaN(ts) ? isoDate : SHORT_DATE.format(new Date(ts))
-}
-
-const DATE_WITH_YEAR = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-
-/** A date-only "YYYY-MM-DD" as "Feb 18, 2026", for lists that span years. */
-export function fmtMatchDateYear(isoDate: string): string {
-  const ts = Date.parse(`${isoDate}T00:00:00Z`)
-  return Number.isNaN(ts) ? isoDate : DATE_WITH_YEAR.format(new Date(ts))
-}
-
 /**
  * Says when the listed meetings fall short of the head-to-head count. The count is
  * the provider's all-time record; stored matches only start in 2023.

@@ -12,15 +12,13 @@ import {
 } from '~/utils/projectionHistory'
 import { opponentShortName, MARKET_PARAM } from '~/utils/tennisPlayerProps'
 import { marketLabel } from '~/utils/tennisPropBoard'
+import { shortDate } from '~/utils/format'
 
 const ALL = 'all'
 const SNAPSHOT_START = '2026-09-25'
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function shortDate(iso: string | null): string {
-  if (!iso) return '--'
-  const [, month, day] = iso.split('-').map(Number)
-  return `${MONTHS[month - 1]} ${day}`
+function historyDate(iso: string | null): string {
+  return iso ? shortDate(iso) : '--'
 }
 
 function chartPoint(point: ProjectionHistoryPoint): ProjectionHistoryChartPoint {
@@ -35,8 +33,8 @@ function chartPoint(point: ProjectionHistoryPoint): ProjectionHistoryChartPoint 
 }
 
 function footnote(version: string, shown: ProjectionHistoryPoint[], unsettled: number): string {
-  const first = shortDate(shown[0]?.matchDate ?? null)
-  const last = shortDate(shown[shown.length - 1]?.matchDate ?? null)
+  const first = historyDate(shown[0]?.matchDate ?? null)
+  const last = historyDate(shown[shown.length - 1]?.matchDate ?? null)
   const range = !shown.length ? 'no matches' : first === last ? first : `${first} to ${last}`
   const pending = unsettled ? `; ${unsettled} ${unsettled === 1 ? 'line' : 'lines'} across all stats not settled yet` : ''
   return `${version} · ${range} · ${shown.length} ${shown.length === 1 ? 'match' : 'matches'} charted${pending}. Reference only: projections are as frozen before each match, never recomputed.`
@@ -81,7 +79,7 @@ export default function PlayerProjectionHistory({ playerId, playerName }: { play
           onChange={(value: number | typeof ALL) => update({ opponentId: value === ALL ? null : value })} />}
       </div>
       <ProjectionHistoryChart points={shown.map(chartPoint)} statLabel={marketLabel(filters.stat ?? '').toLowerCase()}
-        dateLabel={point => shortDate(point.date || null)} valueLabel={formBarLabel}
+        dateLabel={point => historyDate(point.date || null)} valueLabel={formBarLabel}
         empty="No matches for this stat under these filters." />
       <p className="tennis-player-history__note">{footnote(projectionVersion, shown, unsettled)}</p>
     </div>

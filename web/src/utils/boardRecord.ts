@@ -2,6 +2,7 @@ import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import type { ModelPropTiersResponse } from '~/types/tennis'
 import type { HomeStatus } from '~/utils/home'
 import { SPORTS, type Sport } from '~/utils/sportNav'
+import { fmtPct } from '~/utils/odds'
 
 export interface BoardRecordTally {
   wins: number
@@ -102,7 +103,7 @@ export function tennisBoardRecord(tiers: ModelPropTiersResponse | undefined, sta
 }
 
 function percent(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`
+  return fmtPct(rate)
 }
 
 /** "260-140 · 65.0% vs 65.0% break-even": a W-L means nothing without the rate it has to beat. */

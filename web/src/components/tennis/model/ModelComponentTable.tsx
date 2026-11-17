@@ -1,15 +1,12 @@
 import type { ModelPredictionsResponse, TrackComponentName } from '~/types/tennis'
 import { pairedLossText, seMultiple, signalClass } from '~/utils/trackRecord'
+import { fmtSigned } from '~/utils/format'
 
 const COMPONENT_LABELS: Record<TrackComponentName, string> = {
   market: 'Market',
   ensemble: 'Ensemble',
   elo: 'ELO',
   ml: 'LightGBM v6',
-}
-
-function signed(value: number): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(4)}`
 }
 
 interface Props {
@@ -48,7 +45,7 @@ export default function ModelComponentTable({ data, sample = 'all-four' }: Props
                   <td>{c.logLoss.toFixed(4)}</td>
                   <td>{c.brier.toFixed(4)}</td>
                   <td className={c.vsMarket ? signalClass(c.vsMarket.signal) || 'is-dim' : ''}>
-                    {c.vsMarket ? paired ? pairedLossText(c.vsMarket) : `${signed(c.vsMarket.mean)} · ${seMultiple(c.vsMarket.mean, c.vsMarket.standardError)}` : '-'}
+                    {c.vsMarket ? paired ? pairedLossText(c.vsMarket) : `${fmtSigned(c.vsMarket.mean, 4)} · ${seMultiple(c.vsMarket.mean, c.vsMarket.standardError)}` : '-'}
                   </td>
                 </tr>
               ))}

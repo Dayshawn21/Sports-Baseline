@@ -1,4 +1,5 @@
 import type { NflAllowedMetric, NflContextMetric, NflContextPlayer, NflPositionAllowed } from '~/types/nfl'
+import { fmtPct } from '~/utils/odds'
 
 export const POSITION_ALLOWED_ROWS: { key: keyof NflPositionAllowed, label: string }[] = [
   { key: 'rbCarries', label: 'RB carries' },
@@ -13,7 +14,7 @@ export const POSITION_ALLOWED_ROWS: { key: keyof NflPositionAllowed, label: stri
 
 export function contextValue(metric: NflContextMetric, share = false): string {
   if (metric.value === null) return '-'
-  return share ? `${(metric.value * 100).toFixed(1)}%` : metric.value.toFixed(1)
+  return share ? fmtPct(metric.value) : metric.value.toFixed(1)
 }
 
 export function contextCoverage(metric: NflContextMetric): string {

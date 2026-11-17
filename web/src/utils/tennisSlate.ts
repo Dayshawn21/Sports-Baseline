@@ -2,7 +2,7 @@ import type { BestPick, PropLine } from '~/types/tennis'
 import type { UnifiedSort, UnifiedTennisMatch } from '~/utils/unifiedTennis'
 import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unifiedTennis'
 import { getDisplayFlags } from '~/components/tennis/qualityFlags'
-import { fmtStartCT, fmtTournament } from '~/utils/format'
+import { fmtSigned, fmtStartCT, fmtTournament } from '~/utils/format'
 import { fmtAmerican } from '~/utils/odds'
 import { propMatchPath } from '~/utils/tennisMatchView'
 import { countPart, dayClockCt } from '~/utils/slatePeriod'
@@ -108,7 +108,7 @@ export function groupByTournament(rows: SlateRow[]): TournamentGroup[] {
 /** EV as shown across the slate: signed, one decimal, a dash when unpriced. */
 export function fmtEv(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+  return fmtSigned(value, 1, '%')
 }
 
 export type TourTab = 'all' | 'ATP' | 'WTA' | 'CHALLENGER' | 'WTA 125'

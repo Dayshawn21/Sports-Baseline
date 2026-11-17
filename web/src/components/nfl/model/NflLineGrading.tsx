@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react'
 import type { NflHitRow, NflModelPropLines } from '~/types/nfl'
 import { MARKET_LABELS } from '~/utils/nflLabels'
 import { signalClass } from '~/utils/trackRecord'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 function RateRow({ label, row, breakEven }: { label: string, row: NflHitRow, breakEven: number }) {
   const tone = signalClass(row.signal)
@@ -13,7 +13,7 @@ function RateRow({ label, row, breakEven }: { label: string, row: NflHitRow, bre
       <span>{label}</span>
       <span className="nfl-model-meter" style={meter} aria-hidden="true"><i className={tone} /><b /></span>
       <b className={tone}>
-        {row.hitRate === null ? '—' : pct(row.hitRate)} <small>n {row.calls.toLocaleString()}</small>
+        {row.hitRate === null ? '—' : fmtPct(row.hitRate)} <small>n {row.calls.toLocaleString()}</small>
       </b>
     </div>
   )
@@ -33,12 +33,12 @@ export default function NflLineGrading({ data }: { data: NflModelPropLines }) {
         </div>
         <div className="nfl-model-card__body">
           <div className="nfl-model-headline">
-            <span className={`nfl-model-big ${signalClass(calls.signal)}`}>{pct(calls.hitRate ?? 0)}</span>
+            <span className={`nfl-model-big ${signalClass(calls.signal)}`}>{fmtPct(calls.hitRate ?? 0)}</span>
             <span className="nfl-model-dim">
               {calls.standardError !== null && <>&plusmn; {(calls.standardError * 100).toFixed(1)} </>}
               on {calls.calls.toLocaleString()} calls
             </span>
-            <span className="nfl-model-muted">vs {pct(breakEven)} break-even</span>
+            <span className="nfl-model-muted">vs {fmtPct(breakEven)} break-even</span>
           </div>
           <div className="nfl-model-rates">
             {data.byMarket.map((row) => (
@@ -65,7 +65,7 @@ export default function NflLineGrading({ data }: { data: NflModelPropLines }) {
           <p className="nfl-model-note">
             Edge is the projection minus the line, as a share of the market&apos;s median standard line. If the edge
             carried information, the larger buckets would hit more often. The white mark on each bar is the{' '}
-            {pct(breakEven)} break-even.
+            {fmtPct(breakEven)} break-even.
           </p>
         </div>
       </section>

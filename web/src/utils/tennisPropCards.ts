@@ -1,6 +1,7 @@
 import type { RecentMatchResult } from '~/types/tennis'
 import type { TennisBoardLine } from '~/utils/tennisPropBoard'
 import { isMoneyline, isWinASet, lineNumber, marketLabel, payoutTier, sourceLabel, trustLabel } from '~/utils/tennisPropBoard'
+import { CENTRAL_TZ, fmtSigned } from '~/utils/format'
 
 export interface TennisPropCardModel {
   key: string
@@ -34,7 +35,7 @@ export interface TennisPropCardModel {
   sampleText: string
 }
 
-const START_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+const START_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
 
 export function startLabel(value: string | null): string {
   const time = value ? Date.parse(value) : Number.NaN
@@ -45,10 +46,6 @@ function clampPct(value: number | null | undefined): number | null {
   return value == null ? null : Math.min(100, Math.max(0, value))
 }
 
-function signed(value: number, digits: number): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
-}
-
 function evTone(evPct: number | null | undefined): TennisPropCardModel['evTone'] {
   if (evPct == null || evPct === 0) return null
   return evPct > 0 ? 'positive' : 'negative'
@@ -57,7 +54,7 @@ function evTone(evPct: number | null | undefined): TennisPropCardModel['evTone']
 function valueText(row: TennisBoardLine): string {
   const line = lineNumber(row)
   if (line == null) return isWinASet(row) ? 'Unpriced' : '--'
-  return isMoneyline(row) ? signed(line, 0) : line.toFixed(1)
+  return isMoneyline(row) ? fmtSigned(line, 0) : line.toFixed(1)
 }
 
 function breakEvenLabel(row: TennisBoardLine, breakEven: number | null): string | null {
@@ -76,7 +73,7 @@ export function decisionOverPct(row: Pick<TennisBoardLine, 'pOver' | 'pUnder'>):
 function gapText(row: TennisBoardLine, priced: boolean): string | null {
   const line = lineNumber(row)
   if (priced || line == null || row.statAvg == null) return null
-  return signed(row.statAvg - line, 1)
+  return fmtSigned(row.statAvg - line)
 }
 
 // Gray and unranked unless adopted (48f, 48g): an unadopted PrizePicks line
@@ -112,10 +109,10 @@ export function propCard(row: TennisBoardLine): TennisPropCardModel {
     hitPct: tier != null ? decisionOverPct(row) : row.hitProbability == null ? null : clampPct(row.hitProbability * 100),
     breakEvenPct: breakEven,
     breakEvenLabel: breakEvenLabel(row, breakEven),
-    evText: row.evPct == null ? '--' : `${signed(row.evPct, 1)}%`,
+    evText: row.evPct == null ? '--' : fmtSigned(row.evPct, 1, '%'),
     evTone: tier != null ? null : evTone(row.evPct),
     adopted: row.adoptedPick != null,
-    marginText: row.adoptedPick ? `${signed(row.adoptedPick.margin * 100, 1)} pts vs break-even` : null,
+    marginText: row.adoptedPick ? fmtSigned(row.adoptedPick.margin * 100, 1, ' pts vs break-even') : null,
     opponentText: row.opponentStatAvg == null ? null : `Opp allows ${row.opponentStatAvg.toFixed(1)}`,
     trust: trustLabel(row),
     source: sourceLabel(row.source),

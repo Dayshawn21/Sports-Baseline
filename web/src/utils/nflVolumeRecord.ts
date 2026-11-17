@@ -1,6 +1,7 @@
 import type { NflLogLossResult, NflModelRanking, NflVolumeSliceState } from '~/types/nfl'
 import type { PropRankingSlice } from '~/types/propRanking'
 import { sliceLabel, verdictLabel } from '~/utils/nflTrackRecord'
+import { fmtSigned } from '~/utils/format'
 
 export const VOLUME_NOTE = 'Volume model reference (receptions only). A slice needs 200 picks over 4+ weeks and a log-loss win before it can adopt; until then it only shows progress.'
 export const VOLUME_COVERAGE_LABEL = 'coverage across standard, goblin and demon props'
@@ -20,8 +21,7 @@ const num = (value: number | null) => (value === null ? '--' : value.toFixed(3))
 
 function difference(value: number | null, standardError: number | null): string {
   if (value === null) return '--'
-  const sign = value > 0 ? '+' : ''
-  return `${sign}${value.toFixed(3)}${standardError === null ? '' : ` ± ${standardError.toFixed(3)}`}`
+  return `${fmtSigned(value, 3)}${standardError === null ? '' : ` ± ${standardError.toFixed(3)}`}`
 }
 
 /** The sentence naming payouts with no frozen row yet, or null when every slice has a sample. */

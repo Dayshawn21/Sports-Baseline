@@ -1,5 +1,6 @@
 /** Display labels shared by the NFL slate and the prop-line board. */
 import { fmtTimeCT } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 export const NFL_SEASON_OPTIONS = [
   { value: 2026, label: '2026' },
@@ -78,7 +79,7 @@ export function formatHistoryValue(market: string, value: number): string {
 /** Anytime TD is a probability; every other market is a raw stat count. */
 export function formatProjection(market: string, value: number | null): string {
   if (value === null) return '--'
-  return market === 'anytime_touchdown' ? `${(value * 100).toFixed(1)}%` : value.toFixed(1)
+  return market === 'anytime_touchdown' ? fmtPct(value) : value.toFixed(1)
 }
 
 // Mirrors TEAM_GAME_DVP_MARKETS in api/app/core/nfl_projection.py: these markets'

@@ -12,6 +12,7 @@ import {
 } from '~/utils/oddsMath'
 import { parseAmerican, parseDecimal, parsePercent, parsePositive, type Parsed } from '~/utils/calculatorInputs'
 import { entryEv, payoutTable, type EntryKind } from '~/utils/prizepicksEntry'
+import { fmtSigned } from '~/utils/format'
 
 /** What each /tools card shows, derived from its raw field text so the components only render. */
 
@@ -146,9 +147,7 @@ export function entryView(kind: EntryKind, legs: string[]): Parsed<EntryView> {
 
 /** A signed percent such as `+5.0%`; a value that rounds to zero carries no sign. */
 export function fmtSignedPct(value: number, decimals = 1): string {
-  const rounded = Number((value * 100).toFixed(decimals))
-  const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : ''
-  return `${sign}${Math.abs(rounded).toFixed(decimals)}%`
+  return fmtSigned(value * 100, decimals, '%')
 }
 
 /** Decimal odds to three places, trimmed to no fewer than two (`1.909`, `2.00`, `3.50`). */
@@ -158,7 +157,5 @@ export function fmtDecimalOdds(value: number): string {
 
 /** A signed amount in stake units, such as `+5.00` or `-2.30`. */
 export function fmtSignedAmount(value: number): string {
-  const rounded = Number(value.toFixed(2))
-  const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : ''
-  return `${sign}${Math.abs(rounded).toFixed(2)}`
+  return fmtSigned(value, 2)
 }

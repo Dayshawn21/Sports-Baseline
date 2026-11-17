@@ -1,9 +1,9 @@
 import { isResultPending } from '~/utils/slateOrder'
+import { CENTRAL_TZ } from '~/utils/format'
 
-const CENTRAL = 'America/Chicago'
-const FULL = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
-const DAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', month: 'short', day: 'numeric' })
+const FULL = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', minute: '2-digit' })
+const DAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'short', month: 'short', day: 'numeric' })
 
 /**
  * `live`: started by the clock, not yet completed. Scores load after the game, so nothing live is claimed beyond that.

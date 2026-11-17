@@ -1,6 +1,7 @@
 import type { NflModelClv, NflModelRanking, NflRankingModelVersion } from '~/types/nfl'
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import { sampleProgress } from '~/utils/trackRecord'
+import { fmtSigned } from '~/utils/format'
 
 type SliceVerdict = PropRankingSlice['verdict']
 type ClvVerdict = NflModelClv['markets'][number]['verdict']
@@ -86,7 +87,5 @@ export function summaryCounts(ranking: NflModelRanking | undefined, clv: NflMode
 
 /** Points with an explicit sign, e.g. "+0.42"; CLV is directional, so the sign carries meaning. */
 export function signedPoints(value: number | null): string {
-  if (value === null) return PENDING
-  const fixed = value.toFixed(2)
-  return value > 0 ? `+${fixed}` : fixed
+  return value === null ? PENDING : fmtSigned(value, 2)
 }

@@ -2,9 +2,9 @@ import type { MatchDetail, PlayerFormStats } from '~/types/tennis'
 import { useMatchOddsHistory } from '~/hooks/useMatchOddsHistory'
 import { useMatchRecentForm } from '~/hooks/useMatchRecentForm'
 import { fmtAmerican, fmtPct } from '~/utils/odds'
-import { fmtSurface } from '~/utils/format'
+import { dateWithYear, fmtSurface } from '~/utils/format'
 import { bookLabel, latestPerBook } from '~/utils/matchOdds'
-import { fmtMatchDateYear, isFinished, meetingsNote } from '~/utils/tennisMatch'
+import { isFinished, meetingsNote } from '~/utils/tennisMatch'
 
 function lastName(name: string): string {
   return name.split(/\s+/).filter(Boolean).pop() ?? name
@@ -24,7 +24,7 @@ function Meetings({ detail }: { detail: MatchDetail }) {
                 <span>{m.score ?? 'score unavailable'}</span>
               </div>
               <small>
-                {[fmtMatchDateYear(m.matchDate), [m.tournament, m.round].filter(Boolean).join(' '), m.surface ? fmtSurface(m.surface) : null]
+                {[dateWithYear(m.matchDate), [m.tournament, m.round].filter(Boolean).join(' '), m.surface ? fmtSurface(m.surface) : null]
                   .filter(Boolean).join(' · ')}
               </small>
             </li>

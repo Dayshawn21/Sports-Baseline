@@ -175,7 +175,7 @@ describe('fmtEv', () => {
   it('signs positive and negative EV to one decimal', () => {
     expect(fmtEv(61.25)).toBe('+61.3%')
     expect(fmtEv(-6.4)).toBe('-6.4%')
-    expect(fmtEv(0)).toBe('+0.0%')
+    expect(fmtEv(0)).toBe('0.0%')
   })
 
   it('shows a dash when the pick is unpriced', () => {

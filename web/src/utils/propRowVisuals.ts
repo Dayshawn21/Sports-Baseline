@@ -1,5 +1,6 @@
 import type { AdoptedPick } from '~/types/tennis'
 import { mainRung } from '~/utils/nflLineOnly'
+import { fmtSigned } from '~/utils/format'
 
 /** Whether a row's line is an adopted pick (48e) or reference only. Only an adopted row may show green or red. */
 export type RowSignal = { kind: 'reference' } | { kind: 'adopted', side: 'over' | 'under' }
@@ -87,11 +88,6 @@ export interface StatCell {
   tone: Tone
 }
 
-function signed(value: number): string {
-  const rounded = Math.round(value * 10) / 10
-  return `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}`
-}
-
 function majority(hits: number, games: number): 'over' | 'under' | 'push' {
   return hits * 2 > games ? 'over' : hits * 2 < games ? 'under' : 'push'
 }
@@ -116,7 +112,7 @@ export function statStrip(values: readonly number[], line: number | null, signal
   const direction = diff > 0 ? 'over' : diff < 0 ? 'under' : 'push'
   cells.push(
     { key: 'avg', label: 'Avg', value: (Math.round(average * 10) / 10).toFixed(1), tone: 'neutral' },
-    { key: 'diff', label: 'Diff', value: signed(diff), tone: agreementTone(signal, direction) },
+    { key: 'diff', label: 'Diff', value: fmtSigned(Math.round(diff * 10) / 10), tone: agreementTone(signal, direction) },
   )
   return cells
 }

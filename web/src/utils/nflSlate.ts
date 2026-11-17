@@ -10,16 +10,16 @@ import { isResultPending } from '~/utils/slateOrder'
 import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
 import { CONFIDENT_SAMPLE_GAMES, compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { CENTRAL_TZ } from '~/utils/format'
 
-const CENTRAL = 'America/Chicago'
 const PRIME_TIME_HOUR = 18
 const PRIME_TIME_DAYS = new Set(['Sunday', 'Monday'])
 const UNSCHEDULED_KEY = 'unscheduled'
 const PRIME_TIME_KEY = 'prime-time'
 
-const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'long' })
-const HOUR_24 = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', hourCycle: 'h23' })
-const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
+const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'long' })
+const HOUR_24 = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', hourCycle: 'h23' })
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', minute: '2-digit' })
 
 export interface NflKickoffWindow {
   key: string

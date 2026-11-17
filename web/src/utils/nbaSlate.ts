@@ -10,7 +10,6 @@ import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 
 const MISSING = '--'
-const CENTRAL = 'America/Chicago'
 
 /**
  * `started`: tipped off but not yet completed. Scores load with the next morning's ingest, so it is not "live".

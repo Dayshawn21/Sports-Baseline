@@ -1,6 +1,7 @@
 import type { MatchDetail, PlayerRecentForm } from '~/types/tennis'
 import { useMatchRecentForm } from '~/hooks/useMatchRecentForm'
-import { fmtBreakPoints, fmtMatchDate } from '~/utils/tennisMatch'
+import { fmtBreakPoints } from '~/utils/tennisMatch'
+import { shortDate } from '~/utils/format'
 
 function num(value: number | null): string {
   return value == null ? '—' : String(value)
@@ -33,7 +34,7 @@ function FormCard({ name, form }: { name: string; form: PlayerRecentForm | undef
                   <td>
                     <span className={`tennis-match-res${m.result === 'W' ? '' : ' is-loss'}`}>{m.result}</span>
                     {m.opponentName}
-                    <small>{fmtMatchDate(m.matchDate)}</small>
+                    <small>{shortDate(m.matchDate)}</small>
                   </td>
                   <td>{m.score ? <Score score={m.score} /> : '—'}</td>
                   <td>{num(m.aces)}</td>

@@ -1,4 +1,5 @@
 import type { LossComparison, ModelPredictionsResponse, ModelVersionCount, TrackCalibrationBin, TrackGroupScores, TrackSignal } from '~/types/tennis'
+import { fmtSigned } from '~/utils/format'
 
 /** Green and red come only from a server-side 2 SE signal, never from a raw number. */
 export function signalClass(signal: TrackSignal): string {
@@ -16,7 +17,7 @@ export function seMultiple(mean: number, standardError: number | null): string {
 export type EnsembleVerdict = 'Ahead' | 'Not ahead' | 'No data'
 
 export function pairedLossText(comparison: LossComparison): string {
-  const mean = `${comparison.mean >= 0 ? '+' : ''}${comparison.mean.toFixed(4)}`
+  const mean = fmtSigned(comparison.mean, 4)
   return comparison.standardError == null
     ? `${mean} (SE unavailable)`
     : `${mean} +/- ${comparison.standardError.toFixed(4)}`

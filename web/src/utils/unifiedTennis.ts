@@ -1,5 +1,6 @@
 import type { BankrollPick, BestPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
 import { compareLines, isTennisRateable } from '~/utils/tennisPropBoard'
+import { CENTRAL_TZ } from '~/utils/format'
 
 export interface UnifiedTennisMatch {
   /** Stable React key. Prop-only groups have no matchId, so this is not the id. */
@@ -34,7 +35,7 @@ export const UNIFIED_SORT_OPTIONS: Array<{ value: UnifiedSort; label: string }> 
 ]
 
 const CT_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Chicago',
+  timeZone: CENTRAL_TZ,
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
