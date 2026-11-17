@@ -26,6 +26,13 @@ describe('gameState', () => {
   it('is off when postponed or canceled', () => {
     expect(gameState('postponed', START, at('2026-11-09T20:00:00Z'))).toEqual({ phase: 'off', label: 'Postponed' })
     expect(gameState('canceled', START, at('2026-11-09T20:00:00Z'))).toEqual({ phase: 'off', label: 'Canceled' })
+    expect(gameState('Cancelled', START, at('2026-11-09T20:00:00Z'))).toEqual({ phase: 'off', label: 'Canceled' })
+    expect(gameState('POSTPONED', START, at('2026-11-09T20:00:00Z')).phase).toBe('off')
+  })
+
+  it("names the live phase in the sport's own words when asked", () => {
+    expect(gameState('scheduled', START, at('2026-11-09T18:30:00Z'), 'Tipped off')).toEqual({ phase: 'live', label: 'Tipped off' })
+    expect(gameState('scheduled', START, at('2026-11-10T06:00:00Z'), 'Tipped off').label).toBe('Result pending')
   })
 
   it('stays scheduled without a usable start time', () => {

@@ -1,7 +1,6 @@
 import type { NbaLineMove, NbaPropLine, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
-import { hasKickedOff } from '~/utils/nflGame'
-import { isResultPending } from '~/utils/slateOrder'
+import { gameState } from '~/utils/gameState'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
 import { gapShareOfLine, gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
@@ -65,11 +64,9 @@ function tipLabel(startUtc: string | null): string {
 }
 
 function cardState(game: NbaSlateGame, now: Date): { state: NbaSlateCardState, label: string | null } {
-  if (game.status === 'completed') return { state: 'final', label: 'Final' }
-  if (game.status === 'postponed') return { state: 'off', label: 'Postponed' }
-  if (game.status === 'canceled') return { state: 'off', label: 'Canceled' }
-  if (isResultPending(game.startUtc, now)) return { state: 'pending', label: 'Result pending' }
-  return hasKickedOff(game.startUtc, now) ? { state: 'started', label: 'Tipped off' } : { state: 'upcoming', label: null }
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Tipped off')
+  if (phase === 'upcoming') return { state: 'upcoming', label: null }
+  return { state: phase === 'live' ? 'started' : phase, label }
 }
 
 function recordLabel(record: NbaRecord): string {

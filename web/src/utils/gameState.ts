@@ -13,15 +13,18 @@ export type GamePhase = 'upcoming' | 'live' | 'pending' | 'final' | 'off'
 
 export interface GameState { phase: GamePhase, label: string }
 
-/** One rule for every game page; `status` is the API's stored status, which stays "scheduled" until the final loads. */
-export function gameState(status: string, startUtc: string | null, now: Date): GameState {
+/**
+ * One rule for every game page, slate card and board; `status` is the API's stored status, which stays "scheduled"
+ * until the final loads. `startedLabel` lets a sport name the live phase in its own words ("Tipped off").
+ */
+export function gameState(status: string, startUtc: string | null, now: Date, startedLabel = 'In progress'): GameState {
   const stored = status.toLowerCase()
   if (stored === 'completed') return { phase: 'final', label: 'Final' }
   if (stored === 'postponed') return { phase: 'off', label: 'Postponed' }
   if (stored === 'canceled' || stored === 'cancelled') return { phase: 'off', label: 'Canceled' }
   if (isResultPending(startUtc, now)) return { phase: 'pending', label: 'Result pending' }
   const start = parseStart(startUtc)
-  return start !== null && start <= now.getTime() ? { phase: 'live', label: 'In progress' } : { phase: 'upcoming', label: 'Scheduled' }
+  return start !== null && start <= now.getTime() ? { phase: 'live', label: startedLabel } : { phase: 'upcoming', label: 'Scheduled' }
 }
 
 function parseStart(startUtc: string | null): number | null {

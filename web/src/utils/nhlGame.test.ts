@@ -64,12 +64,16 @@ describe('NHL CT labels and game state', () => {
     expect(row.win).not.toBeNull()
   })
   it.each(['OT', 'SO'] as const)('preserves final %s context before clock state', endPeriod => {
-    expect(nhlGameState(game({ status: 'completed', endPeriod }), NOW)).toEqual({ state: 'final', label: `Final / ${endPeriod}` })
+    expect(nhlGameState(game({ status: 'completed', endPeriod }), NOW)).toEqual({ state: 'final', label: `Final/${endPeriod}` })
   })
   it('handles REG finals, cancellations and postponements', () => {
     expect(nhlGameState(game({ status: 'completed', endPeriod: 'REG' }), NOW).label).toBe('Final')
     expect(nhlGameState(game({ status: 'canceled' }), NOW)).toEqual({ state: 'off', label: 'Canceled' })
     expect(nhlGameState(game({ status: 'postponed' }), NOW)).toEqual({ state: 'off', label: 'Postponed' })
+  })
+  it('reads a stored status in any case and either spelling of canceled', () => {
+    expect(nhlGameState(game({ status: 'Completed', endPeriod: 'OT' }), NOW)).toEqual({ state: 'final', label: 'Final/OT' })
+    expect(nhlGameState(game({ status: 'cancelled' }), NOW)).toEqual({ state: 'off', label: 'Canceled' })
   })
 })
 
@@ -119,7 +123,7 @@ describe('NHL slate derivations', () => {
     const final = nhlSlateRow(game({ status: 'completed', endPeriod: 'SO', awayScore: 0, homeScore: 1 }), NOW)
     expect(final.away.score).toBe(0)
     expect(final.home.score).toBe(1)
-    expect(final.stateLabel).toBe('Final / SO')
+    expect(final.stateLabel).toBe('Final/SO')
     expect(final.props).toBe(3)
     expect(nhlSlateRow(game({ status: 'completed' }), NOW).away.score).toBeNull()
   })

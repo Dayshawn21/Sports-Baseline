@@ -1,4 +1,5 @@
 import type { NhlLineOnlyMarket, NhlPropBoardGame } from '~/types/nhl'
+import { gameState } from '~/utils/gameState'
 import { NHL_LINE_ONLY_MARKETS, nhlPropListGroups, type NhlPropListRow } from '~/utils/nhlLineOnly'
 
 export type NhlBoardGameContext = Omit<NhlPropBoardGame, 'lines'>
@@ -52,9 +53,8 @@ export function nhlPropBoard(games: readonly NhlPropBoardGame[]): NhlBoardMarket
   return [...rowsByMarket].map(([market, rows]) => ({ market, rows: rows.sort(compareRows) }))
 }
 
-const TERMINAL: Record<string, string> = { completed: 'Final', postponed: 'Postponed', canceled: 'Canceled' }
-
 /** Null while a game is upcoming or its start is unknown. */
 export function nhlBoardGameStatus(game: NhlBoardGameContext, now: Date): string | null {
-  return TERMINAL[game.status] ?? (dropTime(game.startUtc) <= now.getTime() ? 'Started' : null)
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Started')
+  return phase === 'upcoming' ? null : label
 }

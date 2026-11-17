@@ -1,6 +1,6 @@
 import type { NhlBook, NhlRecord, NhlSlateGame } from '~/types/nhl'
 import { fmtAmerican } from '~/utils/odds'
-import { isResultPending } from '~/utils/slateOrder'
+import { gameState, withEndPeriod } from '~/utils/gameState'
 import { dayClockCt } from '~/utils/slatePeriod'
 import { CENTRAL_TZ, fmtSigned } from '~/utils/format'
 
@@ -35,16 +35,8 @@ export function nhlPuckDropLabel(value: string | null, full = false): string {
 export type NhlGameState = 'upcoming' | 'started' | 'pending' | 'final' | 'off'
 
 export function nhlGameState(game: NhlSlateGame, now: Date): { state: NhlGameState, label: string } {
-  if (game.status === 'completed') {
-    return { state: 'final', label: game.endPeriod === 'OT' || game.endPeriod === 'SO' ? `Final / ${game.endPeriod}` : 'Final' }
-  }
-  if (game.status === 'postponed') return { state: 'off', label: 'Postponed' }
-  if (game.status === 'canceled') return { state: 'off', label: 'Canceled' }
-  if (isResultPending(game.startUtc, now)) return { state: 'pending', label: 'Result pending' }
-  const start = game.startUtc === null ? NaN : Date.parse(game.startUtc)
-  return Number.isFinite(start) && start <= now.getTime()
-    ? { state: 'started', label: 'Puck dropped' }
-    : { state: 'upcoming', label: 'Scheduled' }
+  const { phase, label } = withEndPeriod(gameState(game.status, game.startUtc, now, 'Puck dropped'), game.endPeriod)
+  return { state: phase === 'live' ? 'started' : phase, label }
 }
 
 const NHL_BOOK_LABELS: Record<NhlBook, string> = { draftkings: 'DraftKings', fanduel: 'FanDuel', bet365: 'Bet365' }

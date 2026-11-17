@@ -2,6 +2,7 @@ import type { NbaPropBoardGame } from '~/types/nba'
 import { NBA_LINE_ONLY_MARKETS, nbaLineOnlyGroups, type NbaLineOnlyRow } from '~/utils/nbaLineOnly'
 import { nbaPropGroups, type NbaPropCard } from '~/utils/nbaProps'
 import { CENTRAL_TZ } from '~/utils/format'
+import { gameState } from '~/utils/gameState'
 
 export type NbaBoardGameContext = Omit<NbaPropBoardGame, 'lines' | 'lineOnlyLines'>
 
@@ -36,9 +37,8 @@ const TIP_FORMAT = new Intl.DateTimeFormat('en-US', {
 export function nbaBoardGameLabels(game: NbaBoardGameContext, now: Date): { tip: string, status: string | null } {
   const time = tipTime(game.startUtc)
   const tip = Number.isFinite(time) ? `${TIP_FORMAT.format(time)} CT` : 'Tip time not set'
-  const terminal: Record<string, string> = { completed: 'Final', postponed: 'Postponed', canceled: 'Canceled' }
-  const status = terminal[game.status] ?? (time <= now.getTime() ? 'Tipped off' : null)
-  return { tip, status }
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Tipped off')
+  return { tip, status: phase === 'upcoming' ? null : label }
 }
 
 function tipTime(startUtc: string | null): number {

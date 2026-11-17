@@ -110,6 +110,7 @@ describe('nbaSlateCard', () => {
     const card = nbaSlateCard(game({ status: 'postponed' }), NOW)
     expect(card).toMatchObject({ state: 'off', stateLabel: 'Postponed', market: null, winBar: null, final: null })
     expect(nbaSlateCard(game({ status: 'canceled' }), NOW).stateLabel).toBe('Canceled')
+    expect(nbaSlateCard(game({ status: 'Cancelled' }), NOW).stateLabel).toBe('Canceled')
   })
 
   it('shows a record once a team has played', () => {

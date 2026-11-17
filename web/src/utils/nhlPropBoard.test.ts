@@ -85,4 +85,13 @@ describe('nhlBoardGameStatus', () => {
     expect(nhlBoardGameStatus(CONTEXT, NOW)).toBeNull()
     expect(nhlBoardGameStatus({ ...CONTEXT, startUtc: null }, NOW)).toBeNull()
   })
+
+  it('says result pending once the game is over by the clock with no final stored', () => {
+    expect(nhlBoardGameStatus({ ...CONTEXT, startUtc: '2026-10-24T14:00:00Z' }, NOW)).toBe('Result pending')
+  })
+
+  it('reads a stored status in any case and either spelling of canceled', () => {
+    expect(nhlBoardGameStatus({ ...CONTEXT, status: 'COMPLETED' }, NOW)).toBe('Final')
+    expect(nhlBoardGameStatus({ ...CONTEXT, status: 'cancelled' }, NOW)).toBe('Canceled')
+  })
 })

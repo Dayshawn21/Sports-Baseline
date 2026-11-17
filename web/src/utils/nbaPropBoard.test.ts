@@ -135,6 +135,15 @@ describe('nbaBoardGameLabels', () => {
     expect(nbaBoardGameLabels(game({ startUtc: '2026-10-22T00:01:00Z' }), now).status).toBeNull()
   })
 
+  it('says result pending once the game is over by the clock with no final stored', () => {
+    expect(nbaBoardGameLabels(game({ startUtc: '2026-10-21T18:00:00Z' }), now).status).toBe('Result pending')
+  })
+
+  it('reads a stored status in any case and either spelling of canceled', () => {
+    expect(nbaBoardGameLabels(game({ status: 'Completed' }), now).status).toBe('Final')
+    expect(nbaBoardGameLabels(game({ status: 'cancelled' }), now).status).toBe('Canceled')
+  })
+
   it('labels missing or malformed tips without claiming the game has started', () => {
     for (const startUtc of [null, 'invalid']) {
       expect(nbaBoardGameLabels(game({ startUtc }), now)).toEqual({ tip: 'Tip time not set', status: null })
