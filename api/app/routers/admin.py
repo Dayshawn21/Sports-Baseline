@@ -6,14 +6,14 @@ surfaces as quality flags on the TennisPage predictions.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from dataclasses import asdict
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.tennis_flag_queue import ELO_FLAGS, STATS_FLAG, missing_surfaces, refine_player_flags
 from app.db.pool import get_db
 from app.repositories.players import (
     get_latest_elo,
@@ -33,10 +33,9 @@ from app.schemas.admin import (
     SetEloRequest,
     SetEloResponse,
 )
+from app.services.tennis.flagged_players import load_flagged_players
 
 router = APIRouter()
-
-_TARGET_FLAGS = ELO_FLAGS | {STATS_FLAG}
 
 
 @router.get("/session", response_model=AdminSessionResponse)
@@ -54,89 +53,11 @@ async def get_flagged_players(
     Return all players from today's (and tomorrow's) matches that have
     ELO or rolling-stats quality flags.
     """
-    from app.services.tennis.predictor import predict_today
-    from app.repositories.matches import get_upcoming
-    from app.repositories.players import get_players_by_ids, get_latest_elo_batch, get_rolling_stats_batch_all_surfaces
-    from app.ingest.player_stats import _slug
-
-    today = date.today()
-    target_dates = [today, today + timedelta(days=1)]
-
-    predictions = await predict_today(db, request.app.state.registry, target_dates)
-    matches = await get_upcoming(db, target_dates)
-    match_map = {m.id: m for m in matches}
-
-    # Map player_id → set of flags, and the surfaces of the matches flagging them
-    flagged: dict[int, set[str]] = {}
-    surfaces: dict[int, set[str | None]] = {}
-
-    for pred in predictions:
-        m = match_map.get(pred.match_id)
-        if not m:
-            continue
-        active_flags = set(pred.quality_flags) & _TARGET_FLAGS
-        if not active_flags:
-            continue
-
-        for flag in active_flags:
-            if flag == "p1_elo_missing":
-                flagged.setdefault(m.p1_id, set()).add(flag)
-            elif flag == "p2_elo_missing":
-                flagged.setdefault(m.p2_id, set()).add(flag)
-            elif flag == "elo_missing":
-                # Both players missing ELO
-                flagged.setdefault(m.p1_id, set()).add(flag)
-                flagged.setdefault(m.p2_id, set()).add(flag)
-            elif flag == STATS_FLAG:
-                # Attribute to both — will be filtered below to whoever truly lacks stats
-                for pid in (m.p1_id, m.p2_id):
-                    flagged.setdefault(pid, set()).add(flag)
-                    surfaces.setdefault(pid, set()).add(m.surface)
-
-    if not flagged:
-        return FlaggedPlayersResponse(count=0, players=[])
-
-    all_ids = list(flagged.keys())
-    players_map = await get_players_by_ids(db, all_ids)
-    elo_map = await get_latest_elo_batch(db, all_ids)
-    # The same lookup the predictor uses, so (pid, None) is the all-surface row
-    stats_map = await get_rolling_stats_batch_all_surfaces(db, all_ids, "last_52w")
-    stat_surfaces: dict[int, set[str | None]] = {}
-    for stat_pid, stat_surface in stats_map:
-        stat_surfaces.setdefault(stat_pid, set()).add(stat_surface)
-
-    result: list[FlaggedPlayer] = []
-    for pid, flags in flagged.items():
-        player = players_map.get(pid)
-        if not player:
-            continue
-
-        elo = elo_map.get(pid)
-        stats = stats_map.get((pid, None))
-        has_elo = elo is not None and elo.elo is not None
-        refined_flags = refine_player_flags(
-            flags,
-            has_elo=has_elo,
-            stat_surfaces=stat_surfaces.get(pid, set()),
-            match_surfaces=surfaces.get(pid, set()),
-        )
-
-        if not refined_flags:
-            continue
-
-        result.append(FlaggedPlayer(
-            player_id=pid,
-            player_name=player.name,
-            tour=player.tour,
-            flags=sorted(refined_flags),
-            has_elo=has_elo,
-            has_stats=stats is not None,
-            missing_surfaces=missing_surfaces(stat_surfaces.get(pid, set()), surfaces.get(pid, set())),
-            ta_slug=player.ta_slug,
-            auto_slug=_slug(player.name),
-        ))
-
-    return FlaggedPlayersResponse(count=len(result), players=result)
+    rows = await load_flagged_players(db, request.app.state.registry, date.today())
+    return FlaggedPlayersResponse(
+        count=len(rows),
+        players=[FlaggedPlayer(**asdict(row)) for row in rows],
+    )
 
 
 @router.post("/players/{player_id}/fetch-stats", response_model=FetchStatsResponse)
