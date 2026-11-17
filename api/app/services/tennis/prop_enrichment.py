@@ -34,6 +34,7 @@ from app.core.prop_projection import (
     expected_total_games as _expected_total_games,
     first_set_for_matchup as _first_set_for_matchup,
     normalize_stat_type as _normalize_stat_type,
+    opt_float,
     serve_hold as _serve_hold,
 )
 from app.core.rolling_stats import SMALL_SAMPLE_MATCHES, pick_stats_for_player
@@ -88,11 +89,6 @@ def _match_finished(prop: Prop) -> bool:
     return (prop.match_status or "").lower() in {"completed", "cancelled"}
 
 
-def _f(v) -> Optional[float]:
-    """Coerce a DB value (possibly Decimal) to float, preserving None."""
-    return float(v) if v is not None else None
-
-
 def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
@@ -119,15 +115,15 @@ def _projection_inputs(
     if market_total_games is not None:
         inputs["market_total_games"] = round(market_total_games, 2)
     if st == "aces":
-        ace_rate = _f(stats.aces_per_game)
-        opp_allowed = _f(getattr(opponent_stats, "allowed_aces_per_sp", None)) if opponent_stats is not None else None
+        ace_rate = opt_float(stats.aces_per_game)
+        opp_allowed = opt_float(getattr(opponent_stats, "allowed_aces_per_sp", None)) if opponent_stats is not None else None
         if ace_rate is not None:
             inputs["player_ace_rate"] = round(ace_rate, 4)
         if opp_allowed is not None:
             inputs["opponent_allowed_ace_rate"] = round(opp_allowed, 4)
     elif st == "double_faults":
-        df_rate = _f(stats.df_per_game)
-        opp_allowed = _f(getattr(opponent_stats, "allowed_df_per_sp", None)) if opponent_stats is not None else None
+        df_rate = opt_float(stats.df_per_game)
+        opp_allowed = opt_float(getattr(opponent_stats, "allowed_df_per_sp", None)) if opponent_stats is not None else None
         if df_rate is not None:
             inputs["player_df_rate"] = round(df_rate, 4)
         if opp_allowed is not None:
@@ -138,9 +134,9 @@ def _projection_inputs(
             _serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT, 4
         )
     elif st in ("break_points_converted", "break_points_won"):
-        bp_rate = _f(stats.break_pct)
-        created_rate = _f(getattr(stats, "break_points_created_per_return_game", None))
-        allowed_rate = _f(getattr(opponent_stats, "allowed_break_points_per_service_game", None)) if opponent_stats is not None else None
+        bp_rate = opt_float(stats.break_pct)
+        created_rate = opt_float(getattr(stats, "break_points_created_per_return_game", None))
+        allowed_rate = opt_float(getattr(opponent_stats, "allowed_break_points_per_service_game", None)) if opponent_stats is not None else None
         if bp_rate is not None:
             inputs["break_point_conversion_rate"] = round(bp_rate, 4)
         if created_rate is not None:
@@ -171,11 +167,11 @@ def _compute_opponent_allowed(
     if st == "aces":
         surf_factor = _SURFACE_ACE_FACTOR.get(surf_key, 1.0)
         # Prefer the opponent's actual allowed-ace rate vs the field when available
-        allowed_ace = _f(getattr(opponent_stats, "allowed_aces_per_sp", None))
+        allowed_ace = opt_float(getattr(opponent_stats, "allowed_aces_per_sp", None))
         if allowed_ace is not None and allowed_ace > 0:
             return allowed_ace * _SERVE_POINTS_PER_MATCH * surf_factor
         # Fallback to league-rate-scaled-by-return-strength (pre-migration-0009 data)
-        opp_ret = _f(opponent_stats.ret_pts_won)
+        opp_ret = opt_float(opponent_stats.ret_pts_won)
         if opp_ret is None:
             return None
         baseline_nonreturn = max(1e-6, 1.0 - _BASELINE_RET_PTS_WON)
@@ -195,14 +191,14 @@ def _compute_opponent_allowed(
 
     if st in ("total_games_won", "games_won"):
         opp_hold = _serve_hold(opponent_stats)
-        opp_bp = _f(opponent_stats.break_pct)
+        opp_bp = opt_float(opponent_stats.break_pct)
         if opp_hold is None or opp_bp is None:
             return None
         return opp_hold * _SERVICE_GAMES_PER_MATCH + opp_bp * _BREAK_CHANCES_PER_MATCH
 
     if st == "total_games":
         opp_hold = _serve_hold(opponent_stats)
-        opp_bp = _f(opponent_stats.break_pct)
+        opp_bp = opt_float(opponent_stats.break_pct)
         if opp_hold is None or opp_bp is None:
             return None
         opp_games = opp_hold * _SERVICE_GAMES_PER_MATCH + opp_bp * _BREAK_CHANCES_PER_MATCH

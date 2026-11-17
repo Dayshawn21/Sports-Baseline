@@ -51,7 +51,7 @@ class PropProbabilities:
         return max(self.p_over, self.p_under) / actionable
 
 
-def _normal_cdf(z: float) -> float:
+def normal_cdf(z: float) -> float:
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
 
 
@@ -59,13 +59,13 @@ def _normal_probs_from_sigma(line: float, expected: float, sigma: float, *, push
     if push_aware and float(line).is_integer():
         lower = (line - 0.5 - expected) / sigma
         upper = (line + 0.5 - expected) / sigma
-        p_under = _normal_cdf(lower)
-        p_push = max(0.0, _normal_cdf(upper) - p_under)
+        p_under = normal_cdf(lower)
+        p_push = max(0.0, normal_cdf(upper) - p_under)
         p_over = max(0.0, 1.0 - p_under - p_push)
         return PropProbabilities(p_over, p_under, p_push)
 
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return PropProbabilities(1.0 - p_under, p_under, 0.0)
 
@@ -85,7 +85,7 @@ def fantasy_score_probs(line: float, expected: float) -> tuple[float, float]:
         math.sqrt(games_sd**2 + sets_sd**2 + misc_sd**2) * _FANTASY_SCORE_SPREAD_CALIBRATION,
     )
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return 1.0 - p_under, p_under
 
@@ -121,7 +121,7 @@ def break_points_probs(line: float, expected: float) -> tuple[float, float]:
     """Approximate break-points-won probabilities with mild overdispersion."""
     sigma = max(1.15, math.sqrt(max(expected, 0.0)) * 1.2)
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return 1.0 - p_under, p_under
 
