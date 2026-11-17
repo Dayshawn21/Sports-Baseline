@@ -1,18 +1,17 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlModelRanking, fetchNhlPlayerProps, fetchNhlProjectionHistory, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
-import type { PropRankingRecord } from '~/types/propRanking'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlProjectionHistory, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
 import { retryUnlessNotFound } from '~/utils/httpError'
+import { modelRankingQuery } from '~/hooks/modelRankingQuery'
+import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
-
-const STALE_TIME = 5 * 60 * 1000
 
 export function nhlSlateQuery(date: string | null) {
   const requested = parseSlateDate(date)
   return queryOptions({
     queryKey: ['nhl', 'slate', requested],
     queryFn: () => fetchNhlSlate(requested),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
   })
 }
 
@@ -21,7 +20,7 @@ export function nhlGameQuery(gameId: number | null) {
   return queryOptions({
     queryKey: ['nhl', 'game', id],
     queryFn: id === null ? skipToken : () => fetchNhlGame(id),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
     retry: retryUnlessNotFound,
   })
 }
@@ -31,7 +30,7 @@ export function nhlLineOnlyPropsQuery(gameId: number | null) {
   return queryOptions({
     queryKey: ['nhl', 'game', id, 'line-only-props'],
     queryFn: id === null ? skipToken : () => fetchNhlLineOnlyProps(id),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
     retry: retryUnlessNotFound,
   })
 }
@@ -42,7 +41,7 @@ export function nhlPlayerPropsQuery(playerId: number | null, date: string | null
   return queryOptions({
     queryKey: ['nhl', 'player', id, 'props', requested],
     queryFn: id === null ? skipToken : () => fetchNhlPlayerProps(id, requested),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
     retry: retryUnlessNotFound,
   })
 }
@@ -52,7 +51,7 @@ export function nhlProjectionHistoryQuery(playerId: number | null) {
   return queryOptions({
     queryKey: ['nhl', 'player', id, 'projection-history'],
     queryFn: id === null ? skipToken : () => fetchNhlProjectionHistory(id),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
     retry: retryUnlessNotFound,
   })
 }
@@ -62,7 +61,7 @@ export function nhlPropBoardQuery(date: string | null) {
   return queryOptions({
     queryKey: ['nhl', 'prop-board', requested],
     queryFn: () => fetchNhlPropBoard(requested),
-    staleTime: STALE_TIME,
+    staleTime: SLATE_STALE_MS,
   })
 }
 
@@ -92,11 +91,5 @@ export function useNhlPropBoard(date: string | null) {
 }
 
 export function useNhlModelRanking() {
-  return useQuery<PropRankingRecord, Error>({
-    queryKey: ['nhl', 'model', 'ranking', { season: 'current' }],
-    queryFn: fetchNhlModelRanking,
-    // The API caches the check for 15 minutes, so refetching sooner gains nothing.
-    staleTime: 15 * 60 * 1000,
-    retry: retryUnlessNotFound,
-  })
+  return useQuery(modelRankingQuery('nhl'))
 }

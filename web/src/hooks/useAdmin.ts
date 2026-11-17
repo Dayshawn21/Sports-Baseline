@@ -11,6 +11,7 @@ import type {
 } from '~/types/admin'
 import { sessionAdminKey } from '~/utils/adminAuth'
 import { retryUnlessAuthOrLimited } from '~/utils/httpError'
+import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 
 export function useAdminKey(): string | null {
   return useSyncExternalStore(sessionAdminKey.subscribe, sessionAdminKey.read, () => null)
@@ -29,7 +30,7 @@ export function useAdminSession() {
   const query = useQuery({
     queryKey: ['admin', 'session', { signedIn }],
     queryFn: fetchAdminSession,
-    staleTime: 5 * 60 * 1000,
+    staleTime: SLATE_STALE_MS,
     refetchOnWindowFocus: false,
     retry: retryUnlessAuthOrLimited,
   })

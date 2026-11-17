@@ -1,5 +1,6 @@
 import { useQueries } from '@tanstack/react-query'
 import { defaultSlateDates, utcDatesForCentralDay } from '~/utils/tennisDates'
+import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 
 interface SlateParams {
   date?: string
@@ -26,7 +27,7 @@ export function useTennisSlate<M>(
     queries: dates.map(date => ({
       queryKey: ['tennis', kind, { date, tour: params?.tour }],
       queryFn: () => fetchPage({ date, tour: params?.tour }),
-      staleTime: 5 * 60 * 1000,
+      staleTime: SLATE_STALE_MS,
       retry: 2,
     })),
   })

@@ -2,9 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchNflModelClv, fetchNflModelFit, fetchNflModelPropLines, fetchNflModelRanking } from '~/api/nfl'
 import type { NflRankingModelVersion } from '~/types/nfl'
 import { rankingQueryKey } from '~/utils/nflTrackRecord'
-
-// The API caches each section for 15 minutes, so refetching sooner gains nothing.
-const TRACK_RECORD_STALE_MS = 15 * 60 * 1000
+import { TRACK_RECORD_STALE_MS } from '~/hooks/queryTimes'
 
 export function useNflModelRanking(season: number | null, modelVersion?: NflRankingModelVersion) {
   return useQuery({
