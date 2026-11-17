@@ -1,5 +1,6 @@
 import type { NhlLineOnlyMarket, NhlProjection, NhlProjectionFlag } from '~/types/nhl'
 import { fmtSigned } from '~/utils/format'
+import type { NhlPropListRow, NhlPropRung } from '~/utils/nhlLineOnly'
 
 export const NHL_PROJECTION_CAPTION = 'Reference projection: 20-game average, not a pick'
 export const NHL_PROBABILITY_CAPTION = 'P(over): model estimate for that line, not a pick'
@@ -63,4 +64,19 @@ export function nhlCoversProbability(projection: NhlProjection): boolean {
 /** The caveat for a shown market whose estimate only tied a plain normal estimate on 2025-26; null for the others. */
 export function nhlProbabilityNote(market: NhlLineOnlyMarket): string | null {
   return WEAK_PROBABILITY_MARKETS.has(market) ? 'On 2025-26 this estimate was no better than a plain normal estimate.' : null
+}
+
+/** The non-standard rungs as `Goblin 2.5 (+0.4)` labels, in rung order. */
+export function nhlAlternateLabels(rungs: readonly Pick<NhlPropRung, 'oddsType' | 'oddsTypeLabel' | 'label' | 'gap'>[]): string[] {
+  return rungs
+    .filter(rung => rung.oddsType !== 'standard')
+    .map(rung => `${rung.oddsTypeLabel} ${rung.label}${rung.gap === null ? '' : ` (${nhlGapLabel(rung.gap)})`}`)
+}
+
+/** The P(over) caption above a market's table; null when no row's line is covered, so the column is not drawn. */
+export function nhlProbabilityCaption(market: NhlLineOnlyMarket, rows: readonly Pick<NhlPropListRow, 'coversProbability' | 'standardWholeLine'>[]): string | null {
+  if (!rows.some(row => row.coversProbability)) return null
+  const wholeNote = rows.some(row => row.standardWholeLine) ? ` ${NHL_WHOLE_LINE_NOTE}` : ''
+  const weakNote = nhlProbabilityNote(market)
+  return `${NHL_PROBABILITY_CAPTION}. Shown for the standard line only.${wholeNote}${weakNote ? ` ${weakNote}` : ''}`
 }

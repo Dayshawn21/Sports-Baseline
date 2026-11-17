@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest'
 import type { NhlProjection, NhlProjectionFlag } from '~/types/nhl'
 import {
-  NHL_PROBABILITY_CAPTION, NHL_PROJECTION_CAPTION, nhlCoversProbability, nhlGapLabel, nhlLineProbabilityNote, nhlPercentLabel, nhlProbabilityNote,
-  nhlProjectionNote, nhlProjectionValue,
+  NHL_PROBABILITY_CAPTION, NHL_PROJECTION_CAPTION, NHL_WHOLE_LINE_NOTE, nhlAlternateLabels, nhlCoversProbability, nhlGapLabel, nhlLineProbabilityNote,
+  nhlPercentLabel, nhlProbabilityCaption, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
 } from '~/utils/nhlProjection'
 
 const ALL_FLAGS: NhlProjectionFlag[] = [
@@ -79,4 +79,23 @@ it('keeps the per-line flags out of the projection note and in the line note', (
   expect(nhlLineProbabilityNote(['integer_line'])).toBe('Whole-number line: no P(over)')
   expect(nhlLineProbabilityNote(['injury_listed'])).toBeNull()
   expect(nhlLineProbabilityNote([])).toBeNull()
+})
+
+it('labels only the alternate rungs, with a gap when one is shown', () => {
+  const rungs = [
+    { oddsType: 'goblin' as const, oddsTypeLabel: 'Goblin', label: '1.5', gap: 1.04 },
+    { oddsType: 'standard' as const, oddsTypeLabel: 'Standard', label: '2.5', gap: 0.04 },
+    { oddsType: 'demon' as const, oddsTypeLabel: 'Demon', label: '3.5', gap: null },
+  ]
+  expect(nhlAlternateLabels(rungs)).toEqual(['Goblin 1.5 (+1.0)', 'Demon 3.5'])
+  expect(nhlAlternateLabels(rungs.slice(1, 2))).toEqual([])
+})
+
+it('builds the P(over) caption only when a row is covered', () => {
+  const covered = { coversProbability: true, standardWholeLine: false }
+  const whole = { coversProbability: false, standardWholeLine: true }
+  expect(nhlProbabilityCaption('shots_on_goal', [{ coversProbability: false, standardWholeLine: false }])).toBeNull()
+  expect(nhlProbabilityCaption('shots_on_goal', [covered])).toBe(`${NHL_PROBABILITY_CAPTION}. Shown for the standard line only.`)
+  expect(nhlProbabilityCaption('shots_on_goal', [covered, whole])).toBe(`${NHL_PROBABILITY_CAPTION}. Shown for the standard line only. ${NHL_WHOLE_LINE_NOTE}`)
+  expect(nhlProbabilityCaption('time_on_ice', [covered])).toBe(`${NHL_PROBABILITY_CAPTION}. Shown for the standard line only. ${nhlProbabilityNote('time_on_ice')}`)
 })

@@ -3,6 +3,7 @@ import { NBA_LINE_ONLY_MARKETS, nbaLineOnlyGroups, type NbaLineOnlyRow } from '~
 import { nbaPropGroups, type NbaPropCard } from '~/utils/nbaProps'
 import { CENTRAL_TZ } from '~/utils/format'
 import { gameState } from '~/utils/gameState'
+import { boardStartTime, compareBoardRows, propBoardPath } from '~/utils/propBoardRows'
 
 export type NbaBoardGameContext = Omit<NbaPropBoardGame, 'lines' | 'lineOnlyLines'>
 
@@ -26,8 +27,7 @@ export function nbaBoardMarket(value: string | null, markets: NbaBoardMarket[]):
 }
 
 export function nbaBoardPath(date: string | null, market: string): string | null {
-  if (date === null) return null
-  return `/nba/props?${new URLSearchParams({ date, market })}`
+  return propBoardPath('nba', date, market)
 }
 
 const TIP_FORMAT = new Intl.DateTimeFormat('en-US', {
@@ -35,25 +35,14 @@ const TIP_FORMAT = new Intl.DateTimeFormat('en-US', {
 })
 
 export function nbaBoardGameLabels(game: NbaBoardGameContext, now: Date): { tip: string, status: string | null } {
-  const time = tipTime(game.startUtc)
+  const time = boardStartTime(game.startUtc)
   const tip = Number.isFinite(time) ? `${TIP_FORMAT.format(time)} CT` : 'Tip time not set'
   const { phase, label } = gameState(game.status, game.startUtc, now, 'Tipped off')
   return { tip, status: phase === 'upcoming' ? null : label }
 }
 
-function tipTime(startUtc: string | null): number {
-  const time = startUtc === null ? NaN : Date.parse(startUtc)
-  return Number.isNaN(time) ? Infinity : time
-}
-
 function compareRows(left: NbaBoardRow, right: NbaBoardRow): number {
-  const leftTip = tipTime(left.game.startUtc)
-  const rightTip = tipTime(right.game.startUtc)
-  if (leftTip !== rightTip) return leftTip < rightTip ? -1 : 1
-  return left.row.playerName.localeCompare(right.row.playerName)
-    || left.game.gameId - right.game.gameId
-    || left.row.playerId - right.row.playerId
-    || left.kind.localeCompare(right.kind)
+  return compareBoardRows(left, right) || left.kind.localeCompare(right.kind)
 }
 
 /** Group within each game so a player's lines from different games never merge. */

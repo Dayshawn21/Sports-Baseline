@@ -7,26 +7,17 @@ import { nhlBoardGameStatus, type NhlBoardMarket } from '~/utils/nhlPropBoard'
 import { nhlPlayerPath } from '~/utils/nhlPlayer'
 import { FROM_BOARD } from '~/utils/playerPage'
 import { REFERENCE, probabilityRing } from '~/utils/propRowVisuals'
-import {
-  NHL_PROBABILITY_CAPTION, NHL_WHOLE_LINE_NOTE, nhlGapLabel, nhlPercentLabel, nhlProbabilityNote, nhlProjectionNote, nhlProjectionValue,
-} from '~/utils/nhlProjection'
-
-function alternates(rungs: NhlBoardMarket['rows'][number]['row']['rungs']): string[] {
-  return rungs
-    .filter(rung => rung.oddsType !== 'standard')
-    .map(rung => `${rung.oddsTypeLabel} ${rung.label}${rung.gap === null ? '' : ` (${nhlGapLabel(rung.gap)})`}`)
-}
+import { nhlAlternateLabels, nhlGapLabel, nhlPercentLabel, nhlProbabilityCaption, nhlProjectionNote, nhlProjectionValue } from '~/utils/nhlProjection'
 
 /** One market's rows, each opening that player's page on this date and market as a board arrival; values stay gray and unranked. */
 export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMarket, date: string }) {
   const label = nhlMarketLabel(group.market)
   const now = new Date()
-  const covers = group.rows.some(entry => entry.row.coversProbability)
-  const weakNote = nhlProbabilityNote(group.market)
-  const wholeNote = group.rows.some(entry => entry.row.standardWholeLine) ? ` ${NHL_WHOLE_LINE_NOTE}` : ''
+  const caption = nhlProbabilityCaption(group.market, group.rows.map(entry => entry.row))
+  const covers = caption !== null
   if (group.rows.length === 0) return <p className="nfl-empty">No {label.toLowerCase()} lines on this date.</p>
   return <section className="nhl-prop-board__rows" aria-label={`${label} lines`}>
-    {covers && <p className="nhl-prop-board__caption">{NHL_PROBABILITY_CAPTION}. Shown for the standard line only.{wholeNote}{weakNote && ` ${weakNote}`}</p>}
+    {covers && <p className="nhl-prop-board__caption">{caption}</p>}
     <table className="nhl-prop-board__table">
       <thead><tr>
         <th scope="col">Player</th><th scope="col">Game</th><th scope="col">Puck drop</th>
@@ -34,7 +25,7 @@ export default function NhlPropBoardMarket({ group, date }: { group: NhlBoardMar
       </tr></thead>
       <tbody>{group.rows.map(({ key, game, row }) => {
         const status = nhlBoardGameStatus(game, now)
-        const others = alternates(row.rungs)
+        const others = nhlAlternateLabels(row.rungs)
         return <tr key={key}>
           <td>
             <Link className="nhl-prop-board__player" to={nhlPlayerPath(row.playerId, { date, market: group.market })} state={FROM_BOARD}>{row.playerName}</Link>

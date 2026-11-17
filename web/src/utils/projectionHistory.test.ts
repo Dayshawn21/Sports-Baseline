@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectionHistoryPoint } from '~/types/tennis'
 import {
-  filterHistory, historyDefaultStat, historyFilterOptions, historyScale, historySearch, historyStatOptions, parseHistoryParams,
+  filterHistory, historyDate, historyDefaultStat, historyFilterOptions, historyFootnote, historyScale, historySearch, historyStatOptions, parseHistoryParams,
 } from '~/utils/projectionHistory'
 import { marketKey } from '~/utils/tennisPropBoard'
 
@@ -127,5 +127,23 @@ describe('historySearch', () => {
   it('drops the default stat and cleared filters', () => {
     const params = new URLSearchParams('hstat=total_games&hsurface=hard&hopp=40')
     expect(historySearch(params, { stat: 'aces', surface: null, opponentId: null }, 'aces')).toBe('?')
+  })
+})
+
+describe('historyFootnote', () => {
+  const GAME = { one: 'game', many: 'games' }
+  const MATCH = { one: 'match', many: 'matches' }
+  const TAIL = 'Reference only: projections are as frozen before each'
+
+  it('names the range, the count and the unit', () => {
+    expect(historyFootnote('v1', ['2026-11-01', '2026-11-09'], 0, GAME)).toBe(`v1 · Nov 1 to Nov 9 · 2 games charted. ${TAIL} game, never recomputed.`)
+    expect(historyFootnote('props-v3', ['2026-10-02T12:00:00Z'], 1, MATCH))
+      .toBe(`props-v3 · Oct 2 · 1 match charted; 1 line across all stats not settled yet. ${TAIL} match, never recomputed.`)
+  })
+
+  it('reads an empty chart and a missing date', () => {
+    expect(historyFootnote('v1', [], 3, MATCH)).toBe(`v1 · no matches · 0 matches charted; 3 lines across all stats not settled yet. ${TAIL} match, never recomputed.`)
+    expect(historyFootnote('v1', [null, '2026-11-09'], 0, GAME)).toBe(`v1 · -- to Nov 9 · 2 games charted. ${TAIL} game, never recomputed.`)
+    expect(historyDate(undefined)).toBe('--')
   })
 })

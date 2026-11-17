@@ -1,6 +1,7 @@
 import type { ProjectionHistoryPoint } from '~/types/tennis'
 import { marketKey, marketTitle } from '~/utils/tennisPropBoard'
 import { playerSearch } from '~/utils/playerPage'
+import { shortDate } from '~/utils/format'
 
 export const HISTORY_STAT_PARAM = 'hstat'
 export const HISTORY_SURFACE_PARAM = 'hsurface'
@@ -140,4 +141,23 @@ export function historySearch(params: URLSearchParams, filters: HistoryFilters, 
     [HISTORY_SURFACE_PARAM]: surfaceKey(filters.surface),
     [HISTORY_OPPONENT_PARAM]: filters.opponentId === null ? null : String(filters.opponentId),
   })
+}
+
+export function historyDate(iso: string | null | undefined): string {
+  return iso ? shortDate(iso) : '--'
+}
+
+export interface HistoryUnit {
+  one: string
+  many: string
+}
+
+/** The note under a projection history chart; `dates` are the charted games or matches in order. */
+export function historyFootnote(version: string, dates: readonly (string | null | undefined)[], unsettled: number, unit: HistoryUnit): string {
+  const first = historyDate(dates[0])
+  const last = historyDate(dates[dates.length - 1])
+  const range = !dates.length ? `no ${unit.many}` : first === last ? first : `${first} to ${last}`
+  const pending = unsettled ? `; ${unsettled} ${unsettled === 1 ? 'line' : 'lines'} across all stats not settled yet` : ''
+  const charted = `${dates.length} ${dates.length === 1 ? unit.one : unit.many} charted`
+  return `${version} · ${range} · ${charted}${pending}. Reference only: projections are as frozen before each ${unit.one}, never recomputed.`
 }

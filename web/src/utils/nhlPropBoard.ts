@@ -1,5 +1,6 @@
 import type { NhlLineOnlyMarket, NhlPropBoardGame } from '~/types/nhl'
 import { gameState } from '~/utils/gameState'
+import { compareBoardRows, propBoardPath } from '~/utils/propBoardRows'
 import { NHL_LINE_ONLY_MARKETS, nhlPropListGroups, type NhlPropListRow } from '~/utils/nhlLineOnly'
 
 export type NhlBoardGameContext = Omit<NhlPropBoardGame, 'lines'>
@@ -24,22 +25,7 @@ export function nhlBoardMarket(value: string | null, groups: readonly NhlBoardMa
 }
 
 export function nhlBoardPath(date: string | null, market: NhlLineOnlyMarket): string | null {
-  if (date === null) return null
-  return `/nhl/props?${new URLSearchParams({ date, market })}`
-}
-
-function dropTime(startUtc: string | null): number {
-  const time = startUtc === null ? NaN : Date.parse(startUtc)
-  return Number.isNaN(time) ? Infinity : time
-}
-
-function compareRows(left: NhlBoardRow, right: NhlBoardRow): number {
-  const leftDrop = dropTime(left.game.startUtc)
-  const rightDrop = dropTime(right.game.startUtc)
-  if (leftDrop !== rightDrop) return leftDrop < rightDrop ? -1 : 1
-  return left.row.playerName.localeCompare(right.row.playerName)
-    || left.game.gameId - right.game.gameId
-    || left.row.playerId - right.row.playerId
+  return propBoardPath('nhl', date, market)
 }
 
 /** Every NHL market, empty ones included, with rows by puck drop then player; a player's lines never merge across games. */
@@ -50,7 +36,7 @@ export function nhlPropBoard(games: readonly NhlPropBoardGame[]): NhlBoardMarket
       rowsByMarket.get(market)?.push(...rows.map(row => ({ key: `${game.gameId}:${row.key}`, game, row })))
     }
   }
-  return [...rowsByMarket].map(([market, rows]) => ({ market, rows: rows.sort(compareRows) }))
+  return [...rowsByMarket].map(([market, rows]) => ({ market, rows: rows.sort(compareBoardRows) }))
 }
 
 /** Null while a game is upcoming or its start is unknown. */
