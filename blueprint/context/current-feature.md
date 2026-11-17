@@ -1,100 +1,86 @@
-# Fix: Share one moneyline side calculation between best picks and the bankroll builder
+# Fix: Dedupe the tennis pick helpers and split the long pick generators
 
 **Type:** Fix
 
-**Fixes:** F-61
+**Fixes:** F-72 (the `_normal_cdf` and `_f` part), F-73 (the best picks and bankroll generators)
 
-**Branch:** `fix/moneyline-sides`
+**Branch:** `fix/tennis-helper-dedupe`
 
 ## The problem
 
-Two functions derive the same moneyline numbers independently:
+**F-72: two small helpers are copied.**
 
-- `best_picks.py` `generate_ml_pick` (lines 101-176)
-- `bankroll_builder.py` `_generate_ml_picks` (lines 138-193)
+- `_normal_cdf(z)` exists twice, word for word:
+  - `services/tennis/best_picks.py:83`
+  - `core/prop_probs.py:54`
+- `_f(v)` (a nullable `float()` coercion) exists three times:
+  - `best_picks.py:61`
+  - `prop_enrichment.py:91`
+  - `core/prop_projection.py:85`
 
-Both check the same inputs, de-vig the two prices, and compute EV, Kelly and the
-bettable assessment for each side.
+**F-73: four pick generators run 120 to 220 lines against the roughly 50-line guideline.**
 
-Around that shared core:
-
-- `bankroll_builder.py:34` imports two privates from `best_picks`:
-  - `_compute_stat_avg`, which is just an alias of `core.prop_projection.compute_stat_avg`
-  - `_CONF_MULT`
-- Both read `getattr(pred, "quality_flags", [])`, even though
-  `PredictionOutput.quality_flags` is a declared field.
-- American odds are formatted twice: inline at `best_picks.py:143`, and in
-  `bankroll_builder.py:114` as `_odds_str`.
+| Function | Lines |
+|---|---|
+| `best_picks.generate_market_odds_picks` | 176 |
+| `best_picks.generate_derived_picks` | 220 |
+| `bankroll_builder._generate_set_picks` | 142 |
+| `bankroll_builder._generate_total_picks` | 120 |
 
 ## The fix
 
-### `app/services/tennis/moneyline.py` (new, pure, no I/O)
+### F-72
 
-- **`MoneylineSide`**, a frozen dataclass with:
-  - `side`: `"p1"` or `"p2"`
-  - `name`, `our_prob`, `market_prob` (de-vigged), `odds`, `ev`, `kelly`
-- **`moneyline_sides(pred) -> tuple[MoneylineSide, MoneylineSide] | None`**
-  - Returns `None` on the same guard both callers use today: no `p1_win_prob`
-    or a missing price.
-- **`odds_str(odds: int | None) -> str`**
-  - Gives `"+120"` or `"-130"`, and `"N/A"` for `None`.
-  - Replaces both copies.
+- **`core/prop_probs.py`:** `_normal_cdf` becomes the public `normal_cdf`. `best_picks` imports it and deletes its copy.
+- **`core/prop_projection.py`:** `_f` becomes the public `opt_float`. `best_picks` and `prop_enrichment` import it and delete their copies. Every `_f(` call is renamed.
 
-### `best_picks.py`
+### F-73
 
-- `generate_ml_pick` gets its side numbers from `moneyline_sides`.
-- `_CONF_MULT` becomes the public `CONF_MULT`.
+Each split is code moved into named helpers with the same expressions, in the same order. No formula changes.
 
-### `bankroll_builder.py`
+- **`generate_market_odds_picks`:** the per-prop loop stays and dispatches to `_total_games_picks(...)` and `_game_spread_picks(...)`.
+- **`generate_derived_picks`:** the best-of-5 block, the best-of-3 set picks and the Serve Dominance pick each become a helper.
+- **`_generate_set_picks`:**
+  - the two price sources (set-handicap market, then moneyline-derived) move into one helper that returns the prices
+  - the straight-sets pick and the underdog set pick each become a helper
+- **`_generate_total_picks`:**
+  - the expected-total projection becomes a helper
+  - the OVER and UNDER blocks share one side helper, if they turn out to be symmetric when built; otherwise each becomes its own helper
 
-- `_generate_ml_picks` gets its side numbers from `moneyline_sides`.
-- It imports `compute_stat_avg` from `core.prop_projection` and `CONF_MULT` from `best_picks`.
-- Every `_odds_str` call (ML, sets and totals) uses the shared `odds_str`.
+### Out of scope
 
-### Both callers
-
-- Read `pred.quality_flags or []` directly.
-
-### Kept exactly as is (the two callers differ on purpose)
-
-| | Best picks | Bankroll builder |
-|---|---|---|
-| Sides returned | One: the higher-EV side, with ties going to p2 | Both sides that pass the assessment |
-| Edge | `(our - mkt) / mkt` | `(our - (mkt or our)) / max(mkt or our, 0.01)` |
-| p2 market prob | `1 - market_p1` | `market_p2` from `devig_two_way` |
-
-- Best picks keeps its `1 - market_p1` line, so its output does not move by a
-  float ulp.
-- Changing either edge formula needs an explicit choice from the user. It is not
-  part of this fix.
+| Left alone | Why |
+|---|---|
+| `core/prop_projection.compute_stat_avg` | F-73 lists it, but it feeds props-v3 and the v4 shadow. Its unclamped expected-sets formula must not be swapped for `expected_sets_from_win_prob`. |
+| `core/count_over_probability._normal_cdf(x, mean, sigma)` | A different signature |
+| `ingest/elo._f` | Ingest is outside this lane |
+| The rest of F-72: `_CamelModel`, the odds converters, the name folders, the web duplicates | Other files and other lanes |
+| The ingest functions F-73 lists | Ingest is outside this lane |
 
 ### Must not break
 
-- Every field of `BestPick` and `BankrollPick` that these two functions produce.
-- The tennis props-v3 snapshots and the v4 shadow. Neither reads this code.
+- Every `BestPick` and `BankrollPick` these generators return: the same fields, the same order, the same floats.
+- The props-v3 snapshots and the v4 shadow. `prop_enrichment` only renames its `_f` calls.
 
 ## Build steps
 
-- [x] **1. Pin today's output.**
-  - Add golden tests on the unchanged code for both functions:
-    - p1 has more EV
-    - p2 has more EV
-    - an EV tie
-    - both sides pass (bankroll)
-    - neither side passes
-    - a blocking quality flag
-    - a missing price
-  - The tests assert full dataclass equality.
-  - Done when they pass on the unchanged code.
-- [x] **2. Extract and switch.**
-  - Add `moneyline.py` with tests for `moneyline_sides` and `odds_str`.
-  - Point both callers at it.
-  - Make `CONF_MULT` public, fix the `compute_stat_avg` import, and drop the
-    `getattr` calls.
-  - Done when the step 1 golden tests pass unchanged, no module imports a
-    `best_picks` private, and the full API suite passes.
+- [x] **1. Share the two helpers (F-72).**
+  - Make `normal_cdf` and `opt_float` public, import them at each site, delete the copies.
+  - Add tests that pin `normal_cdf` at a few `z` values and `opt_float` on `None`, `Decimal` and `int`.
+  - Done when no `def _normal_cdf(z` or `def _f(` remains in `best_picks`, `prop_enrichment` or `prop_projection`, and the full API suite passes.
+- [x] **2. Pin the four generators' output.**
+  - Add golden tests on the unchanged generators that assert full dataclass equality. Cover:
+    - total games and game spread props, including the skip guards
+    - best-of-3 and best-of-5 derived picks, with and without Serve Dominance
+    - set-handicap prices from the market and from the moneyline
+    - total games OVER and UNDER
+  - Done when the tests pass before any split.
+- [x] **3. Split the two `best_picks` generators.**
+  - Done when each function is at most about 60 lines and the step 2 tests pass unedited.
+- [x] **4. Split the two `bankroll_builder` generators.**
+  - Done when each function is at most about 60 lines, the step 2 tests pass unedited, and the full API suite passes.
 
 ## Verify
 
 - `cd api && python -m pytest` passes.
-- The golden tests from step 1 pass without edits after step 2.
+- The step 2 golden tests pass without edits after steps 3 and 4.
