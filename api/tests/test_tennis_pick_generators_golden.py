@@ -200,7 +200,13 @@ def _golden() -> dict[str, dict[str, list[dict]]]:
     [(generator, case) for generator, cases in GENERATORS.items() for case in cases],
 )
 def test_generator_output_is_unchanged(generator: str, case: str) -> None:
-    assert run_case(generator, case) == _golden()[generator][case]
+    expected = _golden()[generator][case]
+    # score is the one unrounded float; math.erf differs in the last bits between the
+    # Windows and Linux C libraries, so it alone gets a relative tolerance.
+    for pick in expected:
+        if pick.get("score") is not None:
+            pick["score"] = pytest.approx(pick["score"], rel=1e-12)
+    assert run_case(generator, case) == expected
 
 
 def test_every_golden_case_is_run() -> None:
