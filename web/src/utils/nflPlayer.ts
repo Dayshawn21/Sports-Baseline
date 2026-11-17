@@ -149,17 +149,6 @@ export function usageBars(usage: NflPlayerUsage[], stat: string): NflUsageRow {
   }
 }
 
-const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v'])
-
-/** "JC" for James Cook; a suffix such as "Jr." or "II" is skipped. */
-export function playerInitials(name: string): string {
-  const words = name.split(/\s+/).filter(word => word && !NAME_SUFFIXES.has(word.replace(/\./g, '').toLowerCase()))
-  if (!words.length) return '--'
-  const first = words[0][0] ?? ''
-  const last = words.length > 1 ? words[words.length - 1][0] ?? '' : ''
-  return `${first}${last}`.toUpperCase()
-}
-
 /** The chip labels for a focus market: the focus stat, then the volume stat. */
 export const FOCUS_LABELS: Record<string, { focus: string, volume: string, line: string }> = {
   passing_yards: { focus: 'Pass yds / g', volume: 'Attempts / g', line: 'Pass yds line' },

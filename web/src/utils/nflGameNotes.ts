@@ -1,26 +1,4 @@
-import type { NflLineMove, NflNoteInjury, NflRecentResult, NflTeamForm, NflTeamStat, NflTeamStats } from '~/types/nfl'
-import { spreadLabel } from './nflGameModel'
-
-const SINGLE_LINE = 'One line stored, no movement yet'
-const UNCHANGED = 'No change'
-
-/** "GB -6.5 → GB -5.5 · 1.0 toward ATL": a rising home line moves toward the away team. */
-export function spreadMoveLabel(move: NflLineMove, homeTeam: string, awayTeam: string): string {
-  const current = spreadLabel(move.currentLine, homeTeam, awayTeam)
-  if (move.move === null) return `${current} · ${SINGLE_LINE}`
-  const path = `${spreadLabel(move.openLine, homeTeam, awayTeam)} → ${current}`
-  if (move.move === 0) return `${path} · ${UNCHANGED}`
-  return `${path} · ${Math.abs(move.move).toFixed(1)} toward ${move.move > 0 ? awayTeam : homeTeam}`
-}
-
-/** "46.5 → 42.5 · down 4.0". */
-export function totalMoveLabel(move: NflLineMove): string {
-  const current = move.currentLine.toFixed(1)
-  if (move.move === null) return `${current} · ${SINGLE_LINE}`
-  const path = `${move.openLine.toFixed(1)} → ${current}`
-  if (move.move === 0) return `${path} · ${UNCHANGED}`
-  return `${path} · ${move.move > 0 ? 'up' : 'down'} ${Math.abs(move.move).toFixed(1)}`
-}
+import type { NflNoteInjury, NflRecentResult, NflTeamForm, NflTeamStat, NflTeamStats } from '~/types/nfl'
 
 /** "L 3-34 vs CAR" at home, "W 20-17 @ NYJ" away; the team's own score first. */
 export function formLabel(game: NflRecentResult): string {

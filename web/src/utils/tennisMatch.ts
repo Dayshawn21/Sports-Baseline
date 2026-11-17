@@ -1,4 +1,4 @@
-import type { MatchDetail, MatchPlayerDetail, PropLine } from '~/types/tennis'
+import type { MatchDetail, MatchPlayerDetail } from '~/types/tennis'
 import { fmtSurface, fmtTournament } from '~/utils/format'
 
 export type Side = 'p1' | 'p2'
@@ -72,19 +72,6 @@ export function playerBadge(player: Pick<MatchPlayerDetail, 'name' | 'country'>)
 
 export function isFinished(detail: MatchDetail): boolean {
   return detail.status !== 'scheduled' && detail.status !== 'live'
-}
-
-function propRank(prop: PropLine): number {
-  return !prop.oddsType || prop.oddsType === 'standard' ? 0 : 1
-}
-
-/** A match's prop lines, standard lines first, otherwise in feed order: tennis props carry no tier (48f). */
-export function matchProps(props: PropLine[], matchId: number): PropLine[] {
-  return props
-    .filter((p) => p.matchId === matchId)
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => propRank(a.p) - propRank(b.p) || a.i - b.i)
-    .map(({ p }) => p)
 }
 
 /** "2/5" break points won, or a dash when the box score is missing or had no chances. */

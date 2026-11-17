@@ -1,20 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatHistoryValue, formatKickoffTime, formatProjection, formatTime, matchupAllowedLabel } from './nflLabels'
-
-describe('formatTime', () => {
-  it.each([
-    ['2026-01-15T18:00:00Z', '1/15/2026, 12:00:00 PM CT'],
-    ['2026-07-15T18:00:00Z', '7/15/2026, 1:00:00 PM CT'],
-    ['2026-07-01T04:30:00Z', '6/30/2026, 11:30:00 PM CT'],
-    ['2026-07-01T05:00:00Z', '7/1/2026, 12:00:00 AM CT'],
-  ])('formats %s with the Central date and offset', (value, expected) => {
-    expect(formatTime(value)).toBe(expected)
-  })
-
-  it.each([null, '', 'not a date', '2026-99-99T00:00:00Z'])('handles an unavailable kickoff: %s', value => {
-    expect(formatTime(value)).toBe('Start time unavailable')
-  })
-})
+import { formatHistoryValue, formatKickoffTime, formatProjection, matchupAllowedLabel } from './nflLabels'
 
 describe('formatKickoffTime', () => {
   it.each([

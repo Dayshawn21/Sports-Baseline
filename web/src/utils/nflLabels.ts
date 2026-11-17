@@ -24,15 +24,6 @@ export const SEGMENT_LABELS: Record<string, string> = {
   q1: '1st quarter', q2: '2nd quarter', q3: '3rd quarter', q4: '4th quarter', season: 'Season total',
 }
 
-export const SEGMENT_COLORS: Record<string, string> = {
-  full_game: 'green', first_half: 'blue', second_half: 'blue',
-  q1: 'geekblue', q2: 'geekblue', q3: 'geekblue', q4: 'geekblue', season: 'orange',
-}
-
-// Full game first, then in-game segments, with season totals last: a season line
-// is a different animal from a single-game line and should not lead.
-const SEGMENT_ORDER = ['full_game', 'first_half', 'second_half', 'q1', 'q2', 'q3', 'q4', 'season']
-
 export const ODDS_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', goblin: 'Goblin', demon: 'Demon',
 }
@@ -65,32 +56,12 @@ export const BASELINE_REASON_LABELS: Record<string, string> = {
   current_previous_blend: 'This season and last, weighted by games, last season counted at 0.6',
 }
 
-export function segmentRank(segment: string): number {
-  const index = SEGMENT_ORDER.indexOf(segment)
-  return index === -1 ? SEGMENT_ORDER.length : index
-}
-
 export function segmentLabel(segment: string): string {
   return SEGMENT_LABELS[segment] ?? segment
 }
 
 export function marketLabel(market: string): string {
   return MARKET_LABELS[market] ?? market
-}
-
-export function formatTime(value: string | null): string {
-  const time = value ? Date.parse(value) : Number.NaN
-  if (Number.isNaN(time)) return 'Start time unavailable'
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }).format(time) + ' CT'
 }
 
 /** Compact Central kickoff time for dense board rows. */

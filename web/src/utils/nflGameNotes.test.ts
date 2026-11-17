@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { NflLineMove, NflNoteInjury } from '~/types/nfl'
-import { TEAM_STAT_ROWS, formLabel, gamesLabel, injuriesByTeam, injuryGroups, rankLabel, restLabel, spreadMoveLabel, statValue, totalMoveLabel } from './nflGameNotes'
-
-const OPENED = '2026-09-18T17:42:18Z'
-const LATEST = '2026-09-23T15:41:15Z'
+import type { NflNoteInjury } from '~/types/nfl'
+import { TEAM_STAT_ROWS, formLabel, gamesLabel, injuriesByTeam, injuryGroups, rankLabel, restLabel, statValue } from './nflGameNotes'
 
 describe('injuryGroups', () => {
   const injury = (position: string, playerId: number): NflNoteInjury => ({
@@ -24,38 +21,6 @@ describe('injuryGroups', () => {
     const rows = [injury('CB', 1), injury('LB', 2)]
     expect(injuryGroups(rows)).toEqual([{ label: 'Defense', rows }])
     expect(injuryGroups([])).toEqual([])
-  })
-})
-
-function move(market: 'spread' | 'total', openLine: number, currentLine: number, change: number | null): NflLineMove {
-  return { market, book: 'draftkings', openLine, openFetchedAt: OPENED, currentLine, currentFetchedAt: LATEST, move: change }
-}
-
-describe('spreadMoveLabel', () => {
-  it('names the side the spread moved toward', () => {
-    expect(spreadMoveLabel(move('spread', -6.5, -5.5, 1), 'GB', 'ATL')).toBe('GB -6.5 → GB -5.5 · 1.0 toward ATL')
-    expect(spreadMoveLabel(move('spread', -3, -4.5, -1.5), 'GB', 'ATL')).toBe('GB -3.0 → GB -4.5 · 1.5 toward GB')
-  })
-
-  it('follows a flip of favorite through the book sign', () => {
-    expect(spreadMoveLabel(move('spread', -1, 2, 3), 'CLE', 'PIT')).toBe('CLE -1.0 → PIT -2.0 · 3.0 toward PIT')
-  })
-
-  it('separates an unchanged line from a single stored line', () => {
-    expect(spreadMoveLabel(move('spread', -7, -7, 0), 'BUF', 'LAC')).toBe('BUF -7.0 → BUF -7.0 · No change')
-    expect(spreadMoveLabel(move('spread', 3, 3, null), 'CLE', 'PIT')).toBe('PIT -3.0 · One line stored, no movement yet')
-  })
-})
-
-describe('totalMoveLabel', () => {
-  it('says up or down with the size', () => {
-    expect(totalMoveLabel(move('total', 46.5, 42.5, -4))).toBe('46.5 → 42.5 · down 4.0')
-    expect(totalMoveLabel(move('total', 42.5, 44, 1.5))).toBe('42.5 → 44.0 · up 1.5')
-  })
-
-  it('does not call a single stored line unchanged', () => {
-    expect(totalMoveLabel(move('total', 38.5, 38.5, null))).toBe('38.5 · One line stored, no movement yet')
-    expect(totalMoveLabel(move('total', 50.5, 50.5, 0))).toBe('50.5 → 50.5 · No change')
   })
 })
 

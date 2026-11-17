@@ -7,17 +7,6 @@ export const parseGameId = parseMatchId
 
 const MISSING = '--'
 
-const KICKOFF_FORMAT = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-})
-
-/** `Sun, Sep 27, 12:00 PM CT`; the owner reads kickoffs in Central time. */
-export function kickoffLabel(startUtc: string | null): string {
-  if (startUtc === null) return 'Kickoff time not set'
-  const time = Date.parse(startUtc)
-  return Number.isNaN(time) ? 'Kickoff time not set' : `${KICKOFF_FORMAT.format(time)} CT`
-}
-
 export function hasKickedOff(startUtc: string | null, now: Date): boolean {
   if (startUtc === null) return false
   const time = Date.parse(startUtc)

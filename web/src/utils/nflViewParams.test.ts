@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { boardViewSearch, DEFAULT_BOARD_VIEW, gameViewSearch, parseBoardView, parseGameView } from '~/utils/nflViewParams'
+import { boardViewSearch, gameViewSearch, parseBoardView, parseGameView, type NflBoardView } from '~/utils/nflViewParams'
+
+const DEFAULT_VIEW: NflBoardView = { season: null, week: null, position: 'all', market: null, games: [], showAll: false, players: [], team: 'all' }
 
 const parse = (query: string) => parseBoardView(new URLSearchParams(query))
 
@@ -11,16 +13,16 @@ describe('board view params', () => {
   })
 
   it('leaves empty lists and all teams out of the URL', () => {
-    expect(boardViewSearch({ ...DEFAULT_BOARD_VIEW, players: [], games: [], team: 'all' }).toString()).toBe('')
+    expect(boardViewSearch({ ...DEFAULT_VIEW, players: [], games: [], team: 'all' }).toString()).toBe('')
   })
 
   it('omits every default', () => {
-    expect(boardViewSearch(DEFAULT_BOARD_VIEW).toString()).toBe('')
-    expect(boardViewSearch({ ...DEFAULT_BOARD_VIEW, position: 'TE' }).toString()).toBe('position=TE')
+    expect(boardViewSearch(DEFAULT_VIEW).toString()).toBe('')
+    expect(boardViewSearch({ ...DEFAULT_VIEW, position: 'TE' }).toString()).toBe('position=TE')
   })
 
   it('reads an empty query as the default view', () => {
-    expect(parse('')).toEqual(DEFAULT_BOARD_VIEW)
+    expect(parse('')).toEqual(DEFAULT_VIEW)
   })
 
   it('falls back per field on bad values', () => {

@@ -1,5 +1,5 @@
 import { NFL_POSITION_OPTIONS, type NflPositionFilter } from '~/utils/nflPositions'
-import { ALL, parseGameFilters, parsePlayerFilter, parseTeamFilter, withPropListFilters } from '~/utils/propFilters'
+import { parseGameFilters, parsePlayerFilter, parseTeamFilter, withPropListFilters } from '~/utils/propFilters'
 
 export interface NflBoardView {
   /** Season and week are both null (follow the current week) or both set. */
@@ -18,8 +18,6 @@ export interface NflGameView {
   position: NflPositionFilter
   showAll: boolean
 }
-
-export const DEFAULT_BOARD_VIEW: NflBoardView = { season: null, week: null, position: 'all', market: null, games: [], showAll: false, players: [], team: ALL }
 
 function integerIn(value: string | null, min: number, max: number): number | null {
   if (value === null || !/^\d+$/.test(value)) return null

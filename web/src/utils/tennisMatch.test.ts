@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { BestPick, MatchDetail, MatchPrediction, PropLine } from '~/types/tennis'
-import { componentRows, fmtBreakPoints, fmtMatchDate, fmtMatchDateYear, heroSide, isFinished, matchProps, meetingsNote, matchContext, parseMatchId, playerBadge, playerMeta, sideView, weightColumnLabel } from '~/utils/tennisMatch'
+import type { BestPick, MatchDetail, MatchPrediction } from '~/types/tennis'
+import { componentRows, fmtBreakPoints, fmtMatchDate, fmtMatchDateYear, heroSide, isFinished, meetingsNote, matchContext, parseMatchId, playerBadge, playerMeta, sideView, weightColumnLabel } from '~/utils/tennisMatch'
 
 const prediction: MatchPrediction = {
   matchId: 5, startUtc: null, p1Name: 'Jakub Mensik', p2Name: 'Ben Shelton', tour: 'ATP', tourLabel: 'ATP',
@@ -98,32 +98,6 @@ describe('isFinished', () => {
     expect(isFinished(detail({ status: 'live' }))).toBe(false)
     expect(isFinished(detail({ status: 'completed' }))).toBe(true)
     expect(isFinished(detail({ status: 'walkover' }))).toBe(true)
-  })
-})
-
-describe('matchProps', () => {
-  function prop(id: number, matchId: number | null, oddsType: string | null, confidence: string | null): PropLine {
-    return {
-      id, matchId, oddsType, confidence, playerId: null, source: 'prizepicks', statType: 'aces',
-      line: '10.5', fetchedAt: '2026-09-28T00:00:00Z', startTime: null, pOver: null, pUnder: null,
-    }
-  }
-
-  it('keeps this match only, standard before goblin and demon, then feed order: a stale tier is ignored (48f)', () => {
-    const props = [
-      prop(1, 5, 'demon', null),
-      prop(2, 5, 'standard', 'LEAN'),
-      prop(3, 9, 'standard', 'LOCK'),
-      prop(4, 5, 'goblin', 'STRONG'),
-      prop(5, 5, 'standard', 'STRONG'),
-      prop(6, 5, null, null),
-    ]
-
-    expect(matchProps(props, 5).map((p) => p.id)).toEqual([2, 5, 6, 1, 4])
-  })
-
-  it('is empty for a match with no lines', () => {
-    expect(matchProps([prop(1, 9, 'standard', 'LOCK')], 5)).toEqual([])
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, playerWeekParams, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
+import { arrivedFromBoard, FROM_BOARD, isNflSpecialist, nflPlayerMarketLink, playerSearch, SPECIALIST_COLUMNS, playerWeekLines, playerWeekParams, propSectionIds, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -92,20 +92,6 @@ describe('usageBars', () => {
     expect(usageBars([], 'targets').average).toBe('--')
   })
 })
-
-describe('playerInitials', () => {
-  it.each([
-    ['James Cook', 'JC'],
-    ['Oronde Gadsden II', 'OG'],
-    ['Michael Penix Jr.', 'MP'],
-    ["Ja'Marr Chase", 'JC'],
-    ['Pelé', 'P'],
-    ['', '--'],
-  ])('%s is %s', (name, initials) => {
-    expect(playerInitials(name)).toBe(initials)
-  })
-})
-
 
 describe('specialist player pages', () => {
   it('restricts specialist layout to kickers and punters', () => {
