@@ -5,8 +5,8 @@ from app.core.tennis_prop_check import EXCLUDED_FLAGS
 from app.services.tennis import prop_sim
 
 
-def test_every_hard_block_is_emitted_by_the_props_router():
-    source = (Path(__file__).resolve().parents[1] / "app" / "routers" / "props.py").read_text(encoding="utf-8")
+def test_every_hard_block_is_emitted_by_prop_enrichment():
+    source = (Path(__file__).resolve().parents[1] / "app" / "services" / "tennis" / "prop_enrichment.py").read_text(encoding="utf-8")
     assert {flag for flag in PRIZEPICKS_HARD_BLOCKS if f'"{flag}"' not in source} == set()
 
 

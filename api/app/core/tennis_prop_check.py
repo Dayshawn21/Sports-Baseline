@@ -28,7 +28,7 @@ from app.core.tennis_grading import is_completed_score
 
 TENNIS_PROP_CHECK_RULE = "tennis-props-check-v1"
 TENNIS_STANDARD_ERRORS_REQUIRED = 3.0
-# routers/props.py projects from the book total only at 17 games or more.
+# services/tennis/prop_enrichment.py projects from the book total only at 17 games or more.
 BOOK_TOTAL_MIN_GAMES = 17.0
 # Box-score stats settle after the next day's refetch (26e), so a week joins
 # the sample only once its late lines have had time to land.

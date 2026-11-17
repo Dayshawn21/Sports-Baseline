@@ -3,7 +3,7 @@ import math
 from dataclasses import replace
 
 from app.core.prop_probs import prop_probabilities, prop_side
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 from tests.helpers.props_audit_projection import NOW, _prop, _stats
 
 

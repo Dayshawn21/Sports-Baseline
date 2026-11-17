@@ -5,12 +5,12 @@ import asyncio
 from app.core.poisson import over_under_push_probs
 from app.core.rolling_stats import pick_stats_for_player
 from app.repositories.matches import get_market_totals
-from app.routers.props import (
-    _compute_stat_avg,
-    _enrich,
-    _expected_break_point_chances,
-    _expected_service_points,
+from app.core.prop_projection import (
+    compute_stat_avg as _compute_stat_avg,
+    expected_break_point_chances as _expected_break_point_chances,
+    expected_service_points as _expected_service_points,
 )
+from app.services.tennis.prop_enrichment import _enrich
 from tests.helpers.props_audit_projection import NOW, _Rows, _prop, _stats
 
 

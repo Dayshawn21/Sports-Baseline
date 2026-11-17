@@ -9,7 +9,7 @@ from app.core.prop_projection import TOTALS_DEPENDENT_STATS
 from app.core.track_record import TIER_RULE_VERSION
 from app.db.pool import get_db
 from app.routers import props as props_router
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 from app.services.tennis.prop_snapshots import PROJECTION_VERSION
 from tests.helpers.props_audit_projection import NOW, _prop, _stats
 

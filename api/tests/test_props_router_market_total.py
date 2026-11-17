@@ -5,7 +5,7 @@ import pytest
 
 from app.core.prop_projection import compute_stat_avg
 from app.repositories.matches import MarketTotal, get_market_totals
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 from tests.helpers.props_audit_projection import NOW, _Rows, _prop, _stats
 
 

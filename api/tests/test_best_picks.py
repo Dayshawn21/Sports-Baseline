@@ -9,7 +9,8 @@ from app.core.prop_probs import prop_over_under_probs
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import MarketTotal, enrich_with
+from app.repositories.matches import MarketTotal
+from app.services.tennis.prop_enrichment import enrich_with
 from app.services.tennis import best_picks
 from app.services.tennis.best_picks import BestPick, generate_ml_pick
 

@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.repositories.players import PlayerRollingStats
 from app.repositories.props import Prop
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 
 
 NOW = datetime(2026, 4, 30, 12, 0, tzinfo=UTC)

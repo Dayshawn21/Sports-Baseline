@@ -110,7 +110,7 @@ _DF_STATS = frozenset({"double_faults", "fantasy_score"})
 
 @dataclass(frozen=True)
 class SimInputs:
-    """What `enrich_with` already loads for the same props."""
+    """What `prop_enrichment.enrich_with` already loads for the same props."""
 
     opponent_ids: dict[tuple[int, int], int]
     rolling_stats: dict[tuple[int, str | None], PlayerRollingStats]
@@ -290,7 +290,7 @@ def _sim_line(prop: Prop, line: PropLine, sim: MatchSim | None) -> PropLine:
 
 
 async def load_sim_inputs(db: AsyncSession, props: list[Prop]) -> SimInputs:
-    """The inputs `enrich_props` loads, once, so v3 (`enrich_with`) and v4 read the same values."""
+    """The inputs `enrich_props` loads, once, so v3 (`prop_enrichment.enrich_with`) and v4 read the same values."""
     opponent_ids = await get_opponent_ids(db, props)
     player_ids = {p.player_id for p in props if p.player_id is not None} | set(opponent_ids.values())
     return SimInputs(

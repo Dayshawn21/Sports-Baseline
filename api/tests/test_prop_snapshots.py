@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 
 from app.repositories.props import Prop
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 from app.schemas.props import PropLine
 from app.services.tennis.prop_snapshots import (
     PROJECTION_VERSION, SIM_PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,

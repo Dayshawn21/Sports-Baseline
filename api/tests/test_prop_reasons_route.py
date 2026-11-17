@@ -43,7 +43,7 @@ def client(monkeypatch, prop: Prop | None) -> TestClient:
         return PropReasonsResult(reasons, chart)
 
     monkeypatch.setattr(props_router, "get_prizepicks_prop", lookup)
-    monkeypatch.setattr(props_router, "_enrich_props", enrich)
+    monkeypatch.setattr(props_router, "enrich_props", enrich)
     monkeypatch.setattr(props_router, "build_prop_reasons", build)
     app = FastAPI()
     app.include_router(props_router.router, prefix="/tennis/props")

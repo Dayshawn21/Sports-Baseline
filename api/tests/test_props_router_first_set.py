@@ -3,7 +3,7 @@ import pytest
 
 from app.core.tennis_first_set import first_set_distribution, pmf_probabilities
 from app.core.prop_projection import serve_hold
-from app.routers.props import _enrich
+from app.services.tennis.prop_enrichment import _enrich
 from tests.helpers.props_router_best_of import _enriched, _prop, _stats
 
 
