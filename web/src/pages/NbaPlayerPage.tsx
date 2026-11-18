@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { NbaInjuryTag } from '~/components/nba/NbaInjury'
+import { BoardCrumb } from '~/components/shared/BoardCrumb'
 import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import { NbaPlayerPropTabs } from '~/components/nba/NbaPlayerPropTabs'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
@@ -16,7 +17,6 @@ import { nbaInjuryFreshness } from '~/utils/nbaInjuries'
 import { nbaMarketLabel, nbaRecentValueLabel } from '~/utils/nbaLineOnly'
 import { NBA_LOG_MARKETS, NBA_SEASON_START_MONTH, nbaPlayerFooter, nbaPlayerStatus } from '~/utils/nbaPlayer'
 import { playerGameLog } from '~/utils/playerGameLog'
-import { arrivedFromBoard } from '~/utils/playerPage'
 import './nfl-slate.css'
 import './nfl-player.css'
 import './nba-player.css'
@@ -29,16 +29,12 @@ function PlayerPageState({ children }: { children: ReactNode }) {
   return <PlayerPageShell sportClass="nba-player" crumb={SLATE_CRUMB} title="NBA player">{children}</PlayerPageShell>
 }
 
-/** A board arrival goes back one step, so the board returns on its own date and market; otherwise the game page, or the board for a player with no game. */
+/** The board crumb on a board arrival; otherwise the game page, or the board for a player with no game. */
 function Crumb({ player }: { player: NbaPlayerProps }) {
-  const navigate = useNavigate()
   const board = `/nba/props?date=${player.date}`
-  if (arrivedFromBoard(useLocation().state)) {
-    return <Link className="nfl-player-crumb" to={board} onClick={event => { event.preventDefault(); navigate(-1) }}>← NBA props</Link>
-  }
-  return player.game
+  return <BoardCrumb boardPath={board} label="NBA props" fallback={player.game
     ? <Link className="nfl-player-crumb" to={`/nba/game/${player.game.gameId}`}>← {player.game.awayTeam} @ {player.game.homeTeam}</Link>
-    : <Link className="nfl-player-crumb" to={board}>← NBA props</Link>
+    : <Link className="nfl-player-crumb" to={board}>← NBA props</Link>} />
 }
 
 function InjuryLine({ player }: { player: NbaPlayerProps }) {

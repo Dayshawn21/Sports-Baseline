@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { NhlPlayerProjectionHistory } from '~/components/nhl/NhlPlayerProjectionHistory'
 import { NhlPlayerPropTabs } from '~/components/nhl/NhlPlayerPropTabs'
+import { BoardCrumb } from '~/components/shared/BoardCrumb'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
@@ -15,7 +16,7 @@ import { isNotFound } from '~/utils/httpError'
 import { nhlContextSource } from '~/utils/nhlContext'
 import { parseNhlGameId } from '~/utils/nhlGame'
 import { NHL_LOG_MARKETS, NHL_SEASON_START_MONTH, nhlLogLabel, nhlLogValue, nhlOpposingGoalieTag, nhlPlayerFooter, nhlPlayerInjuryReport, nhlPlayerStatus } from '~/utils/nhlPlayer'
-import { arrivedFromBoard, injuryTone, playerTabs, selectedMarket } from '~/utils/playerPage'
+import { injuryTone, playerTabs, selectedMarket } from '~/utils/playerPage'
 import { playerGameLog } from '~/utils/playerGameLog'
 import './nfl-slate.css'
 import './nfl-player.css'
@@ -30,15 +31,11 @@ function PlayerPageState({ children }: { children: ReactNode }) {
   return <PlayerPageShell sportClass="nhl-player" crumb={SLATE_CRUMB} title="NHL player">{children}</PlayerPageShell>
 }
 
-/** A board arrival goes back one step, so the board returns on its own date and market; otherwise the game page, or the slate. */
+/** The board crumb on a board arrival; otherwise the game page, or the slate. */
 function Crumb({ player }: { player: NhlPlayerProps }) {
-  const navigate = useNavigate()
-  if (arrivedFromBoard(useLocation().state)) {
-    return <Link className="nfl-player-crumb" to={`/nhl/props?date=${player.date}`} onClick={event => { event.preventDefault(); navigate(-1) }}>← NHL props</Link>
-  }
-  return player.game
+  return <BoardCrumb boardPath={`/nhl/props?date=${player.date}`} label="NHL props" fallback={player.game
     ? <Link className="nfl-player-crumb" to={`/nhl/game/${player.game.gameId}`}>← {player.game.awayTeam} @ {player.game.homeTeam}</Link>
-    : <Link className="nfl-player-crumb" to={`/nhl?date=${player.date}`}>← NHL slate</Link>
+    : <Link className="nfl-player-crumb" to={`/nhl?date=${player.date}`}>← NHL slate</Link>} />
 }
 
 /** The player's injury status and the other team's starting goalie, as tags under the head. */
