@@ -84,7 +84,7 @@ async def fetch_player_stats(
         effective_slug: Optional[str] = body.ta_slug.strip()
     else:
         # Fall back to whatever is already stored on the player record
-        effective_slug = player.ta_slug  # may be None → _slug(name) will be used
+        effective_slug = player.ta_slug  # may be None, so ta_slug(name) is used
 
     result = await ingest_single_player(
         db=db,

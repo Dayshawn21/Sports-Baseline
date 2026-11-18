@@ -647,7 +647,7 @@ async def ingest_single_player(
 
     Slug resolution order:
       1. ta_slug_override argument (from admin endpoint or DB ta_slug field)
-      2. ta_slug(player_name) — computed from name
+      2. ta_slug(player_name), computed from name
 
     NOTE: _fetch_matches uses synchronous requests.get() which blocks the event loop.
     For the admin endpoint (low traffic / one player at a time) this is acceptable.

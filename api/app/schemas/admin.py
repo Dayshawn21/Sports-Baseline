@@ -23,7 +23,7 @@ class FlaggedPlayer(_CamelModel):
     has_stats: bool
     missing_surfaces: list[str]  # flagging match surfaces with no 52-week row
     ta_slug: Optional[str]   # current DB value (None if not set)
-    auto_slug: str            # computed _slug(player_name) — used for prefill in UI
+    auto_slug: str            # ta_slug(player_name), used to prefill the UI
 
 
 class FlaggedPlayersResponse(_CamelModel):
