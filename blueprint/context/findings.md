@@ -420,13 +420,13 @@ version and forward validation.
 **Suggested fix:** after F-52 is decided, factor one SQL builder for the eligible/frozen/coverage CTEs that takes sport, market predicate, settle-table join and prediction-identity predicate as required arguments (no defaults for the sport or model filters).
 **Resolution:**
 
-### F-52 [P2] unverified - NFL finished-week and coverage rules differ from NBA and NHL
+### F-52 [P2] invalid - NFL finished-week and coverage rules differ from NBA and NHL
 
 **File:** api/app/repositories/nfl.py:2612; api/app/repositories/nba.py:707; api/app/repositories/nhl.py:759
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** NFL `get_finished_weeks` requires `bool_and(g.status = 'completed')`, while NBA and NHL also accept postponed and canceled games, so a canceled NFL game would keep its week open and out of the ranking record. NFL's coverage `EXISTS` also matches `fl.market = latest.market` and NBA/NHL do not. Either difference may be deliberate.
 **Suggested fix:** confirm which rule each sport should have. Fix or comment the one that is not deliberate before F-51 merges them.
-**Resolution:**
+**Resolution:** Invalid as a defect, both differences deliberate (user chose option A, 2026-11-18; `blueprint/history/fixes/nfl-finished-week-rule.md`). The only NFL `sport_games` writer, `upsert_game` (`nfl.py:425`), stores `completed` or `scheduled`, never `postponed` or `canceled`, so the stricter finished-week rule picks the same weeks NBA's would. The coverage `fl.market = latest.market` came with 39c (`4b79aa00`) so a Rec Targets freeze on the same provider prop never counts as v4 coverage; F-51 must keep it as an NFL predicate. Both now carry a why-comment; no SQL changed. Possible follow-up: teach the nflverse ingest postponed and canceled statuses, then relax the NFL rule to match.
 
 ### F-53 [P2] unverified - NBA and NHL `upsert_games` conflict rules differ
 
