@@ -14,13 +14,11 @@ export function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
       borderRadius: 10,
       overflow: 'hidden',
     }}>
-      {/* Top accent */}
       <div style={{
         height: 3,
         background: `linear-gradient(90deg, ${conf.color}, ${withAlpha(conf.color, 0.376)}, transparent)`,
       }} />
 
-      {/* Header */}
       <div style={{
         padding: '14px 18px 10px',
         display: 'flex',
@@ -50,7 +48,6 @@ export function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
         </span>
       </div>
 
-      {/* Legs */}
       {parlay.legs.map((leg, i) => {
         return (
           <div key={i} style={{
@@ -112,7 +109,6 @@ export function ParlayCard({ parlay }: { parlay: SuggestedParlay }) {
         )
       })}
 
-      {/* Footer: combined stats */}
       <div style={{
         padding: '10px 18px 14px',
         borderTop: '1px solid var(--border-subtle)',
