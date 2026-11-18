@@ -18,10 +18,8 @@ import { isNotFound } from '~/utils/httpError'
 import { activeDepthLabel } from '~/utils/nflAvailability'
 import { parseGameId } from '~/utils/nflGame'
 import { FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
-
 import { fmtPct } from '~/utils/odds'
-import { arrivedFromBoard, injuryTone } from '~/utils/playerPage'
-
+import { injuryTone } from '~/utils/playerPage'
 import './nfl-slate.css'
 import './nfl-player.css'
 
