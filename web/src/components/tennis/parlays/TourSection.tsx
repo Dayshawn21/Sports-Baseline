@@ -13,7 +13,6 @@ export function TourSection({ title, color, singles, parlays, isNarrow }: {
 }) {
   return (
     <div style={{ marginBottom: 40 }}>
-      {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ width: 3, height: 28, backgroundColor: color, borderRadius: 2, flexShrink: 0 }} />
         <span style={{
@@ -57,7 +56,6 @@ export function TourSection({ title, color, singles, parlays, isNarrow }: {
         <div style={{ flex: 1, height: 1, background: withAlpha(color, 0.145) }} />
       </div>
 
-      {/* Singles */}
       {singles.length > 0 && (
         <div style={{ marginBottom: parlays.length > 0 ? 24 : 0 }}>
           {isNarrow ? (
@@ -73,7 +71,6 @@ export function TourSection({ title, color, singles, parlays, isNarrow }: {
               borderRadius: 10,
               overflow: 'hidden',
             }}>
-              {/* Table header */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: SINGLES_COLS,
@@ -96,7 +93,6 @@ export function TourSection({ title, color, singles, parlays, isNarrow }: {
                 ))}
               </div>
 
-              {/* Rows */}
               {singles.map((pick, i) => (
                 <SinglePickRow key={`${pick.matchId}-${pick.betType}-${pick.pickSide}-${i}`} pick={pick} rank={i + 1} />
               ))}
@@ -105,7 +101,6 @@ export function TourSection({ title, color, singles, parlays, isNarrow }: {
         </div>
       )}
 
-      {/* Parlays */}
       {parlays.length > 0 && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>

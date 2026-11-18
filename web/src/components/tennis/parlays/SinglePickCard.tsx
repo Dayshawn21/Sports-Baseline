@@ -14,14 +14,12 @@ export function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: numbe
       borderRadius: 10,
       overflow: 'hidden',
     }}>
-      {/* Top accent */}
       <div style={{
         height: 3,
         background: `linear-gradient(90deg, ${conf.color}, ${withAlpha(conf.color, 0.376)}, transparent)`,
       }} />
 
       <div style={{ padding: '14px 16px' }}>
-        {/* Row 1: Rank + bet type + pick label + confidence */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <span style={{
             fontFamily: 'var(--font-mono)',
@@ -50,7 +48,6 @@ export function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: numbe
           <ConfidenceBadge confidence={pick.confidence} />
         </div>
 
-        {/* Row 2: Match info */}
         <div style={{
           fontFamily: 'var(--font-body)',
           fontSize: 11,
@@ -64,7 +61,6 @@ export function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: numbe
           {fmtTimeCT(pick.startUtc) && <span style={{ color: 'var(--text-muted)' }}> · {fmtTimeCT(pick.startUtc)}</span>}
         </div>
 
-        {/* Row 3: Reasoning */}
         <div style={{
           fontFamily: 'var(--font-body)',
           fontSize: 11,
@@ -75,7 +71,6 @@ export function SinglePickCard({ pick, rank }: { pick: BankrollPick; rank: numbe
           {pick.reasoning}
         </div>
 
-        {/* Row 4: Stats bar */}
         <div style={{
           display: 'flex',
           gap: 16,

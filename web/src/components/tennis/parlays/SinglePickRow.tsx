@@ -22,7 +22,6 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         transition: 'background 0.12s ease',
       }}
     >
-      {/* Rank */}
       <span style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 14,
@@ -33,10 +32,8 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         #{rank}
       </span>
 
-      {/* Bet type badge */}
       <BetTypeBadge betType={pick.betType} />
 
-      {/* Match + pick info */}
       <div style={{ minWidth: 0 }}>
         <div style={{
           fontFamily: 'var(--font-display)',
@@ -68,7 +65,6 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         </div>
       </div>
 
-      {/* Reasoning (truncated) */}
       <div style={{
         fontFamily: 'var(--font-body)',
         fontSize: 11,
@@ -81,10 +77,8 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         {pick.reasoning}
       </div>
 
-      {/* Confidence */}
       <ConfidenceBadge confidence={pick.confidence} />
 
-      {/* Edge */}
       <span style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 12,
@@ -96,7 +90,6 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         {fmtSigned(pick.edgePct, 1, '%')}
       </span>
 
-      {/* EV + Kelly */}
       <div style={{ textAlign: 'right', minWidth: 64 }}>
         <div style={{
           fontFamily: 'var(--font-mono)',
@@ -115,7 +108,6 @@ export function SinglePickRow({ pick, rank }: { pick: BankrollPick; rank: number
         </div>
       </div>
 
-      {/* Odds */}
       <span style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 13,
