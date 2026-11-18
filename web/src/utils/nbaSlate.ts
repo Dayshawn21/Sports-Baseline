@@ -1,6 +1,6 @@
 import type { NbaLineMove, NbaPropLine, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
-import { gameState } from '~/utils/gameState'
+import { gameState, isFinalStatus } from '~/utils/gameState'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
 import { gapShareOfLine, gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
@@ -183,7 +183,7 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
   return {
     games: games.length,
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
-    finals: games.filter(game => game.status === 'completed').length,
+    finals: games.filter(game => isFinalStatus(game.status)).length,
     oddsUpdated: oddsUpdatedMs === null ? null : dayClockCt(oddsUpdatedMs),
     oddsUpdatedMs,
   }

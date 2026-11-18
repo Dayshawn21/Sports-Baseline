@@ -31,6 +31,7 @@ function Notes({ row }: { row: NflSlateRowModel }) {
 
 function Kickoff({ row }: { row: NflSlateRowModel }) {
   if (row.state === 'pending') return <><span className="nfl-slate-table__time">{row.kickoff}</span><small className="nfl-slate-table__result">Result pending</small></>
+  if (row.state === 'off') return <><span className="nfl-slate-table__time">{row.kickoff}</span><small className="nfl-slate-table__result">{row.stateLabel}</small></>
   if (row.state !== 'live') return <>{row.kickoff}</>
   return <><span className="nfl-slate-card__live">Live</span>{row.scorePending
     ? <small className="nfl-slate-table__pending">score pending</small>

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { gameStartLabel, gameStartParts, gameState, withEndPeriod } from '~/utils/gameState'
+import { gameStartLabel, gameStartParts, gameState, isFinalStatus, withEndPeriod } from '~/utils/gameState'
 
 const START = '2026-11-09T18:00:00Z'
 const at = (iso: string) => new Date(iso)
+
+describe('isFinalStatus', () => {
+  it('reads a completed status in any case as final, and nothing else', () => {
+    expect(['completed', 'Completed', 'COMPLETED'].map(isFinalStatus)).toEqual([true, true, true])
+    expect(['scheduled', 'postponed', 'canceled', ''].map(isFinalStatus)).toEqual([false, false, false, false])
+  })
+})
 
 describe('gameState', () => {
   it('is scheduled before the start', () => {

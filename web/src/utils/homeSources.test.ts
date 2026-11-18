@@ -150,6 +150,7 @@ describe('nflSource', () => {
 
   it('has no days when nothing is left, and other sports never carry days', () => {
     expect(nflSource(slate([nflGame(1, -5)]), [], NOW).days).toEqual([])
+    expect(nflSource(slate([nflGame(1, 56, 'Completed'), nflGame(2, 80, 'COMPLETED')]), [], NOW).days).toEqual([])
     expect(nhlSource([nhlGame(1, 3)], NOW).days).toEqual([])
   })
 })
@@ -247,6 +248,11 @@ describe('moneyline rows', () => {
       nflGame(4, 5, { home: 0.7, market: null }), nflGame(5, 5, { home: 0.65, market: 0.6 }),
     ]), [], NOW).moneyline
     expect(rows.map(row => row.key)).toEqual(['5'])
+  })
+
+  it('drops an NFL final stored in another case', () => {
+    const rows = nflSource(slate([nflGame(1, 5, { home: 0.7, market: 0.6 }, 'Completed'), nflGame(2, 5, { home: 0.7, market: 0.6 })]), [], NOW).moneyline
+    expect(rows.map(row => row.key)).toEqual(['2'])
   })
 
   it('caps each sport at ten rows', () => {
