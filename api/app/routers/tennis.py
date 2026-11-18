@@ -489,14 +489,3 @@ async def get_bankroll_builder(
             for p in result.parlays
         ],
     )
-
-
-@router.get("/parlays/suggested")
-async def get_suggested_parlays(
-    match_date: date = None,
-    tour: str = None,
-    request: Request = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """Legacy endpoint — redirects to bankroll builder."""
-    return await get_bankroll_builder(match_date, tour, 15, 10, request, db)

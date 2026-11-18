@@ -45,17 +45,20 @@ def test_out_of_range_limits_are_rejected(params):
     assert _client().get("/tennis/bankroll/today", params=params).status_code == 422
 
 
-@pytest.mark.parametrize("path", ["/tennis/bankroll/today", "/tennis/parlays/suggested"])
-def test_a_failed_prediction_build_is_a_503(monkeypatch, path):
+def test_a_failed_prediction_build_is_a_503(monkeypatch):
     async def predict_today(_db, _registry, _dates):
         raise RuntimeError("model load failed")
 
     monkeypatch.setattr(prediction_cache, "predict_today", predict_today)
 
-    res = _client().get(path)
+    res = _client().get("/tennis/bankroll/today")
 
     assert res.status_code == 503
     assert res.json()["detail"] == "Tennis predictions are temporarily unavailable."
+
+
+def test_the_legacy_suggested_parlays_route_is_gone():
+    assert _client().get("/tennis/parlays/suggested").status_code == 404
 
 
 def test_repeat_builds_share_one_prediction_run(monkeypatch):
