@@ -2693,6 +2693,10 @@ async def get_finished_weeks(db: AsyncSession, season: int) -> set[int]:
 
     Stats load on Tuesday, after the Monday game is marked final, so a week
     without this second check would fix a verdict sample on partial results.
+
+    Stricter than NBA and NHL, which also accept postponed and canceled games:
+    `upsert_game` only ever writes `completed` or `scheduled`, so an NFL week
+    with a canceled game stays open until the ingest learns those statuses.
     """
     rows = await db.execute(text("""
         SELECT g.week FROM sport_games g
@@ -2709,6 +2713,10 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
 
     Per week because weeks before freezing began (27i) are wholly unfrozen by
     construction, which a season total would blur into the real gaps.
+
+    The frozen row must share the gradeable line's market (39c). The `EXISTS`
+    has no v4 market filter of its own, so without the match a Rec Targets
+    freeze stored under the same provider prop would count as v4 coverage.
     """
     rows = await db.execute(text(f"""
         WITH latest AS (
