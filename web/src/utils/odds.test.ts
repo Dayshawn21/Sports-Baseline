@@ -24,6 +24,14 @@ describe('fmtPct', () => {
     expect(fmtPct(0)).toBe('0.0%')
   })
 
+  it('rounds a whole percent as Math.round does for any probability, ties included', () => {
+    expect([fmtPct(0.125, 0), fmtPct(0.685, 0), fmtPct(0.995, 0), fmtPct(1, 0)]).toEqual(['13%', '69%', '100%', '100%'])
+    for (let step = 0; step <= 2000; step += 1) {
+      const probability = step / 2000
+      expect(fmtPct(probability, 0)).toBe(`${Math.round(probability * 100)}%`)
+    }
+  })
+
   it('shows the dash glyph for a missing value', () => {
     expect(fmtPct(null)).toBe('—')
     expect(fmtPct(undefined)).toBe('—')

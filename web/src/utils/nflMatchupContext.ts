@@ -19,7 +19,7 @@ export function contextValue(metric: NflContextMetric, share = false): string {
 
 export function contextCoverage(metric: NflContextMetric): string {
   if (metric.eligibleGames === 0) return '0 eligible games'
-  return `${metric.observedGames} / ${metric.eligibleGames} games (${Math.round(metric.observedGames / metric.eligibleGames * 100)}%)`
+  return `${metric.observedGames} / ${metric.eligibleGames} games (${fmtPct(metric.observedGames / metric.eligibleGames, 0)})`
 }
 
 export function contextRank(metric: NflAllowedMetric): string {

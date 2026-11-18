@@ -12,6 +12,7 @@ import { nhlSlateSummary } from '~/utils/nhlSlate'
 import { enrichTennisPropLines, isTennisRateable, marketTitle, payoutTier } from '~/utils/tennisPropBoard'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
 import { signedGapUnits } from '~/utils/gapUnits'
+import { fmtSigned } from '~/utils/format'
 import { fmtPct } from '~/utils/odds'
 import { impliedProbFromAmerican } from '~/utils/oddsMath'
 
@@ -186,7 +187,7 @@ function moneylineRows(games: WinSides[], now: number): HomeMoneyline[] {
     .slice(0, GAPS_PER_SPORT)
     .map(({ game, side, diff }) => ({
       key: game.key, sport: game.sport, side: side.name, matchup: game.matchup, when: `${startLabel(game.startMs, now)} CT`,
-      market: fmtPct(side.market), model: fmtPct(side.model), gap: `+${(diff * 100).toFixed(1)} pp`, path: game.path,
+      market: fmtPct(side.market), model: fmtPct(side.model), gap: fmtSigned(diff * 100, 1, ' pp'), path: game.path,
     }))
 }
 

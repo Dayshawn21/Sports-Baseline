@@ -620,13 +620,13 @@ version and forward validation.
 **Suggested fix:** Map `gameState()` phases in `rowState`, handling the `off` phase, and use the same lowercase check in the counts.
 **Resolution:** Repaired on `claude/fix-nfl-slate-status-a58bad` (2026-11-18): `rowState` returns the `gameState()` phase with NFL's labels (`Live`, `Result pending`, `Final`), so a postponed or canceled game reads as `off` with its label, no market lines and no pre-game tags, and the page's `STATE_LABEL` map gives way to the row's `stateLabel`. The finals counts in the NFL, NBA and NHL slate summaries and the home page's schedule and moneyline filters use the new `isFinalStatus`. Visible change, listed in the spec for the user's approval at merge: postponed and canceled NFL games show as such, and a final stored in another case counts as one. Spec in `blueprint/history/fixes/nfl-slate-status.md`. Re-reviewed 2026-11-18 by an independent review of the diff: no case-sensitive status check remains, and upcoming, live, pending and final rows are unchanged. Web Verify passed (1859 tests) and the API tests passed (6553). Closed.
 
-### F-77 [P3] open - Whole-percent and pass-through percent formatters beside `fmtPct`
+### F-77 [P3] closed - Whole-percent and pass-through percent formatters beside `fmtPct`
 
 **File:** web/src/utils/nbaProps.ts:74; web/src/utils/nflSignal.ts:44; web/src/utils/nflVolume.ts:21; web/src/utils/boardRecord.ts:105; web/src/components/tennis/TennisSlateTable.tsx:72; web/src/utils/homeSources.ts:188
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** About 13 sites hand-roll `${Math.round(x * 100)}%` (three as local `percent()` helpers) instead of `fmtPct(x, 0)`. `boardRecord.ts` `percent` and `TennisSlateTable.tsx` `pct` only forward to `fmtPct`. `homeSources.ts:188` hard-codes a `+` on the gap.
 **Suggested fix:** Use `fmtPct(x, 0)` and `fmtSigned(diff * 100, 1, ' pp')` directly and delete the wrappers. Output is unchanged for probabilities.
-**Resolution:**
+**Resolution:** Repaired on `claude/fix-percent-formatters-93ec2a` (2026-11-18): every whole-percent copy and the three `percent()` helpers use `fmtPct(x, 0)`, the `boardRecord.ts` and `TennisSlateTable.tsx` wrappers are gone, and the moneyline gap uses `fmtSigned(diff * 100, 1, ' pp')`. Output is unchanged for every value these sites receive (all non-negative, each guards null), except a gap that rounds to zero now shows `0.0 pp` by the F-60 zero rule. Left alone on purpose: `nbaSlate.ts` `winBar`, `nhlProjection.ts` `nhlPercentLabel`, the `trackRecord.ts` range and three `points`/`pts` labels. Spec in `blueprint/history/fixes/percent-formatters.md`. Verify passed. Re-reviewed 2026-11-18 by an independent subagent (scope: fix diff; lens: quality): same text at every site, no copy or wrapper left, nothing new. Closed.
 
 ### F-78 [P3] closed - NFL model track-record hooks still use `enabled` with `season as number`
 

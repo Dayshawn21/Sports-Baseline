@@ -69,7 +69,6 @@ function FlagsCell({ flags }: { flags: string[] }) {
 function SlateTableRow({ row, showTournament, showFlags }: { row: SlateRow; showTournament: boolean; showFlags: boolean }) {
   const navigate = useNavigate()
   const analysisPath = matchAnalysisPath(row.match)
-  const pct = (value: number | null) => fmtPct(value)
   const matchup = row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0]
   // Links keep native keyboard and modified-click behavior.
   function onRowClick(event: MouseEvent<HTMLTableRowElement>) {
@@ -94,10 +93,10 @@ function SlateTableRow({ row, showTournament, showFlags }: { row: SlateRow; show
         </span>}
         {showTournament && <small>{fmtTournament(row.tournament)}</small>}
       </td>
-      <PairCell pair={row.elo} format={pct} extra />
-      <PairCell pair={row.ml} format={pct} extra />
-      <PairCell pair={row.market} format={pct} />
-      <PairCell pair={row.model} format={pct} />
+      <PairCell pair={row.elo} format={fmtPct} extra />
+      <PairCell pair={row.ml} format={fmtPct} extra />
+      <PairCell pair={row.market} format={fmtPct} />
+      <PairCell pair={row.model} format={fmtPct} />
       <LeanCell row={row} />
       <PairCell pair={row.odds} format={(value) => fmtAmerican(value)} extra />
       {showFlags && <FlagsCell flags={row.flags} />}

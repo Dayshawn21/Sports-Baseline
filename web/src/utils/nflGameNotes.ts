@@ -1,5 +1,6 @@
 import type { NflNoteInjury, NflRecentResult, NflTeamForm, NflTeamStat, NflTeamStats } from '~/types/nfl'
 import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 /** "L 3-34 vs CAR" at home, "W 20-17 @ NYJ" away; the team's own score first. */
 export function formLabel(game: NflRecentResult): string {
@@ -62,7 +63,7 @@ export const SMALL_SAMPLE_GAMES = 3
 export function statValue(stat: NflTeamStat, kind: StatKind): string {
   if (stat.value === null) return '-'
   if (kind === 'epa') return fmtSigned(stat.value, 2)
-  if (kind === 'rate') return `${Math.round(stat.value * 100)}%`
+  if (kind === 'rate') return fmtPct(stat.value, 0)
   return stat.value.toFixed(1)
 }
 

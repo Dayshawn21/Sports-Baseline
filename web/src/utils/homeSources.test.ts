@@ -242,6 +242,11 @@ describe('moneyline rows', () => {
     expect(rows[0]).toMatchObject({ sport: 'nfl', matchup: 'A2 @ H2', market: '60.0%', model: '70.0%', path: '/nfl/game/2', when: '5:00 PM CT' })
   })
 
+  it('shows a gap that rounds to zero without a sign', () => {
+    const rows = nflSource(slate([nflGame(1, 5, { home: 0.6, market: 0.6 })]), [], NOW).moneyline
+    expect(rows[0].gap).toBe('0.0 pp')
+  })
+
   it('drops finished or started NFL games and games without a model or market probability', () => {
     const rows = nflSource(slate([
       nflGame(1, -1, { home: 0.7, market: 0.6 }), nflGame(2, 5, { home: 0.7, market: 0.6 }, 'completed'), nflGame(3, 5, null),

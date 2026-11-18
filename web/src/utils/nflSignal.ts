@@ -3,6 +3,7 @@ import { STALE_FLAG } from '~/utils/nflBaseline'
 import { formatProjection } from '~/utils/nflLabels'
 import { isTargetsReference, targetsReferenceSummary } from '~/utils/nflTargets'
 import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 type SignalLine = Pick<
   NflSlateLine,
@@ -41,18 +42,14 @@ export function allowedLabel(row: Pick<SignalLine, 'market' | 'opponentAllowedHi
   return `${team} allowed ${group} ${formatProjection(row.market, average)}/g`
 }
 
-function percent(value: number): string {
-  return `${Math.round(value * 100)}%`
-}
-
 /** The fitted over/under split for a line, or null where the fit is not shown. */
 export function overProbabilityLabel(row: Pick<NflSlateLine, 'pOver' | 'pUnder'>): string | null {
   if (row.pOver === null || row.pUnder === null) return null
-  return `Over ${percent(row.pOver)} · Under ${percent(row.pUnder)}`
+  return `Over ${fmtPct(row.pOver, 0)} · Under ${fmtPct(row.pUnder, 0)}`
 }
 
 export function overShareLabel(pOver: number | null): string | null {
-  return pOver === null ? null : `${percent(pOver)} over`
+  return pOver === null ? null : `${fmtPct(pOver, 0)} over`
 }
 
 export function signalSummary(row: SignalLine): string {

@@ -1,10 +1,11 @@
 import type { CSSProperties } from 'react'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { usageBars, type NflUsageRow } from '~/utils/nflPlayer'
+import { fmtPct } from '~/utils/odds'
 
 function valueLabel(row: NflUsageRow, value: number | null): string {
   if (value === null) return 'no data'
-  return row.stat === 'snap_pct' ? `${Math.round(value * 100)}%` : String(value)
+  return row.stat === 'snap_pct' ? fmtPct(value, 0) : String(value)
 }
 
 function UsageRow({ row }: { row: NflUsageRow }) {

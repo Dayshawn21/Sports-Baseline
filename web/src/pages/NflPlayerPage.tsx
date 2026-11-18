@@ -18,6 +18,7 @@ import { isNotFound } from '~/utils/httpError'
 import { activeDepthLabel } from '~/utils/nflAvailability'
 import { parseGameId } from '~/utils/nflGame'
 import { FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
+import { fmtPct } from '~/utils/odds'
 import { injuryTone } from '~/utils/playerPage'
 import './nfl-slate.css'
 import './nfl-player.css'
@@ -57,7 +58,7 @@ function Chips({ player }: { player: NflPlayerDetail }) {
     <StatChip value={summary.games} label={`Games ${player.season}`} />
     {labels && <StatChip value={perGame(summary.focusPerGame)} label={labels.focus} />}
     {labels && <StatChip value={perGame(summary.volumePerGame)} label={labels.volume} />}
-    {!isNflSpecialist(player.position) && <StatChip value={summary.snapShare === null ? MISSING : `${Math.round(summary.snapShare * 100)}%`} label="Snap share" />}
+    {!isNflSpecialist(player.position) && <StatChip value={summary.snapShare === null ? MISSING : fmtPct(summary.snapShare, 0)} label="Snap share" />}
   </section>
 }
 

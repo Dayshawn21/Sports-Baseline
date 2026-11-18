@@ -2,6 +2,7 @@ import type { NbaInjury, NbaLineOnlyRecent, NbaPropFlag, NbaPropLine } from '~/t
 import { NBA_LINE_ONLY_MARKETS } from '~/utils/nbaLineOnly'
 import { mainRung, overAgainstStandard } from '~/utils/nflLineOnly'
 import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 /** `NbaPropMarket` order (20g2): the modelled markets, every NBA market except double-double. */
 export const NBA_PROP_MARKETS = NBA_LINE_ONLY_MARKETS.filter(market => market !== 'double_double')
@@ -71,10 +72,6 @@ function marketRank(market: string): number {
   return index === -1 ? NBA_PROP_MARKETS.length : index
 }
 
-function percent(probability: number): string {
-  return `${Math.round(probability * 100)}%`
-}
-
 function oneDecimal(value: number): string {
   // Avoids "-0.0" when a small negative rounds to zero.
   const rounded = Math.round(value * 10) / 10
@@ -88,7 +85,7 @@ export function signedGap(gap: number): string {
 
 export function rungLabel(rung: Pick<NbaPropRung, 'line' | 'oddsType' | 'pOver'>): string {
   const name = rung.oddsType && rung.oddsType !== 'standard' ? `${rung.line} ${rung.oddsType}` : `${rung.line}`
-  return rung.pOver === null ? name : `${name} · ${percent(rung.pOver)}`
+  return rung.pOver === null ? name : `${name} · ${fmtPct(rung.pOver, 0)}`
 }
 
 function projectionRow(projection: number | null, main: NbaPropRung): NbaProjectionRow | null {
@@ -96,8 +93,8 @@ function projectionRow(projection: number | null, main: NbaPropRung): NbaProject
   return {
     projection: oneDecimal(projection),
     gap: signedGap(main.gap),
-    pOver: main.pOver === null ? null : percent(main.pOver),
-    pUnder: main.pUnder === null ? null : percent(main.pUnder),
+    pOver: main.pOver === null ? null : fmtPct(main.pOver, 0),
+    pUnder: main.pUnder === null ? null : fmtPct(main.pUnder, 0),
   }
 }
 

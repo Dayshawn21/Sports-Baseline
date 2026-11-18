@@ -51,7 +51,7 @@ export function metricBar(value: number | null, metric: ServeReturnMetric): numb
 export function metricText(value: number | null, metric: ServeReturnMetric): string {
   if (value == null) return '—'
   const kind = SERVE_RETURN_METRICS.find((s) => s.metric === metric)?.kind
-  return kind === 'rate' ? fmtPct(value) : `${Math.round(value * 100)}%`
+  return kind === 'rate' ? fmtPct(value) : fmtPct(value, 0)
 }
 
 /** The serve-and-return tab to open first: the next match's surface, else all surfaces. */
