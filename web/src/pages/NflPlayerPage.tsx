@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { NflPlayerContext } from '~/components/nfl/NflPlayerContext'
 import { NflPlayerGameLog } from '~/components/nfl/NflPlayerGameLog'
 import { NflPlayerProps } from '~/components/nfl/NflPlayerProps'
 import { NflPlayerFooter, NflPlayerRecord } from '~/components/nfl/NflPlayerRecord'
 import { NflPlayerUsage } from '~/components/nfl/NflPlayerUsage'
+import { BoardCrumb } from '~/components/shared/BoardCrumb'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { PlayerNotFound, PlayerPageShell } from '~/components/shared/PlayerPageShell'
@@ -17,8 +18,10 @@ import { isNotFound } from '~/utils/httpError'
 import { activeDepthLabel } from '~/utils/nflAvailability'
 import { parseGameId } from '~/utils/nflGame'
 import { FOCUS_LABELS, isNflSpecialist, playerWeekLines, playerWeekParams } from '~/utils/nflPlayer'
+
 import { fmtPct } from '~/utils/odds'
 import { arrivedFromBoard, injuryTone } from '~/utils/playerPage'
+
 import './nfl-slate.css'
 import './nfl-player.css'
 
@@ -63,8 +66,6 @@ function Chips({ player }: { player: NflPlayerDetail }) {
 
 export default function NflPlayerPage() {
   const playerId = parseGameId(useParams().playerId)
-  const navigate = useNavigate()
-  const fromBoard = arrivedFromBoard(useLocation().state)
   const detail = useNflPlayer(playerId)
   const [params] = useSearchParams()
   // The linked week wins; the profile and game log below stay as of the current week.
@@ -79,11 +80,9 @@ export default function NflPlayerPage() {
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
   const player = detail.data
   const week = slate.data && playerId !== null ? playerWeekLines(slate.data.games, playerId) : null
-  const crumb = fromBoard
-    ? <Link className="nfl-player-crumb" to="/nfl/props" onClick={event => { event.preventDefault(); navigate(-1) }}>← Props</Link>
-    : week
+  const crumb = <BoardCrumb boardPath="/nfl/props" label="Props" fallback={week
     ? <Link className="nfl-player-crumb" to={`/nfl/game/${week.game.gameId}`}>← {week.game.awayTeam} @ {week.game.homeTeam}</Link>
-    : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>
+    : <Link className="nfl-player-crumb" to="/nfl">← Week {player.week} slate</Link>} />
   return <PlayerPageShell crumb={crumb} title={player.name} stats={<Chips player={player} />} notice={<Availability player={player} />}
     meta={<>{[player.position, player.team].filter(Boolean).join(' · ') || 'NFL'} · {player.season} season · Week {player.week}</>}>
     {player.summary.games === 0 && <p className="nfl-player-note">No games yet this season. The log below shows last season.</p>}

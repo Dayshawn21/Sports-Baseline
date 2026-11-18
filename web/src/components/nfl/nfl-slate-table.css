@@ -72,9 +72,9 @@
   /* A live game with no stored score says so beside "Live", in place of the kickoff time. */
   .nfl-slate-table tr.is-live .nfl-slate-table__kickoff .nfl-slate-table__pending { display: inline; }
   .nfl-slate-table__pending::before { content: '· '; }
-  /* An ended game with no stored final says "Result pending" in place of its kickoff time. */
-  .nfl-slate-table tr.is-pending .nfl-slate-table__time { display: none; }
-  .nfl-slate-table tr.is-pending .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
+  /* An ended game with no stored final says "Result pending" in place of its kickoff time, and a postponed or canceled game says so. */
+  .nfl-slate-table tr:is(.is-pending, .is-off) .nfl-slate-table__time { display: none; }
+  .nfl-slate-table tr:is(.is-pending, .is-off) .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
   .nfl-slate-table__props { order: 2; }
   .nfl-slate-table__unit { display: inline; }

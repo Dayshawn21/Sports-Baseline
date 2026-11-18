@@ -2,6 +2,7 @@ import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NbaSlateGame } from '~/types/nba'
 import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
 import type { NhlSlateGame } from '~/types/nhl'
+import { isFinalStatus } from '~/utils/gameState'
 import { centralDay, startLabel, weekdayLabel } from '~/utils/home'
 import { nbaPlayerPath } from '~/utils/nbaPlayer'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
@@ -150,7 +151,7 @@ function teamGames(sport: 'nfl' | 'nba' | 'nhl', games: (NflSlateGame | NbaSlate
     key: String(game.gameId),
     title: `${game.awayTeam} @ ${game.homeTeam}`,
     startUtc: game.startUtc,
-    done: game.status === 'completed',
+    done: isFinalStatus(game.status),
   }))
 }
 
@@ -195,7 +196,7 @@ function nflWinSides(games: NflSlateGame[]): WinSides[] {
     const start = parsedStart(game.startUtc)
     const home = game.model?.homeWinProbability
     const market = game.model?.marketHomeWinProbability
-    if (game.status === 'completed' || start === null || home == null || market == null) return []
+    if (isFinalStatus(game.status) || start === null || home == null || market == null) return []
     return [{
       key: String(game.gameId), sport: 'nfl' as const, matchup: `${game.awayTeam} @ ${game.homeTeam}`, startMs: start,
       path: `/nfl/game/${game.gameId}`,

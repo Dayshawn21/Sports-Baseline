@@ -612,13 +612,13 @@ version and forward validation.
 **Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
 **Resolution:**
 
-### F-76 [P3] open - The NFL slate keeps its own case-sensitive game-status rule
+### F-76 [P3] closed - The NFL slate keeps its own case-sensitive game-status rule
 
 **File:** web/src/utils/nflSlate.ts:264-268; web/src/pages/NflIntelligencePage.tsx:33
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** `rowState` checks `game.status === 'completed'` and has no postponed or canceled branch, so a postponed NFL game reads as live or pending while the other sports read it through `gameState()`. Smaller case-sensitive `=== 'completed'` counts remain in `homeSources.ts:152,197`, `nbaSlate.ts:186`, `nflSlate.ts:110` and `nhlSlate.ts:104`.
 **Suggested fix:** Map `gameState()` phases in `rowState`, handling the `off` phase, and use the same lowercase check in the counts.
-**Resolution:**
+**Resolution:** Repaired on `claude/fix-nfl-slate-status-a58bad` (2026-11-18): `rowState` returns the `gameState()` phase with NFL's labels (`Live`, `Result pending`, `Final`), so a postponed or canceled game reads as `off` with its label, no market lines and no pre-game tags, and the page's `STATE_LABEL` map gives way to the row's `stateLabel`. The finals counts in the NFL, NBA and NHL slate summaries and the home page's schedule and moneyline filters use the new `isFinalStatus`. Visible change, listed in the spec for the user's approval at merge: postponed and canceled NFL games show as such, and a final stored in another case counts as one. Spec in `blueprint/history/fixes/nfl-slate-status.md`. Re-reviewed 2026-11-18 by an independent review of the diff: no case-sensitive status check remains, and upcoming, live, pending and final rows are unchanged. Web Verify passed (1859 tests) and the API tests passed (6553). Closed.
 
 ### F-77 [P3] closed - Whole-percent and pass-through percent formatters beside `fmtPct`
 
@@ -636,10 +636,10 @@ version and forward validation.
 **Suggested fix:** Move the three hooks to `queryOptions` with `skipToken`, as in `useNfl.ts`, and pick one disabled-slate idiom.
 **Resolution:** Repaired on `fix/nfl-track-record-hooks` (2026-11-18): the three hooks build `queryOptions` with `skipToken` for a null season, and `nhlSlateQuery(date, enabled)` gates a waiting slate through `skipToken` as `nbaSlateQuery` does, so `useNhlSlate` no longer spreads `enabled`. Tests cover the idle null season, the unchanged cache keys and the gated NHL slate. Re-reviewed 2026-11-18 by /audit (scope: fix diff; lens: quality): keys, stale times, retry and fetch arguments are unchanged, and no caller refetches a gated slate. Verify passed, and in the app the NFL model page fires each track-record request once and the NHL game page waits for its date before loading the slate. Closed.
 
-### F-79 [P3] open - The NBA and NHL board crumbs are near-identical copies
+### F-79 [P3] closed - The NBA and NHL board crumbs are near-identical copies
 
 **File:** web/src/pages/NbaPlayerPage.tsx:33-42; web/src/pages/NhlPlayerPage.tsx:34-42
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** F-67 copied the NBA crumb into the NHL page, so the per-sport copying the finding named now covers the crumb. Both call `useLocation()` inside an `if` condition, which reads like a conditional hook.
 **Suggested fix:** A shared `BoardCrumb({ boardPath, label })` in `components/shared`, with `useLocation()` hoisted to a `const` as `NflPlayerPage.tsx:66` does.
-**Resolution:**
+**Resolution:** Fixed on `claude/fix-board-crumb-f57805` (2026-11-18): a shared `BoardCrumb({ boardPath, label, fallback })` in `components/shared` calls `useLocation()` once at the top, and the NBA, NHL and NFL player pages use it, each passing its own game or slate fallback. No visible change. Spec in `blueprint/history/fixes/web-board-crumb.md`. Re-reviewed 2026-11-18 by an independent reviewer (scope: fix diff; lens: quality): the board branch lives only in `BoardCrumb`, no page calls `useLocation()`, and hrefs, labels, back navigation and fallbacks match the previous code on all three pages. Verify passed. Closed.

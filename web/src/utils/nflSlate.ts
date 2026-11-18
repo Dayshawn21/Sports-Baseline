@@ -1,12 +1,12 @@
 import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamContext } from '~/types/nfl'
-import { conditionsLabel, hasKickedOff, recordLabel } from '~/utils/nflGame'
+import { conditionsLabel, recordLabel } from '~/utils/nflGame'
 import { nflGameModelSummary, qbChanges, spreadLabel } from '~/utils/nflGameModel'
 import { marketLabel } from '~/utils/nflLabels'
 import { isTargetsReference } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
 import { gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
-import { isResultPending } from '~/utils/slateOrder'
+import { gameState, isFinalStatus, type GamePhase } from '~/utils/gameState'
 import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
 import { CONFIDENT_SAMPLE_GAMES, compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
@@ -107,7 +107,7 @@ export function nflSlateSummary(games: NflSlateGame[], notes: NflGameNotes[] | u
   return {
     games: games.length,
     propLines: groupNflPropRows(games.flatMap(game => game.lines)).length,
-    finals: games.filter(game => game.status === 'completed').length,
+    finals: games.filter(game => isFinalStatus(game.status)).length,
     outOrDoubtful: notes === undefined ? null : notes.flatMap(game => game.injuries)
       .filter(injury => injury.injuryStatus === 'Out' || injury.injuryStatus === 'Doubtful').length,
     oddsUpdated: oddsUpdatedMs === null ? null : dayClockCt(oddsUpdatedMs),
@@ -212,8 +212,8 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
   }))
 }
 
-/** `pending`: the game has ended by the clock, but no final is stored yet. */
-export type NflSlateRowState = 'upcoming' | 'live' | 'pending' | 'final'
+/** `pending`: the game has ended by the clock, but no final is stored yet; `off`: postponed or canceled. */
+export type NflSlateRowState = GamePhase
 
 export interface NflSlateRowTeam {
   code: string
@@ -232,6 +232,8 @@ export interface NflSlateRowCell {
 export interface NflSlateRowModel {
   gameId: number
   state: NflSlateRowState
+  /** "Final", "Result pending", "Live", "Postponed" or "Canceled"; null while upcoming. */
+  stateLabel: string | null
   /** Central weekday and clock ("Sun 12:00 PM CT"; prime time spans two days); "--" when unscheduled. */
   kickoff: string
   away: NflSlateRowTeam
@@ -261,10 +263,9 @@ export interface NflSlateRowModel {
 
 const NO_CELL: NflSlateRowCell = { value: MISSING, detail: null }
 
-function rowState(game: NflSlateGame, now: Date): NflSlateRowState {
-  if (game.status === 'completed') return 'final'
-  if (isResultPending(game.startUtc, now)) return 'pending'
-  return hasKickedOff(game.startUtc, now) ? 'live' : 'upcoming'
+function rowState(game: NflSlateGame, now: Date): { state: NflSlateRowState, stateLabel: string | null } {
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Live')
+  return { state: phase, stateLabel: phase === 'upcoming' ? null : label }
 }
 
 function rowTeam(code: string, context: NflTeamContext | null, score: number | null, otherScore: number | null): NflSlateRowTeam {
@@ -364,10 +365,12 @@ function rowKickoff(game: NflSlateGame): string {
 
 /** One slate row, from the slate game and its game notes. `staleSince` is the slate's newest fetch while its odds are stale. */
 export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date, staleSince: number | null = null): NflSlateRowModel {
-  const state = rowState(game, now)
+  const { state, stateLabel } = rowState(game, now)
   const final = state === 'final'
+  const off = state === 'off'
   // An ended game drops its pre-game tags and odds age, as a final does, but keeps its market: there is no score to grade.
-  const ended = final || state === 'pending'
+  // A postponed or canceled game drops them too, and its lines with them, as the NBA card does.
+  const ended = final || off || state === 'pending'
   // Its market is still the stale fetch, so it never claims "no move" either.
   const stale = staleSince !== null && !final
   const awayScore = notes?.awayScore ?? null
@@ -375,15 +378,16 @@ export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined,
   return {
     gameId: game.gameId,
     state,
+    stateLabel,
     kickoff: final ? 'Final' : rowKickoff(game),
     away: rowTeam(game.awayTeam, game.awayContext, awayScore, homeScore),
     home: rowTeam(game.homeTeam, game.homeContext, homeScore, awayScore),
-    spread: final ? closeSpread(game, notes) : marketSpread(game, notes, stale),
-    total: final ? closeTotal(notes) : marketTotal(game, notes, stale),
-    moneyline: final ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
+    spread: off ? NO_CELL : final ? closeSpread(game, notes) : marketSpread(game, notes, stale),
+    total: off ? NO_CELL : final ? closeTotal(notes) : marketTotal(game, notes, stale),
+    moneyline: final || off ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
     model: modelLines(game),
     props: groupNflPropRows(game.lines).length,
-    conditions: game.weather.venueType !== 'dome' && !game.weather.forecastFor ? null : conditionsLabel(game.weather),
+    conditions: off ? null : game.weather.venueType !== 'dome' && !game.weather.forecastFor ? null : conditionsLabel(game.weather),
     injuries: ended ? null : injuryCounts(notes),
     shortWeek: ended ? [] : shortWeekTeams(notes),
     qbChange: ended ? [] : qbChanges(notes).map(change => change.team),

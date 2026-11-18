@@ -3,7 +3,7 @@ import type { NhlSlateGame } from '~/types/nhl'
 import type { NhlGameContext, NhlGoalieSide, NhlInjury } from '~/types/nhlContext'
 import { nhlSlateContext, unavailableNhlContext } from '~/utils/nhlContext'
 import type { NhlGameState } from '~/utils/nhlGame'
-import { nhlNoteTags, nhlSlateRow, nhlWinLabel } from '~/utils/nhlSlate'
+import { nhlNoteTags, nhlSlateRow, nhlSlateSummary, nhlWinLabel } from '~/utils/nhlSlate'
 
 const NOW = new Date('2026-10-23T18:00:00Z')
 const START = '2026-10-24T00:00:00Z'
@@ -147,5 +147,12 @@ describe('nhlSlateRow', () => {
   it('drops the win label and tags once final, keeping the score', () => {
     const row = nhlSlateRow({ ...game(0.564), context: context(), status: 'completed', awayScore: 2, homeScore: 3 }, NOW)
     expect(row).toMatchObject({ state: 'final', win: null, tags: [], away: { score: 2 }, home: { score: 3 } })
+  })
+})
+
+describe('nhlSlateSummary', () => {
+  it('counts a final stored in any case, and never a postponed or scheduled game', () => {
+    const games = ['completed', 'Completed', 'COMPLETED', 'postponed', 'scheduled'].map((status, index) => ({ ...game(null), gameId: index + 1, status }))
+    expect(nhlSlateSummary(games).finals).toBe(3)
   })
 })
