@@ -444,13 +444,13 @@ version and forward validation.
 **Suggested fix:** expose one public SQL fragment per sport built from the core tuple, and use it at every site.
 **Resolution:**
 
-### F-55 [P2] open - The three Odds-API.io quota gates disagree when the balance is unknown
+### F-55 [P2] closed - The three Odds-API.io quota gates disagree when the balance is unknown
 
 **File:** api/app/ingest/odds_api.py:88-106; api/app/ingest/nfl_odds_io.py:44-46; api/app/ingest/nhl_odds_io.py:101-110
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** the three scripts share one hourly request bucket. NFL and NHL refuse to request when `remaining is None` ("unknown balance stops the run: tennis shares the hour"), but tennis `_quota_too_low` returns False on None and keeps spending. NHL also discards header values outside 0-100. That makes three header parsers and three gates for one provider.
 **Suggested fix:** decide the unknown-balance policy on purpose, then add one shared Odds-API.io helper (`remaining(headers)`, `can_request(remaining, floor)`) used by all three.
-**Resolution:**
+**Resolution:** Fixed 2026-11-18 (user chose option A; `blueprint/history/fixes/odds-api-io-unknown-balance.md`): unknown means stop for all three. New pure `app/core/odds_api_io_quota.py` (`remaining_requests(headers)`, `can_request(balance, floor)`) replaces the three parsers and gates; NHL's 0-100 range is kept on purpose as `HOURLY_ALLOWANCE = 100`, the shared plan's hourly allowance, so a value outside it reads as unknown everywhere. Visible change: tennis now stops and logs `request balance unknown` instead of spending; NFL also stops on a header above 100. Tests cover the helper and the tennis gate. Re-reviewed 2026-11-18 by an independent reviewer: confirmed. Closed.
 
 ### F-56 [P2] open - The Odds API client lives inside the NFL script, and NBA and tennis import its privates
 

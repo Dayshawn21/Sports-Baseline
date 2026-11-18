@@ -118,7 +118,7 @@ def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, t
 
     async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
         calls.append(("events", api_key))
-        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}], odds_api.RateLimitState()
+        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}], odds_api.RateLimitState(remaining=60)
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str
@@ -142,7 +142,7 @@ def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, t
 
 def test_capture_inventory_records_no_active_events_without_an_odds_request(monkeypatch, tmp_path: Path) -> None:
     async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
-        return [], odds_api.RateLimitState()
+        return [], odds_api.RateLimitState(remaining=60)
 
     async def unexpected_odds_request(*args: object) -> tuple[list[dict], odds_api.RateLimitState]:
         raise AssertionError("No odds batch should be requested without active events")
@@ -159,7 +159,7 @@ def test_capture_inventory_records_no_active_events_without_an_odds_request(monk
 
 def test_capture_inventory_records_an_empty_bookmaker_batch(monkeypatch, tmp_path: Path) -> None:
     async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
-        return [{"id": 12}], odds_api.RateLimitState()
+        return [{"id": 12}], odds_api.RateLimitState(remaining=60)
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str
@@ -224,7 +224,19 @@ def test_window_capture_at_the_floor_sends_no_odds_request(monkeypatch, tmp_path
     report = _capture(tmp_path, within_hours=6, min_requests_remaining=20)
 
     assert calls == ["events"]
-    assert "- Result: Stopped at the quota floor: 20 request(s) remaining, floor 20; no odds request sent." in report
+    assert (
+        "- Result: Stopped: Odds-API.io quota at the floor: 20 request(s) remaining, floor 20; no odds request sent."
+        in report
+    )
+
+
+def test_window_capture_with_an_unknown_balance_sends_no_odds_request(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING, None, [])
+
+    report = _capture(tmp_path, within_hours=6, min_requests_remaining=20)
+
+    assert calls == ["events"]
+    assert "Odds-API.io request balance unknown" in report
 
 
 def test_window_capture_with_no_selected_event_sends_no_odds_request(monkeypatch, tmp_path: Path) -> None:

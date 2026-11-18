@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.nhl_odds import event_start, match_nhl_game, parse_nhl_game_markets, provider_team_code
+from app.core.odds_api_io_quota import can_request, remaining_requests
 from app.db.pool import SessionLocal
 from app.ingest.log_config import configure_ingest_logging
 from app.repositories import nhl as nhl_repo
@@ -98,18 +99,6 @@ def select_events(
     return {key: value for key, value in selected.items() if key not in conflicts}, counts
 
 
-def _remaining(headers: Mapping[str, str]) -> int | None:
-    try:
-        value = int(headers.get("x-ratelimit-remaining", ""))
-    except ValueError:
-        return None
-    return value if 0 <= value <= 100 else None
-
-
-def can_request(remaining: int | None, floor: int) -> bool:
-    return remaining is not None and remaining - 1 >= floor
-
-
 async def _get(client: httpx.AsyncClient, path: str, params: dict[str, str]) -> tuple[list[object], int | None]:
     try:
         response = await client.get(
@@ -125,7 +114,7 @@ async def _get(client: httpx.AsyncClient, path: str, params: dict[str, str]) -> 
         raise FetchFailure("invalid_json") from None
     if not isinstance(payload, list):
         raise FetchFailure("invalid_payload")
-    return payload, _remaining(response.headers)
+    return payload, remaining_requests(response.headers)
 
 
 def _response_agrees(event: Mapping[str, object], selected: SelectedEvent) -> bool:
