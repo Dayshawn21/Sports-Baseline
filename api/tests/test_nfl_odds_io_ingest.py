@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
 
-from app.ingest.nfl_odds_io import batches, can_request, select_events
+from app.core.odds_api_io_quota import can_request
+from app.ingest.nfl_odds_io import batches, select_events
 
 NOW = datetime(2026, 10, 7, 15, tzinfo=UTC)
 GAMES = [

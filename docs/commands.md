@@ -11,7 +11,8 @@ per command; read this file before running, scheduling or changing one.
   2026-10-27 and 2026-10-28, and DraftKings never stored a tennis total. No
   game-spread lines are stored after Bet365 went paid on 2026-10-26; totals
   come from `tennis_totals` below. Stops before any odds batch once the hourly
-  quota is at `--min-requests-remaining`)
+  quota is at `--min-requests-remaining`, or when the balance header is
+  missing, unreadable or outside 0-100, the same rule as NFL and NHL)
 - Tennis market inventory: `python -m app.ingest.odds_api --inventory-only
   [--inventory-within-hours 6] [--min-requests-remaining 20]
   [--inventory-output PATH]` (16c, 48d1; read-only, writes Markdown only.
@@ -20,8 +21,8 @@ per command; read this file before running, scheduling or changing one.
   sends the ATP and WTA main-tour singles starting soonest within N hours and
   adds one line per event with each book's market names; without it, the
   first 10 listed ids, mostly days out. Skips the odds request when `/events`
-  leaves the quota at or under `--min-requests-remaining`. The default output
-  overwrites `docs/odds-market-inventory.md`, so pass `--inventory-output`
+  leaves the quota at or under `--min-requests-remaining`, or unreadable. The
+  default output overwrites `docs/odds-market-inventory.md`, so pass `--inventory-output`
   for a probe)
 - Tennis total games: `python -m app.ingest.tennis_totals [--hours-ahead 24]
   [--min-credits 150] [--dry-run]` (48b; The Odds API. Free `/sports` and

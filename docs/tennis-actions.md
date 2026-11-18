@@ -19,7 +19,8 @@ remote verification. It does not reduce API usage or change provider limits.
 Game Odds requests DraftKings and FanDuel from Odds-API.io. Since Bet365 went
 paid-only (2026-10-26), both free books send tennis moneylines only, so the
 job stores no total-games or game-spread lines. A run stops before any odds
-batch when the hour's remaining requests are at the safety floor, and exits
+batch when the hour's remaining requests are at the safety floor or cannot be
+read (the rule NFL and NHL share, `app/core/odds_api_io_quota.py`), and exits
 nonzero when the provider's plan refuses every odds batch (402/403).
 
 Total Games (48b, added after the split) stores book total-games lines from

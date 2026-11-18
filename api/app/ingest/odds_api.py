@@ -34,6 +34,7 @@ from typing import Any, Callable, Optional
 import httpx
 
 from app.core.bookmakers import bookmaker_scope_param
+from app.core.odds_api_io_quota import can_request, remaining_requests
 from app.core.tennis_odds_events import event_start, match_event, near_start_events, odds_event_tour
 from app.ingest.log_config import configure_ingest_logging
 
@@ -97,13 +98,18 @@ def _parse_int_header(value: str | None) -> int | None:
 def _rate_limit_state(headers: Any) -> RateLimitState:
     return RateLimitState(
         limit=_parse_int_header(headers.get("x-ratelimit-limit")),
-        remaining=_parse_int_header(headers.get("x-ratelimit-remaining")),
+        remaining=remaining_requests(headers),
         reset=headers.get("x-ratelimit-reset"),
     )
 
 
-def _quota_too_low(state: RateLimitState, min_remaining: int) -> bool:
-    return state.remaining is not None and state.remaining <= max(0, min_remaining)
+def _quota_stop_reason(state: RateLimitState, min_remaining: int) -> str | None:
+    """Why the shared hourly quota allows no odds request, or None when one may be sent."""
+    if state.remaining is None:
+        return "Odds-API.io request balance unknown (x-ratelimit-remaining missing or unreadable)"
+    if not can_request(state.remaining, min_remaining):
+        return f"Odds-API.io quota at the floor: {state.remaining} request(s) remaining, floor {min_remaining}"
+    return None
 
 
 def _log_rate_limit_state(label: str, state: RateLimitState) -> None:
@@ -579,11 +585,9 @@ async def capture_market_inventory(
             ]
             event_ids = _inventory_event_ids(selected)
         scope = _inventory_request_scope(bookmaker_scope, len(event_ids), within_hours)
-        if _quota_too_low(rate_limit, min_requests_remaining):
-            result = (
-                f"Stopped at the quota floor: {rate_limit.remaining} request(s) remaining, "
-                f"floor {min_requests_remaining}; no odds request sent."
-            )
+        stop_reason = _quota_stop_reason(rate_limit, min_requests_remaining)
+        if stop_reason is not None:
+            result = f"Stopped: {stop_reason}; no odds request sent."
             report = render_market_inventory([], captured_at, scope, result)
         elif not event_ids:
             report = render_market_inventory([], captured_at, scope, "No active tennis events returned.")
@@ -647,12 +651,9 @@ async def _fetch_matched_odds(
     """
     odds_by_id: dict[int, dict] = {}
     for i in range(0, len(event_ids), BATCH_SIZE):
-        if _quota_too_low(rate_limit, min_requests_remaining):
-            logger.warning(
-                "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
-                rate_limit.remaining,
-                min_requests_remaining,
-            )
+        stop_reason = _quota_stop_reason(rate_limit, min_requests_remaining)
+        if stop_reason is not None:
+            logger.warning("Stopping odds batch fetch: %s.", stop_reason)
             break
         batch = event_ids[i:i + BATCH_SIZE]
         try:

@@ -21,6 +21,7 @@ import httpx
 from app.config import settings
 from app.core.nfl_odds import match_scheduled_game
 from app.core.nfl_odds_io import parse_io_game_markets
+from app.core.odds_api_io_quota import can_request, remaining_requests
 from app.core.odds_providers import ODDS_API_IO
 from app.db.pool import SessionLocal
 from app.ingest.log_config import configure_ingest_logging
@@ -39,11 +40,6 @@ DEFAULT_MIN_REQUESTS_REMAINING = 20
 
 def batches(event_ids: Sequence[int], size: int = MAX_EVENTS_PER_REQUEST) -> list[list[int]]:
     return [list(event_ids[start:start + size]) for start in range(0, len(event_ids), size)]
-
-
-def can_request(remaining: int | None, min_remaining: int) -> bool:
-    """An unknown balance stops the run: tennis shares the hour, so never assume plenty."""
-    return remaining is not None and remaining - 1 >= min_remaining
 
 
 def select_events(
@@ -72,17 +68,10 @@ def select_events(
     return selected, skipped
 
 
-def _remaining(headers: Mapping[str, str]) -> int | None:
-    try:
-        return int(headers.get("x-ratelimit-remaining", ""))
-    except ValueError:
-        return None
-
-
 async def _get(client: httpx.AsyncClient, path: str, params: dict[str, str]) -> tuple[object, int | None]:
     response = await client.get(f"{BASE_URL}{path}", params={**params, "apiKey": _api_key()}, timeout=30)
     response.raise_for_status()
-    return response.json(), _remaining(response.headers)
+    return response.json(), remaining_requests(response.headers)
 
 
 def _api_key() -> str:
@@ -105,7 +94,7 @@ async def run(
         counts["matched"] = len(selected)
         for event_ids in batches(list(selected)):
             if not can_request(remaining, min_requests_remaining):
-                logger.warning("stopping: %s Odds-API.io requests left this hour, floor is %d", remaining, min_requests_remaining)
+                logger.warning("stopping: %s Odds-API.io requests left this hour, floor is %d", "unknown" if remaining is None else remaining, min_requests_remaining)
                 counts["stopped_at_floor"] = 1
                 break
             try:
