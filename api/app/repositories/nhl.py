@@ -78,11 +78,10 @@ async def upsert_games(db: AsyncSession, games: Sequence[NhlGame], team_ids: dic
             :home_team_id, :away_team_id, :home_score, :away_score, :status, :end_period
         )
         ON CONFLICT (sport, source_game_id) DO UPDATE SET
-            season = EXCLUDED.season,
             week = EXCLUDED.week,
             game_type = EXCLUDED.game_type,
             game_date = EXCLUDED.game_date,
-            start_utc = EXCLUDED.start_utc,
+            start_utc = COALESCE(EXCLUDED.start_utc, sport_games.start_utc),
             home_team_id = EXCLUDED.home_team_id,
             away_team_id = EXCLUDED.away_team_id,
             home_score = EXCLUDED.home_score,
