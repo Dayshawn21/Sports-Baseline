@@ -131,6 +131,11 @@ describe('nflSlateSummary', () => {
     game(2, '2026-10-04T20:25:00Z', { lines: [line(21)] }),
   ]
 
+  it('counts a final stored in another case, and never a postponed game', () => {
+    const mixed = [game(1, null, { status: 'Completed' }), game(2, null, { status: 'COMPLETED' }), game(3, null, { status: 'postponed' })]
+    expect(nflSlateSummary(mixed, undefined).finals).toBe(2)
+  })
+
   it('leaves the notes-backed stats null while notes are unavailable', () => {
     expect(nflSlateSummary(games, undefined)).toEqual({ games: 2, propLines: 3, finals: 1, outOrDoubtful: null, oddsUpdated: null, oddsUpdatedMs: null })
   })
@@ -382,6 +387,39 @@ describe('nflSlateRow', () => {
     const row = nflSlateRow(game(1, '2026-10-04T17:00:00Z', { status: 'completed', odds: ODDS }), notes(1), DURING)
 
     expect([row.kickoff, row.away.score, row.home.score, row.spread.value, row.total.value]).toEqual(['Final', null, null, '--', '--'])
+  })
+
+  it.each([
+    ['postponed', 'Postponed'],
+    ['Canceled', 'Canceled'],
+    ['CANCELLED', 'Canceled'],
+  ])('reads a %s game as off before, during and after its kickoff: no market, tags or conditions', (status, label) => {
+    const called = game(1, '2026-10-04T17:00:00Z', { status, odds: ODDS, model: MODEL, weather: DOME, lines: [line(11)] })
+    const gameNotes = notes(1, { injuries: [injury('Out')], awayForm: { team: 'A1', restDays: 4, shortWeek: true, recent: [] }, lineMovement: [lineMove('spread', -1.5, -2.5, -1)] })
+
+    for (const now of [BEFORE, DURING, new Date('2026-10-05T03:00:00Z')]) {
+      const row = nflSlateRow(called, gameNotes, now, LATER_RUN)
+      expect([row.state, row.stateLabel, row.kickoff, row.scorePending]).toEqual(['off', label, 'Sun 12:00 PM CT', false])
+      expect([row.spread.value, row.total.value, row.moneyline.value]).toEqual(['--', '--', '--'])
+      expect([row.injuries, row.shortWeek, row.qbChange, row.conditions, row.oddsAge]).toEqual([null, [], [], null, null])
+      expect([row.model, row.props]).toEqual([{ spread: 'H1 -1.0', total: '46.9' }, 1])
+    }
+  })
+
+  it('reads a final stored in another case as final', () => {
+    const row = nflSlateRow(game(1, '2026-10-04T17:00:00Z', { status: 'COMPLETED', odds: ODDS }), notes(1, { awayScore: 17, homeScore: 24 }), DURING)
+
+    expect([row.state, row.stateLabel, row.kickoff, row.moneyline.value]).toEqual(['final', 'Final', 'Final', '--'])
+  })
+
+  it('labels each state as the slate always has, with no label while upcoming', () => {
+    const scheduled = game(1, '2026-10-04T17:00:00Z', { odds: ODDS })
+    expect([
+      nflSlateRow(scheduled, undefined, BEFORE).stateLabel,
+      nflSlateRow(scheduled, undefined, DURING).stateLabel,
+      nflSlateRow(scheduled, undefined, new Date('2026-10-05T03:00:00Z')).stateLabel,
+      nflSlateRow({ ...scheduled, status: 'completed' }, undefined, DURING).stateLabel,
+    ]).toEqual([null, 'Live', 'Result pending', 'Final'])
   })
 
   it('degrades without a kickoff, odds, model or notes', () => {

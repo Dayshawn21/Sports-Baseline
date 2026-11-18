@@ -30,12 +30,10 @@ function periodLine(week: number, games: NflSlateGame[], notes: NflGameNotes[] |
   return gameSlateLine(`Week ${week}`, nflSlateSummary(games, notes), startTimes(games.map(game => game.startUtc)), Date.now())
 }
 
-const STATE_LABEL: Partial<Record<NflSlateRowModel['state'], string>> = { final: 'Final', pending: 'Result pending', live: 'Live' }
-
 /** A search result's second line: kickoff, state, or the final score. */
 function commandContext(row: NflSlateRowModel | undefined): string | undefined {
   if (!row) return undefined
-  return commandGameContext(STATE_LABEL[row.state] ?? row.kickoff, row.state === 'final' ? row : undefined)
+  return commandGameContext(row.stateLabel ?? row.kickoff, row.state === 'final' ? row : undefined)
 }
 
 function WeekPicker({ active }: { active: NflWeek }) {

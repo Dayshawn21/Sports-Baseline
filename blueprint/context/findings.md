@@ -612,13 +612,13 @@ version and forward validation.
 **Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
 **Resolution:**
 
-### F-76 [P3] open - The NFL slate keeps its own case-sensitive game-status rule
+### F-76 [P3] closed - The NFL slate keeps its own case-sensitive game-status rule
 
 **File:** web/src/utils/nflSlate.ts:264-268; web/src/pages/NflIntelligencePage.tsx:33
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** `rowState` checks `game.status === 'completed'` and has no postponed or canceled branch, so a postponed NFL game reads as live or pending while the other sports read it through `gameState()`. Smaller case-sensitive `=== 'completed'` counts remain in `homeSources.ts:152,197`, `nbaSlate.ts:186`, `nflSlate.ts:110` and `nhlSlate.ts:104`.
 **Suggested fix:** Map `gameState()` phases in `rowState`, handling the `off` phase, and use the same lowercase check in the counts.
-**Resolution:**
+**Resolution:** Repaired on `claude/fix-nfl-slate-status-a58bad` (2026-11-18): `rowState` returns the `gameState()` phase with NFL's labels (`Live`, `Result pending`, `Final`), so a postponed or canceled game reads as `off` with its label, no market lines and no pre-game tags, and the page's `STATE_LABEL` map gives way to the row's `stateLabel`. The finals counts in the NFL, NBA and NHL slate summaries and the home page's schedule and moneyline filters use the new `isFinalStatus`. Visible change, listed in the spec for the user's approval at merge: postponed and canceled NFL games show as such, and a final stored in another case counts as one. Spec in `blueprint/history/fixes/nfl-slate-status.md`. Re-reviewed 2026-11-18 by an independent review of the diff: no case-sensitive status check remains, and upcoming, live, pending and final rows are unchanged. Web Verify passed (1859 tests) and the API tests passed (6553). Closed.
 
 ### F-77 [P3] open - Whole-percent and pass-through percent formatters beside `fmtPct`
 

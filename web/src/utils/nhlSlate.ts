@@ -4,6 +4,7 @@ import {
   nhlGameState, nhlMarketCells, nhlPuckDropLabel, nhlRecordLabel, nhlTimeLabel, type NhlGameState,
 } from '~/utils/nhlGame'
 
+import { isFinalStatus } from '~/utils/gameState'
 import { latestTime, rowOddsAge } from '~/utils/slatePeriod'
 
 export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
@@ -101,7 +102,7 @@ export function nhlSlateSummary(games: readonly NhlSlateGame[]) {
   return {
     games: games.length,
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
-    finals: games.filter(game => game.status === 'completed').length,
+    finals: games.filter(game => isFinalStatus(game.status)).length,
     oddsUpdated: oddsUpdatedMs === null ? null : nhlTimeLabel(new Date(oddsUpdatedMs).toISOString()),
     oddsUpdatedMs,
   }

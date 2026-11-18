@@ -128,6 +128,11 @@ describe('nbaSlateSummary', () => {
     expect(nbaSlateSummary(games)).toEqual({ games: 3, propLines: 126, finals: 1, oddsUpdated: 'Wed 5:30 PM CT', oddsUpdatedMs: expect.any(Number) })
   })
 
+  it('counts a final stored in another case, and never a postponed game', () => {
+    const games = [game({ status: 'Completed' }), game({ gameId: 2, status: 'COMPLETED' }), game({ gameId: 3, status: 'postponed' })]
+    expect(nbaSlateSummary(games).finals).toBe(2)
+  })
+
   it('has no odds time without a market', () => {
     expect(nbaSlateSummary([]).oddsUpdated).toBeNull()
   })
