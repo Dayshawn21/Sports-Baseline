@@ -37,6 +37,14 @@ it.each([null, 0, -1, NaN, Infinity, 1.5, Number.MAX_SAFE_INTEGER + 1])('invalid
   unsubscribeProps()
 })
 
+it('a slate waiting on its date never fetches', () => {
+  const slate = new QueryObserver(cache, nhlSlateQuery('2026-10-23', false))
+  const unsubscribe = slate.subscribe(() => undefined)
+  expect(slate.getCurrentResult().fetchStatus).toBe('idle')
+  expect(fetchNhlSlate).not.toHaveBeenCalled()
+  unsubscribe()
+})
+
 it('isolates game and prop caches by id and keeps the five-minute freshness boundary', async () => {
   await cache.fetchQuery(nhlGameQuery(7))
   await cache.fetchQuery(nhlGameQuery(8))

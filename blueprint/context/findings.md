@@ -628,13 +628,13 @@ version and forward validation.
 **Suggested fix:** Use `fmtPct(x, 0)` and `fmtSigned(diff * 100, 1, ' pp')` directly and delete the wrappers. Output is unchanged for probabilities.
 **Resolution:**
 
-### F-78 [P3] open - NFL model track-record hooks still use `enabled` with `season as number`
+### F-78 [P3] closed - NFL model track-record hooks still use `enabled` with `season as number`
 
 **File:** web/src/hooks/useNflModelTrackRecord.ts:8-31
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** Three hooks keep the `enabled: season !== null` plus `season as number` pattern that F-68 removed from the other NBA and NFL hooks. `useNba.ts:9` and `useNhl.ts:69` also gate a disabled slate two different ways.
 **Suggested fix:** Move the three hooks to `queryOptions` with `skipToken`, as in `useNfl.ts`, and pick one disabled-slate idiom.
-**Resolution:**
+**Resolution:** Repaired on `fix/nfl-track-record-hooks` (2026-11-18): the three hooks build `queryOptions` with `skipToken` for a null season, and `nhlSlateQuery(date, enabled)` gates a waiting slate through `skipToken` as `nbaSlateQuery` does, so `useNhlSlate` no longer spreads `enabled`. Tests cover the idle null season, the unchanged cache keys and the gated NHL slate. Re-reviewed 2026-11-18 by /audit (scope: fix diff; lens: quality): keys, stale times, retry and fetch arguments are unchanged, and no caller refetches a gated slate. Verify passed, and in the app the NFL model page fires each track-record request once and the NHL game page waits for its date before loading the slate. Closed.
 
 ### F-79 [P3] open - The NBA and NHL board crumbs are near-identical copies
 

@@ -6,11 +6,12 @@ import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
 
-export function nhlSlateQuery(date: string | null) {
+/** A null date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
+export function nhlSlateQuery(date: string | null, enabled = true) {
   const requested = parseSlateDate(date)
   return queryOptions({
     queryKey: ['nhl', 'slate', requested],
-    queryFn: () => fetchNhlSlate(requested),
+    queryFn: enabled ? () => fetchNhlSlate(requested) : skipToken,
     staleTime: SLATE_STALE_MS,
   })
 }
@@ -65,9 +66,8 @@ export function nhlPropBoardQuery(date: string | null) {
   })
 }
 
-/** A null date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
 export function useNhlSlate(date: string | null, enabled = true) {
-  return useQuery({ ...nhlSlateQuery(date), enabled })
+  return useQuery(nhlSlateQuery(date, enabled))
 }
 
 export function useNhlGame(gameId: number | null) {
