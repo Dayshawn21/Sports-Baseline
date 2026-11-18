@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { NflPlayerDetail, NflPlayerGame } from '~/types/nfl'
+import { fmtPct } from '~/utils/odds'
 import { FOCUS_LABELS, isNflSpecialist, selectedPropMarket, SPECIALIST_COLUMNS } from '~/utils/nflPlayer'
 
 const MISSING = '--'
@@ -56,7 +57,7 @@ export function NflPlayerGameLog({ player, layoutSettled, propMarkets }: { playe
             <td>{game.isHome ? game.opponent : `@${game.opponent}`}</td>
             <td className="is-text">{result(game)}</td>
             {columns.map(column => <td key={column.field}>{optional(game[column.field])}</td>)}
-            {!specialist && <><td>{optional(game.snapPct, value => `${Math.round(value * 100)}%`)}</td>
+            {!specialist && <><td>{optional(game.snapPct, value => fmtPct(value, 0))}</td>
             {showPassing && <><td>{game.passingCompletions}/{game.passingAttempts}</td><td>{game.passingYards}</td></>}
             <td>{game.rushingAttempts}</td><td>{game.rushingYards}</td><td>{optional(game.targets)}</td>
             <td>{game.receptions}</td><td>{game.receivingYards}</td><td>{game.touchdowns}</td>

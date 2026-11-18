@@ -1,4 +1,5 @@
 import type { NflSlateLine } from '~/types/nfl'
+import { fmtPct } from '~/utils/odds'
 
 type SnapShare = Pick<NflSlateLine, 'snapShare' | 'snapShareGames'>
 
@@ -9,5 +10,5 @@ type SnapShare = Pick<NflSlateLine, 'snapShare' | 'snapShareGames'>
 export function snapShareLabel(row: SnapShare): string | null {
   if (row.snapShareGames === null) return null
   if (row.snapShare === null || row.snapShareGames === 0) return 'No snap history (position average used)'
-  return `${Math.round(row.snapShare * 100)}% · ${row.snapShareGames} g, season-weighted`
+  return `${fmtPct(row.snapShare, 0)} · ${row.snapShareGames} g, season-weighted`
 }

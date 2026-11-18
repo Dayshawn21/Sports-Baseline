@@ -102,11 +102,7 @@ export function tennisBoardRecord(tiers: ModelPropTiersResponse | undefined, sta
   }
 }
 
-function percent(rate: number): string {
-  return fmtPct(rate)
-}
-
 /** "260-140 · 65.0% vs 65.0% break-even": a W-L means nothing without the rate it has to beat. */
 export function tallyText(tally: BoardRecordTally): string {
-  return `${tally.wins}-${tally.losses} · ${percent(tally.hitRate)} vs ${percent(tally.baseline)} break-even`
+  return `${tally.wins}-${tally.losses} · ${fmtPct(tally.hitRate)} vs ${fmtPct(tally.baseline)} break-even`
 }

@@ -46,7 +46,7 @@ function Splits({ player, focus, volume }: { player: NflPlayerDetail, focus: str
       <tbody>{player.splits.map(split => <tr key={split.label}>
         <td className="is-text">{split.label}</td><td>{split.games}</td>
         <td>{perGame(split.focusPerGame)}</td><td>{perGame(split.volumePerGame)}</td>
-        <td>{split.snapShare === null ? MISSING : `${Math.round(split.snapShare * 100)}%`}</td>
+        <td>{split.snapShare === null ? MISSING : fmtPct(split.snapShare, 0)}</td>
       </tr>)}</tbody>
     </table></div>
   </section>

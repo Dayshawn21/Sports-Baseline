@@ -2,6 +2,7 @@ import type { NflPlayerUsage, NflSeasonWeek, NflSlateGame, NflSlateLine } from '
 import { nflGameProps } from '~/utils/nflGameProps'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { fmtPct } from '~/utils/odds'
 
 export function isNflSpecialist(position: string | null): boolean {
   return position === 'K' || position === 'P'
@@ -108,7 +109,7 @@ export function usageBars(usage: NflPlayerUsage[], stat: string): NflUsageRow {
   return {
     stat,
     label: USAGE_LABELS[stat] ?? stat,
-    average: mean === null ? '--' : isShare ? `${Math.round(mean * 100)}%` : `${mean.toFixed(1)} / g`,
+    average: mean === null ? '--' : isShare ? fmtPct(mean, 0) : `${mean.toFixed(1)} / g`,
     bars: usage.map((game, index) => {
       const value = values[index]
       return {

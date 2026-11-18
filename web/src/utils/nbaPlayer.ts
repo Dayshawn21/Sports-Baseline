@@ -2,6 +2,7 @@ import type { NbaPlayerGame, NbaPlayerMarket, NbaPlayerProps, NbaPlayerRung } fr
 import type { FormRow } from '~/utils/nflFormWindow'
 import { nbaInjuryTime } from '~/utils/nbaInjuries'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
+import { fmtPct } from '~/utils/odds'
 import { latestTime } from '~/utils/playerPage'
 import { nbaPropFlagText, signedGap } from '~/utils/nbaProps'
 import { heroDelta, mainLine, sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
@@ -68,7 +69,7 @@ export function nbaPlayerStatus(player: Pick<NbaPlayerProps, 'position' | 'team'
 
 /** A probability as a whole percent; null stays a dash, never zero. */
 export function nbaPercentText(probability: number | null): string {
-  return probability === null ? '--' : `${Math.round(probability * 100)}%`
+  return probability === null ? '--' : fmtPct(probability, 0)
 }
 
 export interface NbaRungNotes {
