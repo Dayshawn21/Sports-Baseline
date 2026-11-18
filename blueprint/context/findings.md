@@ -636,10 +636,10 @@ version and forward validation.
 **Suggested fix:** Move the three hooks to `queryOptions` with `skipToken`, as in `useNfl.ts`, and pick one disabled-slate idiom.
 **Resolution:** Repaired on `fix/nfl-track-record-hooks` (2026-11-18): the three hooks build `queryOptions` with `skipToken` for a null season, and `nhlSlateQuery(date, enabled)` gates a waiting slate through `skipToken` as `nbaSlateQuery` does, so `useNhlSlate` no longer spreads `enabled`. Tests cover the idle null season, the unchanged cache keys and the gated NHL slate. Re-reviewed 2026-11-18 by /audit (scope: fix diff; lens: quality): keys, stale times, retry and fetch arguments are unchanged, and no caller refetches a gated slate. Verify passed, and in the app the NFL model page fires each track-record request once and the NHL game page waits for its date before loading the slate. Closed.
 
-### F-79 [P3] open - The NBA and NHL board crumbs are near-identical copies
+### F-79 [P3] closed - The NBA and NHL board crumbs are near-identical copies
 
 **File:** web/src/pages/NbaPlayerPage.tsx:33-42; web/src/pages/NhlPlayerPage.tsx:34-42
 **Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
 **Why it matters:** F-67 copied the NBA crumb into the NHL page, so the per-sport copying the finding named now covers the crumb. Both call `useLocation()` inside an `if` condition, which reads like a conditional hook.
 **Suggested fix:** A shared `BoardCrumb({ boardPath, label })` in `components/shared`, with `useLocation()` hoisted to a `const` as `NflPlayerPage.tsx:66` does.
-**Resolution:**
+**Resolution:** Fixed on `claude/fix-board-crumb-f57805` (2026-11-18): a shared `BoardCrumb({ boardPath, label, fallback })` in `components/shared` calls `useLocation()` once at the top, and the NBA, NHL and NFL player pages use it, each passing its own game or slate fallback. No visible change. Spec in `blueprint/history/fixes/web-board-crumb.md`. Re-reviewed 2026-11-18 by an independent reviewer (scope: fix diff; lens: quality): the board branch lives only in `BoardCrumb`, no page calls `useLocation()`, and hrefs, labels, back navigation and fallbacks match the previous code on all three pages. Verify passed. Closed.
