@@ -396,13 +396,13 @@ version and forward validation.
 **Suggested fix:** time a warm request with and without `Accept-Encoding: gzip` first. If compression is the gap, cache the gzipped body beside the raw one. F-46 shrinks this either way.
 **Resolution:**
 
-### F-49 [P2] fixed - Tennis prop enrichment engine lives in a router, and an ingest imports it
+### F-49 [P2] closed - Tennis prop enrichment engine lives in a router, and an ingest imports it
 
 **File:** api/app/routers/props.py:72-575; api/app/routers/props.py:552; api/app/ingest/prop_snapshots.py:25
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** about 500 lines of projection and enrichment logic (`_enrich` alone runs 233-481) sit in a router, against the thin-router rule. `prop_snapshots` imports `enrich_with` from `app.routers.props`, so an ingest depends on the HTTP layer, and 12 test files import router privates. The comment at :552 defers the move "to item 17", which is checked off, so the deferral is stale.
 **Suggested fix:** move lines 72-575 verbatim into `services/tennis/prop_enrichment.py` (pure helpers such as `_deciding_set_probability` may go to `core/`), re-point the ingest and tests, and leave the four endpoints in the router. Ingest and page must keep sharing one function so the props-v3 snapshots stay identical to what the page serves.
-**Resolution:** Fixed in PR #42 (`1de17587`, 2026-11-17): lines 72-575 moved verbatim into `services/tennis/prop_enrichment.py`; the router keeps its endpoints, and `prop_snapshots` and the tests import from the service, so ingest and page still share one function. Full API suite 6441 passed. Not yet re-reviewed.
+**Resolution:** Fixed in PR #42 (`1de17587`, 2026-11-17): lines 72-575 moved verbatim into `services/tennis/prop_enrichment.py`; the router keeps its endpoints, and `prop_snapshots` and the tests import from the service, so ingest and page still share one function. Full API suite 6441 passed. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): the router is endpoints only, the ingest imports the service, and the moved bodies are byte-identical apart from two renames, so props-v3 is unaffected. Closed.
 
 ### F-50 [P2] open - `repositories/nfl.py` is 2,832 lines with ten separable areas
 
@@ -476,29 +476,29 @@ version and forward validation.
 **Suggested fix:** add one tenacity-based retry helper beside `log_config.py` that honors Retry-After, and keep provider-specific stop conditions as `retry_if_*` predicates.
 **Resolution:**
 
-### F-59 [P2] fixed - Web game-status labels are reimplemented five times, and the copies have drifted
+### F-59 [P2] closed - Web game-status labels are reimplemented five times, and the copies have drifted
 
 **File:** web/src/utils/gameState.ts:16-26; web/src/utils/nhlGame.ts:36-46; web/src/utils/nbaSlate.ts:68-74; web/src/utils/nbaPropBoard.ts:35-41; web/src/utils/nhlPropBoard.ts:55-60
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** `gameState` lowercases the status, accepts `cancelled` and shows "Result pending" for a long-started game with no final. The board copies skip both, so an old game with no stored final reads "Tipped off" or "Started". The NHL final label is "Final / OT" in one file and "Final/OT" in another.
 **Suggested fix:** have the slate and board helpers call `gameState()` (with an optional per-sport started label) and drop the local terminal maps.
-**Resolution:** Fixed in `6d5b298b` (2026-11-16; pushed to master 2026-11-18): `gameState()` takes a per-sport started label, and the NHL and NBA slate cards and the NBA and NHL props boards route through it. Approved visible changes: `Final/OT` on NHL cards, `Result pending` on the boards, case-insensitive and `cancelled` statuses. Spec in `blueprint/history/fixes/web-game-status.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `6d5b298b` (2026-11-16; pushed to master 2026-11-18): `gameState()` takes a per-sport started label, and the NHL and NBA slate cards and the NBA and NHL props boards route through it. Approved visible changes: `Final/OT` on NHL cards, `Result pending` on the boards, case-insensitive and `cancelled` statuses. Spec in `blueprint/history/fixes/web-game-status.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): all four listed copies route through `gameState()`, and the visible changes match the approved list. A separate NFL slate copy is logged as F-76. Closed.
 
-### F-60 [P2] fixed - Signed-number and percent formatting is reimplemented about 20 times with different zero handling
+### F-60 [P2] closed - Signed-number and percent formatting is reimplemented about 20 times with different zero handling
 
 **File:** web/src/utils/nflSignal.ts:13-18; web/src/utils/gapUnits.ts:7; web/src/utils/nbaProps.ts:83-85; web/src/utils/propRowVisuals.ts:90-92; web/src/utils/nhlGame.ts:61-62; web/src/utils/calculators.ts:148-162; web/src/utils/odds.ts:16
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** some copies round before choosing the sign and some do not, so `edgeLabel(-0.04)` shows "-0.0" while others show "0.0". `(x * 100).toFixed(1)}%` appears 53 times beside `fmtPct`, and 9 components define a local `pct`. The null placeholder is an em dash character in `odds.ts` and "--" in NFL/NHL utils.
 **Suggested fix:** add `fmtSigned(value, decimals, suffix?)` to `format.ts` (round, then sign, normalize -0), use it and `fmtPct` everywhere, and pick one placeholder constant. Changing visible output (placeholder, -0.0) is a UI decision, so make it explicitly.
-**Resolution:** Fixed in `dd5c3d9c` (2026-11-16; pushed to master 2026-11-18): `fmtSigned` in `utils/format.ts` (round, then sign, normalise -0) replaces the signed-number copies, and the local `pct` helpers use `fmtPct`, which now takes a placeholder. Each page keeps its current missing-value text by decision. Spec in `blueprint/history/fixes/web-formatting.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `dd5c3d9c` (2026-11-16; pushed to master 2026-11-18): `fmtSigned` in `utils/format.ts` (round, then sign, normalise -0) replaces the signed-number copies, and the local `pct` helpers use `fmtPct`, which now takes a placeholder. Each page keeps its current missing-value text by decision. Spec in `blueprint/history/fixes/web-formatting.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): `fmtSigned` rounds before signing and normalises -0, no hand-signed copy remains, and the nine `pct` helpers use `fmtPct`. Whole-percent copies and pass-through wrappers are logged as F-77. Closed.
 
-### F-61 [P2] fixed - Moneyline pick generation is duplicated between best picks and the bankroll builder
+### F-61 [P2] closed - Moneyline pick generation is duplicated between best picks and the bankroll builder
 
 **File:** api/app/services/tennis/best_picks.py:101-176; api/app/services/tennis/bankroll_builder.py:138-193; api/app/services/tennis/bankroll_builder.py:34
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** both compute EV, Kelly, the devig, the bettable assessment and the reasoning text. The edge formulas already differ (`/ market_prob` vs `/ max(mkt_p or our_p, 0.01)`). `bankroll_builder` imports privates `_compute_stat_avg` and `_CONF_MULT` from `best_picks`, and both read a declared field through `getattr(pred, "quality_flags", [])`.
 **Suggested fix:** extract one pure `moneyline_sides(pred)` that both shape from, choose one edge formula on purpose (or document why they differ), import `compute_stat_avg` from core and make `_CONF_MULT` public.
-**Resolution:** Fixed in PR #44 (`d00d2489`, 2026-11-17): one pure `moneyline_sides(pred)` in `services/tennis/moneyline.py` feeds both callers; each keeps its own edge formula and output, pinned by golden tests written on the old code. `compute_stat_avg` comes from core, `CONF_MULT` is public, and both read `pred.quality_flags or []`. Full API suite 6488 passed. Not yet re-reviewed.
+**Resolution:** Fixed in PR #44 (`d00d2489`, 2026-11-17): one pure `moneyline_sides(pred)` in `services/tennis/moneyline.py` feeds both callers; each keeps its own edge formula and output, pinned by golden tests written on the old code. `compute_stat_avg` comes from core, `CONF_MULT` is public, and both read `pred.quality_flags or []`. Full API suite 6488 passed. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): one `moneyline_sides` feeds both callers, both edge formulas are kept on purpose, and the golden tests pin the old outputs. Closed.
 
 ### F-62 [P2] open - Cross-sport shared code lives under `nfl_` names in core and web utils
 
@@ -538,39 +538,39 @@ version and forward validation.
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** about 90 lines of the router run predictions, join ELO and stats and refine flags, using function-local imports and the private `app.ingest.player_stats._slug`. On the web, the Fix Stats, Fetch ELO and Set ELO panels are written once for mobile and once for desktop, including the same `SetEloRequest` payload build (:397-405 and :761-769).
 **Suggested fix:** move the flag logic into `services/tennis/flagged_players.py` and make `_slug` public. Extract the three panels and a tested `buildSetEloPayload` in `~/utils/adminFlags` so both layouts share them.
-**Resolution:** Fixed: the web part landed in `cefc83cb` (pushed 2026-11-18); the API part in PR #43 (`ad464fc0`, 2026-11-17) moved the flag logic into `services/tennis/flagged_players.py` and the slug into a public `core/ta_slug.py`, pinned by a golden test of the old response. Full API suite 6460 passed. Not yet re-reviewed.
+**Resolution:** Fixed: the web part landed in `cefc83cb` (pushed 2026-11-18); the API part in PR #43 (`ad464fc0`, 2026-11-17) moved the flag logic into `services/tennis/flagged_players.py` and the slug into a public `core/ta_slug.py`, pinned by a golden test of the old response. Full API suite 6460 passed. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): the defect is gone in both apps (one service call in the router, each repair panel rendered once, payload builders tested). Kept `fixed`: the repair left two comments naming the old `_slug` (`api/app/routers/admin.py:87`, `api/app/schemas/admin.py:26`); rename them to `ta_slug` and drop the em dashes in `core/ta_slug.py:8`, then close.
 
-### F-67 [P2] fixed - The NHL board-to-player link drops the return path that NBA and NFL have
+### F-67 [P2] closed - The NHL board-to-player link drops the return path that NBA and NFL have
 
 **File:** web/src/components/nhl/NhlPropBoardMarket.tsx:39; web/src/pages/NhlPlayerPage.tsx:33-37
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** NBA and NFL pass `FROM_BOARD` state and their player crumb goes back to the board. `arrivedFromBoard` appears only in the NBA and NFL pages, so an NHL user opening a player from the board loses the board's filters on the way back. This is a consistency gap from copying per sport.
 **Suggested fix:** pass `state={FROM_BOARD}` on the NHL board link and add the same crumb branch to `NhlPlayerPage`.
-**Resolution:** Fixed in `86d381cd` (2026-11-16; pushed to master 2026-11-18): the NHL board link passes `FROM_BOARD`, and `NhlPlayerPage` shows the NBA-style `<- NHL props` crumb back to the board (approved visible change). Spec in `blueprint/history/fixes/web-player-pages.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `86d381cd` (2026-11-16; pushed to master 2026-11-18): the NHL board link passes `FROM_BOARD`, and `NhlPlayerPage` shows the NBA-style `<- NHL props` crumb back to the board (approved visible change). Spec in `blueprint/history/fixes/web-player-pages.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): the NHL board link passes `FROM_BOARD` and the crumb returns to the board; the game-page link is unchanged. The now-duplicated crumb is logged as F-79. Closed.
 
-### F-68 [P2] fixed - Per-sport hook files follow two different patterns
+### F-68 [P2] closed - Per-sport hook files follow two different patterns
 
 **File:** web/src/hooks/useNhl.ts; web/src/hooks/useNba.ts:37-77; web/src/hooks/useNfl.ts:8-72; web/src/hooks/useModelTrackRecord.ts:6; web/src/hooks/useNflModelTrackRecord.ts:7
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** NHL uses `queryOptions` with `skipToken` and normalizes the slate date. NBA and NFL use `enabled` with 10 `gameId as number` casts, and the NBA slate key uses the raw date, so one slate can get two cache entries. `useNbaModelRanking` and `useNhlModelRanking` are identical, and the track-record stale time is declared twice.
 **Suggested fix:** move NBA and NFL to the NHL pattern, add a shared model-ranking hook helper and export the stale constants from one place.
-**Resolution:** Fixed in `030ef1b8` (2026-11-16; pushed to master 2026-11-18): NBA and NFL hooks use the NHL `queryOptions` and `skipToken` pattern with no `gameId` casts, the NBA slate key normalises its date, the model-ranking hooks share one helper, and the stale times are exported once. Spec in `blueprint/history/fixes/web-hooks.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `030ef1b8` (2026-11-16; pushed to master 2026-11-18): NBA and NFL hooks use the NHL `queryOptions` and `skipToken` pattern with no `gameId` casts, the NBA slate key normalises its date, the model-ranking hooks share one helper, and the stale times are exported once. Spec in `blueprint/history/fixes/web-hooks.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): `useNba.ts` and `useNfl.ts` have no casts or `enabled` options, the NBA slate key is normalised, ranking hooks share one query and stale times live in `queryTimes.ts`. The three track-record hooks still on the old pattern are logged as F-78. Closed.
 
-### F-69 [P2] fixed - Near-copy sport components and board utils
+### F-69 [P2] closed - Near-copy sport components and board utils
 
 **File:** web/src/components/nhl/NhlGameProps.tsx:15-58; web/src/components/nhl/NhlPropBoardMarket.tsx:13-53; web/src/components/nhl/NhlPlayerProjectionHistory.tsx; web/src/components/tennis/player/PlayerProjectionHistory.tsx; web/src/utils/nbaPropBoard.ts:22-80; web/src/utils/nhlPropBoard.ts:20-53
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** the NHL game and board prop tables repeat columns, caption and an `alternates()` helper, but differ in how they show alternates and in the ring and "Updated" columns. The NHL and tennis projection-history sections are the same structure with local `shortDate` and footnote copies. The NBA and NHL board utils share start-time sort, comparator and path builders but differ on the default market (NBA falls back to points even when empty).
 **Suggested fix:** move `alternates` and the caption into `~/utils/nhlProjection` and share one table with optional columns. Add one `ProjectionHistorySection` with a sport adapter. Put the board sort, comparator and path in a shared util and choose one default-market rule on purpose.
-**Resolution:** Fixed in `9e248092` (2026-11-16; pushed to master 2026-11-18): `nhlAlternateLabels` and `nhlProbabilityCaption` serve both NHL tables, `ProjectionHistorySection` with `historyFootnote` serves NHL and tennis, and `utils/propBoardRows.ts` holds the shared board sort and path. Each sport keeps its default-market rule by decision. Spec in `blueprint/history/fixes/web-shared-props.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `9e248092` (2026-11-16; pushed to master 2026-11-18): `nhlAlternateLabels` and `nhlProbabilityCaption` serve both NHL tables, `ProjectionHistorySection` with `historyFootnote` serves NHL and tennis, and `utils/propBoardRows.ts` holds the shared board sort and path. Each sport keeps its default-market rule by decision. Spec in `blueprint/history/fixes/web-shared-props.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): no `alternates()` copy is left, both history sections are adapters over `ProjectionHistorySection`, and the board sort and path live in `propBoardRows.ts`. Closed.
 
-### F-70 [P2] fixed - `ParlaysPage` is an 802-line legacy page outside the shared page patterns
+### F-70 [P2] open - `ParlaysPage` is an 802-line legacy page outside the shared page patterns
 
 **File:** web/src/pages/ParlaysPage.tsx:37-640; web/src/pages/ParlaysPage.tsx:655-690
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** seven subcomponents are defined in the page, it builds its own `<h1>` with an eyebrow instead of `PageHead`, it uses `onMouseEnter`/`onMouseLeave` style mutation for hover, and it has banner-divider comments. `SinglePickRow` (:80) and `SinglePickCard` (:377) show the same data in two layouts.
 **Suggested fix:** switch to `PageHead`, move the subcomponents into `components/tennis/parlays/`, and replace hover handlers with CSS classes.
-**Resolution:** Fixed in `31d92b68` (2026-11-16; pushed to master 2026-11-18): the page uses `PageHead`, its subcomponents moved under `components/tennis/parlays/`, and hover handlers became CSS classes. Spec in `blueprint/history/fixes/web-parlays-page.md`. Not yet re-reviewed.
+**Resolution:** Fixed in `31d92b68` (2026-11-16; pushed to master 2026-11-18): the page uses `PageHead`, its subcomponents moved under `components/tennis/parlays/`, and hover handlers became CSS classes. Spec in `blueprint/history/fixes/web-parlays-page.md`. Not yet re-reviewed. Re-reviewed 2026-11-18 by /audit (scope: fix commits; lens: quality): reopened. `PageHead`, the moved subcomponents and the CSS hover landed, but banner comments remain at `web/src/pages/ParlaysPage.tsx:87,97,108` with narration comments at `:37,81,119`, an empty fragment at `:38-79` and an IIFE in the JSX at `:88-132`. The moved `SinglePickRow.tsx:25-50` and `SinglePickCard.tsx:17-60` carry what-comments. Delete the comments and fragment and compute the four lists before `return`.
 
 ### F-71 [P3] open - Dead code across both apps
 
@@ -610,4 +610,36 @@ version and forward validation.
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** repositories import ingest dataclasses, which forces lazy imports in `hoopr_nba`, `nflverse` and `nhl_api` to avoid cycles. `matches.py` runs the win/loss streak loop in Python twice. `get_db` is typed `-> AsyncSession` but is a generator. The shared PrizePicks pipeline imports private functions from the tennis module, and the three team CLIs are copies. `security.py` says the app runs on localhost. The `prizepicks_nfl` docstring names API-Sports as the source. `nfl_weather`, `nfl_team_elo`, `nba_prop_predictions`, `nfl_odds_io` and `nfl_prop_odds` are scheduled but missing from `docs/commands.md`.
 **Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
+**Resolution:**
+
+### F-76 [P3] open - The NFL slate keeps its own case-sensitive game-status rule
+
+**File:** web/src/utils/nflSlate.ts:264-268; web/src/pages/NflIntelligencePage.tsx:33
+**Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
+**Why it matters:** `rowState` checks `game.status === 'completed'` and has no postponed or canceled branch, so a postponed NFL game reads as live or pending while the other sports read it through `gameState()`. Smaller case-sensitive `=== 'completed'` counts remain in `homeSources.ts:152,197`, `nbaSlate.ts:186`, `nflSlate.ts:110` and `nhlSlate.ts:104`.
+**Suggested fix:** Map `gameState()` phases in `rowState`, handling the `off` phase, and use the same lowercase check in the counts.
+**Resolution:**
+
+### F-77 [P3] open - Whole-percent and pass-through percent formatters beside `fmtPct`
+
+**File:** web/src/utils/nbaProps.ts:74; web/src/utils/nflSignal.ts:44; web/src/utils/nflVolume.ts:21; web/src/utils/boardRecord.ts:105; web/src/components/tennis/TennisSlateTable.tsx:72; web/src/utils/homeSources.ts:188
+**Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
+**Why it matters:** About 13 sites hand-roll `${Math.round(x * 100)}%` (three as local `percent()` helpers) instead of `fmtPct(x, 0)`. `boardRecord.ts` `percent` and `TennisSlateTable.tsx` `pct` only forward to `fmtPct`. `homeSources.ts:188` hard-codes a `+` on the gap.
+**Suggested fix:** Use `fmtPct(x, 0)` and `fmtSigned(diff * 100, 1, ' pp')` directly and delete the wrappers. Output is unchanged for probabilities.
+**Resolution:**
+
+### F-78 [P3] open - NFL model track-record hooks still use `enabled` with `season as number`
+
+**File:** web/src/hooks/useNflModelTrackRecord.ts:8-31
+**Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
+**Why it matters:** Three hooks keep the `enabled: season !== null` plus `season as number` pattern that F-68 removed from the other NBA and NFL hooks. `useNba.ts:9` and `useNhl.ts:69` also gate a disabled slate two different ways.
+**Suggested fix:** Move the three hooks to `queryOptions` with `skipToken`, as in `useNfl.ts`, and pick one disabled-slate idiom.
+**Resolution:**
+
+### F-79 [P3] open - The NBA and NHL board crumbs are near-identical copies
+
+**File:** web/src/pages/NbaPlayerPage.tsx:33-42; web/src/pages/NhlPlayerPage.tsx:34-42
+**Found:** 2026-11-18 by /audit (scope: fix commits; lens: quality)
+**Why it matters:** F-67 copied the NBA crumb into the NHL page, so the per-sport copying the finding named now covers the crumb. Both call `useLocation()` inside an `if` condition, which reads like a conditional hook.
+**Suggested fix:** A shared `BoardCrumb({ boardPath, label })` in `components/shared`, with `useLocation()` hoisted to a `const` as `NflPlayerPage.tsx:66` does.
 **Resolution:**
