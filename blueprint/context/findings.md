@@ -395,3 +395,219 @@ version and forward validation.
 **Why it matters:** the cache holds uncompressed bytes and `GZipMiddleware` compresses each response, on the 0.5-CPU Render plan. Warm TTFB was 0.15-0.37 s against about 0.13 s for the tiny ranking route, so some of that gap may be compression. Not profiled on the server.
 **Suggested fix:** time a warm request with and without `Accept-Encoding: gzip` first. If compression is the gap, cache the gzipped body beside the raw one. F-46 shrinks this either way.
 **Resolution:**
+
+### F-49 [P2] fixed - Tennis prop enrichment engine lives in a router, and an ingest imports it
+
+**File:** api/app/routers/props.py:72-575; api/app/routers/props.py:552; api/app/ingest/prop_snapshots.py:25
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** about 500 lines of projection and enrichment logic (`_enrich` alone runs 233-481) sit in a router, against the thin-router rule. `prop_snapshots` imports `enrich_with` from `app.routers.props`, so an ingest depends on the HTTP layer, and 12 test files import router privates. The comment at :552 defers the move "to item 17", which is checked off, so the deferral is stale.
+**Suggested fix:** move lines 72-575 verbatim into `services/tennis/prop_enrichment.py` (pure helpers such as `_deciding_set_probability` may go to `core/`), re-point the ingest and tests, and leave the four endpoints in the router. Ingest and page must keep sharing one function so the props-v3 snapshots stay identical to what the page serves.
+**Resolution:** Fixed in PR #42 (`1de17587`, 2026-11-17): lines 72-575 moved verbatim into `services/tennis/prop_enrichment.py`; the router keeps its endpoints, and `prop_snapshots` and the tests import from the service, so ingest and page still share one function. Full API suite 6441 passed. Not yet re-reviewed.
+
+### F-50 [P2] open - `repositories/nfl.py` is 2,832 lines with ten separable areas
+
+**File:** api/app/repositories/nfl.py
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the largest file in the project mixes writes, model inputs, baselines, slate lines, ranking and replay readers. `_slate_line_rows` (1893) is 144 lines. It also has two helpers doing the same job (`_optional_float` 1454, `_float_or_none` 1884) and about 51 bare `dict` returns.
+**Suggested fix:** first move the shared fragments (`_player_teams_cte`, `MODELLED_MARKET_FILTER`, `NOT_OTHER_MODEL`, `_LATEST_LINES_CTE`, about 1266-1360) into a small shared module, then split by seam: context 42-240, writes 242-815, model inputs 816-1030, baselines 1146-1500, slate lines 1888-2242, line-only 2242-2360, ranking 2361-2650, replay 2653-2762, leaving games/week/profile in `nfl.py`. Keep public names re-exported so callers do not change in the same step.
+**Resolution:**
+
+### F-51 [P2] open - Frozen-ranking SQL is copied across five repositories
+
+**File:** api/app/repositories/nba.py:649-737; api/app/repositories/nhl.py:629-794; api/app/repositories/nfl.py:2554-2650; api/app/repositories/nfl_targets_ranking.py:12-68; api/app/repositories/nfl_volume_ranking.py:34-91
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `get_frozen_gradeable_lines`, `get_finished_weeks` and `get_frozen_coverage` are the same shape in each sport, and the targets and volume CTEs are textually the same apart from market, odds types, prediction identity and two columns. The copies have already drifted (F-52), and the market filter is written two different ways (preformatted string in NBA, expanding bindparam in NHL).
+**Suggested fix:** after F-52 is decided, factor one SQL builder for the eligible/frozen/coverage CTEs that takes sport, market predicate, settle-table join and prediction-identity predicate as required arguments (no defaults for the sport or model filters).
+**Resolution:**
+
+### F-52 [P2] unverified - NFL finished-week and coverage rules differ from NBA and NHL
+
+**File:** api/app/repositories/nfl.py:2612; api/app/repositories/nba.py:707; api/app/repositories/nhl.py:759
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NFL `get_finished_weeks` requires `bool_and(g.status = 'completed')`, while NBA and NHL also accept postponed and canceled games, so a canceled NFL game would keep its week open and out of the ranking record. NFL's coverage `EXISTS` also matches `fl.market = latest.market` and NBA/NHL do not. Either difference may be deliberate.
+**Suggested fix:** confirm which rule each sport should have. Fix or comment the one that is not deliberate before F-51 merges them.
+**Resolution:**
+
+### F-53 [P2] unverified - NBA and NHL `upsert_games` conflict rules differ
+
+**File:** api/app/repositories/nba.py:89-99; api/app/repositories/nhl.py:82-94
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NBA keeps a known start time (`COALESCE(EXCLUDED.start_utc, sport_games.start_utc)`) and never updates `season`. NHL overwrites `start_utc`, so a feed row with no time can null a known one, and does update `season`. `_chunks`, `_ids_by_source`, `upsert_team` and `get_player_candidates` are otherwise word-for-word copies with only the sport literal changed.
+**Suggested fix:** decide the right conflict rule and comment any deliberate difference. Then move the shared helpers into a `repositories/sport_common.py` that takes `sport` as a required argument.
+**Resolution:**
+
+### F-54 [P2] open - The served NBA/NHL game-type filter is retyped as a literal in about 13 queries
+
+**File:** api/app/repositories/nhl.py:200; api/app/repositories/nhl.py:491; api/app/repositories/nhl_context.py:43; api/app/repositories/nba.py:203; api/app/repositories/nba.py:264; api/app/repositories/nba_injuries.py:87; api/app/core/nhl_projection_backtest.py:33
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NHL has `SERVED_GAME_TYPES = ("REG","PST")` in core, but only nhl.py:491 uses it. `IN ('REG', 'PST')` is retyped at nhl.py 200, 224, 240, 255, 298, 374, 475 and nhl_context.py 43, 157, 228. NBA's `_SERVED_GAME_TYPES` is private and restated at nba.py:203 and nba_injuries.py:87. This is a load-bearing invariant, and one missed edit would split the served set.
+**Suggested fix:** expose one public SQL fragment per sport built from the core tuple, and use it at every site.
+**Resolution:**
+
+### F-55 [P2] open - The three Odds-API.io quota gates disagree when the balance is unknown
+
+**File:** api/app/ingest/odds_api.py:88-106; api/app/ingest/nfl_odds_io.py:44-46; api/app/ingest/nhl_odds_io.py:101-110
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the three scripts share one hourly request bucket. NFL and NHL refuse to request when `remaining is None` ("unknown balance stops the run: tennis shares the hour"), but tennis `_quota_too_low` returns False on None and keeps spending. NHL also discards header values outside 0-100. That makes three header parsers and three gates for one provider.
+**Suggested fix:** decide the unknown-balance policy on purpose, then add one shared Odds-API.io helper (`remaining(headers)`, `can_request(remaining, floor)`) used by all three.
+**Resolution:**
+
+### F-56 [P2] open - The Odds API client lives inside the NFL script, and NBA and tennis import its privates
+
+**File:** api/app/ingest/nba_odds.py:21; api/app/ingest/tennis_totals.py:22-24
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `nba_odds` imports `BASE_URL, _bookmaker_sets, _free_remaining, _odds_params, _provider_key, _remaining_requests, credit_gate` from `nfl_odds`, and `tennis_totals` gets `credit_gate` through `nba_odds` plus `_insert_odds` and `_load_upcoming` from `odds_api`. Tennis depends on NBA, which depends on NFL, and underscore names act as the public API.
+**Suggested fix:** move the shared helpers into `app/ingest/the_odds_api.py` (the pure credit gate may go to `core/`) and import from there.
+**Resolution:**
+
+### F-57 [P2] open - Ingest scripts run SQL inline instead of through repositories
+
+**File:** api/app/ingest/odds_api.py:677-699; api/app/ingest/livetennis.py:690-715; api/app/ingest/livetennis.py:1012; api/app/ingest/player_stats.py:518-535; api/app/ingest/player_stats.py:742-764
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** these break "repositories own SQL". `player_stats.run` builds its player-selection query by string concatenation. `_insert_odds` is a pass-through over `repositories.matches.upsert_odds`. Backtests set read-only transactions inline (`nhl_over_probability_fit.py:247`, `nhl_projections.py:262`) while `tennis_elo` uses the repository helper.
+**Suggested fix:** move the four queries into `repositories/matches.py` and `repositories/players.py`, drop `_insert_odds`, and use one shared read-only-transaction helper in every backtest.
+**Resolution:**
+
+### F-58 [P2] open - Four ingest scripts hand-roll 429 retry loops with different rules
+
+**File:** api/app/ingest/livetennis.py:156-200; api/app/ingest/prizepicks.py:47-120; api/app/ingest/nhl_context.py:36-84; api/app/ingest/player_stats.py:164-185
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the standard says to use tenacity for transient retry, and 6 ingest files do. These four each have their own attempt count, Retry-After parsing and backoff. Some carry provider rules (the livetennis daily quota, fatal 4xx), so they cannot be swapped blindly.
+**Suggested fix:** add one tenacity-based retry helper beside `log_config.py` that honors Retry-After, and keep provider-specific stop conditions as `retry_if_*` predicates.
+**Resolution:**
+
+### F-59 [P2] open - Web game-status labels are reimplemented five times, and the copies have drifted
+
+**File:** web/src/utils/gameState.ts:16-26; web/src/utils/nhlGame.ts:36-46; web/src/utils/nbaSlate.ts:68-74; web/src/utils/nbaPropBoard.ts:35-41; web/src/utils/nhlPropBoard.ts:55-60
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `gameState` lowercases the status, accepts `cancelled` and shows "Result pending" for a long-started game with no final. The board copies skip both, so an old game with no stored final reads "Tipped off" or "Started". The NHL final label is "Final / OT" in one file and "Final/OT" in another.
+**Suggested fix:** have the slate and board helpers call `gameState()` (with an optional per-sport started label) and drop the local terminal maps.
+**Resolution:**
+
+### F-60 [P2] open - Signed-number and percent formatting is reimplemented about 20 times with different zero handling
+
+**File:** web/src/utils/nflSignal.ts:13-18; web/src/utils/gapUnits.ts:7; web/src/utils/nbaProps.ts:83-85; web/src/utils/propRowVisuals.ts:90-92; web/src/utils/nhlGame.ts:61-62; web/src/utils/calculators.ts:148-162; web/src/utils/odds.ts:16
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** some copies round before choosing the sign and some do not, so `edgeLabel(-0.04)` shows "-0.0" while others show "0.0". `(x * 100).toFixed(1)}%` appears 53 times beside `fmtPct`, and 9 components define a local `pct`. The null placeholder is an em dash character in `odds.ts` and "--" in NFL/NHL utils.
+**Suggested fix:** add `fmtSigned(value, decimals, suffix?)` to `format.ts` (round, then sign, normalize -0), use it and `fmtPct` everywhere, and pick one placeholder constant. Changing visible output (placeholder, -0.0) is a UI decision, so make it explicitly.
+**Resolution:**
+
+### F-61 [P2] fixed - Moneyline pick generation is duplicated between best picks and the bankroll builder
+
+**File:** api/app/services/tennis/best_picks.py:101-176; api/app/services/tennis/bankroll_builder.py:138-193; api/app/services/tennis/bankroll_builder.py:34
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** both compute EV, Kelly, the devig, the bettable assessment and the reasoning text. The edge formulas already differ (`/ market_prob` vs `/ max(mkt_p or our_p, 0.01)`). `bankroll_builder` imports privates `_compute_stat_avg` and `_CONF_MULT` from `best_picks`, and both read a declared field through `getattr(pred, "quality_flags", [])`.
+**Suggested fix:** extract one pure `moneyline_sides(pred)` that both shape from, choose one edge formula on purpose (or document why they differ), import `compute_stat_avg` from core and make `_CONF_MULT` public.
+**Resolution:** Fixed in PR #44 (`d00d2489`, 2026-11-17): one pure `moneyline_sides(pred)` in `services/tennis/moneyline.py` feeds both callers; each keeps its own edge formula and output, pinned by golden tests written on the old code. `compute_stat_avg` comes from core, `CONF_MULT` is public, and both read `pred.quality_flags or []`. Full API suite 6488 passed. Not yet re-reviewed.
+
+### F-62 [P2] open - Cross-sport shared code lives under `nfl_` names in core and web utils
+
+**File:** api/app/core/nfl_over_probability_calibration.py; api/app/core/nfl_resolution.py; web/src/utils/nflPlayer.ts; web/src/utils/nbaGame.ts:5
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NBA and NHL import calibration and player resolution from `nfl_*` core modules. On the web, `FROM_BOARD`, `arrivedFromBoard`, `playerSearch` and `propSectionIds` live in `nflPlayer.ts` and are used by 9 NBA, NHL and tennis files, and 10 NBA/NHL files import `nfl-*.css`. `nbaPlayerTabs`/`nhlPlayerTabs` are identical and return `string[]`, which forces `as` casts in `NhlPlayerPropTabs.tsx:12,15`.
+**Suggested fix:** move the generic modules to neutral names (`core/calibration.py`, `core/player_resolution.py`, `~/utils/playerPage.ts`), keeping re-export shims at the old Python paths because generated and pre-registered files hard-code them. Make the tab helper generic to remove the casts.
+**Resolution:**
+
+### F-63 [P2] open - Over-probability verdict, normal-Brier and cross-fit code is copied per sport
+
+**File:** api/app/core/nfl_over_probability_calibration.py:99; api/app/core/nba_over_probability.py:82; api/app/core/nhl_over_probability.py:81; api/app/core/nfl_targets_over_probability.py:144; api/app/core/nba_over_probability_v2_crossfit.py:131-139; api/app/core/nhl_over_probability_crossfit.py:163-207
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** there are four near-identical display-verdict functions, and the normal-Brier sum is repeated in 7 places. NHL `evaluate` guards empty input. NBA `evaluate` divides by `len(lines)` unguarded (its current caller probably never passes an empty list).
+**Suggested fix:** add one `display_verdict(...)` and one `normal_brier(lines)` to the shared calibration module. Each sport passes its own pre-registered constants so no result changes. Add the empty guard to NBA.
+**Resolution:**
+
+### F-64 [P2] open - Odds-feed game matchers and number parsers are copied with different hardening
+
+**File:** api/app/core/nba_odds.py:43; api/app/core/nhl_odds.py:62-89; api/app/core/nfl_odds.py:35-55; api/app/core/nfl_odds_io.py:21
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** all three matchers use the same unique-candidate loop, but only NHL rejects home == away, non-int game ids and naive datetimes. NBA and NFL call `int(str(game["game_id"]))` unchecked. NHL's `_number` rejects `bool` and the NFL copies accept `True` as 1.0.
+**Suggested fix:** add a shared `finite_number` (NHL semantics) and `unique_game_match(home, away, games, within)`. Per-sport code then supplies only team mapping and the time window.
+**Resolution:**
+
+### F-65 [P2] open - The pre-0007 split-column fallback is repeated across `players.py`
+
+**File:** api/app/repositories/players.py:123; api/app/repositories/players.py:328-710
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** every rolling-stats reader and the upsert catch `ProgrammingError` and rerun a legacy query for databases without migration 0007 (migrations are at 0054). The 26-column list is written out 10 times. The upsert fallback calls `db.rollback()`, which would discard earlier writes in the caller's transaction if it were ever reached.
+**Suggested fix:** drop the fallback branches and `tests/test_players_repository_split_columns.py`, and share one `_ROLLING_COLUMNS` constant.
+**Resolution:**
+
+### F-66 [P2] fixed - Admin flagged-player logic sits in the router, and the admin page renders its panels twice
+
+**File:** api/app/routers/admin.py:48-139; web/src/pages/AdminPage.tsx:310-410; web/src/pages/AdminPage.tsx:544-780
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** about 90 lines of the router run predictions, join ELO and stats and refine flags, using function-local imports and the private `app.ingest.player_stats._slug`. On the web, the Fix Stats, Fetch ELO and Set ELO panels are written once for mobile and once for desktop, including the same `SetEloRequest` payload build (:397-405 and :761-769).
+**Suggested fix:** move the flag logic into `services/tennis/flagged_players.py` and make `_slug` public. Extract the three panels and a tested `buildSetEloPayload` in `~/utils/adminFlags` so both layouts share them.
+**Resolution:** Fixed: the web part landed in `eaadc9bd`; the API part in PR #43 (`ad464fc0`, 2026-11-17) moved the flag logic into `services/tennis/flagged_players.py` and the slug into a public `core/ta_slug.py`, pinned by a golden test of the old response. Full API suite 6460 passed. Not yet re-reviewed.
+
+### F-67 [P2] open - The NHL board-to-player link drops the return path that NBA and NFL have
+
+**File:** web/src/components/nhl/NhlPropBoardMarket.tsx:39; web/src/pages/NhlPlayerPage.tsx:33-37
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NBA and NFL pass `FROM_BOARD` state and their player crumb goes back to the board. `arrivedFromBoard` appears only in the NBA and NFL pages, so an NHL user opening a player from the board loses the board's filters on the way back. This is a consistency gap from copying per sport.
+**Suggested fix:** pass `state={FROM_BOARD}` on the NHL board link and add the same crumb branch to `NhlPlayerPage`.
+**Resolution:**
+
+### F-68 [P2] open - Per-sport hook files follow two different patterns
+
+**File:** web/src/hooks/useNhl.ts; web/src/hooks/useNba.ts:37-77; web/src/hooks/useNfl.ts:8-72; web/src/hooks/useModelTrackRecord.ts:6; web/src/hooks/useNflModelTrackRecord.ts:7
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NHL uses `queryOptions` with `skipToken` and normalizes the slate date. NBA and NFL use `enabled` with 10 `gameId as number` casts, and the NBA slate key uses the raw date, so one slate can get two cache entries. `useNbaModelRanking` and `useNhlModelRanking` are identical, and the track-record stale time is declared twice.
+**Suggested fix:** move NBA and NFL to the NHL pattern, add a shared model-ranking hook helper and export the stale constants from one place.
+**Resolution:**
+
+### F-69 [P2] open - Near-copy sport components and board utils
+
+**File:** web/src/components/nhl/NhlGameProps.tsx:15-58; web/src/components/nhl/NhlPropBoardMarket.tsx:13-53; web/src/components/nhl/NhlPlayerProjectionHistory.tsx; web/src/components/tennis/player/PlayerProjectionHistory.tsx; web/src/utils/nbaPropBoard.ts:22-80; web/src/utils/nhlPropBoard.ts:20-53
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the NHL game and board prop tables repeat columns, caption and an `alternates()` helper, but differ in how they show alternates and in the ring and "Updated" columns. The NHL and tennis projection-history sections are the same structure with local `shortDate` and footnote copies. The NBA and NHL board utils share start-time sort, comparator and path builders but differ on the default market (NBA falls back to points even when empty).
+**Suggested fix:** move `alternates` and the caption into `~/utils/nhlProjection` and share one table with optional columns. Add one `ProjectionHistorySection` with a sport adapter. Put the board sort, comparator and path in a shared util and choose one default-market rule on purpose.
+**Resolution:**
+
+### F-70 [P2] open - `ParlaysPage` is an 802-line legacy page outside the shared page patterns
+
+**File:** web/src/pages/ParlaysPage.tsx:37-640; web/src/pages/ParlaysPage.tsx:655-690
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** seven subcomponents are defined in the page, it builds its own `<h1>` with an eyebrow instead of `PageHead`, it uses `onMouseEnter`/`onMouseLeave` style mutation for hover, and it has banner-divider comments. `SinglePickRow` (:80) and `SinglePickCard` (:377) show the same data in two layouts.
+**Suggested fix:** switch to `PageHead`, move the subcomponents into `components/tennis/parlays/`, and replace hover handlers with CSS classes.
+**Resolution:**
+
+### F-71 [P3] open - Dead code across both apps
+
+**File:** api/app/ingest/api_sports_nfl.py:37-53; api/app/config.py:24; api/app/repositories/players.py:436-493; api/app/scripts/seed_elo.py; api/app/ingest/elo.py:289; api/app/routers/tennis.py:494-502; web/src/utils/nflLabels.ts:27-81
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `api_sports_nfl.py` has no importer, workflow or doc entry, and its `completed_game_players(self, ...)` sits after a `return` inside a module function, so it can never run. `get_rolling_stats_batch` has no callers. `seed_elo.py` reads the old pre-V2 repo and is the only caller of `ingest_from_csv`. `/tennis/parlays/suggested` has no web caller. On the web, `segmentRank` and `SEGMENT_COLORS` are unused, and about 12 exports are used only by their own tests (`kickoffLabel`, `formatTime`, `summarizePricedEdges`, `summarizeBaselineMix`, `describeBaselineMix`, `spreadMoveLabel`, `totalMoveLabel`, `playerInitials`, `groupNflSlateLinesByPosition`, `filterNflSlateLinesByPeriod`, `DEFAULT_BOARD_VIEW`, `matchProps`).
+**Suggested fix:** delete each with its tests and the `api_sports_nfl_key` setting. Confirm no external consumer of the parlays endpoint first. Leave `backtest/nfl_anytime_td.py` (the record of the 19j/19m/19n evaluations) and `core/nba_over_probability_v2_fit.py` (the frozen 44a fit) in place.
+**Resolution:** Partly fixed, still open. PR #46 (`08bf91e8`, 2026-11-18) removed `/tennis/parlays/suggested` after the user confirmed no external consumer; a test pins the 404. Remaining: `api_sports_nfl.py` and `api_sports_nfl_key`, `get_rolling_stats_batch`, `seed_elo.py` and `ingest_from_csv`, and the unused web exports.
+
+### F-72 [P3] open - Small helpers duplicated across files
+
+**File:** api/app/schemas/*.py (`_CamelModel` x7); api/app/core/prop_ev.py:75; api/app/core/odds.py:85-92; api/app/services/tennis/best_picks.py:60-82; api/app/core/nba_names.py:23; api/app/core/nhl_names.py:14; web/src/pages/ParlaysPage.tsx:15; web/src/pages/AdminPage.tsx:23; web/src/utils/tennisMatch.ts:96-110; web/src/utils/tennisPlayer.ts:110-122
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `_CamelModel` is defined in 7 schema modules. `american_to_decimal` exists in `prop_ev` and `odds`, `decimal_to_american` in 3 places with different invalid-input behavior, `_normal_cdf` and `_f` 3 times each, `fold_name` twice. `TOUR_COLORS` exists twice and only the Parlays copy has Challenger. The tennis date formatters exist twice and only one slices ISO timestamps. `CENTRAL = 'America/Chicago'` is declared 5 times. `tennisPropBoard.ts:226-232` restates the odds math in `oddsMath.ts`.
+**Suggested fix:** one shared definition each (`schemas/base.py`, `core/odds.py`, `format.ts`, `oddsMath.ts`, a `tourColor` util), imported at every site.
+**Resolution:** Partly fixed, still open. PR #45 (`79b68881`, 2026-11-17) made `core/prop_probs.normal_cdf` and `core/prop_projection.opt_float` public and removed the `_normal_cdf` and `_f` copies in `best_picks` and `prop_enrichment`. Remaining: `_CamelModel`, the odds converters, `fold_name`, `ingest/elo._f`, `TOUR_COLORS`, the tennis date formatters, `CENTRAL`, and the `tennisPropBoard.ts` odds math.
+
+### F-73 [P3] open - Oversized functions in services, core and ingest
+
+**File:** api/app/core/prop_projection.py:255-366; api/app/services/tennis/best_picks.py:179-354; api/app/services/tennis/best_picks.py:404-604; api/app/services/tennis/bankroll_builder.py:204-465; api/app/ingest/livetennis.py:922; api/app/ingest/player_stats.py:716; api/app/ingest/odds_api.py:710
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** these run 107-200 lines against the roughly 50-line guideline. `compute_stat_avg` repeats the ace and double-fault formulas inside its fantasy branch. `odds_api.run` loads, pairs, fetches, parses and writes in one body.
+**Suggested fix:** split into named stages or per-market functions. In `compute_stat_avg`, keep the inline unclamped sets formula: switching to the clamped `expected_sets_from_win_prob` would change props-v3/v4 output and needs a versioned change, not a refactor.
+**Resolution:** Partly fixed, still open. PR #45 (`79b68881`, 2026-11-17) split `generate_market_odds_picks`, `generate_derived_picks`, `_generate_set_picks` and `_generate_total_picks` into named helpers (37-44 lines each), pinned by 53 golden cases written on the unsplit code. Remaining: `compute_stat_avg` (keep its unclamped sets formula), and `livetennis`, `player_stats` and `odds_api.run` in ingest.
+
+### F-74 [P3] open - Flat `core/` (148 modules) and `utils/` (115 modules) directories
+
+**File:** api/app/core/; web/src/utils/
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** filename prefixes already form groups (core: nfl 51, tennis 21, nba 20, nhl 17, prop 9, ask 7; utils: nfl 35, tennis 12, nba 9, nhl 9, slate 8, ask 6). Navigation and ownership are harder than they need to be.
+**Suggested fix:** do this last, after F-62, as a mechanical move per sport (`core/nfl/`, `utils/nfl/`, and a `shared/`). Keep Python re-export shims for paths hard-coded in generated or pre-registered files. Approve it separately because it touches most imports.
+**Resolution:**
+
+### F-75 [P3] open - Layering leaks and stale docs
+
+**File:** api/app/repositories/nfl.py (ingest dataclass imports); api/app/repositories/matches.py:484-733; api/app/db/pool.py; api/app/security.py:3-6; api/app/ingest/prizepicks_nfl.py:3; api/app/ingest/prizepicks_props.py:17-22; docs/commands.md
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** repositories import ingest dataclasses, which forces lazy imports in `hoopr_nba`, `nflverse` and `nhl_api` to avoid cycles. `matches.py` runs the win/loss streak loop in Python twice. `get_db` is typed `-> AsyncSession` but is a generator. The shared PrizePicks pipeline imports private functions from the tennis module, and the three team CLIs are copies. `security.py` says the app runs on localhost. The `prizepicks_nfl` docstring names API-Sports as the source. `nfl_weather`, `nfl_team_elo`, `nba_prop_predictions`, `nfl_odds_io` and `nfl_prop_odds` are scheduled but missing from `docs/commands.md`.
+**Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
+**Resolution:**
