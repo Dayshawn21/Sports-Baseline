@@ -428,13 +428,13 @@ version and forward validation.
 **Suggested fix:** confirm which rule each sport should have. Fix or comment the one that is not deliberate before F-51 merges them.
 **Resolution:** Invalid as a defect, both differences deliberate (user chose option A, 2026-11-18; `blueprint/history/fixes/nfl-finished-week-rule.md`). The only NFL `sport_games` writer, `upsert_game` (`nfl.py:425`), stores `completed` or `scheduled`, never `postponed` or `canceled`, so the stricter finished-week rule picks the same weeks NBA's would. The coverage `fl.market = latest.market` came with 39c (`4b79aa00`) so a Rec Targets freeze on the same provider prop never counts as v4 coverage; F-51 must keep it as an NFL predicate. Both now carry a why-comment; no SQL changed. Possible follow-up: teach the nflverse ingest postponed and canceled statuses, then relax the NFL rule to match.
 
-### F-53 [P2] unverified - NBA and NHL `upsert_games` conflict rules differ
+### F-53 [P2] closed - NBA and NHL `upsert_games` conflict rules differ
 
 **File:** api/app/repositories/nba.py:89-99; api/app/repositories/nhl.py:82-94
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** NBA keeps a known start time (`COALESCE(EXCLUDED.start_utc, sport_games.start_utc)`) and never updates `season`. NHL overwrites `start_utc`, so a feed row with no time can null a known one, and does update `season`. `_chunks`, `_ids_by_source`, `upsert_team` and `get_player_candidates` are otherwise word-for-word copies with only the sport literal changed.
 **Suggested fix:** decide the right conflict rule and comment any deliberate difference. Then move the shared helpers into a `repositories/sport_common.py` that takes `sport` as a required argument.
-**Resolution:**
+**Resolution:** Fixed 2026-11-18 (user chose option A; `blueprint/history/fixes/nhl-upsert-games-conflict.md`): NHL `upsert_games` now uses NBA's rule, `start_utc = COALESCE(EXCLUDED.start_utc, sport_games.start_utc)` and no `season` update on conflict, keeping its `end_period` refresh. No behaviour change today: the NHL ingest always supplies a start time and derives season from the game id. `tests/test_nhl_games_repository.py` pins the clause. Re-reviewed 2026-11-18 by an independent reviewer: confirmed. Closed. Remaining work, not done here: move `_chunks`, `_ids_by_source`, `upsert_team` and `get_player_candidates` into `repositories/sport_common.py` with `sport` required.
 
 ### F-54 [P2] open - The served NBA/NHL game-type filter is retyped as a literal in about 13 queries
 
