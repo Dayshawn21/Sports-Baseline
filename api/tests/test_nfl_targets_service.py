@@ -88,7 +88,7 @@ def test_missing_team_keeps_the_baseline_but_no_opponent_evidence_and_flags_avai
 
     assert result.projection == 3.25 and result.opponent_team is None
     assert result.opponent_history.average is None and result.opponent_history.values == []
-    assert result.quality_flags == ["historical_baseline", "injury_out", "depth_promoted", "team_not_in_game"]
+    assert result.quality_flags == ["historical_baseline", "injury_out", "role_changed", "depth_promoted", "team_not_in_game"]
     assert (result.injury_status, result.practice_status, result.injury) == ("Out", "DNP", "Ankle")
     assert (result.depth_position, result.depth_rank, result.previous_depth_position, result.previous_depth_rank) == (
         "WR", 1, "WR", 2,

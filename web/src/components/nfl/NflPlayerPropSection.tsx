@@ -10,7 +10,8 @@ import { marketLabel } from '~/utils/nflLabels'
 import { nflProjectionHero, nflPropDetail } from '~/utils/nflPropDetail'
 import type { NflPlayerWeekLine } from '~/utils/nflPlayer'
 import { edgePctLabel } from '~/utils/nflSignal'
-import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
+import { roleChangeNote } from '~/utils/nflAvailability'
+import { isReferenceLine, isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import './nfl-prop-detail.css'
 
 const TD = 'anytime_touchdown'
@@ -19,13 +20,14 @@ const TD = 'anytime_touchdown'
 export function NflPlayerPropSection({ id, item, game }: { id: string, item: NflPlayerWeekLine, game: NflSlateGame }) {
   const { row } = item
   const detail = nflPropDetail(row, game, item.alternates, Date.now())
-  const reference = isTargetsReference(row.market)
+  const reference = isReferenceLine(row)
+  const referenceNote = isTargetsReference(row.market) ? TARGETS_REFERENCE_NOTE : roleChangeNote(row)
   const isTd = row.market === TD
   // The projection block already reads the gap in units; the head keeps only the share, which it does not.
   const gapShare = reference || isTd || item.edgeShare === null ? null : `${edgePctLabel(item.edgeShare)} gap`
   return <section id={id} className="nfl-player-card nfl-player-prop" aria-labelledby={`${id}-title`}>
     <div className="nfl-player-card__head">
-      <h3 id={`${id}-title`} className="nfl-player-prop__title" title={reference ? TARGETS_REFERENCE_NOTE : undefined}>
+      <h3 id={`${id}-title`} className="nfl-player-prop__title" title={referenceNote ?? undefined}>
         {marketLabel(row.market)}{reference && <small>reference</small>}
       </h3>
       {gapShare && <span className="nfl-player-muted">{gapShare}</span>}

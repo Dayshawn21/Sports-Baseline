@@ -85,3 +85,28 @@ export function depthLabel(row: DepthListing): string | null {
   const previous = `${row.previousDepthPosition}${row.previousDepthRank}`
   return previous === current ? current : `${current} (was ${previous})`
 }
+
+interface RoleChange extends ActiveDepth {
+  injuryStatus: string | null
+  qualityFlags: string[]
+}
+
+const ROLE_CHANGED_FLAG = 'role_changed'
+const OUT_FLAG = 'injury_out'
+
+function isOut(row: RoleChange): boolean {
+  return row.injuryStatus === 'Out' || row.qualityFlags.includes(OUT_FLAG)
+}
+
+/** Out, or moved up by an Out teammate; stored slates without the API flag still guard. */
+export function isRoleChanged(row: RoleChange): boolean {
+  return row.qualityFlags.includes(ROLE_CHANGED_FLAG) || isOut(row) || depthShifted(row)
+}
+
+/** "Player is out", "Role changed: Walker out", or null on a line whose role is known. */
+export function roleChangeNote(row: RoleChange): string | null {
+  if (!isRoleChanged(row)) return null
+  if (isOut(row) || row.activeDepthRank === null) return 'Player is out'
+  const out = (row.outAhead ?? []).map(surname).join(', ')
+  return out ? `Role changed: ${out} out` : 'Role changed: a teammate ahead is out'
+}

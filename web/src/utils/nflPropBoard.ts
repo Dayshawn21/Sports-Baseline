@@ -4,7 +4,7 @@ import { MARKET_LABELS } from '~/utils/nflLabels'
 import { filterNflSlateLinesByPosition, type NflPositionFilter } from '~/utils/nflPositions'
 import { groupNflPropRows } from '~/utils/nflPropRows'
 import { playerSelected, teamMatches } from '~/utils/propFilters'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { isReferenceLine, isTargetsReference } from '~/utils/nflTargets'
 
 /** A slate line carrying the game it came from, so the board can show a matchup without regrouping. */
 export interface NflBoardLine extends NflSlateLine {
@@ -93,12 +93,14 @@ export function edgeShare(line: Pick<NflSlateLine, 'edge'>, referenceLine: numbe
 }
 
 /**
- * Mirrors v4's `edge_is_comparable`; Rec Targets follows its own reference path.
- * Anytime TD is never rateable until build-plan item 25c, so it shows only under "show all".
+ * Mirrors v4's `edge_is_comparable`; Rec Targets and role-changed lines (70a) are references,
+ * never ranked. Anytime TD is never rateable until build-plan item 25c, so it shows only under "show all".
  */
-export function isRateable(line: Pick<NflSlateLine, 'edge' | 'gamesInSample' | 'line' | 'market' | 'oddsType' | 'segment'>): boolean {
+export function isRateable(line: Pick<NflSlateLine,
+  'edge' | 'gamesInSample' | 'line' | 'market' | 'oddsType' | 'segment'
+  | 'injuryStatus' | 'qualityFlags' | 'depthPosition' | 'depthRank' | 'activeDepthRank' | 'outAhead'>): boolean {
   return line.market !== 'anytime_touchdown'
-    && !isTargetsReference(line.market)
+    && !isReferenceLine(line)
     && line.edge !== null
     && line.line !== null
     && line.oddsType === 'standard'

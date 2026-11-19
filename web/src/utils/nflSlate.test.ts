@@ -173,7 +173,11 @@ describe('slateDigest', () => {
         line(17, { market: 'anytime_touchdown', line: 0.5, edge: 0.4 }), // never rateable until 25c
       ],
     }),
-    game(2, '2026-10-04T20:25:00Z', { lines: [line(21, { edge: 40, projection: 100 }), line(22, { ...rushing, edge: -20, projection: 30 })] }), // 67%, 40%
+    game(2, '2026-10-04T20:25:00Z', { lines: [
+      line(21, { edge: 40, projection: 100 }), // 67%
+      line(22, { ...rushing, edge: -20, projection: 30 }), // 40%
+      line(23, { ...rushing, edge: 45, depthPosition: 'RB', depthRank: 2, activeDepthRank: 1, outAhead: ['Starter'] }), // 90%, but moved up by an Out starter
+    ] }),
     game(3, '2026-10-04T11:00:00Z', { lines: [line(31, { edge: 59 })] }), // already kicked off
   ]
 
@@ -181,7 +185,14 @@ describe('slateDigest', () => {
     const digest = slateDigest(buildNflPropBoard(week, 'all', NOW))
 
     expect(digest.map(item => item.lineId)).toEqual([21, 15, 22, 11])
-    expect(slateDigest(buildNflPropBoard(week, 'all', NOW), 10).map(item => item.lineId)).toEqual([21, 15, 22, 11, 12])
+  })
+
+  it('never ranks a role-changed line, even with room to spare, and keeps it under show all', () => {
+    const board = buildNflPropBoard(week, 'all', NOW)
+
+    expect(slateDigest(board, 10).map(item => item.lineId)).toEqual([21, 15, 22, 11])
+    const other = board.flatMap(category => category.other.map(row => row.lineId))
+    expect(other).toEqual(expect.arrayContaining([12, 23]))
   })
 
   it('carries display strings for a box', () => {

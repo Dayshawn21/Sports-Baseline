@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeDepthLabel, availabilityDepthLabel, depthLabel, injuryLabel, injuryTag } from './nflAvailability'
+import { activeDepthLabel, availabilityDepthLabel, depthLabel, injuryLabel, injuryTag, isRoleChanged, roleChangeNote } from './nflAvailability'
 
 const EMPTY = {
   injuryStatus: null, practiceStatus: null, injury: null,
@@ -96,5 +96,33 @@ describe('activeDepthLabel', () => {
 
   it('has no label for a player off the chart', () => {
     expect(activeDepthLabel({ ...EMPTY, activeDepthRank: null })).toBeNull()
+  })
+})
+
+describe('isRoleChanged and roleChangeNote', () => {
+  const healthy = { injuryStatus: null, qualityFlags: [], depthPosition: 'RB', depthRank: 2, activeDepthRank: 2, outAhead: [] }
+
+  it('trusts the API flag on its own', () => {
+    const row = { ...healthy, qualityFlags: ['role_changed'] }
+    expect(isRoleChanged(row)).toBe(true)
+    expect(roleChangeNote(row)).toBe('Role changed: a teammate ahead is out')
+  })
+
+  it('guards an Out player in a slate stored before the flag', () => {
+    const row = { ...healthy, injuryStatus: 'Out', activeDepthRank: null }
+    expect(isRoleChanged(row)).toBe(true)
+    expect(roleChangeNote(row)).toBe('Player is out')
+  })
+
+  it('guards a backup moved up by an Out starter without the flag', () => {
+    const row = { ...healthy, activeDepthRank: 1, outAhead: ['Kenneth Walker III'] }
+    expect(isRoleChanged(row)).toBe(true)
+    expect(roleChangeNote(row)).toBe('Role changed: Walker out')
+  })
+
+  it('leaves a healthy line, or one from a slate with no active depth, alone', () => {
+    expect(isRoleChanged(healthy)).toBe(false)
+    expect(roleChangeNote(healthy)).toBeNull()
+    expect(isRoleChanged({ injuryStatus: 'Questionable', qualityFlags: ['injury_questionable'], depthPosition: 'RB', depthRank: 1 })).toBe(false)
   })
 })

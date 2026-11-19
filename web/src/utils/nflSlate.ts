@@ -2,7 +2,7 @@ import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamConte
 import { conditionsLabel, recordLabel } from '~/utils/nflGame'
 import { nflGameModelSummary, qbChanges, spreadLabel } from '~/utils/nflGameModel'
 import { marketLabel } from '~/utils/nflLabels'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { isReferenceLine } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
 import { gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
@@ -198,12 +198,12 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
     playerId: row.playerId,
     playerName: row.playerName,
     marketKey: row.market,
-    market: isTargetsReference(row.market) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
+    market: isReferenceLine(row) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
     matchup: `${row.awayTeam} @ ${row.homeTeam}`,
     when: digestKickoff(row.startUtc),
     line: row.line?.toFixed(1) ?? MISSING,
     model: row.projection?.toFixed(1) ?? MISSING,
-    ...(isTargetsReference(row.market) ? { modelLabel: 'reference' } : {}),
+    ...(isReferenceLine(row) ? { modelLabel: 'reference' } : {}),
     gap: edgePctLabel(share),
     gapUnits: gapUnitsLabel(row.edge, row.market),
     gapScaled: gapScaledLabel(share),

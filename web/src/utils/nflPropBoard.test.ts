@@ -155,7 +155,10 @@ describe('edgeShare', () => {
 })
 
 describe('isRateable', () => {
-  const base = { edge: 10, gamesInSample: 8, line: 60, market: 'receiving_yards', oddsType: 'standard', segment: 'full_game' }
+  const base = {
+    edge: 10, gamesInSample: 8, line: 60, market: 'receiving_yards', oddsType: 'standard', segment: 'full_game',
+    injuryStatus: null, qualityFlags: [], depthPosition: 'WR', depthRank: 2, activeDepthRank: 2,
+  }
 
   it('accepts a standard full-game line with enough sample', () => {
     expect(isRateable(base)).toBe(true)
@@ -168,6 +171,8 @@ describe('isRateable', () => {
     ['partial segment', { segment: 'first_half' }],
     ['thin sample', { gamesInSample: 3 }],
     ['anytime TD, until 25c', { market: 'anytime_touchdown', edge: -0.13, line: 0.5 }],
+    ['an Out player', { injuryStatus: 'Out', qualityFlags: ['injury_out', 'role_changed'], activeDepthRank: null }],
+    ['a backup moved up by an Out starter', { activeDepthRank: 1, outAhead: ['Starter'] }],
   ])('rejects %s', (_label, override) => {
     expect(isRateable({ ...base, ...override })).toBe(false)
   })

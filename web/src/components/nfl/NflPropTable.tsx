@@ -40,7 +40,7 @@ function Player({ card, row, to, inGame }: { card: NflPropCardModel, row: NflBoa
 
 function Gap({ card, note }: { card: NflPropCardModel, note: string | null }) {
   if (card.kind === 'reference') return <>
-    <Tooltip title={TARGETS_REFERENCE_NOTE}><b className="nfl-prop-table__share is-reference">{card.edgeText}</b></Tooltip>
+    <Tooltip title={card.referenceNote}><b className="nfl-prop-table__share is-reference">{card.edgeText}</b></Tooltip>
     <small>reference gap</small>
   </>
   const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''

@@ -8,7 +8,7 @@ import { nflPropCard } from '~/utils/nflPropCards'
 import { nflPropDetail } from '~/utils/nflPropDetail'
 import { signalSummary } from '~/utils/nflSignal'
 import { slateDigest } from '~/utils/nflSlate'
-import { TARGETS_PROBABILITY_NOTE, targetsReferenceSummary } from '~/utils/nflTargets'
+import { isReferenceLine, TARGETS_PROBABILITY_NOTE, targetsReferenceSummary } from '~/utils/nflTargets'
 
 const NOW = new Date('2026-10-19T12:00:00Z')
 const EMPTY = { average: null, values: [] }
@@ -126,5 +126,51 @@ describe('Rec Targets reference wording', () => {
     const detail = nflPropDetail(v4, null, [], NOW.getTime())
     expect(detail.hasEdge).toBe(true)
     expect(detail).not.toHaveProperty('referenceNote')
+  })
+})
+
+describe('isReferenceLine', () => {
+  it('marks every Targets line and any role-changed line, and nothing else', () => {
+    const rushing = { market: 'rushing_yards', position: 'RB', depthPosition: 'RB', depthRank: 2 }
+    expect(isReferenceLine(row())).toBe(true)
+    expect(isReferenceLine(row({ ...rushing, activeDepthRank: 1, outAhead: ['Kenneth Walker III'] }))).toBe(true)
+    expect(isReferenceLine(row({ ...rushing, injuryStatus: 'Out' }))).toBe(true)
+    expect(isReferenceLine(row({ ...rushing, qualityFlags: ['role_changed'] }))).toBe(true)
+    expect(isReferenceLine(row({ ...rushing, activeDepthRank: 2 }))).toBe(false)
+  })
+})
+
+describe('role-changed lines (70a)', () => {
+  const johnson = row({
+    playerName: 'Emmett Johnson', position: 'RB', market: 'rushing_yards', projection: 14.9, line: 73.5, edge: -58.6,
+    qualityFlags: ['historical_baseline', 'role_changed'], depthPosition: 'RB', depthRank: 2,
+    activeDepthRank: 1, outAhead: ['Kenneth Walker III'], pOver: 0.08, pUnder: 0.92,
+  })
+
+  it('shows a moved-up backup as a reference with its note, never a pick', () => {
+    const card = nflPropCard(johnson, null, NOW.getTime())
+    expect(card.kind).toBe('reference')
+    expect(card.pickLabel).toBe('--')
+    expect(card.isUnder).toBe(false)
+    expect(card.trust).toBe('Reference')
+    expect(card.referenceNote).toBe('Role changed: Walker out')
+    expect(card.why.startsWith('Role changed: Walker out · Model 14.9')).toBe(true)
+
+    const detail = nflPropDetail(johnson, null, [], NOW.getTime())
+    expect(detail.lines[0].pOverText).toBeNull()
+    expect(detail.pOverNote).toBeNull()
+    expect(detail.hasEdge).toBe(false)
+    expect(detail.status.find(item => item.label === 'Trust')?.value).toBe('Reference')
+    expect(detail.referenceNote).toContain('Role changed: Walker out')
+    expect(detail.projectionLabel).toBe('Projected rushing yards')
+  })
+
+  it('leaves a healthy line a pick with its P(over)', () => {
+    const healthy = { ...johnson, qualityFlags: ['historical_baseline'], activeDepthRank: 2, outAhead: [] }
+    const card = nflPropCard(healthy, null, NOW.getTime())
+    expect(card.kind).toBe('stat')
+    expect(card.pickLabel).toBe('UNDER')
+    expect(card.referenceNote).toBeNull()
+    expect(nflPropDetail(healthy, null, [], NOW.getTime()).lines[0].pOverText).toBe('8% over')
   })
 })

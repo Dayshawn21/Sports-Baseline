@@ -1,11 +1,11 @@
 import type { NflHistorySample } from '~/types/nfl'
-import { activeDepthLabel, depthLabel, depthShifted, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
+import { activeDepthLabel, depthLabel, depthShifted, injuryTag, roleChangeNote, type InjuryTag } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence } from '~/utils/nflBookOdds'
 import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '~/utils/nflLabels'
 import { edgeShare, isConfidentSample, type NflBoardLine } from '~/utils/nflPropBoard'
 import { edgeLabel, edgePctLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { isReferenceLine, isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
 import { statStrip, type RowSignal, type StatCell } from '~/utils/propRowVisuals'
 
 const TD_MARKET = 'anytime_touchdown'
@@ -32,6 +32,8 @@ export interface NflPropCardModel {
   depthText: string | null
   flags: string[]
   why: string
+  /** Why a reference line is not a pick; null on a pick-eligible line. */
+  referenceNote: string | null
   bookText: string | null
   snapText: string | null
 }
@@ -79,8 +81,10 @@ function gameMeta(row: NflBoardLine): string {
 
 export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now: number): NflPropCardModel {
   const td = row.market === TD_MARKET
-  const reference = isTargetsReference(row.market)
-  const confident = reference ? row.projection !== null : isConfidentSample(row)
+  const targets = isTargetsReference(row.market)
+  const reference = isReferenceLine(row)
+  const roleNote = targets ? null : roleChangeNote(row)
+  const confident = targets ? row.projection !== null : isConfidentSample(row)
   return {
     key: row.lineId,
     kind: reference ? 'reference' : td ? 'td' : 'stat',
@@ -96,13 +100,14 @@ export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now
     edgeShareText: edgePctLabel(edgeShare(row, referenceLine)),
     edgeText: edgeLabel(row.edge),
     trust: reference ? 'Reference' : trustLabel(row),
-    sampleText: `${row.gamesInSample}g${confident ? '' : reference ? ' unavailable' : ' thin'}`,
+    sampleText: `${row.gamesInSample}g${confident ? '' : targets ? ' unavailable' : ' thin'}`,
     thin: !confident,
     injury: injuryTag(row.injuryStatus),
     depthText: depthShifted(row) ? activeDepthLabel(row)
       : row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,
     flags: row.qualityFlags.filter(flag => flag !== 'historical_baseline'),
-    why: signalSummary(row),
+    why: roleNote ? `${roleNote} · ${signalSummary(row)}` : signalSummary(row),
+    referenceNote: targets ? TARGETS_REFERENCE_NOTE : roleNote,
     bookText: td ? nflBookOddsEvidence(row, now)?.summary ?? 'No book price' : null,
     snapText: td ? snapShareLabel(row) : null,
   }

@@ -9,11 +9,13 @@ def _flags(**fields: object) -> list[str]:
     return availability_flags(NflAvailability(**fields))
 
 
-@pytest.mark.parametrize(("status", "flag"), [
-    ("Out", "injury_out"), ("Doubtful", "injury_doubtful"), ("Questionable", "injury_questionable"),
+@pytest.mark.parametrize(("status", "flags"), [
+    ("Out", ["injury_out", "role_changed"]),
+    ("Doubtful", ["injury_doubtful"]),
+    ("Questionable", ["injury_questionable"]),
 ])
-def test_each_game_status_has_its_own_flag(status: str, flag: str) -> None:
-    assert _flags(injury_status=status) == [flag]
+def test_each_game_status_has_its_own_flag(status: str, flags: list[str]) -> None:
+    assert _flags(injury_status=status) == flags
 
 
 def test_no_report_or_an_unknown_status_adds_no_injury_flag() -> None:
@@ -50,3 +52,31 @@ def test_no_chart_this_week_says_nothing_about_depth() -> None:
 def test_injury_and_depth_flags_combine_injury_first() -> None:
     fields = {"injury_status": "Questionable", "depth_team_id": 7, "depth_position": "WR", "depth_rank": 3}
     assert _flags(**fields, **WR2_BEFORE) == ["injury_questionable", "depth_demoted"]
+
+
+RB_CHART = {"depth_team_id": 7, "depth_position": "RB"}
+RB_LAST_WEEK = {"previous_depth_team_id": 7, "previous_depth_position": "RB"}
+
+
+def test_an_out_player_is_role_changed_with_or_without_a_chart_row() -> None:
+    assert "role_changed" in _flags(injury_status="Out")
+    assert _flags(injury_status="Out", **RB_CHART, depth_rank=1, previous_depth_rank=1, **RB_LAST_WEEK) == [
+        "injury_out", "role_changed",
+    ]
+
+
+def test_a_backup_moved_up_by_an_out_starter_is_role_changed() -> None:
+    fields = {**RB_CHART, "depth_rank": 2, "active_depth_rank": 1, "out_ahead": ("Kenneth Walker III",)}
+    assert _flags(**fields, previous_depth_rank=2, **RB_LAST_WEEK) == ["role_changed"]
+
+
+def test_unchanged_active_depth_is_not_role_changed() -> None:
+    assert _flags(**RB_CHART, depth_rank=2, active_depth_rank=2, previous_depth_rank=2, **RB_LAST_WEEK) == []
+    assert _flags(**RB_CHART, depth_rank=2, previous_depth_rank=2, **RB_LAST_WEEK) == []
+
+
+def test_a_questionable_starter_and_his_backup_are_not_role_changed() -> None:
+    assert _flags(injury_status="Questionable", **RB_CHART, depth_rank=1, active_depth_rank=1) == [
+        "injury_questionable", "depth_new",
+    ]
+    assert "role_changed" not in _flags(**RB_CHART, depth_rank=2, active_depth_rank=2)

@@ -42,6 +42,7 @@ export const FLAG_LABELS: Record<string, string> = {
   injury_out: 'Ruled out on this week\'s final injury report',
   injury_doubtful: 'Listed doubtful on this week\'s injury report',
   injury_questionable: 'Listed questionable on this week\'s injury report',
+  role_changed: 'Out, or moved up by an Out teammate, so the projection cannot know this week\'s role: a reference, not a pick',
   depth_promoted: 'Moved up the depth chart since the previous week (display only, not in the model)',
   depth_demoted: 'Moved down the depth chart since the previous week (display only, not in the model)',
   depth_new: 'New team or position on the depth chart, or first listing',
