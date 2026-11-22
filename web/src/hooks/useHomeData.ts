@@ -31,8 +31,6 @@ export interface HomeView {
   refreshedAt: number | null
   /** Published model records for the sports that have a model page, in registry order. */
   records: HomeRecord[]
-  /** True until any sport has answered, so the page shows one loading state rather than four. */
-  loading: boolean
   /** True when every sport failed. */
   failed: boolean
 }
@@ -111,7 +109,6 @@ export function useHomeData(): HomeView {
       rankingRecord('nba', nbaRanking.data, statusOf(nbaRanking)),
       rankingRecord('nhl', nhlRanking.data, statusOf(nhlRanking)),
     ],
-    loading: data.every(entry => entry.status === 'loading'),
     failed: data.every(entry => entry.status === 'error'),
   }
 }

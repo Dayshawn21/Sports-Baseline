@@ -234,9 +234,16 @@ const MONEYLINE_NOTE: Partial<Record<Sport, string>> = {
 
 const MONEYLINE_SPORTS: Sport[] = ['nfl', 'tennis']
 
+/** An empty All tab only means "none yet" once every sport feeding it has answered. */
+function anyLoading(sports: HomeSportView[]): boolean {
+  return sports.some(entry => entry.data.status === 'loading')
+}
+
 function moneylineBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
   if (tab === 'all') {
-    const rows = MONEYLINE_SPORTS.flatMap(sport => sports.find(entry => entry.data.sport === sport)!.source.moneyline)
+    const feeding = sports.filter(entry => MONEYLINE_SPORTS.includes(entry.data.sport))
+    const rows = MONEYLINE_SPORTS.flatMap(sport => feeding.find(entry => entry.data.sport === sport)!.source.moneyline)
+    if (rows.length === 0 && anyLoading(feeding)) return { kind: 'loading' }
     return { kind: 'moneyline', rows, empty: 'No moneyline gaps yet.', note: MONEYLINE_SPORTS.map(sport => MONEYLINE_NOTE[sport]).join(' '), footer: null }
   }
   const { data, source } = sports.find(entry => entry.data.sport === tab)!
@@ -263,7 +270,11 @@ export function gapsBody(tab: GapTabKey, sports: HomeSportView[], kind: GapKind 
 }
 
 function propsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
-  if (tab === 'all') return { kind: 'rows', rows: allGapRows(sports), empty: 'No gap lines yet.', footer: null }
+  if (tab === 'all') {
+    const rows = allGapRows(sports)
+    if (rows.length === 0 && anyLoading(sports)) return { kind: 'loading' }
+    return { kind: 'rows', rows, empty: 'No gap lines yet.', footer: null }
+  }
   const { data, source } = sports.find(entry => entry.data.sport === tab)!
   if (data.status === 'loading') return { kind: 'loading' }
   if (data.status === 'error') return { kind: 'error', text: 'Could not load' }

@@ -3,7 +3,6 @@ import { HomeGaps } from '~/components/home/HomeGaps'
 import { HomeRecords } from '~/components/home/HomeRecords'
 import { HomeSportCard } from '~/components/home/HomeSportCard'
 import ErrorState from '~/components/shared/ErrorState'
-import LoadingState from '~/components/shared/LoadingState'
 import PageHead from '~/components/shared/PageHead'
 import { useHomeData } from '~/hooks/useHomeData'
 import { gapTabs, gapsBody, parseGapKind, parseGapTab, todayStatus, type GapKind, type GapTabKey } from '~/utils/home'
@@ -25,7 +24,6 @@ export default function HomePage() {
     return query.size === 0 ? '/' : `/?${query}`
   }
 
-  if (home.loading) return <LoadingState message="Loading today..." />
   if (home.failed) return <ErrorState error={new Error('No sport could be loaded.')} onRetry={() => home.sports.forEach(sport => sport.retry())} />
   return <div className="page-shell"><div className="page-container is-wide">
     <PageHead title="Today" meta={todayStatus(home.now, home.refreshedAt)} />

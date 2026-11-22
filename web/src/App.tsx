@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from 'react'
-import { ConfigProvider, Layout, Menu, Drawer, Button } from 'antd'
+import { ConfigProvider, Layout, Drawer, Button } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
 import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { sportRoutes } from '~/routes/sportPages'
@@ -8,16 +8,16 @@ import { appAntdTheme } from '~/theme/antdTheme'
 import { usePrefersReducedMotion } from '~/hooks/usePrefersReducedMotion'
 import { useAdminView } from '~/hooks/useAdmin'
 import { useLastSportView } from '~/hooks/useLastSportView'
+import { usePreloadWhenIdle } from '~/hooks/usePreloadWhenIdle'
 import { useShellShortcuts } from '~/hooks/useShellShortcuts'
 import { useSwipeToDismiss } from '~/hooks/useSwipeToDismiss'
 import { useViewTransitionLocation } from '~/hooks/useViewTransitionLocation'
 import { VIEW_SHORTCUT } from '~/utils/shellShortcuts'
-import { phoneMenuItems, shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
+import { shellNav, sportViewForPath, type ShellNav } from '~/utils/sportNav'
 import { DocumentTitleProvider } from '~/components/shared/DocumentTitleProvider'
 import { SlateCommandProvider, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import SlateCommandField from '~/components/shared/SlateCommandField'
 import MobileSportSwitcher from '~/components/shared/MobileSportSwitcher'
-import ShortcutsPanel from '~/components/shared/ShortcutsPanel'
 import AskLauncher from '~/components/ask/AskLauncher'
 import LoadingState from '~/components/shared/LoadingState'
 import TableSkeleton from '~/components/shared/TableSkeleton'
@@ -29,6 +29,12 @@ const ParlaysPage = lazy(() => import('~/pages/ParlaysPage'))
 const HowItWorksPage = lazy(() => import('~/pages/HowItWorksPage'))
 const ToolsPage = lazy(() => import('~/pages/ToolsPage'))
 const AdminPage = lazy(() => import('~/pages/AdminPage'))
+
+// antd's Menu and Modal are most of the shell's weight and neither shows on first paint.
+const loadPhoneMenu = () => import('~/components/shared/PhoneMenu')
+const loadShortcutsPanel = () => import('~/components/shared/ShortcutsPanel')
+const PhoneMenu = lazy(loadPhoneMenu)
+const ShortcutsPanel = lazy(loadShortcutsPanel)
 
 const { Header, Content } = Layout
 
@@ -150,9 +156,19 @@ function Nav() {
   const lastView = useLastSportView(pathname)
   const nav = shellNav(pathname, adminVisible, lastView)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  // Mounted from the first open on, so the close animation still plays.
+  const [shortcutsMounted, setShortcutsMounted] = useState(false)
+  const openShortcuts = useCallback(() => {
+    setShortcutsMounted(true)
+    setShortcutsOpen(true)
+  }, [])
   useShellShortcuts(nav, shortcutsOpen, openShortcuts)
-  const shortcutsPanel = <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+  usePreloadWhenIdle(loadPhoneMenu, loadShortcutsPanel)
+  const shortcutsPanel = shortcutsMounted && (
+    <Suspense fallback={null}>
+      <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+    </Suspense>
+  )
   const { scope: commandScope } = useSlateCommand()
   // Same rule as the field: a slate, or a game page that registered its week's games.
   const mobileCommandActive = mobileCommandOpen && (sportViewForPath(pathname) === 'slate' || commandScope !== null)
@@ -199,17 +215,16 @@ function Nav() {
             body: { background: 'var(--bg-app)', padding: 0 },
           }}
         >
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[pathname]}
-            items={phoneMenuItems(adminVisible)}
-            onClick={({ key }) => {
-              navigate(key)
-              setDrawerOpen(false)
-            }}
-            style={{ borderRight: 'none' }}
-          />
+          <Suspense fallback={null}>
+            <PhoneMenu
+              pathname={pathname}
+              adminVisible={adminVisible}
+              onNavigate={path => {
+                navigate(path)
+                setDrawerOpen(false)
+              }}
+            />
+          </Suspense>
         </Drawer>
         {shortcutsPanel}
       </>
