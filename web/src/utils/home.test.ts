@@ -193,6 +193,18 @@ describe('gaps tabs', () => {
     })
   })
 
+  it('keeps an empty All tab loading until every sport has answered, then says none', () => {
+    const empty = (status: HomeSportData['status']) => (['nfl', 'nba', 'nhl', 'tennis'] as const).map(sport => view(sport, [], {}, { status }))
+    expect(gapsBody('all', empty('loading'))).toEqual({ kind: 'loading' })
+    const partly = [view('nfl', [56]), ...empty('loading').slice(1)]
+    expect(gapsBody('all', partly)).toEqual({ kind: 'loading' })
+    expect(gapsBody('all', empty('ready'))).toMatchObject({ kind: 'rows', rows: [], empty: 'No gap lines yet.' })
+  })
+
+  it('shows All rows as soon as one sport has them, while others still load', () => {
+    expect(gapsBody('all', sports())).toMatchObject({ kind: 'rows', rows: [{ key: 'f1' }, { key: 'f2' }, { key: 'b1' }] })
+  })
+
   it('shows a loading or failed sport as such', () => {
     expect(gapsBody('tennis', sports())).toEqual({ kind: 'loading' })
     const list = sports()
@@ -240,6 +252,13 @@ describe('gaps tabs', () => {
 
     it('shows a loading or failed sport as such', () => {
       expect(gapsBody('tennis', [...mlSports().slice(0, 3), view('tennis', [], {}, { status: 'loading' })], 'ml')).toEqual({ kind: 'loading' })
+    })
+
+    it('keeps an empty All tab loading while NFL or tennis has not answered, whatever NBA and NHL do', () => {
+      const waiting = [view('nfl', [], {}, { status: 'loading' }), view('nba', [7]), view('nhl', [5]), view('tennis', [3])]
+      expect(gapsBody('all', waiting, 'ml')).toEqual({ kind: 'loading' })
+      const settled = [view('nfl', [56]), view('nba', [], {}, { status: 'loading' }), view('nhl', [5]), view('tennis', [3])]
+      expect(gapsBody('all', settled, 'ml')).toMatchObject({ kind: 'moneyline', rows: [], empty: 'No moneyline gaps yet.' })
     })
   })
 })
