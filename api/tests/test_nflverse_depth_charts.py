@@ -5,7 +5,9 @@ import httpx
 import pytest
 
 from app.ingest.nflverse import SeasonNotPublished
-from app.ingest.nflverse_depth_charts import NflverseDepthWeek, fetch_depth_charts, reduce_depth_charts
+from app.ingest.nflverse_depth_charts import (
+    NflverseDepthWeek, fetch_depth_charts, reduce_depth_charts, reduce_weekly_depth_charts, reducer_for,
+)
 
 # The published 2026 header, verbatim.
 HEADER = "dt,team,player_name,espn_id,gsis_id,pos_grp_id,pos_grp,pos_id,pos_name,pos_abb,pos_slot,pos_rank"
@@ -134,6 +136,117 @@ def test_non_skill_positions_and_incomplete_rows_are_dropped() -> None:
         _row("2026-09-18T12:00:00Z", ""),
         _row("2026-09-18T12:00:00Z", CHASE, rank=""),
         _row("not-a-time", CHASE),
+    )
+
+    assert parsed == []
+
+
+# The published 2024 weekly header, verbatim.
+WEEKLY_HEADER = (
+    "season,club_code,week,game_type,depth_team,last_name,first_name,football_name,"
+    "formation,gsis_id,jersey_number,position,elias_id,depth_position,full_name"
+)
+# KC plays Sunday 9/8/2024 (week 1) and Sunday 9/15 (week 2).
+WEEKLY_SCHEDULE = {"KC": [(1, date(2024, 9, 8)), (2, date(2024, 9, 15))]}
+RICE, PACHECO = "00-0039296", "00-0037197"
+
+
+def _weekly_row(
+    gsis_id: str, position: str = "WR", depth_position: str = "WR", rank: str = "1",
+    week: str = "1", game_type: str = "REG", formation: str = "Offense", team: str = "KC",
+) -> str:
+    return (
+        f"2024,{team},{week},{game_type},{rank},Last,First,First,{formation},{gsis_id},1,"
+        f"{position},X,{depth_position},Full Name"
+    )
+
+
+def _reduce_weekly(*rows: str) -> list[NflverseDepthWeek]:
+    return reduce_weekly_depth_charts([WEEKLY_HEADER, *rows], 2024, WEEKLY_SCHEDULE)
+
+
+def test_a_weekly_row_keeps_its_week_rank_and_position() -> None:
+    parsed = _reduce_weekly(_weekly_row(RICE, rank="1", week="2"))
+
+    assert parsed == [NflverseDepthWeek(
+        RICE, 2024, 2, "KC", "WR", 1, datetime(2024, 9, 15, 0, 0, tzinfo=UTC),
+    )]
+
+
+def test_weekly_playoff_and_defensive_rows_are_dropped() -> None:
+    parsed = _reduce_weekly(
+        _weekly_row(RICE, game_type="DIV"),
+        _weekly_row(PACHECO, position="RB", formation="Defense"),
+    )
+
+    assert parsed == []
+
+
+def test_weekly_position_comes_from_position_not_the_slot() -> None:
+    parsed = _reduce_weekly(
+        _weekly_row(PACHECO, position="RB", depth_position="FB", rank="1"),
+        # The published file quotes a blank slot that holds a newline.
+        _weekly_row(RICE, depth_position='"\n    "', rank="2"),
+        _weekly_row("00-0000001", position="FB", depth_position="FB"),
+    )
+
+    assert sorted((item.player_id, item.position, item.depth_rank) for item in parsed) == [
+        (PACHECO, "RB", 1), (RICE, "WR", 2),
+    ]
+
+
+def test_a_weekly_player_listed_twice_keeps_the_better_rank() -> None:
+    parsed = _reduce_weekly(_weekly_row(RICE, rank="3"), _weekly_row(RICE, rank="1"))
+
+    assert _weeks(parsed) == [(1, RICE, 1)]
+
+
+def test_weekly_rows_without_a_scheduled_game_or_an_id_are_dropped() -> None:
+    parsed = _reduce_weekly(
+        _weekly_row(RICE, week="19"),
+        _weekly_row(RICE, team="NYJ"),
+        _weekly_row("", rank="1"),
+        _weekly_row(PACHECO, position="RB", rank="NA"),
+    )
+
+    assert parsed == []
+
+
+def test_the_header_picks_the_reducer_for_each_layout() -> None:
+    assert reducer_for(HEADER) is reduce_depth_charts
+    assert reducer_for(WEEKLY_HEADER) is reduce_weekly_depth_charts
+
+
+def test_an_unknown_header_names_the_columns_it_saw() -> None:
+    with pytest.raises(ValueError, match="unknown depth chart layout.*'team'"):
+        reducer_for("season,team,player")
+
+
+TRADE_SCHEDULE = {
+    "NYJ": [(10, date(2024, 11, 10)), (11, date(2024, 11, 17))],
+    "PIT": [(10, date(2024, 11, 10)), (11, date(2024, 11, 17))],
+}
+WILLIAMS = "00-0035640"
+
+
+def _reduce_trade(*rows: str) -> list[NflverseDepthWeek]:
+    return reduce_weekly_depth_charts([WEEKLY_HEADER, *rows], 2024, TRADE_SCHEDULE)
+
+
+def test_a_player_on_two_charts_keeps_the_team_that_charts_him_next_week() -> None:
+    parsed = _reduce_trade(
+        _weekly_row(WILLIAMS, rank="2", week="10", team="NYJ"),
+        _weekly_row(WILLIAMS, rank="2", week="10", team="PIT"),
+        _weekly_row(WILLIAMS, rank="2", week="11", team="PIT"),
+    )
+
+    assert [(item.week, item.team) for item in parsed] == [(10, "PIT"), (11, "PIT")]
+
+
+def test_a_player_on_two_charts_with_no_tiebreak_is_dropped_that_week() -> None:
+    parsed = _reduce_trade(
+        _weekly_row(WILLIAMS, rank="2", week="11", team="NYJ"),
+        _weekly_row(WILLIAMS, rank="2", week="11", team="PIT"),
     )
 
     assert parsed == []

@@ -57,6 +57,18 @@ per command; read this file before running, scheduling or changing one.
   empty fetch leaves the stored week alone. The dry run reads the current week
   and writes nothing. Run by `nfl-prop-odds.yml` and `nfl-weather.yml`, each
   before its slate snapshot.
+- NFL depth charts: `python -m app.ingest.nflverse_depth_charts [--season 2024] [--dry-run]`.
+  The header picks the parser: 2025 on is ESPN's daily snapshot layout (about
+  50 MB, reduced to the last pre-game snapshot per team-week); 2024 is the older
+  weekly layout (about 3.4 MB), loaded once for 70b, where `snapshot_at` is the
+  team's game date at 00:00 UTC because the file has no timestamp. The import
+  holds its database session across the download, so Neon can drop a slow run;
+  rerun it. The dry run reads the stored schedule and writes nothing.
+- NFL depth and Out coverage (70b1): `python -m app.backtest.nfl_depth_coverage
+  [--seasons 2024,2025]`. Read-only counts per season: team-weeks charted, those
+  with a QB1/RB1/WR1/TE1, Out players with a chart row that week, and Out
+  starters with a charted rank-2 teammate (the cases a usage shift can act on).
+  Reads no projection or result, so it spends no holdout.
 - NFL ranking snapshots: `python -m app.ingest.nfl_ranking_snapshot
   [--season 2026] [--dry-run]` (stores all three `/nfl/model/ranking` versions
   in `report_snapshots` as `nfl_model_ranking_<version>`; run by the Tuesday

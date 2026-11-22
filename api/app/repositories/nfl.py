@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON, SeasonGames, choose_baseline_season
+from app.core.nfl_depth_coverage import DepthRow, OutRow
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
 from app.core.nfl_espn_injuries import SEVERITY, EspnNflInjury
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
@@ -1033,6 +1034,27 @@ async def get_team_schedule(db: AsyncSession, season: int) -> dict[str, list[tup
     for team_code, week, game_date in rows.fetchall():
         schedule.setdefault(team_code, []).append((week, game_date))
     return schedule
+
+
+async def get_depth_coverage_rows(db: AsyncSession, season: int) -> tuple[list[DepthRow], list[OutRow]]:
+    """A season's skill-position chart rows and its nflverse Out reports, for the 70b1 coverage report."""
+    depth = await db.execute(text("""
+        SELECT t.team_code, d.week, d.player_id, d.position, d.depth_rank
+        FROM nfl_player_depth_charts d
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = d.team_id
+        WHERE d.season = :season
+    """), {"season": season})
+    out = await db.execute(text("""
+        SELECT t.team_code, i.week, i.player_id, p.position
+        FROM nfl_player_injuries i
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
+        WHERE i.season = :season AND i.report_status = 'Out'
+    """), {"season": season})
+    return (
+        [DepthRow(*row) for row in depth.fetchall()],
+        [OutRow(team, week, player_id, position or "") for team, week, player_id, position in out.fetchall()],
+    )
 
 
 async def get_weekly_td_rows(db: AsyncSession) -> list[NflWeeklyTdRow]:
