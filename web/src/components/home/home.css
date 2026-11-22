@@ -1,4 +1,8 @@
 .home-section-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
   margin: 36px 0 12px;
   color: var(--text-secondary);
   font: 600 20px var(--font-display);
@@ -7,7 +11,6 @@
 }
 
 .home-section-title small {
-  margin-left: 10px;
   color: var(--text-muted);
   font: 400 12px var(--font-body);
   letter-spacing: 0;
@@ -22,6 +25,8 @@
 
 .home-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   padding: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-card);
@@ -71,24 +76,22 @@
   font: 400 12px var(--font-body);
 }
 
+/* No line clamp: a clamped line still holds its hidden match links in the Tab order. */
 .home-card__next {
-  display: -webkit-box;
   margin: 14px 0 0;
   padding-top: 12px;
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
   border-top: 1px solid var(--border-subtle);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
 
 .home-card__links {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
   font-size: 13px;
 }
 
@@ -293,7 +296,7 @@
 
 .home-records {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -337,13 +340,21 @@
   }
 
   .home-records {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 640px) {
-  .home-cards {
+  .home-cards,
+  .home-records {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Wrapped, not a hidden sideways scroller, so every sport tab shows on a phone. */
+  .home-gaps__tabs {
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    overflow-x: visible;
   }
 
   .home-gaps .col-game,
@@ -408,6 +419,37 @@
 
 .home-card__logo { margin-right: 4px; }
 
+.home-card__name a:focus-visible,
+.home-card__match:focus-visible,
+.home-card__links a:focus-visible,
+.home-gaps td a:focus-visible,
+.home-rec:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .home-gaps__kinds {
+    gap: var(--space-2);
+  }
+
+  .home-gaps__kinds a,
+  .home-gaps__tabs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .home-gaps__kinds a {
+    padding: 0 16px;
+  }
+
+  .home-gaps__tabs a {
+    padding: 0;
+  }
+}
+
 .home-card__match {
   position: relative;
   color: inherit;
@@ -458,7 +500,6 @@
     margin: 8px 0 0;
     padding-top: 8px;
     font-size: 12px;
-    -webkit-line-clamp: 2;
   }
 
   .home-card__links {
