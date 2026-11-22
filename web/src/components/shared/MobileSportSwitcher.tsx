@@ -26,7 +26,7 @@ export default function MobileSportSwitcher({ sports }: { sports: ShellSportTab[
         className="shell-mobile-sport"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={active ? `${active.label}, switch sport` : 'Choose a sport'}
+        aria-label={active ? `${active.label}, switch sport` : 'Sports, choose a sport'}
         onClick={() => setOpen(true)}
       >
         {active?.label ?? 'Sports'}
