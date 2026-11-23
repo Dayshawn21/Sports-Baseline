@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
+import type { NflHomeSlate, NflSlateGame } from '~/types/nfl'
 import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
 import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isZeroGap, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
@@ -134,7 +134,11 @@ describe('nflSource', () => {
   const nflGame = (gameId: number, hours: number, status = 'scheduled') => ({
     gameId, startUtc: at(hours), awayTeam: `A${gameId}`, homeTeam: `H${gameId}`, status, lines: [],
   }) as unknown as NflSlateGame
-  const slate = (games: NflSlateGame[]) => ({ season: 2026, week: 9, gameCount: games.length, lineCount: 0, unmatchedCount: 0, games, unmatched: [] }) as NflSlateResponse
+  const slate = (games: NflSlateGame[]) => ({ season: 2026, week: 9, gameCount: games.length, lineCount: 0, unmatchedCount: 0, games, unmatched: [], propRowCount: 0 }) as NflHomeSlate
+
+  it("counts prop lines from the slice's week-wide row count, not its trimmed lines", () => {
+    expect(nflSource({ ...slate([nflGame(1, 56)]), propRowCount: 2643 }, [], NOW).propLines).toBe(2643)
+  })
 
   it('groups the games still to come by Central day and names a lone game', () => {
     // NOW is Tue 11:00 CT: +56h lands on Thursday evening, +80h and +82h on Friday.
@@ -162,7 +166,7 @@ describe('gap rows across sports', () => {
   })
 
   it('carries the sport, the gap in units as the slate shows it, and a player link that keeps the market and week', () => {
-    const source = nflSource({ season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse, [digestItem(7, '+104.6%')], NOW)
+    const source = nflSource({ season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [], propRowCount: 0 } as NflHomeSlate, [digestItem(7, '+104.6%')], NOW)
     expect(source.gaps).toEqual([{
       key: '107', sport: 'nfl', playerName: 'P7', market: 'Rushing yards', matchup: 'A @ B', when: 'x', line: '60.5', model: '70.1', gap: '+9.6 yds', share: '104%',
       path: '/nfl/player/7?market=rushing_yards&season=2026&week=9',
@@ -170,7 +174,7 @@ describe('gap rows across sports', () => {
   })
 
   it('keeps ten NFL rows in digest order and drops the rest', () => {
-    const slate = { season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [] } as NflSlateResponse
+    const slate = { season: 2026, week: 9, gameCount: 0, lineCount: 0, unmatchedCount: 0, games: [], unmatched: [], propRowCount: 0 } as NflHomeSlate
     const source = nflSource(slate, Array.from({ length: 11 }, (_, n) => digestItem(n + 1, '+1.0%')), NOW)
     expect(source.gaps.map(gap => gap.key)).toEqual(Array.from({ length: 10 }, (_, n) => String(101 + n)))
   })
@@ -232,7 +236,7 @@ describe('moneyline rows', () => {
     gameId, startUtc: at(hours), awayTeam: `A${gameId}`, homeTeam: `H${gameId}`, status, lines: [],
     model: model && { modelVersion: 'nfl-elo-v1', homeElo: 0, awayElo: 0, homeWinProbability: model.home, marketHomeWinProbability: model.market, homeSpread: 0, total: 0 },
   }) as unknown as NflSlateGame
-  const slate = (games: NflSlateGame[]) => ({ season: 2026, week: 9, gameCount: games.length, lineCount: 0, unmatchedCount: 0, games, unmatched: [] }) as NflSlateResponse
+  const slate = (games: NflSlateGame[]) => ({ season: 2026, week: 9, gameCount: games.length, lineCount: 0, unmatchedCount: 0, games, unmatched: [], propRowCount: 0 }) as NflHomeSlate
 
   it('names the NFL side the model rates above the market, largest gap first', () => {
     const rows = nflSource(slate([

@@ -395,6 +395,15 @@ export interface NflSlateWire extends Omit<NflSlateResponse, 'games'> {
   samples: NflHistorySample[]
 }
 
+/** The home page's `/nfl/slate/home` slice: standard full-game lines only; `propRowCount` counts the week's rows over every line. */
+export interface NflHomeSlateWire extends NflSlateWire {
+  propRowCount: number
+}
+
+export interface NflHomeSlate extends NflSlateResponse {
+  propRowCount: number
+}
+
 export interface NflNoteInjury {
   playerId: number
   playerName: string

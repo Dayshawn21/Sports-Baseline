@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useModelPredictions } from '~/hooks/useModelTrackRecord'
 import { useNbaModelRanking, useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
-import { useNflCurrentWeek, useNflSlate } from '~/hooks/useNfl'
+import { useNflCurrentWeek, useNflHomeSlate } from '~/hooks/useNfl'
 import { useNflModelRanking } from '~/hooks/useNflModelTrackRecord'
 import { useNhlModelRanking, useNhlSlate } from '~/hooks/useNhl'
 import { usePrizePicksProps } from '~/hooks/useProps'
@@ -59,7 +59,8 @@ function useNow(): number {
 export function useHomeData(): HomeView {
   const now = useNow()
   const week = useNflCurrentWeek()
-  const nflSlate = useNflSlate(week.data?.season ?? null, week.data?.week ?? null)
+  // The full week is 14 MB; the home page needs only its standard full-game lines.
+  const nflSlate = useNflHomeSlate(week.data?.season ?? null, week.data?.week ?? null)
   const nba = useNbaSlate(null)
   const nbaGaps = useNbaSlateGaps(nba.data?.date ?? null, GAPS_PER_SPORT)
   const nhl = useNhlSlate(null)

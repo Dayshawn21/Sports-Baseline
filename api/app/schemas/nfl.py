@@ -424,6 +424,11 @@ class NflSlateResponse(_CamelModel):
     unmatched: list[NflUnmatchedLineSchema]
 
 
+class NflHomeSlateResponse(NflSlateResponse):
+    """Only each game's standard full-game lines; `prop_row_count` counts the week's rows over every line."""
+    prop_row_count: int
+
+
 class NflNoteInjurySchema(_CamelModel):
     player_id: int
     player_name: str

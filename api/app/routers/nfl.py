@@ -16,7 +16,7 @@ from app.schemas.nfl import (
     NflLineOnlyPropsResponse, NflLineOnlyBoardResponse, NflOtherMarketsResponse,
     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
     NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse,
-    NflRankingModelVersion, NflSlateResponse,
+    NflHomeSlateResponse, NflRankingModelVersion, NflSlateResponse,
 )
 from app.season_query import model_season
 from app.services.nfl.game_detail import build_game_detail
@@ -27,7 +27,7 @@ from app.services.nfl.other_markets import build_player_other_markets
 from app.services.nfl.player_detail import build_player_detail
 from app.services.nfl import prop_lines_snapshot, ranking_snapshot, track_record
 from app.services.nfl.slate import anytime_td
-from app.services.nfl.slate_cache import cached_slate_json
+from app.services.nfl.slate_cache import cached_home_json, cached_slate_json
 
 router = APIRouter()
 
@@ -135,6 +135,18 @@ async def get_slate(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     body = await cached_slate_json(db, season, week, is_production(settings.api_env))
+    if body is None:
+        raise HTTPException(status_code=503, detail="The NFL slate is unavailable; try again shortly")
+    return Response(content=body, media_type="application/json")
+
+
+@router.get("/slate/home", response_model=NflHomeSlateResponse)
+async def get_home_slate(
+    season: int,
+    week: int,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    body = await cached_home_json(db, season, week, is_production(settings.api_env))
     if body is None:
         raise HTTPException(status_code=503, detail="The NFL slate is unavailable; try again shortly")
     return Response(content=body, media_type="application/json")

@@ -230,6 +230,10 @@ Things that are easy to get wrong:
     and `fetchNflSlate` expands it, which halved a 25 MB week. To change that
     shape, ship a web that reads both shapes first, deploy it, and only then
     rewrite the stored weeks.
+  - `/nfl/slate/home`: the home page's slice of each week (standard full-game
+    lines plus `propRowCount`, `nfl_slate_home_<week>`), stored by the same
+    `nfl_slate_snapshot` run. Week 11 of 2026 was 2.1 MB against 14.2 MB, and
+    the full week was the slowest home call (2026-11-23).
   - `/nfl/model/prop-lines`: `python -m app.ingest.nfl_model_snapshot`, run
     by `nfl-ingest.yml`.
   - `/nfl/model/ranking`: `python -m app.ingest.nfl_ranking_snapshot`, all

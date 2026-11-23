@@ -43,3 +43,28 @@ def compact_slate(body: JsonObject) -> JsonObject:
         for game in cast(list[JsonObject], body["games"])
     ]
     return {**body, "games": games, "samples": samples.values}
+
+
+def _is_home_line(line: JsonObject) -> bool:
+    return line["segment"] == "full_game" and line["oddsType"] == "standard"
+
+
+def _prop_row_key(line: JsonObject) -> tuple[object, object, object]:
+    """The web's `groupNflPropRows` key, so the count matches the NFL page's."""
+    return line["playerId"], line["market"], line["segment"]
+
+
+def home_slate(body: JsonObject) -> JsonObject:
+    """The home page's compact slice of the camelCase slate (14.2 MB down to about 1 MB, week 11 of 2026).
+
+    Every rateable row is a standard full-game line, so keeping all of them, null
+    edges included, leaves each row's primary and each category's median line as
+    the full week has them. `propRowCount` counts rows over every line.
+    """
+    games = cast(list[JsonObject], body["games"])
+    rows = {_prop_row_key(line) for game in games for line in cast(list[JsonObject], game["lines"])}
+    sliced = [
+        {**game, "lines": [line for line in cast(list[JsonObject], game["lines"]) if _is_home_line(line)]}
+        for game in games
+    ]
+    return {**compact_slate({**body, "games": sliced}), "propRowCount": len(rows)}

@@ -52,7 +52,7 @@ async def _main(season: int | None, weeks_arg: str, dry_run: bool) -> None:
     from app.repositories import nfl as nfl_repo
     from app.repositories import report_snapshots
     from app.services.nfl.slate import build_slate
-    from app.services.nfl.slate_cache import slate_json, slate_report
+    from app.services.nfl.slate_cache import home_json, home_report, slate_json, slate_report
 
     async with SessionLocal() as db:
         current = await nfl_repo.get_current_week(db, datetime.now(UTC))
@@ -65,14 +65,13 @@ async def _main(season: int | None, weeks_arg: str, dry_run: bool) -> None:
         for week in weeks:
             built_at = datetime.now(UTC)
             slate = await build_slate(db, target_season, week, built_at)
-            body = slate_json(slate)
-            print(summary(slate, len(body)))
+            body, home = slate_json(slate), home_json(slate)
+            print(f"{summary(slate, len(body))}; home slice {len(home) / 1_000_000:.1f} MB")
             if not dry_run:
-                await report_snapshots.upsert_snapshot_text(
-                    db, slate_report(week), target_season, body.decode(), built_at,
-                )
+                for report, text in ((slate_report(week), body), (home_report(week), home)):
+                    await report_snapshots.upsert_snapshot_text(db, report, target_season, text.decode(), built_at)
                 await db.commit()
-            del slate, body
+            del slate, body, home
         print("Dry run: nothing stored." if dry_run else f"Stored {len(weeks)} week(s) for {target_season}.")
     await engine.dispose()
 

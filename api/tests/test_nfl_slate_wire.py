@@ -2,7 +2,7 @@
 import json
 from datetime import date, timedelta
 
-from app.core.nfl_slate_wire import SAMPLE_FIELDS, compact_slate
+from app.core.nfl_slate_wire import SAMPLE_FIELDS, compact_slate, home_slate
 from app.schemas.nfl import NflHistoryResultSchema, NflHistorySampleSchema
 from app.services.nfl.slate_cache import slate_json
 from tests.helpers.nfl_prop_predictions import EMPTY, NOW, _game, _line, _slate
@@ -91,3 +91,39 @@ def test_the_repeated_samples_no_longer_scale_with_lines():
     compact_size = len(slate_json(many))
 
     assert compact_size < full_size * 0.7
+
+
+def _home_week():
+    standard_no_edge = _line(30, player_id=7, market="rushing_yards", edge=None, recent_form=FORM)
+    return _slate(_game(1, NOW + timedelta(hours=2), [
+        _line(10, player_id=7, odds_type="demon", recent_form=LONG),
+        _line(11, player_id=7, odds_type="goblin", recent_form=LONG),
+        _line(12, player_id=7, recent_form=FORM),
+        _line(13, player_id=7, segment="first_half", recent_form=_sample(30)),
+        standard_no_edge,
+    ]), _game(2, None, []))
+
+
+def test_home_slate_keeps_every_standard_full_game_line_and_no_other():
+    lines = home_slate(_full(_home_week()))["games"][0]["lines"]
+
+    assert [line["lineId"] for line in lines] == [12, 30]
+
+
+def test_home_slate_counts_prop_rows_over_every_line():
+    # (7, receiving_yards, full_game), (7, receiving_yards, first_half), (7, rushing_yards, full_game).
+    assert home_slate(_full(_home_week()))["propRowCount"] == 3
+
+
+def test_home_slate_keeps_only_the_samples_its_lines_use():
+    body = home_slate(_full(_home_week()))
+    expanded = expand_slate(body)
+
+    assert len(body["samples"]) == 2  # FORM and EMPTY; LONG and the first-half sample were only on dropped lines
+    assert [line["recentForm"] for line in expanded["games"][0]["lines"]] == [FORM.model_dump(mode="json", by_alias=True)] * 2
+
+
+def test_home_slate_keeps_games_without_lines():
+    body = home_slate(_full(_home_week()))
+
+    assert [game["gameId"] for game in body["games"]] == [1, 2]

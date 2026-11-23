@@ -9,7 +9,7 @@ import pytest
 from app.ingest.nfl_slate_snapshot import parse_weeks, summary
 from app.repositories import report_snapshots
 from app.services.nfl import slate_cache
-from app.services.nfl.slate_cache import load_slate_json, slate_json, slate_report
+from app.services.nfl.slate_cache import home_json, home_report, load_home_json, load_slate_json, slate_json, slate_report
 from tests.helpers.nfl_prop_predictions import NOW, _game, _line, _slate
 
 
@@ -117,3 +117,34 @@ def test_the_summary_names_games_lines_and_size():
         f"NFL slate {slate.season} week {slate.week}: {slate.game_count} games, "
         f"{slate.line_count} lines, 2.5 MB"
     )
+
+
+def test_the_home_slice_has_its_own_report_per_week():
+    assert home_report(6) == "nfl_slate_home_6"
+    assert home_report(6) != slate_report(6)
+
+
+def test_a_stored_home_slice_is_served_without_a_build(monkeypatch, builds):
+    text = _as_jsonb_text(home_json(_sample()))
+    reads = _stored(monkeypatch, text)
+
+    assert asyncio.run(load_home_json(None, 2026, 6, production=True)) == text.encode()
+    assert reads == [("nfl_slate_home_6", 2026)]
+    assert builds == []
+
+
+def test_production_without_a_home_slice_is_unavailable(monkeypatch, builds):
+    _stored(monkeypatch, None)
+
+    assert asyncio.run(load_home_json(None, 2026, 6, production=True)) is None
+    assert builds == []
+
+
+def test_dev_without_a_home_slice_builds_it_live(monkeypatch, builds):
+    _stored(monkeypatch, None)
+
+    served = json.loads(asyncio.run(load_home_json(None, 2026, 6, production=False)))
+
+    assert builds == [(2026, 6)]
+    assert [line["lineId"] for line in served["games"][0]["lines"]] == [10, 11]
+    assert served["propRowCount"] == 2

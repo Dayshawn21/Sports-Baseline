@@ -1,6 +1,6 @@
 import client from './client'
 import type {
-  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
+  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflHomeSlate, NflHomeSlateWire, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
   NflModelRanking, NflRankingModelVersion,
   NflOtherMarkets, NflPlayerDetail, NflSlateResponse, NflSlateWire, NflLineOnlyBoard,
 } from '~/types/nfl'
@@ -17,6 +17,11 @@ export async function fetchNflSlate(season: number, week: number): Promise<NflSl
     timeout: SLATE_TIMEOUT_MS,
   })
   return expandNflSlate(data)
+}
+
+export async function fetchNflHomeSlate(season: number, week: number): Promise<NflHomeSlate> {
+  const { data } = await client.get<NflHomeSlateWire>('/nfl/slate/home', { params: { season, week }, timeout: SLATE_TIMEOUT_MS })
+  return { ...expandNflSlate(data), propRowCount: data.propRowCount }
 }
 
 export async function fetchNflGameNotes(season: number, week: number): Promise<NflGameNotesResponse> {

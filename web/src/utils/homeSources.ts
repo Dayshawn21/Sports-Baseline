@@ -1,13 +1,13 @@
 import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NbaSlateGame } from '~/types/nba'
-import type { NflSlateGame, NflSlateResponse } from '~/types/nfl'
+import type { NflHomeSlate, NflSlateGame } from '~/types/nfl'
 import type { NhlSlateGame } from '~/types/nhl'
 import { isFinalStatus } from '~/utils/gameState'
 import { centralDay, startLabel, weekdayLabel } from '~/utils/home'
 import { nbaPlayerPath } from '~/utils/nbaPlayer'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nbaSlateSummary, type NbaSlateDigestItem } from '~/utils/nbaSlate'
-import { nflSlateSummary, type NflSlateDigestItem } from '~/utils/nflSlate'
+import type { NflSlateDigestItem } from '~/utils/nflSlate'
 import { nhlSlateSummary } from '~/utils/nhlSlate'
 import { enrichTennisPropLines, isTennisRateable, marketTitle, payoutTier } from '~/utils/tennisPropBoard'
 import { propPlayerPath } from '~/utils/tennisPlayerProps'
@@ -218,11 +218,11 @@ function tennisWinSides(matches: MatchPrediction[]): WinSides[] {
   })
 }
 
-export function nflSource(slate: NflSlateResponse, digest: NflSlateDigestItem[], now: number): HomeSource {
+export function nflSource(slate: NflHomeSlate, digest: NflSlateDigestItem[], now: number): HomeSource {
   const games = teamGames('nfl', slate.games)
   return { ...sourceOf(games, now, {
     gameCount: slate.games.length,
-    propLines: nflSlateSummary(slate.games, undefined).propLines,
+    propLines: slate.propRowCount,
     gaps: digest.filter(item => !isZeroGap(item.gapUnits)).slice(0, GAPS_PER_SPORT).map(item => gapOf(
       'nfl', { ...item, gap: item.gapUnits }, String(item.lineId), nflPlayerMarketLink(item.playerId, item.marketKey, { season: slate.season, week: slate.week }),
     )),

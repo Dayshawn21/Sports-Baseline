@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { buildNflPropBoard, categoryReferenceLine, compareNflPropRows, edgeShare, filterNflBoardCategories, filterNflPropBoardGames, flattenSlateLines, isRateable, isUpcomingGame, nflLineTeam } from '~/utils/nflPropBoard'
+import { slateDigest } from '~/utils/nflSlate'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 
@@ -345,5 +346,31 @@ describe('buildNflPropBoard', () => {
       game(10, [line(1, { market: 'kicking_points' }), line(2, { market: 'receptions' })]),
     ], 'all')
     expect(board.map(category => category.market)).toEqual(['receptions', 'kicking_points'])
+  })
+})
+
+describe('the home page slice', () => {
+  // `home_slate` in api/app/core/nfl_slate_wire.py keeps exactly these lines.
+  const homeSlice = (games: NflSlateGame[]) => games.map(g => ({
+    ...g, lines: g.lines.filter(l => l.segment === 'full_game' && l.oddsType === 'standard'),
+  }))
+  const week = [
+    game(1, [
+      line(1, { playerId: 7, fetchedAt: '2026-09-18T12:00:00Z' }),
+      line(2, { playerId: 7, edge: null, fetchedAt: '2026-09-18T13:00:00Z' }),
+      line(3, { playerId: 7, oddsType: 'demon', line: 80, edge: -10 }),
+      line(4, { playerId: 7, segment: 'first_half', line: 30, edge: 40 }),
+      line(5, { playerId: 8, line: 20, edge: 50 }),
+      line(6, { playerId: 9, line: 100, edge: -5, gamesInSample: 1 }),
+      line(7, { playerId: 10, market: 'anytime_touchdown', line: 0.5, edge: 0.3 }),
+    ]),
+    game(2, [line(8, { playerId: 11, oddsType: 'goblin', line: 40, edge: 30 }), line(9, { playerId: 12, line: 45, edge: 12 })]),
+  ]
+
+  it('ranks the same digest as the full week, a newer null-edge standard line still winning its row', () => {
+    const now = new Date('2026-09-19T00:00:00Z')
+    const full = slateDigest(buildNflPropBoard(week, 'all', now), 10)
+    expect(full.length).toBeGreaterThan(0)
+    expect(slateDigest(buildNflPropBoard(homeSlice(week), 'all', now), 10)).toEqual(full)
   })
 })

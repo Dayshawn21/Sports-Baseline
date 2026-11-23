@@ -1,5 +1,5 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameContext, fetchNflGameNotes, fetchNflLineOnlyProps, fetchNflOtherMarkets, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
+import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameContext, fetchNflGameNotes, fetchNflHomeSlate, fetchNflLineOnlyProps, fetchNflOtherMarkets, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 
@@ -7,6 +7,14 @@ export function nflSlateQuery(season: number | null, week: number | null) {
   return queryOptions({
     queryKey: ['nfl', 'slate', season, week],
     queryFn: season === null || week === null ? skipToken : () => fetchNflSlate(season, week),
+    staleTime: SLATE_STALE_MS,
+  })
+}
+
+export function nflHomeSlateQuery(season: number | null, week: number | null) {
+  return queryOptions({
+    queryKey: ['nfl', 'slate', 'home', { season, week }],
+    queryFn: season === null || week === null ? skipToken : () => fetchNflHomeSlate(season, week),
     staleTime: SLATE_STALE_MS,
   })
 }
@@ -82,6 +90,10 @@ export function nflGameContextQuery(gameId: number | null) {
 
 export function useNflSlate(season: number | null, week: number | null) {
   return useQuery(nflSlateQuery(season, week))
+}
+
+export function useNflHomeSlate(season: number | null, week: number | null) {
+  return useQuery(nflHomeSlateQuery(season, week))
 }
 
 export function useNflGameNotes(season: number | null, week: number | null) {
