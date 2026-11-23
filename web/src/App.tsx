@@ -24,7 +24,9 @@ import TableSkeleton from '~/components/shared/TableSkeleton'
 import { routeLoadingShape } from '~/utils/routeLoading'
 import NotFoundPage from '~/pages/NotFoundPage'
 
-const HomePage = lazy(() => import('~/pages/HomePage'))
+/** `main.tsx` starts this on the home route alongside its data, so the chunk never waits for React. */
+export const loadHomePage = () => import('~/pages/HomePage')
+const HomePage = lazy(loadHomePage)
 const ParlaysPage = lazy(() => import('~/pages/ParlaysPage'))
 const HowItWorksPage = lazy(() => import('~/pages/HowItWorksPage'))
 const ToolsPage = lazy(() => import('~/pages/ToolsPage'))

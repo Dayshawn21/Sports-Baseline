@@ -15,21 +15,28 @@ function slateUtcDates(params: SlateParams | undefined, defaults: [string, strin
   return defaults
 }
 
+type SlatePage<M> = (params: { date?: string, tour?: string }) => Promise<{ matches: M[] }>
+
+/** One stored UTC date of a tennis slate; the home page prefetches with the same options (`homePrefetch`). */
+export function tennisSlateQuery<M>(kind: 'today' | 'best-picks', fetchPage: SlatePage<M>, date: string, tour?: string) {
+  return {
+    queryKey: ['tennis', kind, { date, tour }],
+    queryFn: () => fetchPage({ date, tour }),
+    staleTime: SLATE_STALE_MS,
+    retry: 2,
+  }
+}
+
 /** One query per stored UTC date of the slate, merged into a single match list. */
 export function useTennisSlate<M>(
   kind: 'today' | 'best-picks',
-  fetchPage: (params: { date?: string, tour?: string }) => Promise<{ matches: M[] }>,
+  fetchPage: SlatePage<M>,
   params?: SlateParams,
 ) {
   const defaults = defaultSlateDates(new Date())
   const dates = slateUtcDates(params, defaults)
   const results = useQueries({
-    queries: dates.map(date => ({
-      queryKey: ['tennis', kind, { date, tour: params?.tour }],
-      queryFn: () => fetchPage({ date, tour: params?.tour }),
-      staleTime: SLATE_STALE_MS,
-      retry: 2,
-    })),
+    queries: dates.map(date => tennisSlateQuery(kind, fetchPage, date, params?.tour)),
   })
 
   const allMatches = results.flatMap(q => q.data?.matches ?? [])
