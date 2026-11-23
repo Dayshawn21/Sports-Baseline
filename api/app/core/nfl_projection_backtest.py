@@ -10,6 +10,8 @@ from math import sqrt
 from statistics import stdev
 from typing import Literal, Protocol
 
+from app.core.nfl_usage_shift import UsageShiftPlayer
+
 # The markets PrizePicks posts for each position, so a replay scores the numbers
 # that actually get bet rather than a backup QB's receiving yards.
 REPLAY_MARKETS_BY_POSITION: dict[str, tuple[str, ...]] = {
@@ -27,6 +29,8 @@ class ReplayRow:
     row: dict
     actual: float
     home_market_prob: float | None
+    # The row's team-position players this week, for the 70b usage-shift arm; no other arm reads it.
+    usage_shift_players: tuple[UsageShiftPlayer, ...] | None = None
 
 
 @dataclass(frozen=True)

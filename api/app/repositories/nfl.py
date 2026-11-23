@@ -12,6 +12,7 @@ from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
 from app.core.nfl_espn_injuries import SEVERITY, EspnNflInjury
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
+from app.core.nfl_usage_shift import SHIFT_POSITIONS, UsageShiftPlayer
 from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
 from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
@@ -2847,6 +2848,9 @@ async def get_replay_rows(
     by_player_game = {(row["player_id"], row["game_id"]): row for row in outcomes.mappings()}
     team_game_totals = await get_team_game_position_totals(db, season, week)
     league = league_averages(team_game_totals)
+    shift_players = (
+        await get_usage_shift_players(db, season, week) if SHIFT_POSITIONS & markets_by_position.keys() else {}
+    )
     replay = []
     for row in rows:
         outcome = by_player_game.get((row["player_id"], row["game_id"]))
@@ -2857,11 +2861,84 @@ async def get_replay_rows(
             "game_lines": _closing_game_lines(outcome["spread_line"], outcome["total_line"]),
             "game_weather": {"roof": outcome["roof"], "wind": outcome["wind"]},
         }
+        team_position = shift_players.get((row.get("player_team_id"), row["position"]))
         replay.append(ReplayRow(
             row=row, actual=float(outcome[column]),
             home_market_prob=market_home_probability(outcome["home_moneyline"], outcome["away_moneyline"]),
+            usage_shift_players=tuple(team_position) if team_position is not None else None,
         ))
     return replay
+
+
+# Volume reads only this season's REG weeks before :week, so it never reaches
+# below PROJECTION_FIRST_HISTORY_SEASON. "Played" means a weekly stat row, so a
+# player who took the field and recorded nothing reads as not fresh.
+_USAGE_SHIFT_SQL = f"""
+    WITH {_INJURY_REPORTS_CTE},
+    week_chart AS (
+        SELECT player_id, team_id, position, depth_rank
+        FROM nfl_player_depth_charts
+        WHERE season = :season AND week = :week AND position IN ('RB', 'WR', 'TE')
+    ),
+    week_out AS (
+        SELECT i.player_id, i.team_id, p.position
+        FROM injury_reports i
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
+        WHERE i.season = :season AND i.week = :week AND i.report_status = 'Out'
+          AND p.position IN ('RB', 'WR', 'TE')
+    ),
+    players AS (
+        SELECT player_id, team_id, position, depth_rank FROM week_chart
+        UNION ALL
+        SELECT o.player_id, o.team_id, o.position, NULL FROM week_out o
+        WHERE NOT EXISTS (SELECT 1 FROM week_chart c WHERE c.player_id = o.player_id)
+    ),
+    volume AS (
+        SELECT s.player_id, COUNT(*) AS games,
+               AVG(s.rushing_attempts)::double precision AS carries,
+               AVG(s.targets)::double precision AS targets
+        FROM nfl_player_weekly_stats s
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+        WHERE g.season = :season AND g.week < :week AND g.game_type = 'REG'
+        GROUP BY s.player_id
+    ),
+    last_game AS (
+        SELECT DISTINCT ON (team_id) team_id, game_id
+        FROM (
+            SELECT g.home_team_id AS team_id, g.id AS game_id, g.week FROM sport_games g
+            WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG'
+            UNION ALL
+            SELECT g.away_team_id, g.id, g.week FROM sport_games g
+            WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG'
+        ) team_games
+        ORDER BY team_id, week DESC
+    )
+    SELECT pl.player_id, pl.team_id, pl.position, pl.depth_rank,
+           o.player_id IS NOT NULL AS is_out,
+           EXISTS (
+               SELECT 1 FROM nfl_player_weekly_stats s
+               JOIN last_game lg ON lg.game_id = s.game_id AND lg.team_id = pl.team_id
+               WHERE s.player_id = pl.player_id
+           ) AS fresh,
+           COALESCE(v.games, 0) AS games, v.carries, v.targets
+    FROM players pl
+    LEFT JOIN week_out o ON o.player_id = pl.player_id
+    LEFT JOIN volume v ON v.player_id = pl.player_id
+"""
+
+
+async def get_usage_shift_players(
+    db: AsyncSession, season: int, week: int,
+) -> dict[tuple[int, str], list[UsageShiftPlayer]]:
+    """RB/WR/TE this week per team and position, with Out status, freshness and season-to-date volume (70b2)."""
+    rows = await db.execute(text(_USAGE_SHIFT_SQL), {"season": season, "week": week})
+    by_team_position: dict[tuple[int, str], list[UsageShiftPlayer]] = {}
+    for row in rows.mappings():
+        by_team_position.setdefault((row["team_id"], row["position"]), []).append(UsageShiftPlayer(
+            player_id=row["player_id"], depth_rank=row["depth_rank"], out=row["is_out"], fresh=row["fresh"],
+            carries_per_game=row["carries"], targets_per_game=row["targets"], games=row["games"],
+        ))
+    return by_team_position
 
 
 

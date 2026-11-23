@@ -145,6 +145,10 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   `snapshot_at` is the game date at 00:00 UTC, not an observed time)
 - NFL depth and Out coverage (70b1): `python -m app.backtest.nfl_depth_coverage
   [--seasons 2024,2025]` (read-only counts; reads no projection or result)
+- NFL usage-shift counts (70b2): `python -m app.backtest.nfl_usage_shift_counts
+  --transfer T --min-own-volume M --max-multiplier X` (2024 only, refuses any
+  other season; counts rows a parameter set would shift, prints no error or
+  result; slow, about 10+ minutes for 18 replay weeks)
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025] [--days-back 3] [--dry-run]`
 - NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--dry-run]`
 - NBA props: `python -m app.ingest.prizepicks_nba [--dry-run] [--relink]`

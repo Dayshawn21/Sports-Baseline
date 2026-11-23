@@ -1,9 +1,10 @@
 
 import pytest
 
-from app.backtest.nfl_projections import ARMS, report
+from app.backtest.nfl_projections import ARMS, replay_cases, report
 from app.core.nfl_game_environment import NflEnvironmentSlopes, apply_game_environment
-from app.core.nfl_projection_backtest import ReplayCase
+from app.core.nfl_projection_backtest import ReplayCase, ReplayRow
+from app.core.nfl_usage_shift import UsageShiftPlayer
 from app.nfl.markets import NflPropMarket
 from app.services.nfl.slate import _slate_line
 from tests.helpers.nfl_projection_harness import _averages, _replay_row
@@ -264,3 +265,13 @@ def test_wind_arm_leaves_anytime_td_alone() -> None:
     row = _passing_row(market="anytime_touchdown")
 
     assert ARMS["wind"](row, 2025) == ARMS["production"](row, 2025)
+
+
+@pytest.mark.parametrize("arm", sorted(ARMS))
+def test_usage_shift_players_on_a_replay_row_change_no_existing_arm(arm: str) -> None:
+    players = (UsageShiftPlayer(1, 1, True, True, 12.0, 6.0, 8), UsageShiftPlayer(3, 2, False, True, 4.0, 3.0, 8))
+    rows = [_replay_row(), _rushing_row()]
+    plain = [ReplayRow(row=row, actual=50.0, home_market_prob=0.55) for row in rows]
+    carried = [ReplayRow(row=row, actual=50.0, home_market_prob=0.55, usage_shift_players=players) for row in rows]
+
+    assert replay_cases(carried, arm, 2025, 10) == replay_cases(plain, arm, 2025, 10)

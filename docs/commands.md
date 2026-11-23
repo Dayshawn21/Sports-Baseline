@@ -69,6 +69,16 @@ per command; read this file before running, scheduling or changing one.
   with a QB1/RB1/WR1/TE1, Out players with a chart row that week, and Out
   starters with a charted rank-2 teammate (the cases a usage shift can act on).
   Reads no projection or result, so it spends no holdout.
+- NFL usage-shift counts (70b2): `python -m app.backtest.nfl_usage_shift_counts
+  --transfer T --min-own-volume M --max-multiplier X`. Loads 2024's replay rows
+  (the development season) and prints, per shifted market (rushing yards and
+  attempts, receiving yards, receptions): RB/WR/TE rows, rows a usage shift
+  would change, the multiplier's median and range, and receivers left at 1.0
+  for too little own volume; then how many Out players gave volume and how
+  many were missed (`not_fresh`, `no_chart_row`). All three parameters are
+  required, with no defaults: 70b3 pre-registers the values. It prints no
+  projection, error or actual value, and refuses any `--season` but 2024, since
+  2025 is the holdout. Slow: it replays 18 weeks through the slate query.
 - NFL ranking snapshots: `python -m app.ingest.nfl_ranking_snapshot
   [--season 2026] [--dry-run]` (stores all three `/nfl/model/ranking` versions
   in `report_snapshots` as `nfl_model_ranking_<version>`; run by the Tuesday

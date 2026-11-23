@@ -19,6 +19,7 @@ from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_elo import NflEloGame, NflTeamEloRow
 from app.core.nfl_line_grading import settle_line
 from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
+from app.core.nfl_usage_shift import UsageShiftPlayer
 from app.core.nfl_game_line_clv import ClvGame, OddsCandidate
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_lines import NflGameLineGame
@@ -1164,9 +1165,12 @@ def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(mon
     async def fake_slate_line_rows(db: object, season: int, week: int, lines_cte: str, params: dict[str, object]) -> list[dict]:
         captured.update(season=season, week=week, lines_cte=" ".join(lines_cte.split()), params=params)
         return [
-            {"player_id": 9, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5},
-            {"player_id": 9, "game_id": 3, "market": "receiving_yards", "position": "WR", "opponent_team_id": 5},
-            {"player_id": 4, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5},  # no stat row: dropped
+            {"player_id": 9, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 6},
+            {"player_id": 9, "game_id": 3, "market": "receiving_yards", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 7},
+            {"player_id": 4, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 6},  # no stat row: dropped
         ]
 
     wr_game = NflTeamGameTotals(
@@ -1179,8 +1183,15 @@ def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(mon
         assert (season, week) == (2025, 10)
         return {(5, "WR"): [wr_game]}
 
+    receivers = [UsageShiftPlayer(9, 1, False, True, 0.0, 6.0, 8)]
+
+    async def fake_usage_shift_players(db: object, season: int, week: int) -> dict:
+        assert (season, week) == (2025, 10)
+        return {(6, "WR"): receivers}
+
     monkeypatch.setattr(nfl_repository, "_slate_line_rows", fake_slate_line_rows)
     monkeypatch.setattr(nfl_repository, "get_team_game_position_totals", fake_team_game_totals)
+    monkeypatch.setattr(nfl_repository, "get_usage_shift_players", fake_usage_shift_players)
     stats = dict.fromkeys(
         ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts",
          "receiving_yards", "receptions", "touchdowns", "prizepicks_fantasy_points"),
@@ -1213,6 +1224,9 @@ def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(mon
     assert replay[0].row["team_game_league_averages"] == opponent
     assert replay[0].row["game_lines"] == {"home_spread_margin": 3.0, "total": 44.5}
     assert "g.spread_line::double precision, g.total_line::double precision, g.roof, g.wind" in outcome_sql
+    # Each row carries its own team-position's usage-shift players, or None when the team has none.
+    assert replay[0].usage_shift_players == tuple(receivers)
+    assert replay[1].usage_shift_players is None
     assert replay[0].row["game_weather"] == {"roof": "outdoors", "wind": 18}
 
 
