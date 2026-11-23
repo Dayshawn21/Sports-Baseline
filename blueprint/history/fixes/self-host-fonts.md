@@ -2,7 +2,7 @@
 
 **Type:** Fix
 **Branch:** `fix/self-host-fonts` (worktree `.claude/worktrees/sharp-elbakyan-f84efc`, cut from `master` at `060d8199`)
-**Status:** completed 2026-11-23 (step 3, the post-deploy Lighthouse runs, recorded after the push)
+**Status:** completed 2026-11-23
 
 ## The problem
 
@@ -63,10 +63,25 @@ tokens, any component CSS, what any page looks like.
   `fonts.googleapis.com` or `fonts.gstatic.com` request, the home, NFL and
   tennis pages look the same as `master` (side-by-side screenshots), and
   computed `font-family` resolves to the self-hosted faces.
-- [ ] **Step 3 - Measure after deploy (no code).** Open at `/complete`
-  (2026-11-23): it needs the deploy, so the runs are recorded after the push. Four Lighthouse 13.6 mobile
+- [x] **Step 3 - Measure after deploy (no code).** Four Lighthouse 13.6 mobile
   runs against the 01:54 medians (score 63.5, FCP 2.66 s, LCP 4.64 s). *Done
-  when:* recorded here.
+  when:* recorded here. Done 2026-11-23, four runs at about 02:16 UTC after
+  `bc0d45a7` deployed (live `index.html` preloads `/fonts/dmsans...`, no Google link):
+
+  | Median of 4 | Before (01:54) | After |
+  |---|---|---|
+  | Score | 63.5 (62-75) | 80 (79-81) |
+  | FCP | 2.66 s | 2.11 s |
+  | LCP | 4.64 s | 3.81 s |
+  | TBT | 0.38 s | 0.26 s |
+  | Speed Index | 2.66 s | 2.11 s |
+  | CLS | 0.09 | 0.03 |
+  | Google Fonts requests | 6 | 0 |
+  | Render-blocking estimate | 860-960 ms | none flagged |
+
+  `/fonts/*` is served with `Cache-Control: public, max-age=0, s-maxage=300`, so
+  browsers revalidate each visit; a long cache header would need the Render
+  dashboard. LCP is still the tennis card link in all four runs.
 
 ## Verify
 
