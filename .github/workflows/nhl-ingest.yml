@@ -55,3 +55,10 @@ jobs:
             cat ranking_check_report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The same grading, stored for the hosted demo's model page: a live build
+      # took 8.3 s on the API's one CPU (2026-11-22). Needs migration 0045.
+      - name: Store the model page's ranking check
+        run: |
+          cd api
+          python -m app.ingest.nhl_ranking_snapshot

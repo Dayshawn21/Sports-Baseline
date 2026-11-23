@@ -198,6 +198,10 @@ per command; read this file before running, scheduling or changing one.
   skipped). It runs as a step of `nhl-prop-lines.yml` after the snapshot and
   talks to the database directly, never the hosted API. Playoff games have no
   week and are not frozen.
+- NHL ranking snapshot: `python -m app.ingest.nhl_ranking_snapshot
+  [--season N] [--dry-run]` (stores `/nhl/model/ranking` as
+  `nhl_model_ranking`; no `--season` means the season the page shows by
+  default; run by the daily `nhl-ingest.yml` after its ranking check)
 - NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2]
   [--min-requests-remaining 20] [--dry-run]` (DraftKings and FanDuel full-game
   moneyline with OT/SO, +/-1.5 puck line and total, per-book de-vigged, stored

@@ -6,13 +6,15 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.core.production_settings import is_production
 from app.db.pool import get_db
 from app.schemas.nhl import (
     NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlModelRankingResponse, NhlPlayerPropsResponse,
     NhlProjectionHistoryResponse, NhlPropBoardResponse, NhlSlateResponse,
 )
 from app.season_query import optional_model_season
-from app.services.nhl import track_record
+from app.services.nhl import ranking_snapshot, track_record
 from app.services.nhl.game_detail import build_game_detail
 from app.services.nhl.line_only_props import build_line_only_props
 from app.services.nhl.player_props import build_player_props
@@ -83,7 +85,7 @@ async def get_model_ranking(
         season = await track_record.nhl_season(db, dt.datetime.now(dt.UTC))
     if season is None:
         raise HTTPException(status_code=404, detail="No NHL regular-season games are loaded")
-    record = await track_record.get_ranking_record(db, season)
-    if record is None:
+    response = await ranking_snapshot.get_ranking_response(db, season, is_production(settings.api_env))
+    if response is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
-    return NhlModelRankingResponse.model_validate(record)
+    return response

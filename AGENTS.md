@@ -233,6 +233,9 @@ Things that are easy to get wrong:
   - `/nba/model/ranking`: `python -m app.ingest.nba_ranking_snapshot`, run
     by `nba-ingest.yml`. The live builds of these two rankings overlapped and
     crashed the API on 2026-11-08.
+  - `/nhl/model/ranking`: `python -m app.ingest.nhl_ranking_snapshot`, run
+    by `nhl-ingest.yml`. Its live build took 8.3 s cold and 14 s beside the
+    home page's other builds on 2026-11-22.
 
   Keep any new heavy report off the request path the same way. In dev a
   stored copy also wins over a live build.
