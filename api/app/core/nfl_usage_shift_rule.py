@@ -23,7 +23,7 @@ USAGE_SHIFT_TRANSFER_GRID = (0.5, 1.0)
 # by design.
 USAGE_SHIFT_MIN_SHIFTED_CASES = 60
 # Set once the rule above is committed (70b3 Step 5).
-USAGE_SHIFT_PREREGISTRATION_COMMIT: str | None = None
+USAGE_SHIFT_PREREGISTRATION_COMMIT: str | None = "a0941c328d1f14651a88842cbd1db8af0c1a878d"
 # Each market's 2024 pick under `pick_transfer` (70b3 Step 6); empty until then.
 # A market at 0, or missing, is not a holdout candidate.
 USAGE_SHIFT_TRANSFER_BY_MARKET: dict[str, float] = {}

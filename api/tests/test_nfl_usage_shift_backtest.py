@@ -27,7 +27,7 @@ def test_development_report_tables_shifted_mae_and_the_pick() -> None:
     # Production misses by 10, t 0.5 by 5, t 1 by 2: pick 1.
     assert receptions.split() == ["receptions", "1", "10.000", "5.000", "2.000", "1"]
     assert "no shifted rows; pick 0" in next(line for line in text.splitlines() if "rushing_yards" in line)
-    assert "not yet committed" in text
+    assert "Rule pre-registered in commit a0941c328d1f14651a88842cbd1db8af0c1a878d." in text
 
 
 def test_holdout_report_gives_a_verdict_only_for_candidates() -> None:

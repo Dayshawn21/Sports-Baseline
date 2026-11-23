@@ -131,7 +131,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   rows with no closing moneyline; no projection, error or actual. If receiving
   falls under the minimum a season, stop and revisit the minimum with you before
   anything is committed. *Done when:* the counts are under Results.
-- [ ] **Step 5 - Pre-registration commit (yes in chat).** Commit Steps 1-4 on
+- [x] **Step 5 - Pre-registration commit (yes in chat).** Commit Steps 1-4 on
   the branch before any scored run; record the hash as
   `USAGE_SHIFT_PREREGISTRATION_COMMIT` (a follow-up commit) and print it.
   *Done when:* the commit exists and its diff contains both fixed constants,
@@ -257,3 +257,12 @@ Every 2024 replay row has a closing moneyline.
 shifted cases, leaving room for 2025 to run a little under 2024's 76. The 1%
 and 2 SE requirements are unchanged, so only a large gain passes. Rushing stays
 unadoptable (15 a season).
+
+### Step 5 - pre-registration commit
+
+Pre-registered in commit `a0941c328d1f14651a88842cbd1db8af0c1a878d`
+(2026-11-22), after Verify passed (web typecheck, tests and build; 6,652 API
+tests). Its diff holds both fixed values, the grid, the selection rule and the
+holdout rule with the 60-case minimum. A follow-up commit sets
+`USAGE_SHIFT_PREREGISTRATION_COMMIT` and the report header prints it. No
+usage-shift arm has been scored on any season.
