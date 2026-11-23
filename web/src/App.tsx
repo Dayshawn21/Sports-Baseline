@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType, type CSSProperties } from 'react'
 import { ConfigProvider, Layout, Drawer, Button } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
 import { HashRouter, Link, Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
@@ -24,9 +24,18 @@ import TableSkeleton from '~/components/shared/TableSkeleton'
 import { routeLoadingShape } from '~/utils/routeLoading'
 import NotFoundPage from '~/pages/NotFoundPage'
 
-/** `main.tsx` starts this on the home route alongside its data, so the chunk never waits for React. */
-export const loadHomePage = () => import('~/pages/HomePage')
+const loadHomePage = () => import('~/pages/HomePage')
 const HomePage = lazy(loadHomePage)
+let LoadedHomePage: ComponentType | null = null
+
+/**
+ * `main.tsx` awaits this before the first render on the home route, so `/` renders the page itself instead of
+ * suspending on `lazy`. A suspended first render commits `RouteFallback`, and React then holds the page back
+ * until 300 ms after that commit: about 820 ms in production with code and data ready by 700 ms (2026-11-23).
+ */
+export async function preloadHomePage(): Promise<void> {
+  LoadedHomePage = (await loadHomePage()).default
+}
 const ParlaysPage = lazy(() => import('~/pages/ParlaysPage'))
 const HowItWorksPage = lazy(() => import('~/pages/HowItWorksPage'))
 const ToolsPage = lazy(() => import('~/pages/ToolsPage'))
@@ -256,7 +265,7 @@ function AppRoutes() {
   const location = useViewTransitionLocation()
   return (
     <Routes location={location}>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={LoadedHomePage ? <LoadedHomePage /> : <HomePage />} />
       {SPORT_ROUTES.map(({ path, element }) => <Route key={path} path={path} element={element} />)}
       <Route path="/nfl/prospects" element={<Navigate to="/nfl" replace />} />
       <Route path="/props" element={<Navigate to="/" replace />} />
