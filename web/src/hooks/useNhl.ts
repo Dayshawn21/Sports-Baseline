@@ -1,20 +1,13 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlProjectionHistory, fetchNhlPropBoard, fetchNhlSlate } from '~/api/nhl'
+import { fetchNhlGame, fetchNhlLineOnlyProps, fetchNhlPlayerProps, fetchNhlProjectionHistory, fetchNhlPropBoard } from '~/api/nhl'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { modelRankingQuery } from '~/hooks/modelRankingQuery'
 import { SLATE_STALE_MS } from '~/hooks/queryTimes'
+import { nhlSlateQuery } from '~/hooks/homeQueries'
 import { validNhlGameId, validNhlPlayerId } from '~/utils/nhlGame'
 import { parseSlateDate } from '~/utils/slateDates'
 
-/** A null date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
-export function nhlSlateQuery(date: string | null, enabled = true) {
-  const requested = parseSlateDate(date)
-  return queryOptions({
-    queryKey: ['nhl', 'slate', requested],
-    queryFn: enabled ? () => fetchNhlSlate(requested) : skipToken,
-    staleTime: SLATE_STALE_MS,
-  })
-}
+export { nhlSlateQuery }
 
 export function nhlGameQuery(gameId: number | null) {
   const id = validNhlGameId(gameId) ? gameId : null

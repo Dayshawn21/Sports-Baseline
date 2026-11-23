@@ -1,7 +1,10 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNflCurrentWeek, fetchNflGame, fetchNflGameContext, fetchNflGameNotes, fetchNflHomeSlate, fetchNflLineOnlyProps, fetchNflOtherMarkets, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
+import { fetchNflGame, fetchNflGameContext, fetchNflGameNotes, fetchNflHomeSlate, fetchNflLineOnlyProps, fetchNflOtherMarkets, fetchNflPlayer, fetchNflSlate, fetchNflWeekLineOnlyProps } from '~/api/nfl'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { SLATE_STALE_MS } from '~/hooks/queryTimes'
+import { nflCurrentWeekQuery } from '~/hooks/homeQueries'
+
+export { nflCurrentWeekQuery }
 
 export function nflSlateQuery(season: number | null, week: number | null) {
   return queryOptions({
@@ -24,14 +27,6 @@ export function nflGameNotesQuery(season: number | null, week: number | null) {
     queryKey: ['nfl', 'game-notes', season, week],
     queryFn: season === null || week === null ? skipToken : () => fetchNflGameNotes(season, week),
     staleTime: SLATE_STALE_MS,
-  })
-}
-
-export function nflCurrentWeekQuery() {
-  return queryOptions({
-    queryKey: ['nfl', 'current-week'],
-    queryFn: fetchNflCurrentWeek,
-    staleTime: 60 * 60 * 1000,
   })
 }
 

@@ -1,9 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { fetchPredictionsToday } from '~/api/tennis'
-import { nbaSlateQuery } from '~/hooks/useNba'
-import { nflCurrentWeekQuery } from '~/hooks/useNfl'
-import { nhlSlateQuery } from '~/hooks/useNhl'
-import { tennisSlateQuery } from '~/hooks/useTennisSlate'
+import { nbaSlateQuery, nflCurrentWeekQuery, nhlSlateQuery, tennisSlateQuery } from '~/hooks/homeQueries'
 import { defaultSlateDates } from '~/utils/tennisDates'
 
 /**

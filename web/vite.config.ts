@@ -1,11 +1,23 @@
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { apiPreconnectTag } from './src/utils/apiPreconnect'
 
 const API_TARGET = process.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
-export default defineConfig({
-  plugins: [react()],
+/** Opens the API connection with the page; see `apiPreconnectTag`. */
+function apiPreconnect(apiBaseUrl: string | undefined): Plugin {
+  return {
+    name: 'lineform-api-preconnect',
+    transformIndexHtml() {
+      const tag = apiPreconnectTag(apiBaseUrl)
+      return tag ? [{ tag: 'link', attrs: { rel: 'preconnect', href: tag.href, crossorigin: '' }, injectTo: 'head-prepend' }] : []
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), apiPreconnect(loadEnv(mode, process.cwd(), 'VITE_').VITE_API_BASE_URL)],
   resolve: {
     alias: { '~': path.resolve(__dirname, 'src') },
   },
@@ -29,4 +41,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

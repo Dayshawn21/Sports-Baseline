@@ -1,19 +1,12 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query'
-import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaPlayerProps, fetchNbaPropBoard, fetchNbaProps, fetchNbaSlate, fetchNbaSlateGaps } from '~/api/nba'
+import { fetchNbaGame, fetchNbaLineOnlyProps, fetchNbaPlayerProps, fetchNbaPropBoard, fetchNbaProps, fetchNbaSlateGaps } from '~/api/nba'
 import { retryUnlessNotFound } from '~/utils/httpError'
 import { modelRankingQuery } from '~/hooks/modelRankingQuery'
 import { SLATE_STALE_MS } from '~/hooks/queryTimes'
+import { nbaSlateQuery } from '~/hooks/homeQueries'
 import { parseSlateDate } from '~/utils/slateDates'
 
-/** A null or impossible date asks the API for its default slate; `enabled: false` waits, e.g. until a game page knows its date. */
-export function nbaSlateQuery(date: string | null, enabled = true) {
-  const requested = parseSlateDate(date)
-  return queryOptions({
-    queryKey: ['nba', 'slate', requested],
-    queryFn: enabled ? () => fetchNbaSlate(requested) : skipToken,
-    staleTime: SLATE_STALE_MS,
-  })
-}
+export { nbaSlateQuery }
 
 export function nbaPropBoardQuery(date: string | null) {
   const requested = parseSlateDate(date)
