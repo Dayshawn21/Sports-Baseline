@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import type { SlateCommandRowInput, SlateCommandScope } from '~/types/slateCommand'
 import {
-  commandGameContext,
   firstSlateCommandPath,
   initialSlateCommandState,
   matchingSlateCommandRows,
   matchingSlateCommandTargets,
-  nbaSlateCommandRows,
-  nhlSlateCommandRows,
-  nflSlateCommandRows,
   normalizeSlateCommand,
   slateCommandPlaceholder,
   slateCommandReducer,
+} from '~/utils/slateCommand'
+import {
+  commandGameContext,
+  nbaSlateCommandRows,
+  nhlSlateCommandRows,
+  nflSlateCommandRows,
   slateCommandRow,
   tennisSlateCommandRows,
-} from '~/utils/slateCommand'
+} from '~/utils/slateCommandRows'
 
 function row(input: Partial<SlateCommandRowInput> = {}) {
   return slateCommandRow({

@@ -16,7 +16,7 @@ import { gameStartLabel, gameState } from '~/utils/gameState'
 import { isNotFound } from '~/utils/httpError'
 import { parseGameId } from '~/utils/nbaGame'
 import { nbaSlateCard } from '~/utils/nbaSlate'
-import { nbaSlateCommandRows } from '~/utils/slateCommand'
+import { nbaSlateCommandRows } from '~/utils/slateCommandRows'
 import type { NbaGameDetail } from '~/types/nba'
 import './nba-game.css'
 

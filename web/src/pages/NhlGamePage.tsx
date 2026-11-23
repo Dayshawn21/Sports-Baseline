@@ -14,7 +14,7 @@ import { useNhlGame, useNhlSlate } from '~/hooks/useNhl'
 import { gameStartLabel, gameState, withEndPeriod } from '~/utils/gameState'
 import { isNotFound } from '~/utils/httpError'
 import { parseNhlGameId } from '~/utils/nhlGame'
-import { nhlSlateCommandRows } from '~/utils/slateCommand'
+import { nhlSlateCommandRows } from '~/utils/slateCommandRows'
 import './nhl-game.css'
 
 export default function NhlGamePage() {
