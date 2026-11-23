@@ -2,7 +2,7 @@
 
 **Type:** Fix
 **Branch:** `fix/home-memo` (worktree `.claude/worktrees/sharp-elbakyan-f84efc`, cut from `master` at `6e56f213`)
-**Status:** completed 2026-11-23 (step 3, the post-deploy Lighthouse runs, recorded after the push)
+**Status:** completed 2026-11-23
 
 ## The problem
 
@@ -69,9 +69,25 @@ keys or options.
   falling from 48 and 548 to roughly one per section per data change, with the
   page looking and linking the same (screenshot and a click on a card link and
   a gap tab).
-- [ ] **Step 3 - Measure after deploy (no code).** Open at `/complete`
-  (2026-11-23): it needs the deploy. Four Lighthouse 13.6 mobile
+- [x] **Step 3 - Measure after deploy (no code).** Four Lighthouse 13.6 mobile
   runs against the 02:30 medians (score 81, TBT 0.27 s). Little change expected.
+  Done 2026-11-23. Eight production runs after `13684411` deployed scored 63-83
+  (median 74.5, LCP 4.01 s, TBT 0.32 s) against four at 81 before, too spread to
+  call. A local A/B settled it: production builds of `6e56f213` (A) and
+  `13684411` (B) served by `vite preview` against one warm dev API, 12 runs in
+  A B B A order:
+
+  | Median of 6 | A (before) | B (memo) |
+  |---|---|---|
+  | Score | 66.5 (59-76) | 67 (63-73) |
+  | FCP | 2.25 s | 2.23 s |
+  | LCP | 6.38 s | 6.34 s |
+  | TBT | 377 ms (275-608) | 346 ms (319-458) |
+  | Script evaluation | 1,073 ms | 993 ms |
+
+  No regression; B does about 7% less script evaluation and its TBT varies
+  less, so the production dip was server and timing noise. Local absolutes are
+  lower because the dev API builds slates live; only the A-B difference counts.
 
 ## Verify
 
