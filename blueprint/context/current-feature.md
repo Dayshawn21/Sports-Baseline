@@ -136,7 +136,7 @@ Never accept a step you haven't read. If a diff is too big to review, the step w
   `USAGE_SHIFT_PREREGISTRATION_COMMIT` (a follow-up commit) and print it.
   *Done when:* the commit exists and its diff contains both fixed constants,
   the grid, the selection rule and the holdout rule.
-- [ ] **Step 6 - Development run and the committed pick (yes in chat).** Run
+- [x] **Step 6 - Development run and the committed pick (yes in chat).** Run
   `python -m app.backtest.nfl_usage_shift` on 2024 (slow, about 15+ minutes,
   foreground with keep-awake); paste the output under Results; apply the
   selection rule; set `USAGE_SHIFT_TRANSFER_BY_MARKET` and register the
@@ -266,3 +266,43 @@ tests). Its diff holds both fixed values, the grid, the selection rule and the
 holdout rule with the 60-case minimum. A follow-up commit sets
 `USAGE_SHIFT_PREREGISTRATION_COMMIT` and the report header prints it. No
 usage-shift arm has been scored on any season.
+
+### Step 6 - development run and the committed pick
+
+`python -m app.backtest.nfl_usage_shift`, 2026-11-22, 2024 only, under commit
+`a0941c32`; no 2025 row read:
+
+```
+Transfer pick per market (MAE on shifted rows)
+  market                   n       t 0     t 0.5       t 1    pick
+  rushing_yards           15    15.645    15.844    26.349       0
+  rushing_attempts        15     4.135     3.014     4.887     0.5
+  receiving_yards         76    26.098    25.424    26.133     0.5
+  receptions              76     1.939     1.844     1.882     0.5
+```
+
+- **Pick (the pre-registered rule):** 0.5 in rushing attempts, receiving yards
+  and receptions; 0 in rushing yards, which is not a holdout candidate. Now
+  `USAGE_SHIFT_TRANSFER_BY_MARKET`, and the `usage_shift` arm exists.
+- **Read:** half the Out starter's volume beat both none and all of it in three
+  markets; a full transfer overshoots everywhere, worst in rushing yards (MAE
+  15.6 to 26.3 on 15 rows). The receiving gains on 2024 are 2.6% (yards) and
+  4.9% (receptions) on 76 rows, picked on the same rows, so they are not
+  evidence by themselves; the holdout decides.
+- **Expected holdout outcome for rushing attempts:** about 15 shifted rows a
+  season, so it reads `insufficient` under the 60-case minimum by design.
+
+**Holdout incident, 2026-11-22.** Once the pick made `usage_shift` exist,
+`test_cli_refuses_the_holdout_without_a_committed_pick` stopped being refused:
+`main()` passed the guard and ran the real 2025 holdout scoring inside the API
+test suite (the suite took 58 minutes instead of 3). pytest captured the
+report and the command kept only the last two lines (`tail -2`), so the
+verdicts were never displayed, written to a file or read by anyone; only the
+summary `1 failed, 6652 passed` was seen. The picks above were set before that
+run and are unaffected. Fix: the test pins an empty pick, and an autouse
+fixture in `tests/test_nfl_usage_shift_backtest.py` replaces `_main` and
+`_count`, so no CLI test can reach the database again (12 tests pass in 3 s).
+Whether this counts as the one holdout read is the owner's call.
+**Decision 2026-11-22 (owner): treat the 2025 holdout as unread**, since no
+verdict was seen; the one deliberate holdout run is still Step 7, with its own
+yes.

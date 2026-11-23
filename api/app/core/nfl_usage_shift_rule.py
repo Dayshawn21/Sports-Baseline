@@ -26,7 +26,12 @@ USAGE_SHIFT_MIN_SHIFTED_CASES = 60
 USAGE_SHIFT_PREREGISTRATION_COMMIT: str | None = "a0941c328d1f14651a88842cbd1db8af0c1a878d"
 # Each market's 2024 pick under `pick_transfer` (70b3 Step 6); empty until then.
 # A market at 0, or missing, is not a holdout candidate.
-USAGE_SHIFT_TRANSFER_BY_MARKET: dict[str, float] = {}
+USAGE_SHIFT_TRANSFER_BY_MARKET: dict[str, float] = {
+    "rushing_yards": 0.0,
+    "rushing_attempts": 0.5,
+    "receiving_yards": 0.5,
+    "receptions": 0.5,
+}
 
 
 def usage_shift_arm_name(transfer: float) -> str:

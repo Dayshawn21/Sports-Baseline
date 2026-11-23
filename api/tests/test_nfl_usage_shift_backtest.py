@@ -55,7 +55,17 @@ def test_season_guard(season: int, holdout: bool, picks: dict, allowed: bool) ->
     assert (season_error(season, holdout, picks) is None) == allowed
 
 
+@pytest.fixture(autouse=True)
+def _no_database_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A CLI test must never score a season: a guard that wrongly lets a run through fails here instead.
+    def refuse(*args: object) -> None:
+        raise AssertionError("a CLI test reached a scored or counted run")
+    monkeypatch.setattr(nfl_usage_shift, "_main", refuse)
+    monkeypatch.setattr(nfl_usage_shift, "_count", refuse)
+
+
 def test_cli_refuses_the_holdout_without_a_committed_pick(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(nfl_usage_shift, "USAGE_SHIFT_TRANSFER_BY_MARKET", {})
     monkeypatch.setattr(sys, "argv", ["nfl_usage_shift", "--season", "2025", "--holdout"])
 
     with pytest.raises(SystemExit):
