@@ -2,7 +2,7 @@
 
 **Type:** Fix
 **Branch:** `fix/home-prefetch` (worktree `.claude/worktrees/sharp-elbakyan-f84efc`, cut from `master` at `dbb69de5`)
-**Status:** completed 2026-11-23 (step 3, the post-deploy Lighthouse runs, reported after the push)
+**Status:** completed 2026-11-23
 
 ## The problem
 
@@ -68,10 +68,24 @@ Prefetch failures stay silent; the hooks surface errors as today.
   requests start before or alongside the `HomePage` chunk (Network timings),
   each sent once, and other routes send none at startup; entry bundle size
   change noted.
-- [ ] **Step 3 - Measure after deploy (no code).** Open at `/complete`
-  (2026-11-23): it needs the deploy, so the runs are reported after the push. Four or more Lighthouse
+- [x] **Step 3 - Measure after deploy (no code).** Four or more Lighthouse
   13.6 mobile runs; compare medians with the 2026-11-23 01:21 runs (median
   score 46, LCP 5.03 s). *Done when:* the medians are recorded in the archive.
+  Done 2026-11-23, four runs at 01:54-01:58 UTC after `5e4ea206` deployed:
+
+  | Median of 4 | Before (01:21) | After |
+  |---|---|---|
+  | Score | 46 (34-55) | 63.5 (62-75) |
+  | FCP | 3.04 s | 2.66 s |
+  | LCP | 5.03 s | 4.64 s |
+  | TBT | 1.06 s | 0.38 s |
+  | CLS | 0.16 | 0.09 |
+  | Tennis today request start (observed) | 1,267 ms | 652 ms |
+  | LCP element render delay | 1,309 ms | 837 ms |
+
+  The TBT drop is larger than an earlier request explains and was not
+  investigated (one before-run carried a 2.4 s unattributed task). LCP, still
+  the tennis card link in 3 of 4 runs, is the weakest metric at 4.4-5.4 s.
 
 ## Verify
 
