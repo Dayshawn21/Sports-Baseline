@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./fonts.css";
 
 /* Ported from prototypes/theme.css (build-plan 31a). Green is a signal color:
    only a positive, validated signal gets --positive; red is only for negatives. */
