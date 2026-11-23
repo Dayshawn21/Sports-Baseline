@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import TeamLogo from '~/components/shared/TeamLogo'
 import type { HomeCard, HomeNextSegment } from '~/utils/home'
@@ -19,7 +20,7 @@ function Segment({ sport, segment }: { sport: HomeCard['sport'], segment: HomeNe
 }
 
 /** One sport. The title link covers the card (so the whole card opens the slate) and each view link sits above it. */
-export function HomeSportCard({ card, onRetry }: { card: HomeCard, onRetry: () => void }) {
+export const HomeSportCard = memo(function HomeSportCard({ card, onRetry }: { card: HomeCard, onRetry: () => void }) {
   const slate = card.links[0]
   return <article className={`home-card is-${card.tone}`}>
     <div className="home-card__name">
@@ -36,4 +37,4 @@ export function HomeSportCard({ card, onRetry }: { card: HomeCard, onRetry: () =
       {card.tone === 'error' && <button type="button" onClick={onRetry}>Retry</button>}
     </div>
   </article>
-}
+})

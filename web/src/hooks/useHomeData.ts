@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useModelPredictions } from '~/hooks/useModelTrackRecord'
 import { useNbaModelRanking, useNbaSlate, useNbaSlateGaps } from '~/hooks/useNba'
 import { useNflCurrentWeek, useNflHomeSlate } from '~/hooks/useNfl'
@@ -89,27 +90,62 @@ export function useHomeData(): HomeView {
     [tennis.data, tennisProps.data, tennisProps.isError, now],
   )
 
-  const nflStatus: HomeStatus = week.isError ? 'error' : week.isPending ? 'loading' : statusOf(nflSlate)
-  const tennisStatus: HomeStatus = tennis.isError && !tennis.data ? 'error' : tennis.isLoading ? 'loading' : 'ready'
-  const sports = [
-    homeSport('nfl', nflStatus, nfl, () => { void week.refetch(); void nflSlate.refetch() }),
-    homeSport('nba', statusOf(nba), nbaSourceValue, () => void nba.refetch()),
-    homeSport('nhl', statusOf(nhl), nhlSourceValue, () => void nhl.refetch()),
-    homeSport('tennis', tennisStatus, tennisSourceValue, () => tennis.refetch()),
-  ]
+  // Each query landing re-renders this hook; every value below changes only with its own inputs, so the
+  // memoized home sections skip the renders their data did not cause (548 Link renders on 2026-11-23).
+  const queryClient = useQueryClient()
+  const { refetch: refetchWeek } = week
+  const { refetch: refetchNfl } = nflSlate
+  const { refetch: refetchNba } = nba
+  const { refetch: refetchNhl } = nhl
+  const retryNfl = useCallback(() => { void refetchWeek(); void refetchNfl() }, [refetchWeek, refetchNfl])
+  const retryNba = useCallback(() => void refetchNba(), [refetchNba])
+  const retryNhl = useCallback(() => void refetchNhl(), [refetchNhl])
+  // useTennisToday builds its refetch per render; these are the queries it would refetch.
+  const retryTennis = useCallback(
+    () => void queryClient.refetchQueries({ queryKey: ['tennis', 'today'], type: 'active' }),
+    [queryClient],
+  )
 
-  const data = sports.map(sport => sport.data)
+  const nflStatus: HomeStatus = week.isError ? 'error' : week.isPending ? 'loading' : statusOf(nflSlate)
+  const nbaStatus = statusOf(nba)
+  const nhlStatus = statusOf(nhl)
+  const tennisStatus: HomeStatus = tennis.isError && !tennis.data ? 'error' : tennis.isLoading ? 'loading' : 'ready'
+  const nflSport = useMemo(() => homeSport('nfl', nflStatus, nfl, retryNfl), [nflStatus, nfl, retryNfl])
+  const nbaSport = useMemo(() => homeSport('nba', nbaStatus, nbaSourceValue, retryNba), [nbaStatus, nbaSourceValue, retryNba])
+  const nhlSport = useMemo(() => homeSport('nhl', nhlStatus, nhlSourceValue, retryNhl), [nhlStatus, nhlSourceValue, retryNhl])
+  const tennisSport = useMemo(
+    () => homeSport('tennis', tennisStatus, tennisSourceValue, retryTennis),
+    [tennisStatus, tennisSourceValue, retryTennis],
+  )
+  const sports = useMemo(() => [nflSport, nbaSport, nhlSport, tennisSport], [nflSport, nbaSport, nhlSport, tennisSport])
+
+  const nflCard = useHomeCard(nflSport, now)
+  const nbaCard = useHomeCard(nbaSport, now)
+  const nhlCard = useHomeCard(nhlSport, now)
+  const tennisCard = useHomeCard(tennisSport, now)
+  const cards = useMemo(() => [nflCard, nbaCard, nhlCard, tennisCard], [nflCard, nbaCard, nhlCard, tennisCard])
+
+  const tennisModelStatus = statusOf(tennisModel)
+  const nflRankingStatus: HomeStatus = week.isError || nflRanking.isError ? 'error' : 'loading'
+  const nbaRankingStatus = statusOf(nbaRanking)
+  const nhlRankingStatus = statusOf(nhlRanking)
+  const records = useMemo(() => [
+    tennisRecord(tennisModel.data, tennisModelStatus),
+    rankingRecord('nfl', nflRanking.data, nflRankingStatus),
+    rankingRecord('nba', nbaRanking.data, nbaRankingStatus),
+    rankingRecord('nhl', nhlRanking.data, nhlRankingStatus),
+  ], [tennisModel.data, tennisModelStatus, nflRanking.data, nflRankingStatus, nbaRanking.data, nbaRankingStatus, nhlRanking.data, nhlRankingStatus])
+
   return {
     now,
     sports,
-    cards: sports.map(sport => ({ ...homeCard(sport.data, sport.source, now), retry: sport.retry })),
+    cards,
     refreshedAt: newestUpdate([nflSlate.dataUpdatedAt, nba.dataUpdatedAt, nhl.dataUpdatedAt, tennis.dataUpdatedAt]),
-    records: [
-      tennisRecord(tennisModel.data, statusOf(tennisModel)),
-      rankingRecord('nfl', nflRanking.data, week.isError || nflRanking.isError ? 'error' : 'loading'),
-      rankingRecord('nba', nbaRanking.data, statusOf(nbaRanking)),
-      rankingRecord('nhl', nhlRanking.data, statusOf(nhlRanking)),
-    ],
-    failed: data.every(entry => entry.status === 'error'),
+    records,
+    failed: sports.every(sport => sport.data.status === 'error'),
   }
+}
+
+function useHomeCard(sport: HomeSport, now: number): HomeCard & { retry: () => void } {
+  return useMemo(() => ({ ...homeCard(sport.data, sport.source, now), retry: sport.retry }), [sport, now])
 }

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import type { GapKind, GapTabKey, GapsBody, GapsFooter, HomeGapTab } from '~/utils/home'
 import type { HomeGap, HomeMoneyline, HomeNextGame } from '~/utils/homeSources'
@@ -102,7 +103,7 @@ function Body({ body, selected }: { body: GapsBody, selected: GapTabKey }) {
 }
 
 /** Gray reference rows, each sport in its own order; the player link covers its row. */
-export function HomeGaps({ tabs, selected, kind, tabHref, kindHref, body }: Props) {
+export const HomeGaps = memo(function HomeGaps({ tabs, selected, kind, tabHref, kindHref, body }: Props) {
   return <div className="home-panel home-gaps">
     <nav className="home-gaps__kinds" aria-label="Choose props or moneyline">
       {KINDS.map(entry => <Link key={entry.key} to={kindHref(entry.key)} replace aria-current={entry.key === kind ? 'true' : undefined}>{entry.label}</Link>)}
@@ -115,4 +116,4 @@ export function HomeGaps({ tabs, selected, kind, tabHref, kindHref, body }: Prop
       Gray means unvalidated reference. A row turns green only where that sport&apos;s own rule has validated the signal. Rows open the player or game page.
     </p>
   </div>
-}
+})

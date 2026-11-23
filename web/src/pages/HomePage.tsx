@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { HomeGaps } from '~/components/home/HomeGaps'
 import { HomeRecords } from '~/components/home/HomeRecords'
@@ -12,17 +13,22 @@ function Heading({ title, note }: { title: string, note: string }) {
   return <h2 className="home-section-title">{title} <small>{note}</small></h2>
 }
 
+function homeHref(tab: GapTabKey, view: GapKind): string {
+  const query = new URLSearchParams()
+  if (tab !== 'all') query.set('gaps', tab)
+  if (view === 'ml') query.set('kind', view)
+  return query.size === 0 ? '/' : `/?${query}`
+}
+
 export default function HomePage() {
   const home = useHomeData()
   const [params] = useSearchParams()
   const selected = parseGapTab(params.get('gaps'))
   const kind = parseGapKind(params.get('kind'))
-  const homeHref = (tab: GapTabKey, view: GapKind) => {
-    const query = new URLSearchParams()
-    if (tab !== 'all') query.set('gaps', tab)
-    if (view === 'ml') query.set('kind', view)
-    return query.size === 0 ? '/' : `/?${query}`
-  }
+  const tabs = useMemo(() => gapTabs(home.sports, home.now), [home.sports, home.now])
+  const body = useMemo(() => gapsBody(selected, home.sports, kind), [selected, home.sports, kind])
+  const tabHref = useCallback((key: GapTabKey) => homeHref(key, kind), [kind])
+  const kindHref = useCallback((view: GapKind) => homeHref(selected, view), [selected])
 
   if (home.failed) return <ErrorState error={new Error('No sport could be loaded.')} onRetry={() => home.sports.forEach(sport => sport.retry())} />
   return <div className="page-shell"><div className="page-container is-wide">
@@ -32,8 +38,7 @@ export default function HomePage() {
       {home.cards.map(card => <HomeSportCard key={card.sport} card={card} onRetry={card.retry} />)}
     </div>
     <Heading title="Largest gaps across sports" note="reference only, not picks" />
-    <HomeGaps tabs={gapTabs(home.sports, home.now)} selected={selected} kind={kind} tabHref={key => homeHref(key, kind)} kindHref={view => homeHref(selected, view)}
-      body={gapsBody(selected, home.sports, kind)} />
+    <HomeGaps tabs={tabs} selected={selected} kind={kind} tabHref={tabHref} kindHref={kindHref} body={body} />
     <Heading title="Model records" note="published track records, per sport" />
     <HomeRecords records={home.records} />
   </div></div>
