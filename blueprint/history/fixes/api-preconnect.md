@@ -99,6 +99,38 @@ dev proxy. The Render `VITE_API_BASE_URL` value is already set (the API origin).
 - Verify: `npm --prefix web run verify && cd api && python -m pytest`.
 - After deploy (outside this fix): eight production Lighthouse runs.
 
+## Post-deploy Lighthouse (2026-11-23)
+
+Production after `38e8d8cb` deployed (the live `index.html` starts its head with
+`<link rel="preconnect" href="https://sportapp-api-ftsf.onrender.com" crossorigin="">`).
+Lighthouse 13.6 mobile, eight runs:
+
+| Run | Score | FCP | LCP (sim.) | TBT | LCP (obs.) | Tennis request |
+|---|---|---|---|---|---|---|
+| 1 | 55 | 2.38 s | 5.68 s | 708 ms | 3.91 s | 906-3873 ms (cold API cache) |
+| 2 | 83 | 2.06 s | 3.65 s | 248 ms | 856 ms | 482-560 ms |
+| 3 | 74 | 2.07 s | 4.67 s | 312 ms | 843 ms | 486-565 ms |
+| 4 | 62 | 2.41 s | 4.01 s | 1033 ms | 1.21 s | 851-930 ms |
+| 5 | 74 | 2.08 s | 4.67 s | 318 ms | 923 ms | 515-591 ms |
+| 6 | 80 | 2.10 s | 3.82 s | 322 ms | 921 ms | 452-532 ms |
+| 7 | 71 | 2.14 s | 4.61 s | 424 ms | 881 ms | 458-536 ms |
+| 8 | 72 | 2.15 s | 4.61 s | 395 ms | 843 ms | 476-569 ms |
+| **Median** | **73** | **2.12 s** | **4.61 s** | **358 ms** | **901 ms** | **484-567 ms (79 ms)** |
+
+Against run 25 (before, one run: score 83, LCP 3.82 s, observed 895 ms, tennis
+request 475-829 ms):
+
+- **The preconnect works.** Lighthouse lists the API origin under "Preconnected
+  origins", and the first tennis request takes 79 ms (median) instead of 354 ms,
+  so its data arrives about 260 ms sooner.
+- **LCP did not move.** Observed LCP stays at about 900 ms: about 330 ms passes
+  between the tennis data arriving and the card's paint, so the page is now
+  waiting on rendering, not on data.
+- **The prefetch still starts at about 480 ms,** as before, matching the local
+  A/B finding that the first render, not the chunk graph, gates it.
+- Scores ran 62-83 outside the cold run 1, and run 25 was a single good run, so
+  the lower median is not read as a regression.
+
 ## Out of scope
 
 - The API's own response time, HTTP caching, `dns-prefetch` fallbacks, other
