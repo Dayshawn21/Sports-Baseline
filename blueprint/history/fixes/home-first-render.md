@@ -90,6 +90,37 @@ beyond a few hundred bytes (no static import of `HomePage`).
 - After deploy (outside this fix): eight production Lighthouse runs, compared
   with the preconnect's eight (median score 73, LCP 4.61 s, observed 901 ms).
 
+## Post-deploy Lighthouse (2026-11-23)
+
+Production after `6e65ba59` deployed (the live entry `index-CrpYte7K.js` ends
+with the new boot: `preloadHomePage().catch(...).finally(render)`). Lighthouse
+13.6 mobile, eight runs. "Home mounts" is the start of the home page's first
+own query, `/tennis/props/prizepicks`.
+
+| Run | Score | FCP | LCP (sim.) | TBT | LCP (obs.) | Home mounts |
+|---|---|---|---|---|---|---|
+| 1 | 54 | 2.59 s | 5.44 s | 742 ms | 2.75 s | 1254 ms (cold API cache) |
+| 2 | 84 | 2.04 s | 3.75 s | 209 ms | 663 ms | 496 ms |
+| 3 | 83 | 2.03 s | 3.66 s | 142 ms | 562 ms | 470 ms |
+| 4 | 86 | 2.04 s | 3.74 s | 151 ms | 636 ms | 509 ms |
+| 5 | 83 | 2.11 s | 3.63 s | 273 ms | 645 ms | 522 ms |
+| 6 | 83 | 2.10 s | 3.72 s | 240 ms | 680 ms | 539 ms |
+| 7 | 79 | 2.14 s | 3.65 s | 356 ms | 706 ms | 562 ms |
+| 8 | 85 | 2.07 s | 3.67 s | 185 ms | 590 ms | 471 ms |
+| **Median** | **83** | **2.08 s** | **3.70 s** | **224 ms** | **654 ms** | **515 ms** |
+
+Against the preconnect's eight (`api-preconnect.md`: median score 73, FCP
+2.12 s, LCP 4.61 s, TBT 358 ms, observed LCP 901 ms, home mounting at about
+730-830 ms):
+
+- **Score 73 to 83, simulated LCP 4.61 to 3.70 s, observed LCP 901 to 654 ms.**
+  The home page mounts about 250 ms sooner; React's 300 ms reveal hold is gone.
+- **Steadier:** outside the cold run 1, scores ran 79-86, against 62-83.
+- **No FCP cost in production** (2.08 s against 2.12 s), unlike the local A/B's
+  0.46 s.
+- What remains of the simulated LCP is mostly loading and running the entry JS
+  and the shell's first render under mobile throttling.
+
 ## Testing
 
 No new pure logic: the change is boot order and one component choice, which the
