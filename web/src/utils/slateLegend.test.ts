@@ -42,6 +42,12 @@ describe('SLATE_LEGENDS', () => {
     const text = legendText(SLATE_LEGENDS.nhl).join(' ')
     for (const book of ['DraftKings', 'FanDuel', 'bet365']) expect(text.split(book)).toHaveLength(2)
   })
+
+  it('never says NHL serves no projection, since nhl-reference-v1 is served gray', () => {
+    const text = [...legendText(SLATE_LEGENDS.nhl), ...Object.values(SPORT_STATUS.nhl)].join(' ')
+    expect(text).not.toMatch(/no projection/i)
+    expect(SLATE_LEGENDS.nhl.pick).toContain('Gaps are reference only and stay gray until a forward check on later games passes for that kind of prop.')
+  })
 })
 
 describe('tennisLegend', () => {

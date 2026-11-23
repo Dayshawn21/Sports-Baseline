@@ -57,7 +57,7 @@ const LEGEND = [
   {
     tone: 'is-neutral',
     name: 'Gray',
-    meaning: 'Everything else. Gray means reference, not a recommendation. NFL and NBA numbers are always gray until a check passes.',
+    meaning: 'Everything else. Gray means reference, not a recommendation. NFL, NBA and NHL numbers are always gray until a check passes.',
   },
 ] as const
 
@@ -88,7 +88,7 @@ export default function HowItWorksPage() {
     <Section title="How data flows">
       <div className="nfl-model-card hiw-card">
         <ol className="hiw-flow">
-          <li>Scheduled jobs (GitHub Actions) collect schedules, box scores, sportsbook odds and prop lines for tennis, the NFL and the NBA.</li>
+          <li>Scheduled jobs (GitHub Actions) collect schedules, box scores, sportsbook odds and prop lines for tennis, the NFL, the NBA and the NHL.</li>
           <li>Each provider's names are matched to the same players, teams and games.</li>
           <li>Models produce win probabilities and stat projections. Sportsbook odds are de-vigged (the book's margin removed) into a fair market probability.</li>
           <li>Predictions are stored before each event starts, then graded against the result once it ends.</li>

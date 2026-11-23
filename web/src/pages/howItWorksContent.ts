@@ -31,9 +31,9 @@ export const SPORT_STATUS: Record<SportCode, SportStatus> = {
     status: 'The forward ranking check is accruing from the 2026-27 season.',
   },
   nhl: {
-    model: 'None.',
+    model: 'A reference prop projection from each player\'s recent games, with an over probability for Shots on Goal, Time On Ice, Goals Allowed and Faceoffs Won.',
     picks: 'None.',
-    reference: 'Stored full-game book prices, per-book market win probability, line movement and PrizePicks line-only props. ESPN injuries and Expected/Confirmed starting goalies appear when stored pre-game reports are available.',
-    status: 'Goalie and injury reports retain their fetch times and may miss late changes. Empty injury reports do not establish player availability. No projections or pick recommendations are served.',
+    reference: 'Projections, gaps to the line and those over probabilities, beside stored full-game book prices, per-book market win probability and line movement. A goalie line shows a projection only for an Expected or Confirmed starter.',
+    status: 'Projections are frozen before puck drop and graded by a forward ranking check that is still accruing, so every gap stays gray. Goalie and injury reports are ESPN snapshots that may miss late changes, and an empty injury report does not establish availability.',
   },
 }

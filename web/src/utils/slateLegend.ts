@@ -44,9 +44,10 @@ export const SLATE_LEGENDS: Record<Sport, SlateLegendContent> = {
       { label: 'Scores', text: 'after games' },
     ],
     pick: [
-      'No NHL picks or projections.',
+      'No NHL picks.',
       'Prices are stored book prices: DraftKings, else the latest of FanDuel and bet365.',
-      'Win probability removes each book\'s margin (de-vig), and props show the line only, with no projection.',
+      'Win probability removes each book\'s margin (de-vig).',
+      FORWARD_CHECK_GAPS,
       'Goalies and injuries are ESPN reports, which may miss late changes.',
     ],
   },
