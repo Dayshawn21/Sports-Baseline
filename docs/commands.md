@@ -79,6 +79,16 @@ per command; read this file before running, scheduling or changing one.
   required, with no defaults: 70b3 pre-registers the values. It prints no
   projection, error or actual value, and refuses any `--season` but 2024, since
   2025 is the holdout. Slow: it replays 18 weeks through the slate query.
+- NFL usage-shift backtest (70b3): `python -m app.backtest.nfl_usage_shift`
+  scores production against `usage_shift_t05` and `usage_shift_t10` on 2024
+  shifted rows only and prints each market's MAE at transfer 0, 0.5 and 1 with
+  the pre-registered pick (rule in `a0941c32`: `min_own_volume` 2, cap 3,
+  holdout minimum 60 shifted cases). `--count-only` prints rated and shifted
+  rows per market with no projection, error or actual. `--season 2025
+  --holdout` scored the committed pick once on 2026-11-22: rushing attempts,
+  receiving yards and receptions all `insufficient` (13, 49 and 49 cases), with
+  receiving MAE 17-22% worse. That read is spent; do not run it again. Every
+  other season is refused. Slow: about 15 minutes per run.
 - NFL ranking snapshots: `python -m app.ingest.nfl_ranking_snapshot
   [--season 2026] [--dry-run]` (stores all three `/nfl/model/ranking` versions
   in `report_snapshots` as `nfl_model_ranking_<version>`; run by the Tuesday

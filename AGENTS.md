@@ -149,6 +149,11 @@ one:** it holds quotas, schedules, dry-run behavior and verification limits.
   --transfer T --min-own-volume M --max-multiplier X` (2024 only, refuses any
   other season; counts rows a parameter set would shift, prints no error or
   result; slow, about 10+ minutes for 18 replay weeks)
+- NFL usage-shift backtest (70b3): `python -m app.backtest.nfl_usage_shift
+  [--count-only]` (2024 development pick; rule pre-registered in `a0941c32`,
+  pick in `43198da1`). The one 2025 holdout read (`--season 2025 --holdout`)
+  is spent: every market read `insufficient` and receiving got worse, so 70c
+  and 70d are not built; never rerun the holdout
 - NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025] [--days-back 3] [--dry-run]`
 - NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--dry-run]`
 - NBA props: `python -m app.ingest.prizepicks_nba [--dry-run] [--relink]`

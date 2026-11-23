@@ -23,6 +23,11 @@ from app.core.nfl_projection_backtest import (
     MIN_PAIRED_CASES, MIN_RELATIVE_MAE_IMPROVEMENT, STANDARD_ERRORS_REQUIRED, ReplayCase, ReplayRow,
     adoption_verdict, market_metrics, paired,
 )
+from app.core.nfl_usage_shift import SHIFT_MARKETS, apply_usage_shift, usage_shifts
+from app.core.nfl_usage_shift_rule import (
+    USAGE_SHIFT_MAX_MULTIPLIER, USAGE_SHIFT_MIN_OWN_VOLUME, USAGE_SHIFT_TRANSFER_BY_MARKET, USAGE_SHIFT_TRANSFER_GRID,
+    usage_shift_arm_name,
+)
 from app.core.nfl_fantasy import apply_prizepicks_fantasy
 from app.core.nfl_game_environment import apply_game_environment
 from app.core.nfl_season_blend import apply_season_blend, blended_row
@@ -60,6 +65,38 @@ ARMS: dict[str, Callable[[dict, int], dict]] = {
     "wind": lambda row, season: apply_wind(_production(row, season), WIND_MARKETS),
 }
 
+ReplayArm = Callable[[ReplayRow, int], dict]
+
+
+def usage_shift_arm(transfer_by_market: Mapping[str, float]) -> ReplayArm:
+    """70b3: production, then the row's market average scaled by a fresh Out teammate's handed-over volume."""
+    def arm(replay: ReplayRow, season: int) -> dict:
+        row = _production(replay.row, season)
+        transfer = transfer_by_market.get(row["market"], 0.0)
+        if not replay.usage_shift_players or transfer == 0:
+            return row
+        shifts = usage_shifts(replay.usage_shift_players, transfer, USAGE_SHIFT_MIN_OWN_VOLUME, USAGE_SHIFT_MAX_MULTIPLIER)
+        return apply_usage_shift(row, shifts.get(row["player_id"]))
+    return arm
+
+
+USAGE_SHIFT_ARM = "usage_shift"
+
+# Arms that read the whole replay row, not only its slate row. Scored by
+# `app.backtest.nfl_usage_shift`, never by this module's CLI. The committed
+# `usage_shift` arm exists only once a market has picked a transfer above 0.
+REPLAY_ARMS: dict[str, ReplayArm] = {
+    usage_shift_arm_name(transfer): usage_shift_arm(dict.fromkeys(SHIFT_MARKETS, transfer))
+    for transfer in USAGE_SHIFT_TRANSFER_GRID
+}
+if any(transfer > 0 for transfer in USAGE_SHIFT_TRANSFER_BY_MARKET.values()):
+    REPLAY_ARMS[USAGE_SHIFT_ARM] = usage_shift_arm(USAGE_SHIFT_TRANSFER_BY_MARKET)
+
+
+def _is_shifted(row: dict) -> bool:
+    return row.get("usage_shift", {}).get("multiplier", 1.0) != 1.0
+
+
 RULE_TEXT = (
     f"Adopt a market only with >= {MIN_PAIRED_CASES} paired cases, MAE at least "
     f"{MIN_RELATIVE_MAE_IMPROVEMENT:.0%} lower than production, and a paired mean |error| difference "
@@ -67,17 +104,26 @@ RULE_TEXT = (
 )
 
 
+def _replay_transform(arm: str) -> ReplayArm:
+    if arm in REPLAY_ARMS:
+        return REPLAY_ARMS[arm]
+    row_transform = ARMS[arm]
+    return lambda replay, season: row_transform(replay.row, season)
+
+
 def replay_cases(rows: Iterable[ReplayRow], arm: str, season: int, week: int) -> list[ReplayCase]:
-    transform = ARMS[arm]
+    transform = _replay_transform(arm)
     cases = []
     for replay in rows:
-        line = _slate_line(transform(replay.row, season), season, replay.home_market_prob)
+        transformed = transform(replay, season)
+        line = _slate_line(transformed, season, replay.home_market_prob)
         rated = edge_is_comparable(NflPropMarket(line.market), line.games_in_sample, line.segment, line.odds_type)
         if line.projection is None or not rated:
             continue
         cases.append(ReplayCase(
             player_id=line.player_id, game_id=replay.row["game_id"], week=week, position=line.position,
             market=line.market, projection=line.projection, actual=replay.actual,
+            shifted=_is_shifted(transformed),
         ))
     return cases
 

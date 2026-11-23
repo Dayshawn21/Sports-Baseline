@@ -90,6 +90,7 @@ SHIFT_POSITIONS = frozenset({"RB", "WR", "TE"})
 # fantasy and anytime TD are never shifted.
 _CARRY_MARKETS = {NflPropMarket.RUSHING_YARDS: "rushing_yards", NflPropMarket.RUSHING_ATTEMPTS: "rushing_attempts"}
 _TARGET_MARKETS = {NflPropMarket.RECEIVING_YARDS: "receiving_yards", NflPropMarket.RECEPTIONS: "receptions"}
+SHIFT_MARKETS: tuple[NflPropMarket, ...] = (*_CARRY_MARKETS, *_TARGET_MARKETS)
 
 
 def apply_usage_shift(row: dict, shift: UsageShift | None) -> dict:

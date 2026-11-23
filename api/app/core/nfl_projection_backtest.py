@@ -42,6 +42,8 @@ class ReplayCase:
     market: str
     projection: float
     actual: float
+    # True when a 70b3 usage-shift arm moved this row's average.
+    shifted: bool = False
 
     @property
     def key(self) -> tuple[int, int, str]:

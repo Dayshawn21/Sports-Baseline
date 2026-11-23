@@ -1,7 +1,7 @@
 
 import pytest
 
-from app.backtest.nfl_projections import ARMS, replay_cases, report
+from app.backtest.nfl_projections import ARMS, REPLAY_ARMS, replay_cases, report
 from app.core.nfl_game_environment import NflEnvironmentSlopes, apply_game_environment
 from app.core.nfl_projection_backtest import ReplayCase, ReplayRow
 from app.core.nfl_usage_shift import UsageShiftPlayer
@@ -275,3 +275,43 @@ def test_usage_shift_players_on_a_replay_row_change_no_existing_arm(arm: str) ->
     carried = [ReplayRow(row=row, actual=50.0, home_market_prob=0.55, usage_shift_players=players) for row in rows]
 
     assert replay_cases(carried, arm, 2025, 10) == replay_cases(plain, arm, 2025, 10)
+
+
+def _usage_shift_replay(players: tuple[UsageShiftPlayer, ...] | None) -> ReplayRow:
+    # Player 3 is RB2 on 4 carries a game; RB1 (player 1, 12 a game) is freshly Out.
+    return ReplayRow(row=_rushing_row(), actual=20.0, home_market_prob=0.55, usage_shift_players=players)
+
+
+_FRESH_OUT_RB1 = (UsageShiftPlayer(1, 1, True, True, 12.0, 3.0, 8), UsageShiftPlayer(3, 2, False, True, 4.0, 3.0, 8))
+
+
+@pytest.mark.parametrize("arm", sorted(REPLAY_ARMS))
+def test_usage_shift_arm_without_a_shift_is_production(arm: str) -> None:
+    rows = [_usage_shift_replay(None), _usage_shift_replay(()), _usage_shift_replay((_FRESH_OUT_RB1[1],))]
+
+    shifted = replay_cases(rows, arm, 2025, 10)
+
+    assert shifted == replay_cases(rows, "production", 2025, 10)
+    assert not any(case.shifted for case in shifted)
+
+
+def test_usage_shift_arm_scales_the_receiver_and_flags_the_case() -> None:
+    rows = [_usage_shift_replay(_FRESH_OUT_RB1)]
+
+    production = replay_cases(rows, "production", 2025, 10)
+    half, full = (replay_cases(rows, arm, 2025, 10) for arm in ("usage_shift_t05", "usage_shift_t10"))
+
+    assert not production[0].shifted
+    assert half[0].shifted and full[0].shifted
+    # 4 own + 6 or 12 gained carries: x2.5, then x4 capped at 3.
+    assert half[0].projection == pytest.approx(production[0].projection * 2.5, rel=0.02)
+    assert full[0].projection == pytest.approx(production[0].projection * 3.0, rel=0.02)
+
+
+def test_usage_shift_arm_below_min_own_volume_is_unshifted() -> None:
+    players = (_FRESH_OUT_RB1[0], UsageShiftPlayer(3, 2, False, True, 1.5, 3.0, 8))
+
+    cases = replay_cases([_usage_shift_replay(players)], "usage_shift_t10", 2025, 10)
+
+    assert cases == replay_cases([_usage_shift_replay(players)], "production", 2025, 10)
+    assert not cases[0].shifted
