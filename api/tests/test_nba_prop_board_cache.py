@@ -130,7 +130,7 @@ class TestCachedPropBoard:
         assert builds == []
 
 
-def test_cached_bytes_match_what_the_response_model_sent():
+def test_cached_bytes_are_the_response_model_without_line_repeats():
     board = prop_board_response(
         DATE, PREVIOUS, NEXT, [_game(20, "completed"), _game(10, "postponed", None)],
         {20: [_line(1, "Amy", "assists", 4.5), _line(2, "Zed", "points", 20.5)]},
@@ -149,6 +149,10 @@ def test_cached_bytes_match_what_the_response_model_sent():
     client = TestClient(app)
     expected, served = client.get("/model"), client.get("/bytes")
 
+    model = expected.json()
+    for game in model["games"]:
+        for line in [*game["lines"], *game["lineOnlyLines"]]:
+            del line["recent"], line["injury"]
     assert served.headers["content-type"] == "application/json"
-    assert served.content == expected.content
+    assert served.json() == model
     assert any(line["pOver"] is not None for line in served.json()["games"][0]["lines"])

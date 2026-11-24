@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import App, { preloadHomePage } from './App'
+import { boardPrefetchTarget } from '~/utils/boardRoute'
 import { isHomeRoute } from '~/utils/homeRoute'
 import './index.css'
 
@@ -34,5 +35,7 @@ if (isHomeRoute(window.location.hash)) {
   // A failed load still renders: the route's `lazy` fallback then retries and shows its error.
   preloadHomePage().catch(() => {}).finally(render)
 } else {
+  const board = boardPrefetchTarget(window.location.hash)
+  if (board !== null) void import('~/hooks/boardPrefetch').then(({ prefetchBoard }) => prefetchBoard(queryClient, board))
   render()
 }

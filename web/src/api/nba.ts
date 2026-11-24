@@ -1,5 +1,9 @@
 import client from './client'
-import type { NbaGameDetail, NbaLineOnlyProps, NbaPlayerProps, NbaPropBoardResponse, NbaProps, NbaSlateGapsResponse, NbaSlateResponse } from '~/types/nba'
+import type {
+  NbaGameDetail, NbaLineOnlyProps, NbaPlayerProps, NbaPropBoardResponse, NbaPropBoardWireResponse, NbaProps,
+  NbaSlateGapsResponse, NbaSlateResponse,
+} from '~/types/nba'
+import { nbaExpandPropBoard } from '~/utils/nbaPropBoardWire'
 import type { PropRankingRecord } from '~/types/propRanking'
 
 /** A null date lets the API choose: today, else the next date with games. */
@@ -36,8 +40,8 @@ export async function fetchNbaPlayerProps(playerId: number, date: string | null)
 }
 
 export async function fetchNbaPropBoard(date: string | null): Promise<NbaPropBoardResponse> {
-  const { data } = await client.get<NbaPropBoardResponse>('/nba/props', { params: date === null ? {} : { date } })
-  return data
+  const { data } = await client.get<NbaPropBoardWireResponse>('/nba/props', { params: date === null ? {} : { date } })
+  return nbaExpandPropBoard(data)
 }
 
 /** The current NBA season's ranking check; the API picks the season and 404s when none is loaded. */

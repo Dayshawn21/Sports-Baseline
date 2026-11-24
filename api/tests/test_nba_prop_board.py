@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import json
 from typing import cast
 from unittest.mock import AsyncMock, Mock, call
 
@@ -10,6 +11,7 @@ from app.repositories import nba as nba_repo
 from app.repositories import nba_injuries as injury_repo
 from app.services.nba.line_only_props import line_only_props
 from app.services.nba.prop_board import build_prop_board, prop_board_response
+from app.services.nba.prop_board_cache import board_json
 from app.services.nba.props import props_response
 from tests.helpers.nba_prop_board import DATE, NEXT, PREVIOUS, _box, _game, _line, _prior
 
@@ -78,10 +80,37 @@ def test_board_serializes_game_and_line_fields_in_camel_case() -> None:
     assert payload["modelVersion"] == "nba-reference-v1"
     game = payload["games"][0]
     assert game.keys() == {"gameId", "awayTeam", "homeTeam", "startUtc", "status", "lines", "lineOnlyLines",
-                           "injuryReport", "teamStats"}
+                           "injuryReport", "teamStats", "playerRecent"}
     assert game["startUtc"] == "2026-10-20T15:00:00Z"
     assert {"playerId", "playerName", "fetchedAt", "gamesInSample", "pOver"} <= game["lines"][0].keys()
     assert {"playerId", "playerName", "fetchedAt", "recent"} <= game["lineOnlyLines"][0].keys()
+
+
+def test_board_body_sends_recent_games_once_per_player() -> None:
+    lines = {10: [_line(1, "Amy", "points", 18.5), _line(1, "Amy", "points", 25.5, "demon"),
+                  _line(1, "Amy", "assists", 4.5), _line(2, "Zed", "points", 20.5)]}
+    line_only = {10: [_line(1, "Amy", "double_double", 0.5), _line(3, "Bea", "double_double", 0.5)]}
+    recent = [_box(1, 20), _box(1, 31), _box(2, None)]
+    board = prop_board_response(DATE, None, None, [_game(10)], lines, line_only, {1: _prior()}, recent)
+
+    body = json.loads(board_json(board))
+    full = board.model_dump(mode="json", by_alias=True)["games"][0]
+
+    game = body["games"][0]
+    assert all("recent" not in line and "injury" not in line for line in [*game["lines"], *game["lineOnlyLines"]])
+    assert [player["playerId"] for player in game["playerRecent"]] == [1, 2, 3]
+    assert game["playerRecent"][0]["games"][0]["values"] == {"points": 20, "assists": 5, "double_double": 1}
+    assert game["playerRecent"][1]["games"] == [{"gameDate": "2026-04-20", "opponent": "BOS", "values": {"points": None}}]
+    assert game["playerRecent"][2]["games"] == []
+    for kind in ("lines", "lineOnlyLines"):
+        assert [_expanded_recent(game, line) for line in game[kind]] == [line["recent"] for line in full[kind]]
+
+
+def _expanded_recent(game: dict[str, object], line: dict[str, object]) -> list[dict[str, object]]:
+    """What `nbaExpandPropBoard` rebuilds on the web for one line."""
+    players = {player["playerId"]: player["games"] for player in cast(list[dict[str, object]], game["playerRecent"])}
+    return [{"gameDate": recent["gameDate"], "opponent": recent["opponent"], "value": recent["values"][line["market"]]}
+            for recent in cast(list[dict[str, object]], players[line["playerId"]])]
 
 
 def _repository(monkeypatch: pytest.MonkeyPatch, **results: object) -> Mock:

@@ -221,6 +221,27 @@ export interface NbaPropBoardGame {
   teamStats: NbaTeamStatsContext | null
 }
 
+/** A player's recent game on the board wire, with a value for each market they have a line in. */
+export interface NbaBoardRecentGame {
+  gameDate: string
+  opponent: string | null
+  values: Record<string, number | null>
+}
+
+/**
+ * A board game as `/nba/props` sends it: each line without `recent` or `injury`, rebuilt from
+ * `playerRecent` and `injuryReport` (F-46). An older API sends full lines and no `playerRecent`.
+ */
+export interface NbaPropBoardWireGame extends Omit<NbaPropBoardGame, 'lines' | 'lineOnlyLines'> {
+  lines: (Omit<NbaPropLine, 'recent' | 'injury'> & Partial<Pick<NbaPropLine, 'recent' | 'injury'>>)[]
+  lineOnlyLines: (Omit<NbaLineOnlyLine, 'recent' | 'injury'> & Partial<Pick<NbaLineOnlyLine, 'recent' | 'injury'>>)[]
+  playerRecent?: { playerId: number, games: NbaBoardRecentGame[] }[]
+}
+
+export interface NbaPropBoardWireResponse extends Omit<NbaPropBoardResponse, 'games'> {
+  games: NbaPropBoardWireGame[]
+}
+
 /** `GET /nba/props`: one Eastern game date, with the game endpoints' line payloads. */
 export interface NbaPropBoardResponse {
   date: string

@@ -360,26 +360,6 @@ version and forward validation.
 **Suggested fix:** serve the stale body while one background rebuild runs (stale-while-revalidate) in `SerialBuildCache`, so only a process's very first request waits. A longer TTL is a cheaper partial fix, since lines ingest on a schedule rather than continuously.
 **Resolution:** Fixed on `fix/prop-board-cache` (2026-11-13): `SerialBuildCache` gained an opt-in `max_stale_seconds`. Both board caches serve an expired body for up to 30 minutes while one background rebuild runs on its own session. A process's first build, and any after 30 idle minutes, still runs inline. Unit-tested; not yet re-reviewed or measured on production.
 
-### F-45 [P2] open - The board request waits for the lazy page chunk before it starts
-
-**File:** web/src/routes/sportPages.tsx:19; web/src/routes/sportPages.tsx:23; web/src/pages/NbaPropBoardPage.tsx:25
-**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
-**Why it matters:**
-- The query starts only when the lazily imported page mounts. On a direct load (desktop, headless Chromium) the NBA chunk set (54 files) finished at 230-400 ms but `/nba/props` started at 455-580 ms; NHL started at 420-580 ms. The API answers in about 100 ms, so the chunk wait is the larger share.
-- Phones pay this on slower parse and network.
-**Suggested fix:** start the board query beside the chunk import, for example a `prefetchQuery(nbaPropBoardQuery(date))` fired from the route or the nav link (NHL already exposes `nhlPropBoardQuery`; NBA needs the same `queryOptions` factory).
-**Resolution:**
-
-### F-46 [P2] open - The NBA board ships 3 MB of JSON and costs a 200-260 ms main-thread task to show one market
-
-**File:** api/app/services/nba/prop_board.py:40; web/src/pages/NbaPropBoardPage.tsx:26
-**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
-**Why it matters:**
-- The 2026-11-13 body is 3.0 MB raw (124 KB gzipped) for 4,432 lines, though one market (about 95 rows) renders. Each line repeats its player's `injury` object (about 360 B, roughly 1.6 MB of the body) across every market.
-- After the response lands, a 207-259 ms long task runs on a fast desktop: grouping and filtering every market, React render, about 75 ms of forced layout (first read is rc-select's `scrollWidth` in `BoardFilterBar`) and 30-45 ms of GC. A mid-range phone runs several times slower. The NHL board (190 KB raw) costs 60-80 ms and is fine.
-**Suggested fix:** send injuries once per player (or per game, as `injuryReport` already is) and join them on the client, as `nhlJoinProjections` does for NHL projections. That roughly halves the body, parse and GC. Per-market fetching is the larger option if the task stays heavy on phones.
-**Resolution:**
-
 ### F-47 [P3] open - The NBA slate digest waits for the board, then re-renders the page
 
 **File:** web/src/pages/NbaPropBoardPage.tsx:37
@@ -514,4 +494,20 @@ version and forward validation.
 **Found:** 2026-11-15 by /audit (scope: full; lens: quality)
 **Why it matters:** repositories import ingest dataclasses, which forces lazy imports in `hoopr_nba`, `nflverse` and `nhl_api` to avoid cycles. `matches.py` runs the win/loss streak loop in Python twice. `get_db` is typed `-> AsyncSession` but is a generator. The shared PrizePicks pipeline imports private functions from the tennis module, and the three team CLIs are copies. `security.py` says the app runs on localhost. The `prizepicks_nfl` docstring names API-Sports as the source. `nfl_weather`, `nfl_team_elo`, `nba_prop_predictions`, `nfl_odds_io` and `nfl_prop_odds` are scheduled but missing from `docs/commands.md`.
 **Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
+**Resolution:**
+
+### F-76 [P3] open - The documented NBA board contract still says each line carries `recent` and `injury`
+
+**File:** api/app/routers/nba.py:45; blueprint/context/project-overview.md:328-340
+**Found:** 2026-11-24 by /audit (scope: current; lens: quality)
+**Why it matters:** `/nba/props` returns `board_json`'s bytes, which omit each line's `recent` and `injury` and add `playerRecent` (F-46), but the route still declares `response_model=NbaPropBoardResponse`, so OpenAPI (`/docs`) lists both fields as required on every line. The project overview's "NBA prop board response" block describes the old shape too. Nothing generates code from either today, so nothing breaks, but the next reader (or an Ask tool) is told the wrong contract.
+**Suggested fix:** point the route's `response_model` at a wire schema (lines without the two fields), or note the omission in the route docstring; refresh the overview block at the next `/overview` run.
+**Resolution:**
+
+### F-77 [P3] unverified - The NBA board's main-thread task after load was not re-profiled
+
+**File:** web/src/utils/nbaPropBoardWire.ts:36; web/src/pages/NbaPropBoardPage.tsx:26
+**Found:** 2026-11-24 by /audit (scope: current; lens: performance)
+**Why it matters:** F-46 measured a 207-259 ms long task after the board lands (parse, grouping every market, render, forced layout, GC). The body is now 44% smaller, which should shrink parse and GC, but `nbaExpandPropBoard` adds a pass that rebuilds 4,208 line objects, and the grouping, render and `BoardFilterBar` layout are unchanged. Without a trace there is no evidence the task got shorter.
+**Suggested fix:** record a Performance trace of a direct production load of `#/nba/props` before and after this branch (same date, desktop and 4x CPU throttle) and compare the long task. If it is still over about 150 ms on desktop, the next lever is F-46's per-market fetching or the `scrollWidth` read.
 **Resolution:**

@@ -288,16 +288,32 @@ class NbaPlayerPropsResponse(_CamelModel):
     teammate_split: NbaTeammateSplitSchema | None = None
 
 
+class NbaBoardRecentGameSchema(_CamelModel):
+    game_date: dt.date
+    opponent: str | None
+    # One entry per market the player has a board line in; NULL as in `NbaLineOnlyRecentSchema`.
+    values: dict[str, float | None]
+
+
+class NbaBoardPlayerRecentSchema(_CamelModel):
+    player_id: int
+    # Newest first, as each line's `recent`.
+    games: list[NbaBoardRecentGameSchema]
+
+
 class NbaPropBoardGameSchema(_CamelModel):
     game_id: int
     away_team: str
     home_team: str
     start_utc: dt.datetime | None
     status: str
+    # The board body omits each line's `recent` and `injury`; the web rebuilds them from
+    # `player_recent` and `injury_report` (F-46).
     lines: list[NbaPropLineSchema]
     line_only_lines: list[NbaLineOnlyLineSchema]
     injury_report: NbaInjuryReportSchema = Field(default_factory=NbaInjuryReportSchema)
     team_stats: NbaTeamStatsContextSchema | None = None
+    player_recent: list[NbaBoardPlayerRecentSchema] = Field(default_factory=list)
 
 
 class NbaPropBoardResponse(_CamelModel):
