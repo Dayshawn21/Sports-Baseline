@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from 'react'
+import { memo, type MouseEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AltLinesChip } from '~/components/shared/AltLinesChip'
 import { MiniBars } from '~/components/shared/MiniBars'
@@ -178,18 +178,24 @@ export function NbaLineOnlyTable({ market, rows, pathFor, injuryReport, startUtc
   </table>
 }
 
+// The board adds rows in batches; memoized rows keep each batch from re-rendering the ones before it.
+const BoardPropRow = memo(PropRow)
+const BoardLineOnlyRow = memo(LineOnlyRow)
+
 type BoardTableProps = {
   market: string
   pathFor: (playerId: number) => string
   linkState?: unknown
   now: Date
+  /** Rows rendered so far; the note column and P(over) note still follow every row, so columns never shift as batches land. */
+  shown: number
 } & (
   { kind: 'modelled', rows: Extract<NbaBoardRow, { kind: 'modelled' }>[] } |
   { kind: 'line-only', rows: Extract<NbaBoardRow, { kind: 'line-only' }>[] }
 )
 
 export function NbaBoardTable(props: BoardTableProps) {
-  const { market, pathFor, linkState, now } = props
+  const { market, pathFor, linkState, now, shown } = props
   const modelled = props.kind === 'modelled'
   const cards = props.kind === 'modelled' ? props.rows.map(item => item.row) : []
   const showNote = cards.some(card => card.flagText)
@@ -200,8 +206,8 @@ export function NbaBoardTable(props: BoardTableProps) {
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) || (!modelled && key === 'line') ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>{props.kind === 'modelled'
-      ? props.rows.map(item => <PropRow key={item.key} card={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} showNote={showNote} />)
-      : props.rows.map(item => <LineOnlyRow key={item.key} row={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
+      ? props.rows.slice(0, shown).map(item => <BoardPropRow key={item.key} card={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} showNote={showNote} />)
+      : props.rows.slice(0, shown).map(item => <BoardLineOnlyRow key={item.key} row={item.row} market={market} game={item.game} now={now} pathFor={pathFor} linkState={linkState} />)
     }</tbody>
   </table></>
 }
