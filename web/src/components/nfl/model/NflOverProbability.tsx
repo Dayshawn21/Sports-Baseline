@@ -1,9 +1,9 @@
 import type { NflModelFit, NflModelPropLines } from '~/types/nfl'
 import { MARKET_LABELS } from '~/utils/nflLabels'
+import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 // Everything in this section is display-only calibration, so nothing here is ever colored.
-const pct = (value: number | null) => (value === null ? '—' : `${(value * 100).toFixed(1)}%`)
-const signed4 = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(4)}`
 
 export function NflOverProbabilityFit({ data }: { data: NflModelFit }) {
   const { rule } = data
@@ -36,8 +36,8 @@ export function NflOverProbabilityFit({ data }: { data: NflModelFit }) {
                   <td>{m.cases.toLocaleString()}</td>
                   <td>{m.ece.toFixed(3)}</td>
                   <td>{m.worstGap === null ? '—' : m.worstGap.toFixed(3)}</td>
-                  <td>{signed4(m.brier - m.normalBrier)}</td>
-                  <td>{pct(m.atProjectionPredicted)} / {pct(m.atProjectionObserved)}</td>
+                  <td>{fmtSigned(m.brier - m.normalBrier, 4)}</td>
+                  <td>{fmtPct(m.atProjectionPredicted)} / {fmtPct(m.atProjectionObserved)}</td>
                 </tr>
               ))}
             </tbody>
@@ -79,8 +79,8 @@ export function NflOverProbabilityForward({ data }: { data: NflModelPropLines })
                   <td className="text">{row.oddsType === 'all' ? 'All' : row.oddsType[0].toUpperCase() + row.oddsType.slice(1)}</td>
                   <td>{row.scored.toLocaleString()}</td>
                   <td>{row.unscored.toLocaleString()}</td>
-                  <td>{pct(row.meanPredicted)}</td>
-                  <td>{pct(row.overRate)}</td>
+                  <td>{fmtPct(row.meanPredicted)}</td>
+                  <td>{fmtPct(row.overRate)}</td>
                   <td>{row.brier === null ? '—' : row.brier.toFixed(4)}</td>
                 </tr>
               ))}
@@ -93,7 +93,7 @@ export function NflOverProbabilityForward({ data }: { data: NflModelPropLines })
             {data.reliability.map((bin) => (
               <div key={bin.meanPredicted} className="nfl-model-rate is-plain">
                 <span>{bin.n.toLocaleString()} lines</span>
-                <b>predicted {pct(bin.meanPredicted)} · went over {pct(bin.observed)}</b>
+                <b>predicted {fmtPct(bin.meanPredicted)} · went over {fmtPct(bin.observed)}</b>
               </div>
             ))}
           </div>

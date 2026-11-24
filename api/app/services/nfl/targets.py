@@ -47,6 +47,7 @@ def _history_sample(
         NflHistoryResultSchema(
             value=observation.targets,
             opponent_team=history[observation.game_id].opponent_team if observation.game_id in history else None,
+            game_date=observation.game_date,
         )
         for observation in observations if observation.targets is not None
     ]
@@ -75,6 +76,7 @@ def targets_slate_line(row: TargetsServingLine) -> NflSlateLineSchema:
         line_id=row.line_id, player_id=row.player_id, player_name=row.player_name, position=row.position,
         opponent_team=row.opponent_team, opponent_position_average=None,
         recent_form=_history_sample(observations[:5], history),
+        recent_form_long=_history_sample(observations[:10], history),
         opponent_history=_history_sample([item for item in observations if item.game_id in opponent_games], history),
         opponent_allowed_history=NflHistorySampleSchema(average=None, values=[]),
         market=row.market, segment=row.segment, odds_type=row.odds_type,
@@ -85,6 +87,7 @@ def targets_slate_line(row: TargetsServingLine) -> NflSlateLineSchema:
         provider=row.provider, fetched_at=row.fetched_at, quality_flags=flags,
         injury_status=row.availability.injury_status, practice_status=row.practice_status, injury=row.injury,
         depth_position=row.availability.depth_position, depth_rank=row.availability.depth_rank,
+        active_depth_rank=row.availability.active_depth_rank, out_ahead=list(row.availability.out_ahead),
         previous_depth_position=row.availability.previous_depth_position,
         previous_depth_rank=row.availability.previous_depth_rank,
         p_over=over.p_over if over is not None else None, p_under=over.p_under if over is not None else None,

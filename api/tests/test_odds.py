@@ -8,6 +8,7 @@ from app.core.odds import (
     decimal_to_american,
     devig_two_way,
     implied_prob_from_american,
+    near_even_rungs,
     overround,
     prob_to_american,
 )
@@ -69,3 +70,13 @@ class TestDevig:
 
     def test_a_fair_market_has_no_overround(self):
         assert overround(0.5, 0.5) == pytest.approx(0.0)
+
+
+def test_near_even_rungs_drop_any_side_priced_past_three_quarters():
+    ladder = [(1.002, 36.0), (1.25, 4.0), (1.85, 1.96), (4.0 / 3, 3.9)]
+    assert near_even_rungs(ladder, lambda rung: rung) == [(1.85, 1.96), (4.0 / 3, 3.9)]
+
+
+def test_near_even_rungs_keep_everything_when_no_rung_qualifies():
+    lopsided = [(1.10, 7.0), (1.20, 4.5)]
+    assert near_even_rungs(lopsided, lambda rung: rung) == lopsided

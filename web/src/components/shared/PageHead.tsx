@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-/** Previous and next are paths; null or missing renders the control disabled. */
-export interface PageHeadPeriod { label: string, previous?: string | null, next?: string | null }
+/** Previous and next are paths; null or missing renders the control disabled. The picker sits between them. */
+export interface PageHeadPeriod { label: string, previous?: string | null, next?: string | null, picker?: ReactNode }
 
 interface PageHeadProps {
   title: string
-  /** The status line beside the title: the period the page covers, never counts the stats strip already shows. */
+  /** The period line beside the title: the period the page covers and its counts (57a). */
   meta?: ReactNode
   period?: PageHeadPeriod
   actions?: ReactNode
@@ -30,6 +30,7 @@ export default function PageHead({ title, meta, period, actions, stats }: PageHe
       {(period || actions) && <div className="lf-page-head__controls">
         {period && <nav className="page-head-period" aria-label={period.label}>
           <PeriodLink to={period.previous}>← Previous</PeriodLink>
+          {period.picker && <div className="page-head-period__picker">{period.picker}</div>}
           <PeriodLink to={period.next}>Next →</PeriodLink>
         </nav>}
         {actions}

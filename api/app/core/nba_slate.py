@@ -4,10 +4,11 @@ Pure: no DB, no I/O.
 """
 from __future__ import annotations
 
-import bisect
 import datetime as dt
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
+
+from app.core.slate_dates import adjacent_dates, slate_date
 
 
 @dataclass(frozen=True)
@@ -26,26 +27,6 @@ class NbaResult:
 class Record:
     wins: int = 0
     losses: int = 0
-
-
-def slate_date(requested: dt.date | None, today: dt.date, game_dates: Sequence[dt.date]) -> dt.date:
-    """The requested date, else today or the next date with games, else the latest one.
-
-    `game_dates` must be sorted ascending.
-    """
-    if requested is not None:
-        return requested
-    index = bisect.bisect_left(game_dates, today)
-    if index < len(game_dates):
-        return game_dates[index]
-    return game_dates[-1] if game_dates else today
-
-
-def adjacent_dates(date: dt.date, game_dates: Sequence[dt.date]) -> tuple[dt.date | None, dt.date | None]:
-    """The nearest earlier and later dates with games; `game_dates` sorted ascending."""
-    before = bisect.bisect_left(game_dates, date)
-    after = bisect.bisect_right(game_dates, date)
-    return (game_dates[before - 1] if before else None, game_dates[after] if after < len(game_dates) else None)
 
 
 def team_records(results: Iterable[NbaResult], season: int, before: dt.date) -> dict[str, Record]:

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameOdds, NflWeather } from '~/types/nfl'
-import { conditionsLabel, gameMarket, hasKickedOff, kickoffLabel, marketImpliedPoints, parseGameId, recordLabel } from '~/utils/nflGame'
+import { conditionsLabel, gameMarket, hasKickedOff, marketImpliedPoints, parseGameId, recordLabel } from '~/utils/nflGame'
 
 const OUTDOOR: NflWeather = { venueType: 'outdoor', forecastFor: '2026-09-27T17:00:00Z', temperatureF: 86.4, windMph: 11.6, windGustMph: null, precipitationProbability: null, fetchedAt: null }
 const ODDS: NflGameOdds = { book: 'draftkings', homeMoneyline: 120, awayMoneyline: -142, homeSpread: 2.5, total: 48.5 }
@@ -40,17 +40,6 @@ describe('parseGameId', () => {
   })
 })
 
-describe('kickoffLabel', () => {
-  it('reads in Central time', () => {
-    expect(kickoffLabel('2026-09-27T17:00:00Z')).toBe('Sun, Sep 27, 12:00 PM CT')
-  })
-
-  it('says so when the kickoff is unknown or unparseable', () => {
-    expect(kickoffLabel(null)).toBe('Kickoff time not set')
-    expect(kickoffLabel('soon')).toBe('Kickoff time not set')
-  })
-})
-
 describe('hasKickedOff', () => {
   const now = new Date('2026-09-27T17:00:00Z')
   it('is true at and after kickoff, false before or when unknown', () => {
@@ -62,10 +51,15 @@ describe('hasKickedOff', () => {
 
 describe('conditionsLabel', () => {
   it('names a dome, a forecast, and a missing forecast', () => {
-    expect(conditionsLabel({ ...OUTDOOR, venueType: 'dome' })).toBe('Indoor')
-    expect(conditionsLabel(OUTDOOR)).toBe('86°F · wind 12 mph')
-    expect(conditionsLabel({ ...OUTDOOR, forecastFor: null })).toBe('Forecast unavailable')
-    expect(conditionsLabel({ ...OUTDOOR, windMph: null })).toBe('86°F · wind -- mph')
+    expect(conditionsLabel({ ...OUTDOOR, venueType: 'dome', precipitationProbability: 90 })).toBe('Indoor')
+    expect(conditionsLabel(OUTDOOR)).toBe('86°F · wind 12 mph · -- rain')
+    expect(conditionsLabel({ ...OUTDOOR, forecastFor: null, precipitationProbability: 90 })).toBe('Forecast unavailable')
+    expect(conditionsLabel({ ...OUTDOOR, windMph: null })).toBe('86°F · wind -- mph · -- rain')
+  })
+
+  it('adds the rounded rain chance, including a dry forecast', () => {
+    expect(conditionsLabel({ ...OUTDOOR, precipitationProbability: 79.6 })).toBe('86°F · wind 12 mph · 80% rain')
+    expect(conditionsLabel({ ...OUTDOOR, precipitationProbability: 0 })).toBe('86°F · wind 12 mph · 0% rain')
   })
 })
 

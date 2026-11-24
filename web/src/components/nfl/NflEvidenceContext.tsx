@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
 import { useNflGameContext } from '~/hooks/useNfl'
@@ -7,10 +8,15 @@ import { contextRank } from '~/utils/nflMatchupContext'
 import { NflContextMetric } from '~/components/nfl/NflContextMetric'
 import '~/components/nfl/nfl-matchup-context.css'
 
-export function NflEvidenceContext({ row, game }: { row: NflSlateLine, game: NflSlateGame | null }) {
+function useSelectedEvidence(row: NflSlateLine, game: NflSlateGame | null) {
   const gameId = evidenceContextGameId(game, row)
   const context = useNflGameContext(gameId)
-  const selected = selectedEvidenceContext(context.data, game, row)
+  return { gameId, context, selected: selectedEvidenceContext(context.data, game, row) }
+}
+
+/** The usage table, with children (the drawer's opponent table) inside the same section once a player is selected. */
+export function NflUsageContext({ row, game, children }: { row: NflSlateLine, game: NflSlateGame | null, children?: ReactNode }) {
+  const { gameId, context, selected } = useSelectedEvidence(row, game)
   if (gameId === null) return null
   return <section className="nfl-prop-detail__section nfl-evidence-context" aria-label="Historical matchup and usage">
     <h3 className="nfl-evidence-context__heading">Historical usage</h3>
@@ -18,7 +24,7 @@ export function NflEvidenceContext({ row, game }: { row: NflSlateLine, game: Nfl
     {context.isError && <ErrorState error={context.error} onRetry={() => void context.refetch()} />}
     {context.isSuccess && !selected && <p className="nfl-evidence-context__note">No unambiguous current-week roster context is stored for {row.playerName} in this game.</p>}
     {selected && context.data && <>
-      <p className="nfl-evidence-context__note">{context.data.season} season through Week {context.data.cutoffWeek}. Recent means the last up to three played games in this window. Full-game history; dates are UTC.</p>
+      <p className="nfl-evidence-context__note">{context.data.season} season through Week {context.data.cutoffWeek}. Recent means the last up to three played games in this window. Full-game history. Dates are kickoff dates in UTC, so a night game can show the next day.</p>
       {selected.player.seasonUsage.teams.length > 1 && <p className="nfl-evidence-context__note">Historical teams: {selected.player.seasonUsage.teams.join(', ')}.</p>}
       <table className="nfl-context-table">
         <caption className="sr-only">{row.playerName}: recent versus season usage with metric-specific observed and eligible games, coverage and dates</caption>
@@ -31,16 +37,16 @@ export function NflEvidenceContext({ row, game }: { row: NflSlateLine, game: Nfl
         </tr>)}</tbody>
       </table>
       <p className="nfl-evidence-context__note">Shares use recorded team targets and all team carries (including QBs) in paired, covered player-games. Snap share is the arithmetic average game fraction. Descriptive context only.</p>
-      <OpponentContext row={row} selected={selected} />
+      {children}
     </>}
   </section>
 }
 
-function OpponentContext({ row, selected }: {
-  row: NflSlateLine, selected: NonNullable<ReturnType<typeof selectedEvidenceContext>>,
-}) {
-  const measures = evidenceAllowedMeasures(selected.player.position, row.market)
-  if (!measures.length) return null
+/** The opponent's production allowed to the player's position for the row's market; nothing when none applies. */
+export function NflOpponentAllowed({ row, game }: { row: NflSlateLine, game: NflSlateGame | null }) {
+  const { selected } = useSelectedEvidence(row, game)
+  const measures = selected ? evidenceAllowedMeasures(selected.player.position, row.market) : []
+  if (!selected || !measures.length) return null
   return <div className="nfl-evidence-context__opponent">
     <h3 className="nfl-evidence-context__heading">{selected.opponent.team} allowed vs {selected.player.position}</h3>
     <p className="nfl-evidence-context__note">Per defense game. Rank 1 = fewest allowed among teams with data.{row.market === 'receiving_targets' ? ' Rec Targets uses receiving context: receptions and receiving yards allowed.' : ''}</p>

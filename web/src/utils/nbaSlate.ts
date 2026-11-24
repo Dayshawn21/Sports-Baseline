@@ -1,17 +1,20 @@
-import type { NbaLineMove, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import type { NbaLineMove, NbaPropLine, NbaRecord, NbaSlateGame, NbaSlateGap } from '~/types/nba'
 import { nbaMarketLabel } from '~/utils/nbaLineOnly'
-import { hasKickedOff } from '~/utils/nflGame'
+import { gameState, isFinalStatus } from '~/utils/gameState'
 import { spreadLabel } from '~/utils/nflGameModel'
 import { fmtAmerican } from '~/utils/odds'
+import { gapShareOfLine, gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
+import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
+
+export { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
 
 const MISSING = '--'
-const CENTRAL = 'America/Chicago'
-const CENTRAL_TIME = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
-// A slate date is a calendar date, so it is formatted in UTC to keep the day it names.
-const SLATE_DAY = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
-/** `started`: tipped off but not yet completed. Scores load with the next morning's ingest, so it is not "live". */
-export type NbaSlateCardState = 'upcoming' | 'started' | 'final' | 'off'
+/**
+ * `started`: tipped off but not yet completed. Scores load with the next morning's ingest, so it is not "live".
+ * `pending`: over by the clock, still waiting on that ingest.
+ */
+export type NbaSlateCardState = 'upcoming' | 'started' | 'pending' | 'final' | 'off'
 
 export interface NbaSlateCardTeam {
   code: string
@@ -51,30 +54,19 @@ export interface NbaSlateSummary {
   finals: number
   /** Latest stored market fetch in CT; null when no game has a market. */
   oddsUpdated: string | null
-}
-
-/** A `YYYY-MM-DD` link value naming a real date, else null. */
-export function parseSlateDate(value: string | null): string | null {
-  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
-  const time = Date.parse(`${value}T00:00:00Z`)
-  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value ? value : null
-}
-
-/** `Tue, Oct 20, 2026` */
-export function slateDateLabel(date: string): string {
-  return SLATE_DAY.format(Date.parse(`${date}T00:00:00Z`))
+  /** The same fetch as epoch milliseconds, for the stale-odds check. */
+  oddsUpdatedMs: number | null
 }
 
 function tipLabel(startUtc: string | null): string {
   const time = startUtc === null ? NaN : Date.parse(startUtc)
-  return Number.isNaN(time) ? 'Tip time not set' : `${CENTRAL_TIME.format(time)} CT`
+  return Number.isNaN(time) ? 'Tip time not set' : dayClockCt(time)
 }
 
 function cardState(game: NbaSlateGame, now: Date): { state: NbaSlateCardState, label: string | null } {
-  if (game.status === 'completed') return { state: 'final', label: 'Final' }
-  if (game.status === 'postponed') return { state: 'off', label: 'Postponed' }
-  if (game.status === 'canceled') return { state: 'off', label: 'Canceled' }
-  return hasKickedOff(game.startUtc, now) ? { state: 'started', label: 'Tipped off' } : { state: 'upcoming', label: null }
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Tipped off')
+  if (phase === 'upcoming') return { state: 'upcoming', label: null }
+  return { state: phase === 'live' ? 'started' : phase, label }
 }
 
 function recordLabel(record: NbaRecord): string {
@@ -93,10 +85,11 @@ function move(game: NbaSlateGame, market: NbaLineMove['market']): NbaLineMove | 
   return game.lineMovement.find(item => item.market === market) ?? null
 }
 
-/** "opened DET -1.5", "no move", or null while only one row is stored. */
-function openedLabel(item: NbaLineMove | null, format: (line: number) => string): string | null {
+/** "opened DET -1.5", "no move", or null while only one row is stored. Stale odds never claim "no move": the line was not checked since. */
+function openedLabel(item: NbaLineMove | null, format: (line: number) => string, stale: boolean): string | null {
   if (item === null || item.openFetchedAt === item.currentFetchedAt) return null
-  return item.openLine === item.currentLine ? 'no move' : `opened ${format(item.openLine)}`
+  if (item.openLine === item.currentLine) return stale ? null : 'no move'
+  return `opened ${format(item.openLine)}`
 }
 
 function moneylineCell(game: NbaSlateGame): NbaSlateCardCell {
@@ -109,13 +102,13 @@ function moneylineCell(game: NbaSlateGame): NbaSlateCardCell {
   return { label: 'Moneyline', value: favorite, detail: other }
 }
 
-function marketCells(game: NbaSlateGame): NbaSlateCardCell[] | null {
+function marketCells(game: NbaSlateGame, stale: boolean): NbaSlateCardCell[] | null {
   if (game.moneyline === null && game.spread === null && game.total === null) return null
   const spread = (line: number) => spreadLabel(line, game.homeTeam, game.awayTeam)
   const total = (line: number) => line.toFixed(1)
   return [
-    { label: 'Spread', value: game.spread === null ? MISSING : spread(game.spread.homeLine), detail: openedLabel(move(game, 'spread'), spread) },
-    { label: 'Total', value: game.total === null ? MISSING : total(game.total.line), detail: openedLabel(move(game, 'total'), total) },
+    { label: 'Spread', value: game.spread === null ? MISSING : spread(game.spread.homeLine), detail: openedLabel(move(game, 'spread'), spread, stale) },
+    { label: 'Total', value: game.total === null ? MISSING : total(game.total.line), detail: openedLabel(move(game, 'total'), total, stale) },
     moneylineCell(game),
   ]
 }
@@ -164,7 +157,8 @@ function propsLabel(count: number): string {
   return count === 1 ? '1 prop line' : `${count} prop lines`
 }
 
-export function nbaSlateCard(game: NbaSlateGame, now: Date): NbaSlateCardModel {
+/** `oddsStale` is the slate's stale-odds check; the game page leaves it off. */
+export function nbaSlateCard(game: NbaSlateGame, now: Date, oddsStale = false): NbaSlateCardModel {
   const { state, label } = cardState(game, now)
   const final = state === 'final'
   return {
@@ -175,7 +169,7 @@ export function nbaSlateCard(game: NbaSlateGame, now: Date): NbaSlateCardModel {
     away: cardTeam(game.awayTeam, game.awayTeamName, game.awayRecord, game.awayScore, game.homeScore, final),
     home: cardTeam(game.homeTeam, game.homeTeamName, game.homeRecord, game.homeScore, game.awayScore, final),
     winBar: state === 'off' ? null : winBar(game),
-    market: state === 'off' ? null : marketCells(game),
+    market: state === 'off' ? null : marketCells(game, oddsStale && state !== 'final'),
     final: final ? finalCells(game) : null,
     props: propsLabel(game.propLineCount),
   }
@@ -185,11 +179,13 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
   const times = games.flatMap(game => [game.moneyline, game.spread, game.total])
     .flatMap(market => market === null ? [] : [Date.parse(market.fetchedAt)])
     .filter(time => !Number.isNaN(time))
+  const oddsUpdatedMs = times.length ? Math.max(...times) : null
   return {
     games: games.length,
     propLines: games.reduce((sum, game) => sum + game.propLineCount, 0),
-    finals: games.filter(game => game.status === 'completed').length,
-    oddsUpdated: times.length ? `${CENTRAL_TIME.format(Math.max(...times))} CT` : null,
+    finals: games.filter(game => isFinalStatus(game.status)).length,
+    oddsUpdated: oddsUpdatedMs === null ? null : dayClockCt(oddsUpdatedMs),
+    oddsUpdatedMs,
   }
 }
 
@@ -197,30 +193,73 @@ export function nbaSlateSummary(games: NbaSlateGame[]): NbaSlateSummary {
 export interface NbaSlateDigestItem {
   key: string
   gameId: number
+  playerId: number
   playerName: string
+  /** The stored market, for opening its drawer; `market` is its label. */
+  marketKey: string
   market: string
   matchup: string
+  /** Central tip time. */
+  when: string
   line: string
   model: string
-  /** Signed points and share of the line: "+2.3 · +10%". */
+  /** Model minus line in the stat's units: "+2.3 pts". */
   gap: string
+  /** The same gap as a share of the line: "10% of the line". */
+  gapScaled: string | null
+  /** That share alone ("10%"), which the strip ranks by. */
+  gapShare: string | null
 }
 
-function signed(value: number, text: string): string {
-  return `${value > 0 ? '+' : value < 0 ? '-' : ''}${text}`
+export interface NbaGapGame {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+}
+
+/** One game's digest under the slate's rule (`rank_slate_gaps`): standard lines with a projection before tip, by |gap| / line, one per player. */
+export function nbaGameGaps(game: NbaGapGame, lines: NbaPropLine[], now: Date, limit = 4): NbaSlateGap[] {
+  const startUtc = game.startUtc
+  if (game.status !== 'scheduled' || startUtc === null || Date.parse(startUtc) <= now.getTime()) return []
+  const ranked = lines
+    .filter(line => line.oddsType === 'standard' && line.projection !== null && line.gap !== null && line.line > 0)
+    .map(line => ({ line, share: Math.abs(line.gap ?? 0) / line.line }))
+    .sort((a, b) => b.share - a.share || a.line.playerName.localeCompare(b.line.playerName) || a.line.market.localeCompare(b.line.market))
+  const seen = new Set<number>()
+  const items: NbaSlateGap[] = []
+  for (const { line, share } of ranked) {
+    if (seen.has(line.playerId)) continue
+    seen.add(line.playerId)
+    items.push({
+      gameId: game.gameId, awayTeam: game.awayTeam, homeTeam: game.homeTeam, startUtc, playerId: line.playerId,
+      playerName: line.playerName, market: line.market, line: line.line,
+      projection: line.projection ?? 0, gap: line.gap ?? 0, gapShare: share,
+    })
+    if (items.length === limit) break
+  }
+  return items
 }
 
 /** The API's ranked digest, in its order; the ranking rule lives server-side (`nba_slate_gaps`). */
+const NBA_UNITS: Record<string, string> = { points: 'pts', rebounds: 'reb', assists: 'ast', threes_made: '3PM', blocks: 'blk' }
+
 export function nbaSlateDigest(items: NbaSlateGap[]): NbaSlateDigestItem[] {
   return items.map(item => ({
     key: `${item.gameId}-${item.playerId}-${item.market}`,
     gameId: item.gameId,
+    playerId: item.playerId,
     playerName: item.playerName,
+    marketKey: item.market,
     market: nbaMarketLabel(item.market),
     matchup: `${item.awayTeam} @ ${item.homeTeam}`,
+    when: tipLabel(item.startUtc),
     line: item.line.toFixed(1),
     model: item.projection.toFixed(1),
-    gap: `${signed(item.gap, Math.abs(item.gap).toFixed(1))} · ${signed(item.gap, `${Math.round(item.gapShare * 100)}%`)}`,
+    gap: signedGapUnits(item.gap, NBA_UNITS[item.market]),
+    gapScaled: gapShareOfLine(item.gapShare),
+    gapShare: gapSharePercent(item.gapShare),
   }))
 }
 
@@ -247,6 +286,8 @@ export interface NbaSlateRowModel {
   props: number
   tags: string[]
   note: string | null
+  /** "as of Tue" while the slate's odds are stale, for a game with a market that is not final or off; else null. */
+  oddsAge: string | null
 }
 
 const NO_CELL: NbaSlateRowCell = { value: MISSING, detail: null }
@@ -262,11 +303,13 @@ function winLabel(card: NbaSlateCardModel): string | null {
   return home >= away ? `${card.home.code} ${home}%` : `${card.away.code} ${away}%`
 }
 
-export function nbaSlateRow(game: NbaSlateGame, now: Date): NbaSlateRowModel {
-  const card = nbaSlateCard(game, now)
+/** `staleSince` is the slate's newest fetch while its odds are stale. */
+export function nbaSlateRow(game: NbaSlateGame, now: Date, staleSince: number | null = null): NbaSlateRowModel {
+  const card = nbaSlateCard(game, now, staleSince !== null)
   const final = card.state === 'final'
   const off = card.state === 'off'
   const started = card.state === 'started'
+  const pending = card.state === 'pending'
   return {
     gameId: card.gameId,
     state: card.state,
@@ -278,7 +321,10 @@ export function nbaSlateRow(game: NbaSlateGame, now: Date): NbaSlateRowModel {
     moneyline: final ? NO_CELL : cellOf(card.market, 'Moneyline'),
     win: winLabel(card),
     props: game.propLineCount,
-    tags: started ? ['Tipped off'] : [],
-    note: started ? 'Scores load the morning after' : null,
+    tags: started || pending ? [card.stateLabel ?? 'Tipped off'] : [],
+    note: started || pending ? 'Scores load the morning after' : null,
+    oddsAge: staleSince !== null && !final && !off && !pending && card.market !== null
+      ? rowOddsAge(latestTime([game.spread?.fetchedAt, game.total?.fetchedAt, game.moneyline?.fetchedAt]), staleSince, now.getTime())
+      : null,
   }
 }

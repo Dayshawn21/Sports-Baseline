@@ -9,6 +9,10 @@ effectively ranking picks by how little they returned.
 
 Everything here works in expected value instead: a pick is good when the model's
 hit probability clears the break-even probability its price implies.
+
+The tier from `ev_confidence_tier` now grades only book-priced match-market
+picks (best picks, the bankroll builder). Tennis PrizePicks lines read the EV and
+break-even from `assess_prop` but never its tier (48f).
 """
 
 from __future__ import annotations

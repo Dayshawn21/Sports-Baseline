@@ -23,3 +23,8 @@ def normalize_bookmaker_scope(value: str) -> tuple[str, ...]:
 def bookmaker_scope_param(value: str) -> str:
     """Normalize a bookmaker scope for a provider request parameter."""
     return ",".join(normalize_bookmaker_scope(value))
+
+
+def stored_book_keys(value: str) -> list[str]:
+    """The `match_odds.book` keys a provider scope stores under (lowercased names)."""
+    return [name.lower() for name in normalize_bookmaker_scope(value)]

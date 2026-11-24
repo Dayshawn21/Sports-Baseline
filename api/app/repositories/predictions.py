@@ -13,18 +13,6 @@ from app.core.tennis_grading import is_completed_score
 from app.repositories.matches import _BOOK_PRIORITY_SQL
 
 
-@dataclass
-class Prediction:
-    id: int
-    match_id: int
-    generated_at: datetime
-    model_version: str
-    p1_elo_prob: Optional[float]
-    p1_ml_prob: Optional[float]
-    p1_market_prob: Optional[float]
-    p1_ensemble_prob: Optional[float]
-
-
 async def insert_prediction(
     db: AsyncSession,
     match_id: int,
@@ -58,20 +46,15 @@ async def insert_prediction(
     return row.scalar_one()
 
 
-async def get_latest_prediction(db: AsyncSession, match_id: int) -> Optional[Prediction]:
-    row = await db.execute(
+async def insert_prediction_shadow(db: AsyncSession, prediction_id: int, model_version: str, p1_prob: float) -> None:
+    """A shadow beside a served prediction; never read by a serving path."""
+    await db.execute(
         text("""
-            SELECT id, match_id, generated_at, model_version,
-                   p1_elo_prob, p1_ml_prob, p1_market_prob, p1_ensemble_prob
-            FROM predictions
-            WHERE match_id = :mid
-            ORDER BY generated_at DESC
-            LIMIT 1
+            INSERT INTO prediction_shadows (prediction_id, model_version, p1_prob)
+            VALUES (:pid, :mv, :p)
         """),
-        {"mid": match_id},
+        {"pid": prediction_id, "mv": model_version, "p": p1_prob},
     )
-    r = row.fetchone()
-    return Prediction(*r) if r else None
 
 
 @dataclass(frozen=True)
@@ -230,3 +213,85 @@ async def get_graded_predictions(db: AsyncSession) -> list[GradedPrediction]:
         """)
     )
     return [build_graded_prediction(dict(r)) for r in rows.mappings().all()]
+
+
+async def get_match_ids_with_model_prefix(db: AsyncSession, prefix: str) -> set[int]:
+    """Matches with any prediction, pre-start or not, whose model_version starts with prefix."""
+    rows = await db.execute(
+        text("SELECT DISTINCT match_id FROM predictions WHERE model_version LIKE :pattern"),
+        {"pattern": prefix.replace("%", r"\%").replace("_", r"\_") + "%"},
+    )
+    return {r[0] for r in rows.fetchall()}
+
+
+@dataclass(frozen=True)
+class ShadowCheckRow:
+    """A match's last pre-start served prediction and its shadow, with no result field.
+
+    The 66a forward check counts these before any outcome is read.
+    """
+    match_id: int
+    tour: str
+    start_utc: datetime
+    status: str
+    served_version: str
+    ensemble_prob: Optional[float]
+    market_prob: Optional[float]
+    shadow_prob: Optional[float]
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    p1_won: Optional[bool]
+    completed_score: bool
+
+
+async def get_first_shadow_at(db: AsyncSession, version_suffix: str) -> Optional[datetime]:
+    row = await db.execute(
+        text("SELECT min(created_at) FROM prediction_shadows WHERE right(model_version, :n) = :suffix"),
+        {"n": len(version_suffix), "suffix": version_suffix},
+    )
+    return row.scalar_one()
+
+
+async def get_shadow_check_rows(db: AsyncSession, since: datetime, version_suffix: str) -> list[ShadowCheckRow]:
+    """Counts only: selects no winner, score or closing price."""
+    rows = await db.execute(
+        text("""
+            SELECT m.id, m.tour, m.start_utc, m.status,
+                   p.model_version, p.p1_ensemble_prob, p.p1_market_prob, s.p1_prob
+            FROM matches m
+            JOIN LATERAL (
+                SELECT id, model_version, p1_ensemble_prob, p1_market_prob
+                FROM predictions
+                WHERE match_id = m.id AND generated_at < m.start_utc
+                ORDER BY generated_at DESC, id DESC
+                LIMIT 1
+            ) p ON true
+            LEFT JOIN prediction_shadows s
+              ON s.prediction_id = p.id AND s.model_version = p.model_version || :suffix
+            WHERE m.start_utc >= :since
+            ORDER BY m.start_utc, m.id
+        """),
+        {"since": since, "suffix": version_suffix},
+    )
+    return [ShadowCheckRow(*r) for r in rows.fetchall()]
+
+
+async def get_match_results(db: AsyncSession, match_ids: list[int]) -> dict[int, MatchResult]:
+    """Results for the 66a score mode only, read after the count mode's floors are met."""
+    rows = await db.execute(
+        text("""
+            SELECT id, score, best_of, winner_id, p1_id
+            FROM matches
+            WHERE id = ANY(:ids)
+        """),
+        {"ids": match_ids},
+    )
+    return {
+        r[0]: MatchResult(
+            p1_won=None if r[3] is None else r[3] == r[4],
+            completed_score=is_completed_score(r[1], r[2] or 3),
+        )
+        for r in rows.fetchall()
+    }

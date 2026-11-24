@@ -1,0 +1,191 @@
+import { describe, expect, it } from 'vitest'
+import { STALE_ODDS_MS, countPart, gameSlateLine, isOddsStale, latestTime, oddsAgeLabel, oddsAsOf, oddsPart, rowOddsAge, staleOddsSince, slatePeriodLine, splitTags, startTimes, tableCountPart, windowOddsNote } from '~/utils/slatePeriod'
+
+const NOW = Date.parse('2026-11-08T22:00:00Z')
+const HOUR = 60 * 60 * 1000
+
+describe('slatePeriodLine', () => {
+  it('joins the parts with a middle dot', () => {
+    expect(slatePeriodLine(['Week 9', '15 games', '1 final', 'odds Tue 3:12 PM CT']))
+      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT')
+  })
+
+  it('leaves out parts with no value rather than showing a placeholder', () => {
+    expect(slatePeriodLine(['Sat, Nov 8', null, '0 final', undefined, '', false, '  '])).toBe('Sat, Nov 8 · 0 final')
+  })
+
+  it('returns an empty line when nothing has a value', () => {
+    expect(slatePeriodLine([null, undefined])).toBe('')
+  })
+})
+
+describe('isOddsStale', () => {
+  const upcoming = [NOW + HOUR]
+
+  it('is not stale at exactly six hours', () => {
+    expect(isOddsStale(NOW - STALE_ODDS_MS, upcoming, NOW)).toBe(false)
+  })
+
+  it('is stale just past six hours with a game still to start', () => {
+    expect(isOddsStale(NOW - STALE_ODDS_MS - 1, upcoming, NOW)).toBe(true)
+  })
+
+  it('is not stale when every game has started', () => {
+    expect(isOddsStale(NOW - 10 * HOUR, [NOW - HOUR, NOW], NOW)).toBe(false)
+    expect(isOddsStale(NOW - 10 * HOUR, [], NOW)).toBe(false)
+  })
+
+  it('is not stale when no odds are stored', () => {
+    expect(isOddsStale(null, upcoming, NOW)).toBe(false)
+    expect(isOddsStale(Number.NaN, upcoming, NOW)).toBe(false)
+  })
+})
+
+describe('countPart', () => {
+  it('uses the singular for one and the plural otherwise', () => {
+    expect(countPart(1, 'game')).toBe('1 game')
+    expect(countPart(0, 'final', 'final')).toBe('0 final')
+    expect(countPart(33, 'match', 'matches')).toBe('33 matches')
+  })
+})
+
+describe('startTimes', () => {
+  it('keeps parseable start times only', () => {
+    expect(startTimes(['2026-11-08T22:00:00Z', null, undefined, '', 'TBD'])).toEqual([NOW])
+  })
+})
+
+describe('gameSlateLine', () => {
+  const counts = { games: 15, finals: 1, oddsUpdated: 'Tue 3:12 PM CT', oddsUpdatedMs: NOW - 2 * HOUR }
+
+  it('builds the period, counts and odds time', () => {
+    expect(gameSlateLine('Week 9', counts, [NOW + HOUR], NOW)).toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT')
+  })
+
+  it('says how old stale odds are while a game is still to start', () => {
+    expect(gameSlateLine('Week 9', { ...counts, oddsUpdatedMs: NOW - 7 * HOUR }, [NOW + HOUR], NOW))
+      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT · 7 hours old')
+    expect(gameSlateLine('Week 9', { ...counts, oddsUpdatedMs: NOW - 5.7 * 24 * HOUR }, [NOW + HOUR], NOW))
+      .toBe('Week 9 · 15 games · 1 final · odds Tue 3:12 PM CT · 6 days old')
+  })
+
+  it('leaves out the odds when none are stored, a zero final count, and shows the period alone for an empty slate', () => {
+    expect(gameSlateLine('Sun, Nov 8, 2026', { games: 1, finals: 0, oddsUpdated: null, oddsUpdatedMs: null }, [], NOW))
+      .toBe('Sun, Nov 8, 2026 · 1 game')
+    expect(gameSlateLine('Week 12', { ...counts, games: 0 }, [], NOW)).toBe('Week 12')
+  })
+})
+
+describe('oddsPart', () => {
+  it('labels the odds time and adds the age of stale odds', () => {
+    expect(oddsPart('Tue 3:12 PM CT', null)).toBe('odds Tue 3:12 PM CT')
+    expect(oddsPart('Tue 3:12 PM CT', '6 days old')).toBe('odds Tue 3:12 PM CT · 6 days old')
+  })
+
+  it('is left out when no odds are stored', () => {
+    expect(oddsPart(null, '6 days old')).toBeNull()
+  })
+})
+
+describe('oddsAgeLabel', () => {
+  it('rounds to the nearest hour under a day, then the nearest day', () => {
+    expect(oddsAgeLabel(NOW - 7.2 * HOUR, NOW)).toBe('7 hours old')
+    expect(oddsAgeLabel(NOW - 23.6 * HOUR, NOW)).toBe('1 day old')
+    expect(oddsAgeLabel(NOW - 5.7 * 24 * HOUR, NOW)).toBe('6 days old')
+  })
+})
+
+describe('staleOddsSince', () => {
+  it('returns the newest fetch only while the odds are stale', () => {
+    expect(staleOddsSince(NOW - 7 * HOUR, [NOW + HOUR], NOW)).toBe(NOW - 7 * HOUR)
+    expect(staleOddsSince(NOW - 2 * HOUR, [NOW + HOUR], NOW)).toBeNull()
+    expect(staleOddsSince(null, [NOW + HOUR], NOW)).toBeNull()
+  })
+})
+
+describe('rowOddsAge', () => {
+  const slate = NOW - 6 * 24 * HOUR
+
+  it('stays quiet for a row from the same run as the slate newest fetch', () => {
+    expect(rowOddsAge(slate, slate, NOW)).toBeNull()
+    expect(rowOddsAge(slate - 40 * 60 * 1000, slate, NOW)).toBeNull()
+  })
+
+  it('names a row fetched in another run, and a row with no stored time', () => {
+    expect(rowOddsAge(slate - 3 * 24 * HOUR, slate, NOW)).toMatch(/^as of /)
+    expect(rowOddsAge(null, slate, NOW)).toBe('odds time not stored')
+  })
+})
+
+describe('tableCountPart', () => {
+  it('counts the whole table when no search is active', () => {
+    expect(tableCountPart(7, 7, false, 'game')).toBe('7 games')
+    expect(tableCountPart(1, 1, false, 'match', 'matches')).toBe('1 match')
+  })
+
+  it('shows the matches out of the whole table while searching, even when all match', () => {
+    expect(tableCountPart(1, 7, true, 'game')).toBe('1 of 7 games')
+    expect(tableCountPart(20, 20, true, 'match', 'matches')).toBe('20 of 20 matches')
+  })
+})
+
+describe('splitTags', () => {
+  it('keeps the first tags in order and holds the rest back', () => {
+    expect(splitTags(['a', 'b', 'c', 'd'], 2)).toEqual({ shown: ['a', 'b'], hidden: ['c', 'd'] })
+  })
+
+  it('hides nothing when the tags fit', () => {
+    expect(splitTags(['a'], 2)).toEqual({ shown: ['a'], hidden: [] })
+    expect(splitTags([], 2)).toEqual({ shown: [], hidden: [] })
+  })
+
+  it('treats a negative limit as zero', () => {
+    expect(splitTags(['a', 'b'], -1)).toEqual({ shown: [], hidden: ['a', 'b'] })
+  })
+})
+
+describe('latestTime', () => {
+  it('returns the newest parseable time, or null', () => {
+    expect(latestTime(['2026-11-03T21:12:00Z', null, 'junk', '2026-11-01T00:00:00Z'])).toBe(Date.parse('2026-11-03T21:12:00Z'))
+    expect(latestTime([null, undefined])).toBeNull()
+  })
+})
+
+describe('oddsAsOf', () => {
+  // NOW is Sun Nov 8, 4:00 PM CT.
+  it('gives the clock for a fetch earlier the same Central day', () => {
+    expect(oddsAsOf(Date.parse('2026-11-08T15:05:00Z'), NOW)).toBe('as of 9:05 AM')
+  })
+
+  it('gives the weekday within six days', () => {
+    expect(oddsAsOf(Date.parse('2026-11-03T21:12:00Z'), NOW)).toBe('as of Tue')
+    expect(oddsAsOf(Date.parse('2026-11-08T03:00:00Z'), NOW)).toBe('as of Sat')
+  })
+
+  it('gives the date once a weekday could mean two days', () => {
+    expect(oddsAsOf(Date.parse('2026-10-27T20:08:00Z'), NOW)).toBe('as of Oct 27')
+  })
+
+  it('says so when the fetch time is not stored', () => {
+    expect(oddsAsOf(null, NOW)).toBe('odds time not stored')
+    expect(oddsAsOf(Number.NaN, NOW)).toBe('odds time not stored')
+  })
+})
+
+describe('windowOddsNote', () => {
+  const stale = NOW - 6 * 24 * HOUR
+
+  it('names the age on a window holding a game not yet started', () => {
+    expect(windowOddsNote(stale, ['live', 'upcoming'], NOW)).toBe('odds 6 days old')
+  })
+
+  it('stays off while the odds are fresh', () => {
+    expect(windowOddsNote(null, ['upcoming'], NOW)).toBeNull()
+  })
+
+  it('never marks a window of finals, games in play or postponed games', () => {
+    expect(windowOddsNote(stale, ['final', 'final'], NOW)).toBeNull()
+    expect(windowOddsNote(stale, ['live', 'off'], NOW)).toBeNull()
+    expect(windowOddsNote(stale, [], NOW)).toBeNull()
+  })
+})

@@ -10,11 +10,12 @@ from typing import cast
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_availability import NflAvailability
 from app.core.nfl_targets_projection import project_targets
 from app.repositories.nfl import _AVAILABILITY_CTE, _player_teams_cte
 from app.repositories.nfl_targets import get_targets_serving_lines, get_unmatched_targets_lines
-from tests.test_nfl_targets_repository import _Session, _history
+from tests.helpers.nfl_targets_repository import _Session, _history
 
 KICKOFF = datetime(2026, 10, 25, 17, tzinfo=UTC)
 FETCHED = datetime(2026, 10, 24, 15, tzinfo=UTC)
@@ -108,7 +109,9 @@ def test_history_is_batched_once_for_distinct_players_and_keeps_opponent_context
 
     assert len(session.calls) == 2
     sql, params = session.calls[1]
-    assert params == {"season": 2026, "week": 7, "player_ids": [7, 9]}
+    assert params == {
+        "season": 2026, "week": 7, "player_ids": [7, 9], "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
     assert "g.game_type = 'REG' AND g.status = 'completed'" in sql
     assert "g.sport = 'nfl' AND g.id = s.game_id" in sql
     assert "g.season < :season OR (g.season = :season AND g.week < :week)" in sql

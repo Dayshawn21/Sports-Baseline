@@ -5,13 +5,18 @@ import {
   initialSlateCommandState,
   matchingSlateCommandRows,
   matchingSlateCommandTargets,
-  nbaSlateCommandRows,
-  nflSlateCommandRows,
   normalizeSlateCommand,
+  slateCommandPlaceholder,
   slateCommandReducer,
+} from '~/utils/slateCommand'
+import {
+  commandGameContext,
+  nbaSlateCommandRows,
+  nhlSlateCommandRows,
+  nflSlateCommandRows,
   slateCommandRow,
   tennisSlateCommandRows,
-} from '~/utils/slateCommand'
+} from '~/utils/slateCommandRows'
 
 function row(input: Partial<SlateCommandRowInput> = {}) {
   return slateCommandRow({
@@ -27,9 +32,57 @@ function row(input: Partial<SlateCommandRowInput> = {}) {
   })
 }
 
+describe('slateCommandPlaceholder', () => {
+  it('names each sport event: a tennis match, a team sport game', () => {
+    expect(slateCommandPlaceholder('/tennis', true)).toBe('Jump to a match or player...')
+    expect(slateCommandPlaceholder('/nfl', true)).toBe('Jump to a game or player...')
+    expect(slateCommandPlaceholder('/nba', true)).toBe('Jump to a game or player...')
+    expect(slateCommandPlaceholder('/nhl', true)).toBe('Search teams or games...')
+  })
+
+  it('offers another event off the slate, and says when search is loading', () => {
+    expect(slateCommandPlaceholder('/nfl/game/12', true)).toBe('Jump to another game or player...')
+    expect(slateCommandPlaceholder('/tennis/match/9', true)).toBe('Jump to another match or player...')
+    expect(slateCommandPlaceholder('/nfl', false)).toBe('Slate search loading...')
+  })
+})
+
 describe('normalizeSlateCommand', () => {
   it('trims, collapses whitespace, and ignores case', () => {
     expect(normalizeSlateCommand('  Nico   COLLINS\n')).toBe('nico collins')
+  })
+})
+
+describe('nhlSlateCommandRows', () => {
+  const games = [
+    { gameId: 7, awayTeam: 'MTL', homeTeam: 'CHI', awayTeamName: 'Montréal Canadiens', homeTeamName: 'Chicago Blackhawks' },
+    { gameId: 8, awayTeam: 'CHI', homeTeam: 'TBL', awayTeamName: 'Chicago Blackhawks', homeTeamName: 'Tampa Bay Lightning' },
+  ]
+
+  it('matches team codes/full names without changing the loaded order or inventing player links', () => {
+    const rows = nhlSlateCommandRows(games)
+    expect(matchingSlateCommandRows(rows, ' chicago ')).toEqual(rows)
+    expect(matchingSlateCommandRows(rows, 'MTL blackhawks').map(row => row.path)).toEqual(['/nhl/game/7'])
+    expect(firstSlateCommandPath(rows, 'lightning')).toBe('/nhl/game/8')
+    expect(rows.map(row => row.targets.map(target => target.kind))).toEqual([['game', 'team', 'team'], ['game', 'team', 'team']])
+    expect(rows.every(row => row.targets.every(target => target.path === row.path && target.parentPath === row.path))).toBe(true)
+    expect(matchingSlateCommandRows(rows, 'Player A')).toEqual([])
+    expect(nhlSlateCommandRows([])).toEqual([])
+  })
+
+  it('omits invalid ids and gives repeated teams unique targets within their game', () => {
+    const rows = nhlSlateCommandRows([...games, ...[0, -1, 1.5, NaN, Number.MAX_SAFE_INTEGER + 1].map(gameId => ({ ...games[0], gameId }))])
+    expect(rows.map(row => row.key)).toEqual(['nhl-7', 'nhl-8'])
+    const targets = matchingSlateCommandTargets(rows, 'CHI')
+    expect(new Set(targets.map(target => target.path))).toEqual(new Set(['/nhl/game/7', '/nhl/game/8']))
+  })
+
+  it('matches NHL team names with and without accents, including direct team targets', () => {
+    const rows = nhlSlateCommandRows(games)
+    for (const query of ['montreal', 'MONTRÉAL', 'montre\u0301al']) {
+      expect(matchingSlateCommandRows(rows, query).map(row => row.path)).toEqual(['/nhl/game/7'])
+      expect(matchingSlateCommandTargets(rows, query).some(target => target.kind === 'team' && target.label === 'MTL')).toBe(true)
+    }
   })
 })
 
@@ -80,14 +133,15 @@ describe('tennisSlateCommandRows', () => {
     ])
   })
 
-  it('matches matchup, tournament, tour, and player aliases without changing the parent path', () => {
-    for (const query of ['Gauff Swiatek', 'Indian Wells', 'challenger', 'WTA 125', 'C. Gauff']) {
+  it('opens the match for its matchup, tournament and tour, and the player first for a player alias', () => {
+    for (const query of ['Gauff Swiatek', 'Indian Wells', 'challenger', 'WTA 125']) {
       expect(firstSlateCommandPath(tennisRows, query)).toBe('/tennis/match/41')
     }
     expect(matchingSlateCommandTargets(tennisRows, 'C. Gauff').map(target => target.path)).toEqual([
-      '/tennis/match/41',
       '/tennis/player/7',
+      '/tennis/match/41',
     ])
+    expect(firstSlateCommandPath(tennisRows, 'C. Gauff')).toBe('/tennis/player/7')
   })
 
   it('omits rows and player targets whose IDs cannot form valid routes', () => {
@@ -121,10 +175,51 @@ describe('nflSlateCommandRows', () => {
     ])
   })
 
-  it('matches team and player aliases while Enter keeps the parent game destination', () => {
-    expect(matchingSlateCommandTargets(rows, 'JAX').map(target => target.kind)).toEqual(['game', 'team'])
-    expect(matchingSlateCommandTargets(rows, 'N. Collins').map(target => target.kind)).toEqual(['game', 'player'])
-    expect(firstSlateCommandPath(rows, 'Nico')).toBe('/nfl/game/71')
+  it('lists a direct team or player hit before its game, and Enter opens that top hit', () => {
+    expect(matchingSlateCommandTargets(rows, 'JAX').map(target => target.kind)).toEqual(['team', 'game'])
+    expect(matchingSlateCommandTargets(rows, 'N. Collins').map(target => target.kind)).toEqual(['player', 'game'])
+    expect(firstSlateCommandPath(rows, 'Nico')).toBe('/nfl/player/22')
+  })
+
+  it('finds a team by nickname or city as well as its code', () => {
+    for (const query of ['jaguars', 'Jacksonville', 'houston texans']) {
+      expect(firstSlateCommandPath(rows, query)).toBe('/nfl/game/71')
+    }
+    expect(matchingSlateCommandTargets(rows, 'texans').find(target => target.kind === 'team')?.context).toBe('Houston Texans')
+  })
+
+  it('ranks the team with an exact code ahead of a player whose name contains it', () => {
+    const slate = nflSlateCommandRows([
+      { gameId: 90, awayTeam: 'CLE', homeTeam: 'NO', lines: [{ playerId: 5, playerName: 'KC Concepcion' }] },
+      { gameId: 91, awayTeam: 'NYJ', homeTeam: 'KC', lines: [] },
+    ])
+    expect(matchingSlateCommandRows(slate, 'KC').map(row => row.path)).toEqual(['/nfl/game/90', '/nfl/game/91'])
+    expect(firstSlateCommandPath(slate, 'KC')).toBe('/nfl/game/91')
+    expect(matchingSlateCommandTargets(slate, 'KC')[0].path).toBe('/nfl/game/91')
+    expect(firstSlateCommandPath(slate, 'concepcion')).toBe('/nfl/player/5')
+  })
+
+  it('ranks every Allen above the games, lists each game once, and leaves out games with no Allen', () => {
+    const slate = nflSlateCommandRows([
+      { gameId: 1, awayTeam: 'BUF', homeTeam: 'MIA', lines: [{ playerId: 10, playerName: 'Josh Allen' }, { playerId: 11, playerName: 'Ray Davis' }], commandContext: 'Final · BUF 30 @ MIA 20' },
+      { gameId: 2, awayTeam: 'DAL', homeTeam: 'NYG', lines: [] },
+      { gameId: 3, awayTeam: 'CHI', homeTeam: 'DET', lines: [{ playerId: 12, playerName: 'Keenan Allen' }, { playerId: 13, playerName: 'Allen Robinson' }] },
+    ])
+    expect(matchingSlateCommandTargets(slate, 'allen').map(target => [target.kind, target.label])).toEqual([
+      ['player', 'Josh Allen'], ['player', 'Keenan Allen'], ['player', 'Allen Robinson'], ['game', 'BUF @ MIA'], ['game', 'CHI @ DET'],
+    ])
+    expect(firstSlateCommandPath(slate, 'allen')).toBe('/nfl/player/10')
+    expect(matchingSlateCommandTargets(slate, 'allen').filter(target => target.kind === 'game').map(target => target.context))
+      .toEqual(['Final · BUF 30 @ MIA 20', 'NFL game'])
+  })
+})
+
+describe('commandGameContext', () => {
+  it('adds the score to a final and leaves a start time alone', () => {
+    const final = { away: { code: 'TB', score: 24 }, home: { code: 'CHI', score: 27 } }
+    expect(commandGameContext('Final', final)).toBe('Final · TB 24 @ CHI 27')
+    expect(commandGameContext('Mon 7:15 PM CT')).toBe('Mon 7:15 PM CT')
+    expect(commandGameContext('Final', { ...final, home: { code: 'CHI', score: null } })).toBe('Final')
   })
 })
 
@@ -149,12 +244,12 @@ describe('nbaSlateCommandRows', () => {
       expect(firstSlateCommandPath(rows, query)).toBe('/nba/game/81')
     }
     expect(rows[0].targets.filter(target => target.kind === 'player').map(target => target.path)).toEqual(['/nba/game/81'])
-    expect(matchingSlateCommandTargets(rows, 'Shai').map(target => target.kind)).toEqual(['game', 'player'])
+    expect(matchingSlateCommandTargets(rows, 'Shai').map(target => target.kind)).toEqual(['player', 'game'])
   })
 
   it('keeps game and team search available without digest data', () => {
     const rows = nbaSlateCommandRows(games, [])
-    expect(matchingSlateCommandTargets(rows, 'Minnesota').map(target => target.kind)).toEqual(['game', 'team'])
+    expect(matchingSlateCommandTargets(rows, 'Minnesota').map(target => target.kind)).toEqual(['team', 'game'])
     expect(matchingSlateCommandTargets(rows, 'Shai')).toEqual([])
   })
 })
@@ -177,8 +272,8 @@ describe('command matching', () => {
 
   it('lets a player match its parent game and returns the direct player target', () => {
     expect(matchingSlateCommandRows(rows, 'nico').map(item => item.key)).toEqual(['hou-jax'])
-    expect(matchingSlateCommandTargets(rows, 'nico').map(target => target.path)).toEqual(['/nfl/player/22'])
-    expect(firstSlateCommandPath(rows, 'nico')).toBe('/nfl/game/7')
+    expect(matchingSlateCommandTargets(rows, 'nico').map(target => target.path)).toEqual(['/nfl/player/22', '/nfl/game/7'])
+    expect(firstSlateCommandPath(rows, 'nico')).toBe('/nfl/player/22')
   })
 
   it('treats an empty query as no filter and no open results', () => {

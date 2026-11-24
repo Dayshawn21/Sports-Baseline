@@ -162,3 +162,9 @@ def test_an_unpublished_snap_season_names_the_season_and_asset() -> None:
 
     assert "snap counts" in str(caught.value)
     assert "2025" in str(caught.value)
+
+
+def test_a_relocated_franchise_is_stored_under_its_current_code() -> None:
+    parsed = parse_snap_counts([SNAP_HEADER, _snap(game_id="2019_01_DEN_OAK", season="2019", team="OAK")], 2019)
+
+    assert [item.team for item in parsed.games] == ["LV"]

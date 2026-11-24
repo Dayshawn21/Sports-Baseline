@@ -1,0 +1,146 @@
+{
+  "leagues": [
+    {
+      "id": "90",
+      "slug": "nhl"
+    }
+  ],
+  "events": [
+    {
+      "id": "401892566",
+      "date": "2026-10-24T17:00Z",
+      "season": {
+        "type": 2
+      },
+      "competitions": [
+        {
+          "id": "401892566",
+          "date": "2026-10-24T17:00Z",
+          "timeValid": true,
+          "competitors": [
+            {
+              "id": "15",
+              "homeAway": "home",
+              "team": {
+                "id": "15",
+                "abbreviation": "PHI"
+              },
+              "probables": [
+                {
+                  "name": "probableStartingGoalie",
+                  "playerId": 4271575,
+                  "status": {
+                    "name": "Confirmed",
+                    "type": "confirmed"
+                  },
+                  "athlete": {
+                    "id": "4271575",
+                    "displayName": "Joseph Woll",
+                    "position": "G",
+                    "team": {
+                      "id": "15"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "25",
+              "homeAway": "away",
+              "team": {
+                "id": "25",
+                "abbreviation": "ANA"
+              },
+              "probables": [
+                {
+                  "name": "probableStartingGoalie",
+                  "playerId": 4588165,
+                  "status": {
+                    "name": "Expected",
+                    "type": "expected"
+                  },
+                  "athlete": {
+                    "id": "4588165",
+                    "displayName": "Lukas Dostal",
+                    "position": "G",
+                    "team": {
+                      "id": "25"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401892567",
+      "date": "2026-10-24T19:30Z",
+      "season": {
+        "type": 2
+      },
+      "competitions": [
+        {
+          "id": "401892567",
+          "date": "2026-10-24T19:30Z",
+          "timeValid": true,
+          "competitors": [
+            {
+              "id": "11",
+              "homeAway": "home",
+              "team": {
+                "id": "11",
+                "abbreviation": "NJ"
+              },
+              "probables": [
+                {
+                  "name": "probableStartingGoalie",
+                  "playerId": 5111,
+                  "status": {
+                    "name": "Expected",
+                    "type": "expected"
+                  },
+                  "athlete": {
+                    "id": "5111",
+                    "displayName": "Jake Allen",
+                    "position": "G",
+                    "team": {
+                      "id": "11"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8",
+              "homeAway": "away",
+              "team": {
+                "id": "8",
+                "abbreviation": "LA"
+              },
+              "probables": [
+                {
+                  "name": "probableStartingGoalie",
+                  "playerId": 2610321,
+                  "status": {
+                    "name": "Expected",
+                    "type": "expected"
+                  },
+                  "athlete": {
+                    "id": "2610321",
+                    "displayName": "Darcy Kuemper",
+                    "position": "G",
+                    "team": {
+                      "id": "8"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

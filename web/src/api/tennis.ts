@@ -1,5 +1,5 @@
 import client from './client'
-import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, PlayerStats, PredictionsResponse, PropsAuditResponse, PropsResponse } from '~/types/tennis'
+import type { BankrollBuilderResponse, BestPicksResponse, MatchDetail, MatchOddsHistory, MatchOddsMarket, MatchRecentFormResponse, ModelPredictionsResponse, ModelPrizePicksLinesResponse, ModelPropTiersResponse, PlayerDetail, PlayerMatches, PlayerProps, PlayerServeReturn, ProjectionHistory, PredictionsResponse, PropsAuditResponse, PropsResponse, TennisPropReasonsResponse } from '~/types/tennis'
 
 export async function fetchPredictionsToday(params?: {
   date?: string
@@ -21,20 +21,13 @@ export async function fetchPrizePicksPropsAudit(): Promise<PropsAuditResponse> {
   return data
 }
 
+export async function fetchTennisPropReasons(propId: number): Promise<TennisPropReasonsResponse> {
+  const { data } = await client.get<TennisPropReasonsResponse>(`/tennis/props/prizepicks/${propId}/reasons`)
+  return data
+}
+
 export async function fetchDKProps(): Promise<PropsResponse> {
   const { data } = await client.get<PropsResponse>('/tennis/props/dk')
-  return data
-}
-
-export async function fetchBetProps(): Promise<PropsResponse> {
-  const { data } = await client.get<PropsResponse>('/tennis/props/bet')
-  return data
-}
-
-export async function fetchTopProps(limit = 10, minConfidence = 'LEAN'): Promise<PropsResponse> {
-  const { data } = await client.get<PropsResponse>('/tennis/props/top', {
-    params: { limit, min_confidence: minConfidence },
-  })
   return data
 }
 
@@ -55,18 +48,6 @@ export async function fetchBankrollBuilder(params?: {
   const { data } = await client.get<BankrollBuilderResponse>('/tennis/bankroll/today', {
     params: params ? { match_date: params.date, tour: params.tour } : undefined,
   })
-  return data
-}
-
-export async function fetchPlayerStats(
-  name: string,
-  tour?: string | null,
-  surface?: string | null,
-): Promise<PlayerStats | null> {
-  const params: Record<string, string> = { name }
-  if (tour) params.tour = tour
-  if (surface) params.surface = surface
-  const { data } = await client.get<PlayerStats | null>('/tennis/players/stats', { params })
   return data
 }
 
@@ -121,5 +102,10 @@ export async function fetchPlayerMatches(playerId: number, limit = 20): Promise<
 
 export async function fetchPlayerProps(playerId: number): Promise<PlayerProps> {
   const { data } = await client.get<PlayerProps>(`/tennis/players/${playerId}/props`)
+  return data
+}
+
+export async function fetchProjectionHistory(playerId: number): Promise<ProjectionHistory> {
+  const { data } = await client.get<ProjectionHistory>(`/tennis/players/${playerId}/projection-history`)
   return data
 }

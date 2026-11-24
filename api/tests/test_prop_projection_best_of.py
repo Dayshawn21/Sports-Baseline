@@ -15,6 +15,8 @@ from app.core.prop_projection import (
 )
 from app.repositories.players import PlayerRollingStats
 
+COMPUTED_AT = datetime(2026, 4, 30, 12, 0, tzinfo=UTC)
+
 
 def _stats(player_id: int = 1) -> PlayerRollingStats:
     return PlayerRollingStats(
@@ -35,7 +37,7 @@ def _stats(player_id: int = 1) -> PlayerRollingStats:
         first_won_pct=0.73,
         second_won_pct=0.52,
         dominance_ratio=1.08,
-        computed_at=datetime.now(UTC),
+        computed_at=COMPUTED_AT,
         allowed_aces_per_sp=0.08,
         allowed_df_per_sp=0.05,
         allowed_first_in_pct=0.62,

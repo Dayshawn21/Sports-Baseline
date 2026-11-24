@@ -3,20 +3,25 @@ from __future__ import annotations
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.core.nba_slate_gaps import DIGEST_LIMIT, SLATE_GAPS_MAX
+from app.core.production_settings import is_production
 from app.db.pool import get_db
 from app.schemas.nba import (
     NbaGameDetailResponse, NbaLineOnlyPropsResponse, NbaModelRankingResponse, NbaPropsResponse, NbaSlateGapsResponse,
-    NbaPropBoardResponse, NbaSlateResponse,
+    NbaPlayerPropsResponse, NbaPropBoardResponse, NbaSlateResponse,
 )
-from app.services.nba import track_record
+from app.season_query import optional_model_season
+from app.services.nba import ranking_snapshot, track_record
 from app.services.nba.game_detail import build_game_detail
 from app.services.nba.line_only_props import build_line_only_props
 from app.services.nba.prop_board_cache import cached_prop_board_json
+from app.services.nba.player_props_service import build_player_props
 from app.services.nba.props import build_props
-from app.services.nba.slate import build_slate
+from app.services.nba.slate import cached_slate
 from app.services.nba.slate_gaps import build_slate_gaps
 
 router = APIRouter()
@@ -27,12 +32,14 @@ EASTERN = ZoneInfo("America/New_York")
 
 @router.get("/slate", response_model=NbaSlateResponse)
 async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NbaSlateResponse:
-    return await build_slate(db, date, dt.datetime.now(EASTERN).date())
+    return await cached_slate(db, date, dt.datetime.now(EASTERN).date())
 
 
 @router.get("/slate/gaps", response_model=NbaSlateGapsResponse)
-async def get_slate_gaps(date: dt.date, db: AsyncSession = Depends(get_db)) -> NbaSlateGapsResponse:
-    return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC))
+async def get_slate_gaps(
+    date: dt.date, limit: int = Query(DIGEST_LIMIT, ge=1, le=SLATE_GAPS_MAX), db: AsyncSession = Depends(get_db),
+) -> NbaSlateGapsResponse:
+    return await build_slate_gaps(db, date, dt.datetime.now(dt.UTC), limit=limit)
 
 
 @router.get("/props", response_model=NbaPropBoardResponse)
@@ -67,14 +74,26 @@ async def get_game_props(game_id: int, db: AsyncSession = Depends(get_db)) -> Nb
     return props
 
 
+@router.get("/players/{player_id}/props", response_model=NbaPlayerPropsResponse)
+async def get_player_props(
+    player_id: int, date: dt.date | None = None, db: AsyncSession = Depends(get_db),
+) -> NbaPlayerPropsResponse:
+    props = await build_player_props(db, player_id, date, dt.datetime.now(EASTERN).date())
+    if props is None:
+        raise HTTPException(status_code=404, detail=f"NBA player {player_id} not found")
+    return props
+
+
 @router.get("/model/ranking", response_model=NbaModelRankingResponse)
-async def get_model_ranking(season: int | None = None, db: AsyncSession = Depends(get_db)) -> NbaModelRankingResponse:
-    # Resolved before the cache, so the cache is always keyed by a concrete season.
+async def get_model_ranking(
+    season: int | None = Depends(optional_model_season), db: AsyncSession = Depends(get_db),
+) -> NbaModelRankingResponse:
+    # Resolved before the read, so the stored copy and the cache are always keyed by a concrete season.
     if season is None:
         season = await track_record.nba_season(db, dt.datetime.now(dt.UTC))
     if season is None:
         raise HTTPException(status_code=404, detail="No NBA regular-season games are loaded")
-    record = await track_record.get_ranking_record(db, season)
-    if record is None:
+    response = await ranking_snapshot.get_ranking_response(db, season, is_production(settings.api_env))
+    if response is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
-    return NbaModelRankingResponse.model_validate(record)
+    return response

@@ -1,7 +1,9 @@
 import type { ModelPredictionsResponse, TrackClvLine } from '~/types/tennis'
+import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (part: number, whole: number) => (whole ? `${((part / whole) * 100).toFixed(1)}%` : '—')
-const points = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}`
+const pct = (part: number, whole: number) => (whole ? fmtPct(part / whole) : '—')
+const points = (value: number) => fmtSigned(value * 100, 2)
 
 function GroupLine({ line }: { line: TrackClvLine }) {
   return (

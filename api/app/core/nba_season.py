@@ -5,8 +5,10 @@ periods, so a week keeps that minimum a month of games, as for NFL.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
-from datetime import date, timedelta
+from datetime import date
+
+from app.core.regular_season_week import opening_night as opening_night
+from app.core.regular_season_week import regular_season_week as nba_week
 
 # ESPN season types: 1 preseason (never stored), 2 regular, 3 playoffs, 5 play-in.
 _GAME_TYPES = {2: "REG", 3: "PST", 5: "PIN"}
@@ -42,15 +44,3 @@ def current_nba_season(today: date) -> int:
 
 def game_type(espn_season_type: int) -> str | None:
     return _GAME_TYPES.get(espn_season_type)
-
-
-def opening_night(regular_season_dates: Iterable[date]) -> date:
-    return min(regular_season_dates)
-
-
-def nba_week(game_date: date, opening: date) -> int:
-    """Monday-to-Sunday week number, where week 1 holds opening night."""
-    first_monday = opening - timedelta(days=opening.weekday())
-    if game_date < first_monday:
-        raise ValueError(f"{game_date} is before the week of opening night {opening}")
-    return (game_date - first_monday).days // 7 + 1

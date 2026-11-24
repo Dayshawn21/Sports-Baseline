@@ -88,3 +88,9 @@ def test_an_unpublished_roster_season_names_the_season_and_asset() -> None:
 
     assert "weekly rosters" in str(caught.value)
     assert "2026" in str(caught.value)
+
+
+def test_a_relocated_franchise_is_stored_under_its_current_code() -> None:
+    parsed = parse_weekly_rosters([HEADER, _row("00-0000001", "OAK", "1", season="2019")], 2019)
+
+    assert [item.team for item in parsed] == ["LV"]

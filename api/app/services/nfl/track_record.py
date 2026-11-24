@@ -29,17 +29,22 @@ from app.core.nfl_over_probability_fit_report import (
 )
 from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
 from app.core.nfl_targets_projection import NFL_TARGETS_MODEL_VERSION
+from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.prop_ranking_rule import BREAK_EVEN_BY_ODDS_TYPE
 from app.core.track_record import Signal, rate_signal, verdict_signal
 from app.repositories import nfl as nfl_repo
 from app.services import prop_ranking
 from app.services.nfl.slate import build_slate
 from app.services.nfl.targets_ranking import NflTargetsRankingSource
+from app.services.nfl.volume_ranking import NflVolumeRankingSource, get_volume_record
 from app.services.prop_ranking import RankingCalls, RankingRecord, RankingSource, display_standard_error
 from app.services.sport_registry import prop_source
 from app.services.tennis.live_odds_cache import TimedSingleFlight
 
 CACHE_TTL_SECONDS = 15 * 60
+# Every season `is_model_season` accepts times the ranking's two cached versions, with room for a
+# decade more; records are small.
+CACHE_MAX_ENTRIES = 32
 # The CLV report names the total model by its parameter set; it carries no version string.
 CLV_MODEL_VERSIONS: dict[Market, str] = {"spread": NFL_ELO_MODEL_VERSION, "total": "NFL_SCORING_V1"}
 
@@ -88,6 +93,8 @@ def ranking_source(model_version: str = NFL_PROJECTION_MODEL_VERSION) -> Ranking
         return prop_source("nfl")
     if model_version == NFL_TARGETS_MODEL_VERSION:
         return NflTargetsRankingSource()
+    if model_version == NFL_VOLUME_MODEL_VERSION:
+        return NflVolumeRankingSource()
     raise ValueError(f"Unknown NFL ranking model: {model_version}")
 
 
@@ -359,15 +366,19 @@ def get_fit_record() -> FitRecord:
     return build_fit_record(NFL_PROJECTION_MODEL_VERSION)
 
 
-_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
-_CLV: TimedSingleFlight[ClvRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
-_LINES: TimedSingleFlight[LineRecord] = TimedSingleFlight(CACHE_TTL_SECONDS)
+_RANKING: TimedSingleFlight[RankingRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
+_CLV: TimedSingleFlight[ClvRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
+_LINES: TimedSingleFlight[LineRecord] = TimedSingleFlight(CACHE_TTL_SECONDS, max_entries=CACHE_MAX_ENTRIES)
 
 
 async def get_ranking_record(
     db: AsyncSession, season: int, model_version: str = NFL_PROJECTION_MODEL_VERSION,
 ) -> RankingRecord | None:
     """None when grading failed; the failure is shared for the cache window too."""
+    if model_version == NFL_VOLUME_MODEL_VERSION:
+        # The shared record would judge on 27i's pick rule alone; the volume record adds 49b's log-loss clause.
+        volume = await get_volume_record(db, season)
+        return volume.record if volume is not None else None
     source = ranking_source(model_version)
 
     async def fetch() -> RankingRecord:

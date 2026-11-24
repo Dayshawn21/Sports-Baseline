@@ -42,7 +42,7 @@ export function buildMovementSeries(rows: MatchOddsRow[], market: MatchOddsMarke
 }
 
 // Same order the API breaks same-run ties in (_BOOK_PRIORITY_SQL); Bet365 was once stored as betonline.
-const BOOK_PRIORITY = ['draftkings', 'bet365', 'betonline.ag', 'betonline', 'betfair exchange']
+const BOOK_PRIORITY = ['draftkings', 'bet365', 'betonline.ag', 'betonline', 'fanduel', 'betfair exchange']
 
 function bookRank(book: string): number {
   const rank = BOOK_PRIORITY.indexOf(book.toLowerCase())
@@ -54,6 +54,7 @@ const BOOK_LABELS: Record<string, string> = {
   bet365: 'Bet365',
   'betonline.ag': 'Bet365',
   betonline: 'Bet365',
+  fanduel: 'FanDuel',
   'betfair exchange': 'Betfair',
 }
 

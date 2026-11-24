@@ -4,7 +4,8 @@ Odds-API.io sends decimal prices as strings, keyed by book name, and Bet365's
 spread as a ladder of alternate lines. The main line is the rung with the
 least vig, because alternates carry more margin than the line the book
 actually sets (on 2026-10-07 Bet365's DAL -9.5 carried 1.050, the rungs
-beside it about 1.09).
+beside it about 1.09). FanDuel's total ladder is the exception at its ends,
+so rungs priced past `MAX_MAIN_LINE_PROBABILITY` are set aside first.
 """
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from math import isfinite
 
 from app.core.nfl_odds import NflGameMarket
-from app.core.odds import decimal_to_american, devig_two_way
+from app.core.odds import decimal_to_american, devig_two_way, near_even_rungs
 
 _MARKETS = {"ML": "moneyline", "Spread": "spread", "Totals": "total"}
 
@@ -31,13 +32,16 @@ def _decimal(value: object) -> float | None:
 
 
 def _main_rung(rungs: Sequence[Mapping[str, object]], first: str, second: str) -> Mapping[str, object] | None:
-    """The two-sided rung with the lowest overround, then the one closest to even."""
+    """Among near-even two-sided rungs, the lowest overround, then the one closest to even."""
     priced = []
     for rung in rungs:
         first_price, second_price = _decimal(rung.get(first)), _decimal(rung.get(second))
         if first_price is not None and second_price is not None:
-            priced.append((1 / first_price + 1 / second_price, abs(first_price - second_price), rung))
-    return min(priced, key=lambda item: item[:2])[2] if priced else None
+            priced.append((first_price, second_price, rung))
+    if not priced:
+        return None
+    candidates = near_even_rungs(priced, lambda item: (item[0], item[1]))
+    return min(candidates, key=lambda item: (1 / item[0] + 1 / item[1], abs(item[0] - item[1])))[2]
 
 
 def _row(market: str, line: float | None, sides: tuple[str, str], prices: tuple[float, float], raw: Mapping[str, object]) -> NflGameMarket:

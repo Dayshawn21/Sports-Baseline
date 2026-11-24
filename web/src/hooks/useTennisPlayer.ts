@@ -1,15 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchPlayerDetail, fetchPlayerMatches, fetchPlayerProps, fetchPlayerServeReturn } from '~/api/tennis'
+import { fetchPlayerDetail, fetchPlayerMatches, fetchPlayerProps, fetchPlayerServeReturn, fetchProjectionHistory } from '~/api/tennis'
 import { retryUnlessNotFound } from '~/utils/httpError'
-
-const PLAYER_STALE_MS = 5 * 60 * 1000
+import { SLATE_STALE_MS } from '~/hooks/queryTimes'
 
 export function usePlayerDetail(playerId: number | null) {
   return useQuery({
     queryKey: ['tennis', 'player', playerId, 'detail'],
     queryFn: () => fetchPlayerDetail(playerId!),
     enabled: playerId != null,
-    staleTime: PLAYER_STALE_MS,
+    staleTime: SLATE_STALE_MS,
     retry: retryUnlessNotFound,
   })
 }
@@ -19,16 +18,16 @@ export function usePlayerServeReturn(playerId: number | null) {
     queryKey: ['tennis', 'player', playerId, 'serve-return'],
     queryFn: () => fetchPlayerServeReturn(playerId!),
     enabled: playerId != null,
-    staleTime: PLAYER_STALE_MS,
+    staleTime: SLATE_STALE_MS,
   })
 }
 
-export function usePlayerMatches(playerId: number | null) {
+export function usePlayerMatches(playerId: number | null, limit?: number) {
   return useQuery({
-    queryKey: ['tennis', 'player', playerId, 'matches'],
-    queryFn: () => fetchPlayerMatches(playerId!),
+    queryKey: ['tennis', 'player', playerId, 'matches', limit ?? 'default'],
+    queryFn: () => fetchPlayerMatches(playerId!, limit),
     enabled: playerId != null,
-    staleTime: PLAYER_STALE_MS,
+    staleTime: SLATE_STALE_MS,
   })
 }
 
@@ -37,6 +36,16 @@ export function usePlayerProps(playerId: number | null) {
     queryKey: ['tennis', 'player', playerId, 'props'],
     queryFn: () => fetchPlayerProps(playerId!),
     enabled: playerId != null,
-    staleTime: PLAYER_STALE_MS,
+    staleTime: SLATE_STALE_MS,
+  })
+}
+
+export function useProjectionHistory(playerId: number | null) {
+  return useQuery({
+    queryKey: ['tennis', 'player', playerId, 'projection-history'],
+    queryFn: () => fetchProjectionHistory(playerId!),
+    enabled: playerId != null,
+    staleTime: SLATE_STALE_MS,
+    retry: retryUnlessNotFound,
   })
 }

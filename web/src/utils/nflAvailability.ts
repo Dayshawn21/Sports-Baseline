@@ -42,6 +42,41 @@ export function injuryLabel(row: InjuryReport): string | null {
   return parts.length ? parts.join(' · ') : null
 }
 
+interface ActiveDepth {
+  depthPosition: string | null
+  depthRank: number | null
+  /** Absent in slates stored before it; null when the player is out. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
+}
+
+const NAME_SUFFIXES = new Set(['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'])
+
+function surname(name: string): string {
+  const parts = name.split(' ').filter(part => !NAME_SUFFIXES.has(part))
+  return parts[parts.length - 1] ?? name
+}
+
+/** True when an Out teammate ahead (or the player's own Out) changes what the chart says. */
+export function depthShifted(row: ActiveDepth): boolean {
+  return row.depthRank !== null && row.activeDepthRank !== undefined && row.activeDepthRank !== row.depthRank
+}
+
+/** "RB1 (RB2 on chart, Walker out)", "RB1 on chart, out", or the plain chart rank. */
+export function activeDepthLabel(row: ActiveDepth): string | null {
+  if (row.depthPosition === null || row.depthRank === null) return null
+  const chart = `${row.depthPosition}${row.depthRank}`
+  if (!depthShifted(row)) return chart
+  if (row.activeDepthRank === null || row.activeDepthRank === undefined) return `${chart} on chart, out`
+  const out = (row.outAhead ?? []).map(surname).join(', ')
+  return `${row.depthPosition}${row.activeDepthRank} (${chart} on chart${out ? `, ${out} out` : ''})`
+}
+
+/** The active label when an Out changes the depth, otherwise the week-over-week chart label. */
+export function availabilityDepthLabel(row: ActiveDepth & DepthListing): string | null {
+  return depthShifted(row) ? activeDepthLabel(row) : depthLabel(row)
+}
+
 /** "WR2 (was WR1)" against the player's previous chart; null when not listed this week. */
 export function depthLabel(row: DepthListing): string | null {
   if (row.depthPosition === null || row.depthRank === null) return null
@@ -49,4 +84,29 @@ export function depthLabel(row: DepthListing): string | null {
   if (row.previousDepthPosition === null || row.previousDepthRank === null) return `${current} (first listing)`
   const previous = `${row.previousDepthPosition}${row.previousDepthRank}`
   return previous === current ? current : `${current} (was ${previous})`
+}
+
+interface RoleChange extends ActiveDepth {
+  injuryStatus: string | null
+  qualityFlags: string[]
+}
+
+const ROLE_CHANGED_FLAG = 'role_changed'
+const OUT_FLAG = 'injury_out'
+
+function isOut(row: RoleChange): boolean {
+  return row.injuryStatus === 'Out' || row.qualityFlags.includes(OUT_FLAG)
+}
+
+/** Out, or moved up by an Out teammate; stored slates without the API flag still guard. */
+export function isRoleChanged(row: RoleChange): boolean {
+  return row.qualityFlags.includes(ROLE_CHANGED_FLAG) || isOut(row) || depthShifted(row)
+}
+
+/** "Player is out", "Role changed: Walker out", or null on a line whose role is known. */
+export function roleChangeNote(row: RoleChange): string | null {
+  if (!isRoleChanged(row)) return null
+  if (isOut(row) || row.activeDepthRank === null) return 'Player is out'
+  const out = (row.outAhead ?? []).map(surname).join(', ')
+  return out ? `Role changed: ${out} out` : 'Role changed: a teammate ahead is out'
 }

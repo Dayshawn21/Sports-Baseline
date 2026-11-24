@@ -1,5 +1,6 @@
 import type { PlayerDetail } from '~/types/tennis'
 import { chartSurface, eloChart } from '~/utils/tennisPlayer'
+import { fmtSigned } from '~/utils/format'
 
 const BOX = { left: 44, right: 596, top: 14, bottom: 150 }
 const SURFACE_LABELS = { hard: 'Hard', clay: 'Clay', grass: 'Grass' }
@@ -19,7 +20,7 @@ export default function PlayerEloCard({ player }: { player: PlayerDetail }) {
     )
   }
 
-  const change = elo.change == null ? null : `${elo.change >= 0 ? '+' : ''}${Math.round(elo.change)} since ${elo.history[0]?.asOf}`
+  const change = elo.change == null ? null : `${fmtSigned(elo.change, 0)} since ${elo.history[0]?.asOf}`
   const rank = elo.tourRank != null ? `tour rank by ELO #${elo.tourRank} of ${elo.tourRankOf}` : null
   const points = (key: string) => chart.series[key].map((p) => `${p.x},${p.y}`).join(' ')
   const last = chart.series.overall.at(-1)

@@ -1,50 +1,22 @@
 import asyncio
-from datetime import UTC, datetime
 from decimal import Decimal
 from math import isnan
 from typing import cast
 
 import pytest
-from sqlalchemy import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import TextClause
 
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_targets_projection import TargetsObservation, project_targets
 from app.repositories.nfl import _player_teams_cte
 from app.repositories.nfl_targets import get_targets_replay_rows
-
-KICKOFF = datetime(2024, 10, 6, 17, tzinfo=UTC)
-
-
-class _Result:
-    def __init__(self, rows: list[dict[str, object]]) -> None:
-        self.rows = rows
-
-    def mappings(self) -> list[RowMapping]:
-        return cast(list[RowMapping], self.rows)
-
-
-class _Session:
-    def __init__(self, *responses: list[dict[str, object]]) -> None:
-        self.responses = list(responses)
-        self.calls: list[tuple[str, dict[str, object]]] = []
-
-    async def execute(self, statement: TextClause, params: dict[str, object]) -> _Result:
-        self.calls.append((" ".join(str(statement).split()), params))
-        return _Result(self.responses.pop(0))
+from tests.helpers.nfl_targets_repository import KICKOFF, _Session, _history
 
 
 def _driver(**overrides: object) -> dict[str, object]:
     return {
         "player_id": 7, "game_id": 50, "week": 5, "position": "WR", "actual": 6,
         "home_moneyline": -150, "away_moneyline": 130, "player_is_home": True,
-    } | overrides
-
-
-def _history(**overrides: object) -> dict[str, object]:
-    return {
-        "player_id": 7, "game_id": 40, "season": 2024, "week": 4,
-        "start_utc": KICKOFF, "targets": 4,
     } | overrides
 
 
@@ -95,7 +67,10 @@ def test_history_is_batched_for_distinct_players_and_strictly_before_the_week() 
 
     assert len(session.calls) == 2
     sql, params = session.calls[1]
-    assert params == {"season": 2024, "week": 5, "player_ids": [7, 9]}
+    assert params == {
+        "season": 2024, "week": 5, "player_ids": [7, 9], "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
+    assert "g.season >= :first_history_season AND (g.season < :season" in sql
     assert "JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id" in sql
     assert "s.player_id = ANY(CAST(:player_ids AS bigint[]))" in sql
     assert "g.game_type = 'REG' AND g.status = 'completed'" in sql

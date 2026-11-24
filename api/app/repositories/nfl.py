@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from app.core.nfl_baseline import SeasonGames, choose_baseline_season
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON, SeasonGames, choose_baseline_season
+from app.core.nfl_depth_coverage import DepthRow, OutRow
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION, NflEloGame, NflTeamEloRow
+from app.core.nfl_espn_injuries import SEVERITY, EspnNflInjury
 from app.core.nfl_game_line_clv import ClvGame, Market, OddsCandidate
 from app.core.nfl_game_lines import NflGameLineGame, market_home_probability
+from app.core.nfl_usage_shift import SHIFT_POSITIONS, UsageShiftPlayer
 from app.core.nfl_line_grading import STAT_COLUMN_BY_MARKET, GradeableLine, settle_line
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
 from app.core.nfl_matchup_context import ContextCutoff, HistoryGame, PlayerUsageGame, TeamAllowedGame
 from app.core.nfl_best_line import Quote
@@ -18,6 +23,7 @@ from app.core.nfl_qb_change import Qb, QbGame, QbInjury
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_environment import NflEnvironmentGame
 from app.core.nfl_projection_backtest import REPLAY_MARKETS_BY_POSITION, ReplayRow
+from app.core.nfl_volume_projection import NFL_VOLUME_MODEL_VERSION
 from app.core.nfl_prop_market import SettledPropRow
 from app.core.nfl_prop_odds import consensus
 from app.core.nfl_td_backtest import NflSnapRow, NflWeeklyTdRow
@@ -364,25 +370,6 @@ async def insert_game_odds_snapshot(
     return row.scalar_one()
 
 
-async def get_latest_game_odds(
-    db: AsyncSession, game_id: int, book: str, market: str
-) -> dict | None:
-    """Return the most recent stored snapshot for one NFL game market."""
-    row = await db.execute(
-        text("""
-            SELECT id, game_id, book, market, line, first_side, second_side,
-                   first_odds, second_odds, first_market_prob, second_market_prob, fetched_at
-            FROM sport_game_odds
-            WHERE sport = 'nfl' AND provider = 'the_odds_api_us' AND game_id = :game_id AND book = :book AND market = :market
-            ORDER BY fetched_at DESC, id DESC
-            LIMIT 1
-        """),
-        {"game_id": game_id, "book": book, "market": market},
-    )
-    result = row.mappings().first()
-    return dict(result) if result is not None else None
-
-
 async def insert_game_weather_snapshot(
     db: AsyncSession,
     game_id: int,
@@ -506,6 +493,11 @@ async def upsert_player(
     return row.scalar_one()
 
 
+_KICKING_INSERT_COLUMNS = ", ".join(KICKING_DISTANCE_COLUMNS)
+_KICKING_INSERT_VALUES = ", ".join(f":{column}" for column in KICKING_DISTANCE_COLUMNS)
+_KICKING_UPDATES = ", ".join(f"{column} = EXCLUDED.{column}" for column in KICKING_DISTANCE_COLUMNS)
+
+
 async def upsert_weekly_stat(
     db: AsyncSession,
     stat: NflversePlayerWeek,
@@ -515,21 +507,23 @@ async def upsert_weekly_stat(
     opponent_team_id: int | None,
 ) -> None:
     await db.execute(
-        text("""
+        text(f"""
             INSERT INTO nfl_player_weekly_stats (
                 player_id, game_id, team_id, opponent_team_id, season, week,
                 passing_yards, passing_attempts, passing_completions, rushing_yards,
                 rushing_attempts, receiving_yards, receptions, targets, target_share,
                 air_yards_share, wopr, touchdowns, fantasy_points,
                 passing_tds, interceptions, fumbles_lost, two_point_conversions,
-                return_tds, fumble_recovery_tds, prizepicks_fantasy_points, fg_made, pat_made
+                return_tds, fumble_recovery_tds, prizepicks_fantasy_points, fg_made, pat_made,
+                {_KICKING_INSERT_COLUMNS}
             ) VALUES (
                 :player_id, :game_id, :team_id, :opponent_team_id, :season, :week,
                 :passing_yards, :passing_attempts, :passing_completions, :rushing_yards,
                 :rushing_attempts, :receiving_yards, :receptions, :targets, :target_share,
                 :air_yards_share, :wopr, :touchdowns, :fantasy_points,
                 :passing_tds, :interceptions, :fumbles_lost, :two_point_conversions,
-                :return_tds, :fumble_recovery_tds, :prizepicks_fantasy_points, :fg_made, :pat_made
+                :return_tds, :fumble_recovery_tds, :prizepicks_fantasy_points, :fg_made, :pat_made,
+                {_KICKING_INSERT_VALUES}
             )
             ON CONFLICT (player_id, game_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id,
@@ -556,6 +550,7 @@ async def upsert_weekly_stat(
                 prizepicks_fantasy_points = EXCLUDED.prizepicks_fantasy_points,
                 fg_made = EXCLUDED.fg_made,
                 pat_made = EXCLUDED.pat_made,
+                {_KICKING_UPDATES},
                 updated_at = now()
         """),
         {
@@ -573,6 +568,7 @@ async def upsert_weekly_stat(
             "return_tds": stat.return_tds, "fumble_recovery_tds": stat.fumble_recovery_tds,
             "prizepicks_fantasy_points": stat.prizepicks_fantasy_points,
             "fg_made": stat.fg_made, "pat_made": stat.pat_made,
+            **{column: stat.kicking_by_distance.get(column) for column in KICKING_DISTANCE_COLUMNS},
         },
     )
 
@@ -745,6 +741,42 @@ async def replace_weekly_injuries(
             "primary_injury": ("text", [item.primary_injury for item in injuries]),
         },
     )
+
+
+async def replace_espn_injuries(
+    db: AsyncSession, season: int, week: int, rows: list[tuple[str, EspnNflInjury]], fetched_at: datetime,
+) -> tuple[int, int]:
+    """Replace the week's ESPN statuses with `rows` (gsis id, entry); returns (deleted, stored).
+
+    A gsis id with no stored player is dropped by the join, not inserted.
+    """
+    deleted = await db.execute(
+        text("DELETE FROM nfl_player_espn_injuries WHERE season = :season AND week = :week RETURNING player_id"),
+        {"season": season, "week": week},
+    )
+    inserted = await db.execute(
+        text("""
+            INSERT INTO nfl_player_espn_injuries
+                (player_id, season, week, status, injury, comment, espn_updated_at, fetched_at)
+            SELECT p.id, :season, :week, v.status, v.injury, v.comment, v.espn_updated_at, :fetched_at
+            FROM unnest(
+                CAST(:player_keys AS text[]), CAST(:statuses AS text[]), CAST(:injuries AS text[]),
+                CAST(:comments AS text[]), CAST(:updated AS timestamptz[])
+            ) AS v(player_key, status, injury, comment, espn_updated_at)
+            JOIN sport_players p ON p.sport = 'nfl' AND p.source_player_id = v.player_key
+            ON CONFLICT (player_id, season, week) DO NOTHING
+            RETURNING player_id
+        """),
+        {
+            "season": season, "week": week, "fetched_at": fetched_at,
+            "player_keys": [gsis_id for gsis_id, _ in rows],
+            "statuses": [entry.status for _, entry in rows],
+            "injuries": [entry.injury for _, entry in rows],
+            "comments": [entry.comment for _, entry in rows],
+            "updated": [entry.espn_updated_at for _, entry in rows],
+        },
+    )
+    return len(deleted.fetchall()), len(inserted.fetchall())
 
 
 async def replace_weekly_depth_charts(
@@ -1005,6 +1037,27 @@ async def get_team_schedule(db: AsyncSession, season: int) -> dict[str, list[tup
     return schedule
 
 
+async def get_depth_coverage_rows(db: AsyncSession, season: int) -> tuple[list[DepthRow], list[OutRow]]:
+    """A season's skill-position chart rows and its nflverse Out reports, for the 70b1 coverage report."""
+    depth = await db.execute(text("""
+        SELECT t.team_code, d.week, d.player_id, d.position, d.depth_rank
+        FROM nfl_player_depth_charts d
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = d.team_id
+        WHERE d.season = :season
+    """), {"season": season})
+    out = await db.execute(text("""
+        SELECT t.team_code, i.week, i.player_id, p.position
+        FROM nfl_player_injuries i
+        JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
+        WHERE i.season = :season AND i.report_status = 'Out'
+    """), {"season": season})
+    return (
+        [DepthRow(*row) for row in depth.fetchall()],
+        [OutRow(team, week, player_id, position or "") for team, week, player_id, position in out.fetchall()],
+    )
+
+
 async def get_weekly_td_rows(db: AsyncSession) -> list[NflWeeklyTdRow]:
     """Every regular-season player-game with TD, role, and historical game-line inputs."""
     rows = await db.execute(text("""
@@ -1017,8 +1070,8 @@ async def get_weekly_td_rows(db: AsyncSession) -> list[NflWeeklyTdRow]:
         FROM nfl_player_weekly_stats s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG'
-    """))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+    """), {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return [NflWeeklyTdRow(*row) for row in rows.fetchall()]
 
 
@@ -1029,8 +1082,8 @@ async def get_snap_rows(db: AsyncSession) -> list[NflSnapRow]:
         FROM nfl_player_snap_counts s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG'
-    """))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+    """), {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return [NflSnapRow(*row) for row in rows.fetchall()]
 
 
@@ -1097,27 +1150,6 @@ async def get_upcoming_games_needing_weather(db: AsyncSession, days_ahead: int) 
     ]
 
 
-async def upsert_player_alias(
-    db: AsyncSession,
-    alias_name: str,
-    alias_name_norm: str,
-    player_id: int,
-    source: str = "manual",
-) -> None:
-    await db.execute(
-        text("""
-            INSERT INTO sport_player_aliases (sport, player_id, alias_name, alias_name_norm, source)
-            VALUES ('nfl', :player_id, :alias_name, :alias_norm, :source)
-            ON CONFLICT (sport, alias_name_norm) DO UPDATE SET
-                player_id = EXCLUDED.player_id,
-                alias_name = EXCLUDED.alias_name,
-                source = EXCLUDED.source
-        """),
-        {"player_id": player_id, "alias_name": alias_name,
-         "alias_norm": alias_name_norm, "source": source},
-    )
-
-
 async def get_games(db: AsyncSession, season: int, week: int) -> list[dict]:
     rows = await db.execute(
         text("""
@@ -1172,7 +1204,7 @@ async def get_current_week(db: AsyncSession, now: datetime) -> tuple[int, int] |
 
 
 async def get_historical_player_baselines(db: AsyncSession, season: int, week: int) -> list[dict]:
-    """Return upcoming-game players with transparent pre-week career-season averages."""
+    """Return upcoming-game players with transparent pre-week averages since the history floor."""
     rows = await db.execute(
         text(f"""
             WITH {_player_teams_cte()},
@@ -1191,12 +1223,13 @@ async def get_historical_player_baselines(db: AsyncSession, season: int, week: i
                    COALESCE(AVG(s.receptions), 0), COALESCE(AVG(s.touchdowns), 0), AVG(s.fantasy_points)
             FROM slate_players sp
             LEFT JOIN nfl_player_weekly_stats s ON s.player_id = sp.player_id
+                AND s.season >= :first_history_season
                 AND (s.season < :season OR (s.season = :season AND s.week < :week))
             GROUP BY sp.game_id, sp.player_id, sp.player_name, sp.position
             HAVING COUNT(s.id) > 0
             ORDER BY sp.game_id, sp.player_name
         """),
-        {"season": season, "week": week},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     baselines = [
         {
@@ -1232,11 +1265,14 @@ async def _attach_snap_history(db: AsyncSession, season: int, week: int, rows: l
     player_ids = sorted({row["player_id"] for row in rows})
     if not player_ids:
         return
-    params = {"player_ids": player_ids, "season": season, "week": week}
+    params = {
+        "player_ids": player_ids, "season": season, "week": week,
+        "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
     player_rows = await db.execute(text("""
         SELECT player_id, season, COUNT(offense_pct), AVG(offense_pct)
         FROM nfl_player_snap_counts
-        WHERE player_id = ANY(:player_ids) AND offense_pct IS NOT NULL
+        WHERE player_id = ANY(:player_ids) AND offense_pct IS NOT NULL AND season >= :first_history_season
           AND (season < :season OR (season = :season AND week < :week))
         GROUP BY player_id, season ORDER BY player_id, season
     """), params)
@@ -1246,7 +1282,8 @@ async def _attach_snap_history(db: AsyncSession, season: int, week: int, rows: l
     position_rows = await db.execute(text("""
         SELECT p.position, s.season, AVG(s.offense_pct)
         FROM nfl_player_snap_counts s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE s.offense_pct IS NOT NULL AND (s.season < :season OR (s.season = :season AND s.week < :week))
+        WHERE s.offense_pct IS NOT NULL AND s.season >= :first_history_season
+          AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
     """), params)
     position_shares = {(position, year): float(share) for position, year, share in position_rows.fetchall()}
@@ -1268,10 +1305,10 @@ async def _td_history(
     player_rows = await db.execute(text("""
         SELECT s.player_id, s.season, COUNT(*), AVG(s.touchdowns)
         FROM nfl_player_weekly_stats s JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
-        WHERE g.game_type = 'REG' AND s.player_id = ANY(:player_ids)
+        WHERE g.game_type = 'REG' AND s.player_id = ANY(:player_ids) AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.player_id, s.season ORDER BY s.player_id, s.season
-    """), {"player_ids": player_ids, "season": season, "week": week})
+    """), {"player_ids": player_ids, "season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     td_seasons: dict[int, list[dict]] = {}
     for player_id, year, games, touchdowns in player_rows.fetchall():
         td_seasons.setdefault(player_id, []).append({"season": year, "games": games, "touchdowns": float(touchdowns or 0)})
@@ -1279,9 +1316,10 @@ async def _td_history(
         SELECT p.position, s.season, AVG(s.touchdowns)
         FROM nfl_player_weekly_stats s JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
-        WHERE g.game_type = 'REG' AND (s.season < :season OR (s.season = :season AND s.week < :week))
+        WHERE g.game_type = 'REG' AND s.season >= :first_history_season
+          AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
-    """), {"season": season, "week": week})
+    """), {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     return td_seasons, {(position, year): float(rate or 0) for position, year, rate in position_rows.fetchall()}
 
 
@@ -1318,14 +1356,60 @@ def _player_teams_cte(week_bound: bool = True) -> str:
 # The slate week's injury and depth rows, plus each player's most recent depth row
 # from an earlier week (any team), so a role change can be shown against it. Each
 # is at most one row per player, so joining them does not multiply slate lines.
-_AVAILABILITY_CTE = """
+def _severity_rank(column: str) -> str:
+    whens = " ".join(f"WHEN '{status}' THEN {rank}" for status, rank in SEVERITY.items())
+    return f"CASE {column} {whens} ELSE 0 END"
+
+
+# The nflverse report merged with ESPN's current statuses (fix: nfl-espn-injuries).
+# ESPN only ever makes a status more severe (`more_severe`); practice status stays
+# nflverse's. An ESPN-only player takes the team from that week's roster.
+_INJURY_REPORTS_CTE = f"""
+    injury_reports AS (
+        SELECT COALESCE(i.player_id, e.player_id) AS player_id,
+               COALESCE(i.season, e.season) AS season, COALESCE(i.week, e.week) AS week,
+               COALESCE(i.team_id, r.team_id) AS team_id,
+               CASE WHEN {_severity_rank('e.status')} > {_severity_rank('i.report_status')}
+                    THEN e.status ELSE i.report_status END AS report_status,
+               i.practice_status, COALESCE(i.primary_injury, e.injury) AS primary_injury,
+               GREATEST(i.updated_at, e.fetched_at) AS updated_at
+        FROM nfl_player_injuries i
+        FULL JOIN nfl_player_espn_injuries e
+          ON e.player_id = i.player_id AND e.season = i.season AND e.week = i.week
+        LEFT JOIN nfl_player_weekly_rosters r
+          ON i.player_id IS NULL AND r.player_id = e.player_id AND r.season = e.season AND r.week = e.week
+    )
+"""
+
+# `week_depth.active_depth_rank` is display only (fix: nfl-active-depth): the chart
+# rank minus teammates ahead at the position who are Out; an Out player has none.
+# Week-over-week moves keep comparing chart ranks, so a fill-in is not a promotion.
+_AVAILABILITY_CTE = f"""
+    {_INJURY_REPORTS_CTE},
     week_injuries AS (
         SELECT player_id, report_status, practice_status, primary_injury
-        FROM nfl_player_injuries WHERE season = :season AND week = :week
+        FROM injury_reports WHERE season = :season AND week = :week
     ),
-    week_depth AS (
+    week_chart AS (
         SELECT player_id, team_id, position, depth_rank
         FROM nfl_player_depth_charts WHERE season = :season AND week = :week
+    ),
+    week_depth AS (
+        SELECT c.player_id, c.team_id, c.position, c.depth_rank,
+               CASE WHEN own.report_status = 'Out' THEN NULL
+                    ELSE c.depth_rank - cardinality(ahead.names) END AS active_depth_rank,
+               ahead.names AS out_ahead
+        FROM week_chart c
+        LEFT JOIN week_injuries own ON own.player_id = c.player_id
+        CROSS JOIN LATERAL (
+            SELECT ARRAY(
+                SELECT p.name FROM week_chart a
+                JOIN week_injuries ai ON ai.player_id = a.player_id AND ai.report_status = 'Out'
+                JOIN sport_players p ON p.id = a.player_id
+                WHERE a.team_id = c.team_id AND a.position = c.position AND a.depth_rank < c.depth_rank
+                ORDER BY a.depth_rank, p.name
+            ) AS names
+        ) ahead
     ),
     previous_depth AS (
         SELECT DISTINCT ON (player_id) player_id, team_id, position, depth_rank
@@ -1338,12 +1422,14 @@ _AVAILABILITY_CTE = """
 _AVAILABILITY_COLUMNS = """
     wi.report_status AS injury_status, wi.practice_status, wi.primary_injury AS injury,
     wd.team_id AS depth_team_id, wd.position AS depth_position, wd.depth_rank,
+    wd.active_depth_rank, wd.out_ahead,
     pd.team_id AS previous_depth_team_id, pd.position AS previous_depth_position,
     pd.depth_rank AS previous_depth_rank
 """
 
 _AVAILABILITY_FIELDS = (
     "injury_status", "practice_status", "injury", "depth_team_id", "depth_position", "depth_rank",
+    "active_depth_rank", "out_ahead",
     "previous_depth_team_id", "previous_depth_position", "previous_depth_rank",
 )
 
@@ -1358,6 +1444,11 @@ MODELLED_MARKET_FILTER = "l.market IN ({})".format(", ".join(f"'{market.value}'"
 V4_MARKET_FILTER = "l.market IN ({})".format(
     ", ".join(f"'{market.value}'" for market in NflPropMarket if market in NFL_V4_PROP_MARKETS)
 )
+# Receptions is both a v4 market and the volume model's, so a line can carry a
+# frozen row from each. v4's readers must drop the other model's rows before
+# they pick the newest per line, or the later row would replace v4's in 27j.
+NON_V4_MODEL_VERSIONS = [NFL_VOLUME_MODEL_VERSION]
+NOT_OTHER_MODEL = "NOT (p.model_version = ANY(CAST(:non_v4_model_versions AS text[])))"
 
 _LATEST_LINES_CTE = f"""
     latest_lines AS (
@@ -1406,6 +1497,7 @@ _BASELINES_CTE = f"""
         FROM nfl_player_weekly_stats s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.player_id, s.season
     ),
@@ -1422,6 +1514,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position, s.season
     ),
@@ -1437,6 +1530,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG' AND s.opponent_team_id IS NOT NULL
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY s.opponent_team_id, p.position
     ),
@@ -1452,6 +1546,7 @@ _BASELINES_CTE = f"""
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
         WHERE g.game_type = 'REG'
+          AND s.season >= :first_history_season
           AND (s.season < :season OR (s.season = :season AND s.week < :week))
         GROUP BY p.position
     )
@@ -1562,12 +1657,14 @@ async def get_slate_weather(db: AsyncSession, season: int, week: int) -> dict[in
 async def get_week_game_injuries(db: AsyncSession, season: int, week: int) -> list[dict]:
     """The week's stored injury report across all positions.
 
-    The team is the one that filed the report, not the player's last-write team.
+    The team is the one that filed the report, not the player's last-write team;
+    a player only ESPN lists takes that week's roster team.
     """
-    rows = await db.execute(text("""
+    rows = await db.execute(text(f"""
+        WITH {_INJURY_REPORTS_CTE}
         SELECT i.team_id, t.team_code, p.name, COALESCE(p.position, 'UNK'),
                i.report_status, i.practice_status, i.primary_injury, p.id, i.updated_at
-        FROM nfl_player_injuries i
+        FROM injury_reports i
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
         JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id
         WHERE i.season = :season AND i.week = :week
@@ -1589,7 +1686,7 @@ async def get_week_depth_rows(db: AsyncSession, season: int, week: int) -> list[
     rows = await db.execute(text(f"""
         WITH {_AVAILABILITY_CTE}
         SELECT wd.team_id, t.team_code, p.name, wd.position, wd.depth_rank,
-               pd.team_id, pd.position, pd.depth_rank, p.id
+               pd.team_id, pd.position, pd.depth_rank, p.id, wd.active_depth_rank, wd.out_ahead
         FROM week_depth wd
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = wd.player_id
         JOIN sport_teams t ON t.sport = 'nfl' AND t.id = wd.team_id
@@ -1598,7 +1695,8 @@ async def get_week_depth_rows(db: AsyncSession, season: int, week: int) -> list[
     return [
         {"team_id": row[0], "team": row[1], "player_name": row[2], "depth_team_id": row[0],
          "depth_position": row[3], "depth_rank": row[4], "previous_depth_team_id": row[5],
-         "previous_depth_position": row[6], "previous_depth_rank": row[7], "player_id": row[8]}
+         "previous_depth_position": row[6], "previous_depth_rank": row[7], "player_id": row[8],
+         "active_depth_rank": row[9], "out_ahead": list(row[10] or [])}
         for row in rows.fetchall()
     ]
 
@@ -1829,13 +1927,14 @@ async def get_week_team_qb_injuries(db: AsyncSession, season: int, week: int) ->
     Healthy players are absent from a report, so only the team's latest report
     week counts; an older Out never outlives the report that dropped it.
     """
-    rows = await db.execute(text("""
-        WITH latest AS (
-            SELECT team_id, MAX(week) AS week FROM nfl_player_injuries
+    rows = await db.execute(text(f"""
+        WITH {_INJURY_REPORTS_CTE},
+        latest AS (
+            SELECT team_id, MAX(week) AS week FROM injury_reports
             WHERE season = :season AND week <= :week GROUP BY team_id
         )
         SELECT i.team_id, i.player_id, i.week, i.report_status
-        FROM nfl_player_injuries i
+        FROM injury_reports i
         JOIN latest l ON l.team_id = i.team_id AND l.week = i.week
         JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
         WHERE i.season = :season AND p.position = 'QB'
@@ -1989,7 +2088,7 @@ async def _slate_line_rows(
             WHERE g.season = :season AND g.week = :week AND g.game_type = 'REG'
             ORDER BY p.name, l.market, l.line, l.id, b.season
         """),
-        {"season": season, "week": week, **params},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON, **params},
     )
 
     by_line: dict[int, dict] = {}
@@ -2056,7 +2155,7 @@ async def get_slate_player_history(
     rows = await db.execute(
         text("""
             SELECT s.player_id, s.opponent_team_id, opponent.team_code AS opponent_team,
-                   g.season, g.week, g.start_utc,
+                   g.season, g.week, g.start_utc, g.game_date,
                    s.passing_yards, s.passing_attempts, s.passing_completions,
                    s.rushing_yards, s.rushing_attempts, s.receiving_yards,
                    s.receptions, s.touchdowns, s.fantasy_points
@@ -2064,17 +2163,18 @@ async def get_slate_player_history(
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
             LEFT JOIN sport_teams opponent ON opponent.sport = 'nfl' AND opponent.id = s.opponent_team_id
             WHERE s.player_id = ANY(CAST(:player_ids AS bigint[]))
-              AND g.game_type = 'REG' AND g.status = 'completed'
+              AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season
               AND (g.season < :season OR (g.season = :season AND g.week < :week))
             ORDER BY s.player_id, g.season DESC, g.week DESC, g.start_utc DESC NULLS LAST, g.id DESC
         """),
-        {"season": season, "week": week, "player_ids": player_ids},
+        {"season": season, "week": week, "player_ids": player_ids, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     history: dict[int, list[dict]] = {}
     for row in rows.mappings():
         history.setdefault(row["player_id"], []).append({
             "opponent_team_id": row["opponent_team_id"],
             "opponent_team": row["opponent_team"],
+            "game_date": row.get("game_date"),
             "passing_yards": float(row["passing_yards"] or 0),
             "passing_attempts": float(row["passing_attempts"] or 0),
             "passing_completions": float(row["passing_completions"] or 0),
@@ -2089,7 +2189,7 @@ async def get_slate_player_history(
 
 
 async def get_slate_opponent_position_history(db: AsyncSession, season: int, week: int) -> dict[tuple[int, str], list[dict]]:
-    rows = await db.execute(text("""SELECT s.opponent_team_id defense_team_id, p.position, offense.team_code opponent_team, g.season, g.week, SUM(s.passing_yards) passing_yards, SUM(s.passing_attempts) passing_attempts, SUM(s.passing_completions) passing_completions, SUM(s.rushing_yards) rushing_yards, SUM(s.rushing_attempts) rushing_attempts, SUM(s.receiving_yards) receiving_yards, SUM(s.receptions) receptions, SUM(s.touchdowns) touchdowns, SUM(s.fantasy_points) fantasy_points FROM nfl_player_weekly_stats s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id LEFT JOIN sport_teams offense ON offense.sport = 'nfl' AND offense.id = s.team_id WHERE s.opponent_team_id IS NOT NULL AND g.game_type = 'REG' AND g.status = 'completed' AND (g.season < :season OR (g.season = :season AND g.week < :week)) GROUP BY s.opponent_team_id, p.position, offense.team_code, g.id, g.season, g.week ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC"""), {"season": season, "week": week})
+    rows = await db.execute(text("""SELECT s.opponent_team_id defense_team_id, p.position, offense.team_code opponent_team, g.season, g.week, SUM(s.passing_yards) passing_yards, SUM(s.passing_attempts) passing_attempts, SUM(s.passing_completions) passing_completions, SUM(s.rushing_yards) rushing_yards, SUM(s.rushing_attempts) rushing_attempts, SUM(s.receiving_yards) receiving_yards, SUM(s.receptions) receptions, SUM(s.touchdowns) touchdowns, SUM(s.fantasy_points) fantasy_points FROM nfl_player_weekly_stats s JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id LEFT JOIN sport_teams offense ON offense.sport = 'nfl' AND offense.id = s.team_id WHERE s.opponent_team_id IS NOT NULL AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season AND (g.season < :season OR (g.season = :season AND g.week < :week)) GROUP BY s.opponent_team_id, p.position, offense.team_code, g.id, g.season, g.week ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC"""), {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON})
     history: dict[tuple[int, str], list[dict]] = {}
     fields = ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts", "receiving_yards", "receptions", "touchdowns", "fantasy_points")
     for row in rows.mappings():
@@ -2120,11 +2220,12 @@ async def get_team_game_position_totals(
             JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
             WHERE g.game_type = 'REG' AND g.status = 'completed'
               AND s.opponent_team_id IS NOT NULL AND p.position IS NOT NULL
+              AND s.season >= :first_history_season
               AND (s.season < :season OR (s.season = :season AND s.week < :week))
             GROUP BY s.opponent_team_id, p.position, g.id, g.season, g.week
             ORDER BY s.opponent_team_id, p.position, g.season DESC, g.week DESC, g.id DESC
         """),
-        {"season": season, "week": week},
+        {"season": season, "week": week, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON},
     )
     totals: dict[tuple[int, str], list[NflTeamGameTotals]] = {}
     for row in rows.mappings():
@@ -2277,6 +2378,56 @@ async def get_line_only_lines(db: AsyncSession, game_id: int) -> list[dict]:
     ]
 
 
+async def player_exists(db: AsyncSession, player_id: int) -> bool:
+    row = await db.execute(text("SELECT 1 FROM sport_players WHERE sport = 'nfl' AND id = :player_id"), {"player_id": player_id})
+    return row.first() is not None
+
+
+async def get_player_week_line_only_lines(db: AsyncSession, player_id: int, season: int, week: int) -> list[dict]:
+    """One player's full-game line-only props for a week at their last pre-kickoff snapshot, with the game's team codes (item 52a)."""
+    rows = await db.execute(text(f"""
+        SELECT DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)
+               l.market, l.odds_type, l.line, l.fetched_at, l.game_id, l.raw_json ->> 'player_team',
+               home.team_code, away.team_code
+        FROM sport_prop_lines l
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
+        JOIN sport_teams home ON home.sport = 'nfl' AND home.id = g.home_team_id
+        JOIN sport_teams away ON away.sport = 'nfl' AND away.id = g.away_team_id
+        WHERE l.sport = 'nfl' AND l.player_id = :player_id AND g.season = :season AND g.week = :week
+          AND g.game_type = 'REG' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc AND {LINE_ONLY_MARKET_FILTER}
+        ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+    """), {"player_id": player_id, "season": season, "week": week})
+    return [
+        {"market": r[0], "odds_type": r[1], "line": float(r[2]), "fetched_at": r[3], "game_id": r[4],
+         "team": r[5], "home_team": r[6], "away_team": r[7]}
+        for r in rows.fetchall()
+    ]
+
+
+async def get_player_line_only_history(
+    db: AsyncSession, player_id: int, season: int, week: int, *, opponent: str | None = None, limit: int | None = None,
+) -> list[dict]:
+    """A player's regular-season stat rows strictly before (season, week), newest first, from PROJECTION_FIRST_HISTORY_SEASON on.
+
+    `opponent` keeps only games against that team code; `limit` caps the rows. Each row has the
+    line-only stat columns and the game date (item 52a).
+    """
+    stat_columns = ", ".join(f"s.{column}" for column in LINE_ONLY_COLUMNS)
+    rows = await db.execute(text(f"""
+        SELECT g.season, g.week, g.game_date, opp.team_code AS opponent, {stat_columns}
+        FROM nfl_player_weekly_stats s
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+        LEFT JOIN sport_teams opp ON opp.sport = 'nfl' AND opp.id = s.opponent_team_id
+        WHERE s.player_id = :player_id AND g.game_type = 'REG' AND g.season >= :first_season
+          AND (g.season < :season OR (g.season = :season AND g.week < :week))
+          AND (CAST(:opponent AS text) IS NULL OR opp.team_code = :opponent)
+        ORDER BY g.season DESC, g.week DESC, g.id DESC
+        LIMIT :limit
+    """), {"player_id": player_id, "season": season, "week": week, "opponent": opponent,
+           "first_season": PROJECTION_FIRST_HISTORY_SEASON, "limit": limit})
+    return [dict(row) for row in rows.mappings()]
+
+
 async def get_week_line_only_lines(db: AsyncSession, season: int, week: int) -> list[dict]:
     """Read the week's display-only props together, preserving each game's pre-kickoff cutoff."""
     rows = await db.execute(text(f"""
@@ -2317,37 +2468,6 @@ async def get_recent_stat_rows(
         ORDER BY player_id, season DESC, week DESC
     """), {"player_ids": player_ids, "season": season, "week": week, "limit": limit})
     return [dict(row) for row in rows.mappings()]
-
-
-async def get_latest_prop_lines(db: AsyncSession) -> list[dict]:
-    """Return the newest stored provider snapshot for each NFL player prop.
-
-    PrizePicks identifiers do not currently map to our normalized player IDs at
-    ingest time, so the provider player name retained in raw_json is the safe
-    display fallback until that linking step is introduced.
-    """
-    rows = await db.execute(
-        text("""
-            SELECT DISTINCT ON (l.provider, l.provider_prop_id)
-                   l.id, l.provider, l.provider_prop_id, l.market, l.line,
-                   l.start_time, l.fetched_at,
-                   COALESCE(p.name, l.raw_json ->> 'player_name', 'Unknown player') AS player_name,
-                   p.position, l.segment, l.raw_json ->> 'league_name' AS league_name
-            FROM sport_prop_lines l
-            LEFT JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
-            WHERE l.sport = 'nfl'
-            ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
-        """),
-    )
-    return [
-        {
-            "id": row[0], "provider": row[1], "provider_prop_id": row[2],
-            "market": row[3], "line": float(row[4]), "start_time": row[5],
-            "fetched_at": row[6], "player_name": row[7], "position": row[8],
-            "segment": row[9], "league_name": row[10],
-        }
-        for row in rows.fetchall()
-    ]
 
 
 async def get_settled_prop_prices(db: AsyncSession) -> list[SettledPropRow]:
@@ -2470,6 +2590,79 @@ def _gradeable_line(row: RowMapping) -> GradeableLine:
     )
 
 
+KICKER_SCORING_STAT_COLUMNS: tuple[str, ...] = ("fg_made", "pat_made", *KICKING_DISTANCE_COLUMNS)
+
+
+@dataclass(frozen=True)
+class KickerGameLines:
+    """A kicker-game's standard full-game fantasy and kicking-points lines (27l2); either may be missing."""
+
+    player_id: int
+    game_id: int
+    week: int
+    fantasy_line: float | None
+    fantasy_fetched_at: datetime | None
+    kicking_line: float | None
+    kicking_fetched_at: datetime | None
+    # None: the kicker has no weekly stat row for the game.
+    stats: dict[str, int | None] | None
+
+
+async def get_kicker_scoring_rows(db: AsyncSession, season: int, through_week: int) -> list[KickerGameLines]:
+    """Every K player-game on a completed regular-season game through `through_week` with either line.
+
+    Each prop is read at its last snapshot before kickoff, as 27a grades. When a
+    market has two props on one player-game, the later snapshot wins.
+    """
+    stat_columns = ", ".join(f"s.{column}" for column in KICKER_SCORING_STAT_COLUMNS)
+    rows = await db.execute(
+        text(f"""
+            WITH latest AS (
+                SELECT DISTINCT ON (l.provider, l.provider_prop_id)
+                       l.id, l.market, l.line, l.fetched_at, l.player_id, l.game_id, g.week
+                FROM sport_prop_lines l
+                JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id
+                JOIN sport_players p ON p.sport = 'nfl' AND p.id = l.player_id
+                WHERE l.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
+                  AND g.week <= :through_week AND p.position = 'K' AND l.provider_prop_id IS NOT NULL
+                  AND l.odds_type = 'standard' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc
+                  AND l.market IN (:fantasy_market, :kicking_market)
+                ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC
+            ),
+            per_market AS (
+                SELECT DISTINCT ON (player_id, game_id, market) player_id, game_id, week, market, line, fetched_at
+                FROM latest
+                ORDER BY player_id, game_id, market, fetched_at DESC, id DESC
+            ),
+            kicker_games AS (SELECT DISTINCT player_id, game_id, week FROM per_market)
+            SELECT kg.player_id, kg.game_id, kg.week,
+                   f.line AS fantasy_line, f.fetched_at AS fantasy_fetched_at,
+                   k.line AS kicking_line, k.fetched_at AS kicking_fetched_at,
+                   s.player_id IS NOT NULL AS has_stat_row, {stat_columns}
+            FROM kicker_games kg
+            LEFT JOIN per_market f ON f.player_id = kg.player_id AND f.game_id = kg.game_id AND f.market = :fantasy_market
+            LEFT JOIN per_market k ON k.player_id = kg.player_id AND k.game_id = kg.game_id AND k.market = :kicking_market
+            LEFT JOIN nfl_player_weekly_stats s ON s.player_id = kg.player_id AND s.game_id = kg.game_id
+            ORDER BY kg.week, kg.game_id, kg.player_id
+        """),
+        {"season": season, "through_week": through_week,
+         "fantasy_market": NflPropMarket.FANTASY_POINTS.value, "kicking_market": NflLineOnlyMarket.KICKING_POINTS.value},
+    )
+    return [_kicker_game_lines(row) for row in rows.mappings()]
+
+
+def _kicker_game_lines(row: RowMapping) -> KickerGameLines:
+    def line(key: str) -> float | None:
+        return float(row[key]) if row[key] is not None else None
+
+    stats = {column: row[column] for column in KICKER_SCORING_STAT_COLUMNS} if row["has_stat_row"] else None
+    return KickerGameLines(
+        player_id=row["player_id"], game_id=row["game_id"], week=row["week"],
+        fantasy_line=line("fantasy_line"), fantasy_fetched_at=row["fantasy_fetched_at"],
+        kicking_line=line("kicking_line"), kicking_fetched_at=row["kicking_fetched_at"], stats=stats,
+    )
+
+
 async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[FrozenLine]:
     """The latest frozen pre-kickoff prediction of every linked PrizePicks prop on a completed game.
 
@@ -2490,7 +2683,7 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
                 WHERE p.sport = 'nfl' AND g.season = :season AND g.game_type = 'REG' AND g.status = 'completed'
                   AND l.player_id IS NOT NULL AND l.provider_prop_id IS NOT NULL
                   AND l.fetched_at < g.start_utc AND p.generated_at < g.start_utc
-                  AND {V4_MARKET_FILTER}
+                  AND {V4_MARKET_FILTER} AND {NOT_OTHER_MODEL}
                 ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC, p.generated_at DESC, p.id DESC
             )
             SELECT frozen.id, g.season, g.week, frozen.game_id, frozen.player_id, frozen.market,
@@ -2504,7 +2697,7 @@ async def get_frozen_gradeable_lines(db: AsyncSession, season: int) -> list[Froz
             LEFT JOIN nfl_player_snap_counts sc ON sc.player_id = frozen.player_id AND sc.game_id = frozen.game_id
             ORDER BY g.week, frozen.id
         """),
-        {"season": season},
+        {"season": season, "non_v4_model_versions": NON_V4_MODEL_VERSIONS},
     )
     return [_frozen_line(row) for row in rows.mappings()]
 
@@ -2523,6 +2716,10 @@ async def get_finished_weeks(db: AsyncSession, season: int) -> set[int]:
 
     Stats load on Tuesday, after the Monday game is marked final, so a week
     without this second check would fix a verdict sample on partial results.
+
+    Stricter than NBA and NHL, which also accept postponed and canceled games:
+    `upsert_game` only ever writes `completed` or `scheduled`, so an NFL week
+    with a canceled game stays open until the ingest learns those statuses.
     """
     rows = await db.execute(text("""
         SELECT g.week FROM sport_games g
@@ -2539,6 +2736,10 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
 
     Per week because weeks before freezing began (27i) are wholly unfrozen by
     construction, which a season total would blur into the real gaps.
+
+    The frozen row must share the gradeable line's market (39c). The `EXISTS`
+    has no v4 market filter of its own, so without the match a Rec Targets
+    freeze stored under the same provider prop would count as v4 coverage.
     """
     rows = await db.execute(text(f"""
         WITH latest AS (
@@ -2558,10 +2759,11 @@ async def get_frozen_coverage(db: AsyncSession, season: int) -> dict[int, tuple[
                    WHERE fl.sport = 'nfl' AND fl.provider = latest.provider AND fl.provider_prop_id = latest.provider_prop_id
                      AND fl.market = latest.market
                      AND fl.fetched_at < g.start_utc AND p.generated_at < g.start_utc
+                     AND {NOT_OTHER_MODEL}
                ))
         FROM latest
         GROUP BY latest.week ORDER BY latest.week
-    """), {"season": season})
+    """), {"season": season, "non_v4_model_versions": NON_V4_MODEL_VERSIONS})
     return {week: (int(lines), int(frozen)) for week, lines, frozen in rows.fetchall()}
 
 
@@ -2618,9 +2820,16 @@ def _closing_game_lines(spread_line: float | None, total_line: float | None) -> 
     return {"home_spread_margin": float(spread_line), "total": float(total_line)}
 
 
-async def get_replay_rows(db: AsyncSession, season: int, week: int) -> list[ReplayRow]:
-    """Every rated position's player-game this week, projected as the slate would, with the result."""
-    pairs = [(position, market) for position, markets in REPLAY_MARKETS_BY_POSITION.items() for market in markets]
+async def get_replay_rows(
+    db: AsyncSession, season: int, week: int,
+    markets_by_position: Mapping[str, Sequence[str]] = REPLAY_MARKETS_BY_POSITION,
+) -> list[ReplayRow]:
+    """Every rated position's player-game this week, projected as the slate would, with the result.
+
+    `markets_by_position` lets the kicker replay (27l3) load K rows without adding
+    K to the shared map that 27e and 49 also read.
+    """
+    pairs = [(position, market) for position, markets in markets_by_position.items() for market in markets]
     rows = await _slate_line_rows(db, season, week, _REPLAY_LINES_CTE, {
         "replay_positions": [position for position, _ in pairs],
         "replay_markets": [market for _, market in pairs],
@@ -2639,6 +2848,9 @@ async def get_replay_rows(db: AsyncSession, season: int, week: int) -> list[Repl
     by_player_game = {(row["player_id"], row["game_id"]): row for row in outcomes.mappings()}
     team_game_totals = await get_team_game_position_totals(db, season, week)
     league = league_averages(team_game_totals)
+    shift_players = (
+        await get_usage_shift_players(db, season, week) if SHIFT_POSITIONS & markets_by_position.keys() else {}
+    )
     replay = []
     for row in rows:
         outcome = by_player_game.get((row["player_id"], row["game_id"]))
@@ -2649,20 +2861,108 @@ async def get_replay_rows(db: AsyncSession, season: int, week: int) -> list[Repl
             "game_lines": _closing_game_lines(outcome["spread_line"], outcome["total_line"]),
             "game_weather": {"roof": outcome["roof"], "wind": outcome["wind"]},
         }
+        team_position = shift_players.get((row.get("player_team_id"), row["position"]))
         replay.append(ReplayRow(
             row=row, actual=float(outcome[column]),
             home_market_prob=market_home_probability(outcome["home_moneyline"], outcome["away_moneyline"]),
+            usage_shift_players=tuple(team_position) if team_position is not None else None,
         ))
     return replay
 
+
+# Volume reads only this season's REG weeks before :week, so it never reaches
+# below PROJECTION_FIRST_HISTORY_SEASON. "Played" means a weekly stat row, so a
+# player who took the field and recorded nothing reads as not fresh.
+_USAGE_SHIFT_SQL = f"""
+    WITH {_INJURY_REPORTS_CTE},
+    week_chart AS (
+        SELECT player_id, team_id, position, depth_rank
+        FROM nfl_player_depth_charts
+        WHERE season = :season AND week = :week AND position IN ('RB', 'WR', 'TE')
+    ),
+    week_out AS (
+        SELECT i.player_id, i.team_id, p.position
+        FROM injury_reports i
+        JOIN sport_players p ON p.sport = 'nfl' AND p.id = i.player_id
+        WHERE i.season = :season AND i.week = :week AND i.report_status = 'Out'
+          AND p.position IN ('RB', 'WR', 'TE')
+    ),
+    players AS (
+        SELECT player_id, team_id, position, depth_rank FROM week_chart
+        UNION ALL
+        SELECT o.player_id, o.team_id, o.position, NULL FROM week_out o
+        WHERE NOT EXISTS (SELECT 1 FROM week_chart c WHERE c.player_id = o.player_id)
+    ),
+    volume AS (
+        SELECT s.player_id, COUNT(*) AS games,
+               AVG(s.rushing_attempts)::double precision AS carries,
+               AVG(s.targets)::double precision AS targets
+        FROM nfl_player_weekly_stats s
+        JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+        WHERE g.season = :season AND g.week < :week AND g.game_type = 'REG'
+        GROUP BY s.player_id
+    ),
+    last_game AS (
+        SELECT DISTINCT ON (team_id) team_id, game_id
+        FROM (
+            SELECT g.home_team_id AS team_id, g.id AS game_id, g.week FROM sport_games g
+            WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG'
+            UNION ALL
+            SELECT g.away_team_id, g.id, g.week FROM sport_games g
+            WHERE g.sport = 'nfl' AND g.season = :season AND g.week < :week AND g.game_type = 'REG'
+        ) team_games
+        ORDER BY team_id, week DESC
+    )
+    SELECT pl.player_id, pl.team_id, pl.position, pl.depth_rank,
+           o.player_id IS NOT NULL AS is_out,
+           EXISTS (
+               SELECT 1 FROM nfl_player_weekly_stats s
+               JOIN last_game lg ON lg.game_id = s.game_id AND lg.team_id = pl.team_id
+               WHERE s.player_id = pl.player_id
+           ) AS fresh,
+           COALESCE(v.games, 0) AS games, v.carries, v.targets
+    FROM players pl
+    LEFT JOIN week_out o ON o.player_id = pl.player_id
+    LEFT JOIN volume v ON v.player_id = pl.player_id
+"""
+
+
+async def get_usage_shift_players(
+    db: AsyncSession, season: int, week: int,
+) -> dict[tuple[int, str], list[UsageShiftPlayer]]:
+    """RB/WR/TE this week per team and position, with Out status, freshness and season-to-date volume (70b2)."""
+    rows = await db.execute(text(_USAGE_SHIFT_SQL), {"season": season, "week": week})
+    by_team_position: dict[tuple[int, str], list[UsageShiftPlayer]] = {}
+    for row in rows.mappings():
+        by_team_position.setdefault((row["team_id"], row["position"]), []).append(UsageShiftPlayer(
+            player_id=row["player_id"], depth_rank=row["depth_rank"], out=row["is_out"], fresh=row["fresh"],
+            carries_per_game=row["carries"], targets_per_game=row["targets"], games=row["games"],
+        ))
+    return by_team_position
+
+
+
+async def get_kicker_pat_misses(db: AsyncSession, season: int) -> dict[tuple[int, int], int]:
+    """Missed PATs per K player-game in a season's REG games, for 27l3's PAT-miss sensitivity line."""
+    rows = await db.execute(
+        text("""
+            SELECT s.player_id, s.game_id, s.pat_missed
+            FROM nfl_player_weekly_stats s
+            JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
+            JOIN sport_players p ON p.sport = 'nfl' AND p.id = s.player_id
+            WHERE g.season = :season AND g.game_type = 'REG' AND p.position = 'K' AND s.pat_missed IS NOT NULL
+        """),
+        {"season": season},
+    )
+    return {(row["player_id"], row["game_id"]): row["pat_missed"] for row in rows.mappings()}
 
 async def get_player_profile(db: AsyncSession, player_id: int, season: int, week: int) -> dict | None:
     """One player's identity as of the week: team by the roster rule, depth, injury, aliases, stats loaded."""
     rows = await db.execute(
         text(f"""
-            WITH {_player_teams_cte()}
+            WITH {_player_teams_cte()}, {_AVAILABILITY_CTE}
             SELECT p.id, p.name, p.position, t.team_code,
-                   d.position AS depth_position, d.depth_rank,
+                   d.position AS depth_position, d.depth_rank, d.active_depth_rank, d.out_ahead,
                    i.report_status, i.practice_status, i.primary_injury,
                    ARRAY(SELECT a.alias_name FROM sport_player_aliases a
                          WHERE a.sport = 'nfl' AND a.player_id = p.id ORDER BY a.alias_name) AS aliases,
@@ -2670,8 +2970,8 @@ async def get_player_profile(db: AsyncSession, player_id: int, season: int, week
             FROM sport_players p
             LEFT JOIN player_teams pt ON pt.player_id = p.id
             LEFT JOIN sport_teams t ON t.sport = 'nfl' AND t.id = pt.team_id
-            LEFT JOIN nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week
-            LEFT JOIN nfl_player_injuries i ON i.player_id = p.id AND i.season = :season AND i.week = :week
+            LEFT JOIN week_depth d ON d.player_id = p.id
+            LEFT JOIN injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week
             LEFT JOIN LATERAL (
                 SELECT season, week FROM nfl_player_weekly_stats ORDER BY season DESC, week DESC LIMIT 1
             ) loaded ON TRUE

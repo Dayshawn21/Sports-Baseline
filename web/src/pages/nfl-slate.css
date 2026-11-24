@@ -1,15 +1,25 @@
 /* Shared by the NFL slate, prop board and game page. The prop detail panel grows with the viewport, holding
    360px at 1280. Edges and picks are gray on every NFL page until the ranking check (27j) adopts a slice. */
-.nfl-slate { --nfl-detail-width: clamp(360px, 28vw, 440px); --nfl-surface: var(--bg-card); --nfl-raised: var(--bg-raised); --nfl-line: var(--border-card); --nfl-blue: var(--text-primary); --nfl-green: var(--text-primary); --nfl-red: var(--text-primary); }
+.nfl-slate { --nfl-detail-width: clamp(360px, 28vw, 440px); --nfl-surface: var(--bg-card); --nfl-line: var(--border-card); --nfl-edge-positive: var(--text-primary); --nfl-edge-negative: var(--text-primary); }
 .nfl-empty { padding: 48px 0; color: var(--text-secondary); }
-.nfl-slate__stats .stat-chip__label { font-size: 11px; }
-.nfl-slate__stats .stat-chip:last-child .stat-chip__value { font: 500 18px/1.2 var(--font-mono); }
-@media (max-width: 600px) {
-  .nfl-slate .nfl-slate__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nfl-slate__stats .stat-chip:last-child { grid-column: span 2; }
-}
+.nfl-empty__next { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
 .nfl-slate__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; color: var(--text-muted); font-size: 11px; }
 .nfl-slate__legend b { color: var(--text-secondary); font-weight: 600; }
+.nfl-slate__legend.slate-legend { align-items: baseline; }
+/* With no digest strip the legend opens the page, at the strip's distance from the head. */
+.lf-page-head + .nfl-slate__legend { margin-top: 22px; }
+.nfl-slate__legend .slate-legend__pick[open] { flex-basis: 100%; }
+.nfl-slate__legend .slate-legend__pick summary { display: inline-flex; align-items: center; color: var(--text-secondary); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.nfl-slate__legend .slate-legend__pick summary:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 2px; }
+.nfl-slate__legend .slate-legend__pick p { max-width: 72ch; margin: 6px 0 0; line-height: 1.5; }
+.nfl-slate__legend .slate-legend__pick a { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+@media (max-width: 767px) {
+  .nfl-slate__legend .slate-legend__pick summary { min-height: 44px; }
+  /* Rows, not cards: a phone drops each window's box, and the legend follows the games. */
+  .nfl-slate .nfl-slate-window { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
+  .nfl-slate .nfl-slate-window__title { margin-bottom: 4px; }
+  .is-game-slate .nfl-slate__legend { margin-top: 18px; }
+}
 .nfl-slate-window {
   min-width: 0;
   margin-top: 28px;
@@ -25,3 +35,17 @@
 }
 .nfl-slate-window__title::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
 .nfl-slate-window__title small { color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none; }
+/* Finished games sit last in one window that starts closed (P1, 2026-11-09 critique); its title is the toggle. */
+.slate-finals:not(.is-open) .nfl-slate-window__title { margin-bottom: 0; }
+.slate-finals__toggle {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 32px; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
+}
+.slate-finals__toggle:hover { color: var(--text-primary); }
+.slate-finals__toggle:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 2px; border-radius: 2px; }
+.slate-finals__chevron { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms ease-out; }
+.slate-finals.is-open .slate-finals__chevron { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .slate-finals__chevron { transition: none; } }
+@media (max-width: 767px) { .slate-finals__toggle { min-height: 44px; } }
+/* Closed, the window is one line; full card padding would make it look like an empty table. */
+@media (min-width: 768px) { .slate-finals:not(.is-open) { padding-block: 8px; } }

@@ -68,6 +68,38 @@ class NflLineOnlyPropsResponse(_CamelModel):
     lines: list[NflLineOnlyLineSchema]
 
 
+class NflOtherMarketLineSchema(_CamelModel):
+    line: float
+    odds_type: str | None
+    fetched_at: datetime
+
+
+class NflOtherMarketGameSchema(_CamelModel):
+    season: int
+    week: int
+    game_date: date | None
+    opponent: str | None
+    # NULL when a stat the market needs was not loaded for that game, never zero.
+    value: float | None
+
+
+class NflOtherMarketSchema(_CamelModel):
+    market: str
+    game_id: int
+    lines: list[NflOtherMarketLineSchema]
+    recent: list[NflOtherMarketGameSchema]
+    opponent_games: list[NflOtherMarketGameSchema]
+
+
+class NflOtherMarketsResponse(_CamelModel):
+    """Item 52a: one player's line-only markets for a week with longer history; never a projection, edge or rank."""
+    player_id: int
+    season: int
+    week: int
+    opponent: str | None
+    markets: list[NflOtherMarketSchema]
+
+
 class NflLineOnlyBoardGame(NflGameSchema):
     lines: list[NflLineOnlyLineSchema]
 
@@ -152,6 +184,8 @@ class NflPlayerDetailResponse(_CamelModel):
     week: int
     depth_position: str | None
     depth_rank: int | None
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     injury_status: str | None
     practice_status: str | None
     injury: str | None
@@ -203,25 +237,25 @@ class NflProjectionsResponse(_CamelModel):
     projections: list[NflProjectionSchema]
 
 
-class NflPropLineSchema(_CamelModel):
-    id: int
-    provider: str
-    provider_prop_id: str | None
-    player_name: str
-    position: str | None
-    market: str
-    segment: str = "full_game"
-    league_name: str | None = None
+class NflVolumeReferenceSchema(_CamelModel):
+    """The gray `nfl-volume-v1` receptions reference beside v4 on the same line (49c).
+
+    P(over) is the anchored value from `nfl-volume-anchor-v1`; it is a reference
+    until 49d reads `adopt`, never a pick.
+    """
+
+    projection: float
+    median: float
     line: float
-    start_time: datetime | None
-    fetched_at: datetime
-
-
-class NflProspectsResponse(_CamelModel):
-    count: int
-    provider: str = "prizepicks"
-    refresh_interval_minutes: int = 120
-    lines: list[NflPropLineSchema]
+    gap: float
+    games_in_sample: int
+    q_vol: float
+    p_over: float
+    p_under: float
+    p_push: float
+    model_version: str
+    over_probability_version: str
+    quality_flags: list[str]
 
 
 class NflSlateLineSchema(_CamelModel):
@@ -236,6 +270,8 @@ class NflSlateLineSchema(_CamelModel):
     recent_form: "NflHistorySampleSchema"
     opponent_history: "NflHistorySampleSchema"
     opponent_allowed_history: "NflHistorySampleSchema"
+    # Up to ten games for the player page window; `recent_form` stays five and is its prefix.
+    recent_form_long: "NflHistorySampleSchema | None" = None
     market: str
     segment: str
     odds_type: str | None
@@ -277,6 +313,9 @@ class NflSlateLineSchema(_CamelModel):
     injury: str | None = None
     depth_position: str | None = None
     depth_rank: int | None = None
+    # Chart rank after teammates ahead who are Out; absent in slates stored before it.
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     previous_depth_position: str | None = None
     previous_depth_rank: int | None = None
     # Only RB and TE anytime-TD lines: the pre-week season-weighted share (0 to 1)
@@ -289,6 +328,8 @@ class NflSlateLineSchema(_CamelModel):
     p_over: float | None = None
     p_under: float | None = None
     over_probability_version: str | None = None
+    # The gray `nfl-volume-v1` companion on receptions lines (49c); never a pick.
+    volume: NflVolumeReferenceSchema | None = None
 
 
 class NflHistorySampleSchema(_CamelModel):
@@ -299,6 +340,8 @@ class NflHistorySampleSchema(_CamelModel):
 class NflHistoryResultSchema(_CamelModel):
     value: float
     opponent_team: str | None
+    # The local game date; `start_utc` would read a day late for a night game.
+    game_date: date | None = None
 
 
 class NflUnmatchedLineSchema(_CamelModel):
@@ -381,6 +424,11 @@ class NflSlateResponse(_CamelModel):
     unmatched: list[NflUnmatchedLineSchema]
 
 
+class NflHomeSlateResponse(NflSlateResponse):
+    """Only each game's standard full-game lines; `prop_row_count` counts the week's rows over every line."""
+    prop_row_count: int
+
+
 class NflNoteInjurySchema(_CamelModel):
     player_id: int
     player_name: str
@@ -398,6 +446,8 @@ class NflNoteDepthChangeSchema(_CamelModel):
     team: str
     depth_position: str
     depth_rank: int
+    active_depth_rank: int | None = None
+    out_ahead: list[str] = []
     previous_depth_position: str | None
     previous_depth_rank: int | None
     change: Literal["promoted", "demoted", "new"]
@@ -609,13 +659,45 @@ class _NflTrackRecordModel(_CamelModel):
 
 
 Signal = Literal["positive", "neutral", "negative"]
-NflRankingModelVersion = Literal["opponent-dvp-tg-blend-usage-snap-v4", "nfl-targets-v1"]
+NflRankingModelVersion = Literal["opponent-dvp-tg-blend-usage-snap-v4", "nfl-targets-v1", "nfl-volume-v1"]
+
+
+class NflLogLossResultSchema(_NflTrackRecordModel):
+    """49b's log-loss clause over a set of weeks: the blend against the raw projection and a coin flip."""
+
+    n: int
+    weeks: int
+    weeks_won: int
+    weeks_required: int
+    blend: float | None
+    raw: float | None
+    half: float | None
+    raw_difference: float | None
+    raw_standard_error: float | None
+    half_difference: float | None
+    half_standard_error: float | None
+    passed: bool
+
+
+class NflVolumeSliceStateSchema(_NflTrackRecordModel):
+    odds_type: str
+    side: Literal["over", "under"]
+    state: Literal["evaluated", "not_frozen"]
+    log_loss: NflLogLossResultSchema | None
+
+
+class NflLogLossSchema(_NflTrackRecordModel):
+    """Only the `nfl-volume-v1` record carries it; `progress` is never a verdict."""
+
+    progress: NflLogLossResultSchema
+    slices: list[NflVolumeSliceStateSchema]
 
 
 class NflModelRankingResponse(PropRankingResponse):
     """27j's record, in the shape every sport's ranking check shares (20g4)."""
 
     over_probability_version: str | None
+    log_loss: NflLogLossSchema | None = None
 
 
 class NflClvRuleSchema(_NflTrackRecordModel):

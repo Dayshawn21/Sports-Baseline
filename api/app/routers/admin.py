@@ -6,7 +6,8 @@ surfaces as quality flags on the TennisPage predictions.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from dataclasses import asdict
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -32,14 +33,9 @@ from app.schemas.admin import (
     SetEloRequest,
     SetEloResponse,
 )
+from app.services.tennis.flagged_players import load_flagged_players
 
 router = APIRouter()
-
-# Flags that indicate missing ELO data
-_ELO_FLAGS = {"elo_missing", "p1_elo_missing", "p2_elo_missing"}
-# Flags that indicate missing rolling stats
-_STATS_FLAGS = {"ml_features_partial"}
-_TARGET_FLAGS = _ELO_FLAGS | _STATS_FLAGS
 
 
 @router.get("/session", response_model=AdminSessionResponse)
@@ -57,85 +53,11 @@ async def get_flagged_players(
     Return all players from today's (and tomorrow's) matches that have
     ELO or rolling-stats quality flags.
     """
-    from app.services.tennis.predictor import predict_today
-    from app.repositories.matches import get_upcoming
-    from app.repositories.players import get_players_by_ids, get_latest_elo_batch, get_rolling_stats_batch
-    from app.ingest.player_stats import _slug
-
-    today = date.today()
-    target_dates = [today, today + timedelta(days=1)]
-
-    predictions = await predict_today(db, request.app.state.registry, target_dates)
-    matches = await get_upcoming(db, target_dates)
-    match_map = {m.id: m for m in matches}
-
-    # Map player_id → set of flags
-    flagged: dict[int, set[str]] = {}
-
-    for pred in predictions:
-        m = match_map.get(pred.match_id)
-        if not m:
-            continue
-        active_flags = set(pred.quality_flags) & _TARGET_FLAGS
-        if not active_flags:
-            continue
-
-        for flag in active_flags:
-            if flag == "p1_elo_missing":
-                flagged.setdefault(m.p1_id, set()).add(flag)
-            elif flag == "p2_elo_missing":
-                flagged.setdefault(m.p2_id, set()).add(flag)
-            elif flag == "elo_missing":
-                # Both players missing ELO
-                flagged.setdefault(m.p1_id, set()).add(flag)
-                flagged.setdefault(m.p2_id, set()).add(flag)
-            elif flag == "ml_features_partial":
-                # Attribute to both — will be filtered below to whoever truly lacks stats
-                flagged.setdefault(m.p1_id, set()).add(flag)
-                flagged.setdefault(m.p2_id, set()).add(flag)
-
-    if not flagged:
-        return FlaggedPlayersResponse(count=0, players=[])
-
-    all_ids = list(flagged.keys())
-    players_map = await get_players_by_ids(db, all_ids)
-    elo_map = await get_latest_elo_batch(db, all_ids)
-    # get_rolling_stats_batch fetches the surface=NULL row (overall stats)
-    stats_map = await get_rolling_stats_batch(db, all_ids, "last_52w")
-
-    result: list[FlaggedPlayer] = []
-    for pid, flags in flagged.items():
-        player = players_map.get(pid)
-        if not player:
-            continue
-
-        elo = elo_map.get(pid)
-        stats = stats_map.get(pid)
-
-        # Refine ml_features_partial: only show it if this player truly lacks stats
-        refined_flags = set(flags)
-        if "ml_features_partial" in refined_flags and stats is not None:
-            refined_flags.discard("ml_features_partial")
-        # Refine elo flags: remove if player now has ELO
-        has_elo = elo is not None and elo.elo is not None
-        if has_elo:
-            refined_flags -= _ELO_FLAGS
-
-        if not refined_flags:
-            continue
-
-        result.append(FlaggedPlayer(
-            player_id=pid,
-            player_name=player.name,
-            tour=player.tour,
-            flags=sorted(refined_flags),
-            has_elo=has_elo,
-            has_stats=stats is not None,
-            ta_slug=player.ta_slug,
-            auto_slug=_slug(player.name),
-        ))
-
-    return FlaggedPlayersResponse(count=len(result), players=result)
+    rows = await load_flagged_players(db, request.app.state.registry, date.today())
+    return FlaggedPlayersResponse(
+        count=len(rows),
+        players=[FlaggedPlayer(**asdict(row)) for row in rows],
+    )
 
 
 @router.post("/players/{player_id}/fetch-stats", response_model=FetchStatsResponse)
@@ -162,7 +84,7 @@ async def fetch_player_stats(
         effective_slug: Optional[str] = body.ta_slug.strip()
     else:
         # Fall back to whatever is already stored on the player record
-        effective_slug = player.ta_slug  # may be None → _slug(name) will be used
+        effective_slug = player.ta_slug  # may be None, so ta_slug(name) is used
 
     result = await ingest_single_player(
         db=db,

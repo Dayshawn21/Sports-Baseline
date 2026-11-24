@@ -1,11 +1,12 @@
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import ErrorState from '~/components/shared/ErrorState'
 import { usePlayerProps } from '~/hooks/useTennisPlayer'
 import type { PastProp, PlayerDetail, PlayerMatches, WinLoss } from '~/types/tennis'
-import { fmtDateCT, fmtTimeCT } from '~/utils/format'
+import { dateWithYear, fmtDateCT, fmtTimeCT, shortDate } from '~/utils/format'
 import { marketTitle } from '~/utils/tennisPropBoard'
-import { dateWithYear, recordText, shortDate } from '~/utils/tennisPlayer'
+import { recordText } from '~/utils/tennisPlayer'
 
 const PROPS_SHOWN = 12
 
@@ -45,7 +46,7 @@ function RecordCard({ query }: { query: UseQueryResult<PlayerMatches> }) {
 }
 
 const OUTCOME_TEXT: Record<PastProp['outcome'], string> = {
-  hit: 'hit', miss: 'miss', push: 'push', pass: 'no pick', void: 'void', awaiting: 'pending', ungradable: 'no source',
+  hit: 'hit', miss: 'miss', push: 'push', pass: 'no side', void: 'void', awaiting: 'pending', ungradable: 'no source',
 }
 
 function PickCell({ prop }: { prop: PastProp }) {
@@ -73,7 +74,7 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
     <Card title={title}>
       <div className="tennis-player-props-scroll">
         <table className="tennis-player-table tennis-player-props">
-          <thead><tr><th>Date</th><th className="l">Stat</th><th>Line</th><th>Actual</th><th className="l pick">Pick</th></tr></thead>
+          <thead><tr><th>Date</th><th className="l">Stat</th><th>Line</th><th>Actual</th><th className="l pick">Side</th></tr></thead>
           <tbody>
             {rows.slice(0, PROPS_SHOWN).map((prop, i) => (
               <tr key={`${prop.snapshotDate}-${prop.stat}-${prop.oddsType}-${prop.line}-${i}`}>
@@ -87,33 +88,29 @@ function PropsCard({ playerId, name }: { playerId: number, name: string }) {
           </tbody>
         </table>
       </div>
-      <Row label={`Model picks on ${name}`} value={recordText({ wins: summary.hits, losses: summary.misses })} />
+      <Row label={`Projected side on ${name}`} value={recordText({ wins: summary.hits, losses: summary.misses })} />
       <p className="tennis-match-aside__note">
         {rows.length > PROPS_SHOWN ? `Newest ${PROPS_SHOWN} of ${rows.length} lines. ` : ''}
-        The pick is the frozen pre-match recommendation ({projectionVersion}); the record counts standard lines only.
-        A handful of picks is anecdote, not evidence: the model page grades the full sample.
+        The side is the frozen pre-match projection ({projectionVersion}), a reference, never a pick; the record counts
+        standard lines only. A handful of lines is anecdote, not evidence: the model page grades the full sample.
       </p>
     </Card>
   )
 }
 
-function IdentityCard({ player }: { player: PlayerDetail }) {
-  const computed = player.statsComputedAt ? `${fmtDateCT(player.statsComputedAt)} ${fmtTimeCT(player.statsComputedAt)}` : '—'
-  return (
-    <Card title="Identity">
-      <Row label="Aliases" value={player.aliases.length ? player.aliases.join(', ') : 'None'} />
-      <Row label="ELO as of" value={player.elo.asOf ? shortDate(player.elo.asOf) : '—'} />
-      <Row label="Stats computed" value={computed} />
-    </Card>
-  )
+/** Data freshness and aliases, in the footer every player page ends with. */
+export function PlayerIdentityFooter({ player }: { player: PlayerDetail }) {
+  const computed = player.statsComputedAt ? `${fmtDateCT(player.statsComputedAt)} ${fmtTimeCT(player.statsComputedAt)}` : '--'
+  return <PlayerFooter>
+    ELO as of {player.elo.asOf ? shortDate(player.elo.asOf) : '--'} · Stats computed {computed}
+    {player.aliases.length > 0 && ` · Also listed as ${player.aliases.join(', ')}`}
+  </PlayerFooter>
 }
 
-export default function PlayerSidebar({ player, matches }: { player: PlayerDetail, matches: UseQueryResult<PlayerMatches> }) {
-  return (
-    <aside className="tennis-player-side">
-      <RecordCard query={matches} />
-      <PropsCard playerId={player.playerId} name={player.name} />
-      <IdentityCard player={player} />
-    </aside>
-  )
+/** The record and settled props, side by side as the NFL Model record section lays them out. */
+export default function PlayerModelRecord({ player, matches }: { player: PlayerDetail, matches: UseQueryResult<PlayerMatches> }) {
+  return <div className="nfl-player-grid is-record">
+    <RecordCard query={matches} />
+    <PropsCard playerId={player.playerId} name={player.name} />
+  </div>
 }

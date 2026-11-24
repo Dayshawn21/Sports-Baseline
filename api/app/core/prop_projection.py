@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from app.core.tennis_first_set import (
-    FIRST_SET_STATS, FirstSetDistribution, first_set_distribution, pmf_mean, stat_pmf,
+    FIRST_SET_STATS, FirstSetDistribution, first_set_distribution, pmf_mean, shift_underdog_hold, stat_pmf,
 )
 from app.core.tennis_props import (
     _DOWNSTREAM_GAMES_CALIBRATION,
@@ -34,12 +34,36 @@ _BREAK_CHANCE_FACTOR_MAX = 1.60
 _BASELINE_RET_PTS_WON = 0.38
 _ACE_MATCHUP_FACTOR_MIN = 0.75
 _ACE_MATCHUP_FACTOR_MAX = 1.25
-_LEAGUE_ACE_RATE = 0.075
+# A PrizePicks row carrying one of these shows no projection or recommendation.
+PRIZEPICKS_HARD_BLOCKS = frozenset({
+    "missing_player", "missing_match", "missing_stats", "unsupported_stat",
+    "match_finished", "match_link_invalid", "bo5_unsupported_stat",
+})
+# League rates per serve point, keyed by players.tour: what a typical same-tour
+# opponent allows, so a typical opponent's matchup factor is 1.0. Measured
+# 2026-10-28 by app.backtest.tennis_league_rates (48a step 2, players with 5+
+# matches). The single 0.075 / 0.045 they replace overstated ATP and WTA aces
+# and understated WTA double faults. The pooled values serve an unknown tour.
+_LEAGUE_ACE_RATE_BY_TOUR: dict[str, float] = {"ATP": 0.0582, "CHALLENGER": 0.0470, "WTA": 0.0263}
+_LEAGUE_DF_RATE_BY_TOUR: dict[str, float] = {"ATP": 0.0401, "CHALLENGER": 0.0426, "WTA": 0.0544}
+_LEAGUE_ACE_RATE = 0.0431
 _DF_MATCHUP_FACTOR_MIN = 0.80
 _DF_MATCHUP_FACTOR_MAX = 1.20
-_LEAGUE_DF_RATE = 0.045
+_LEAGUE_DF_RATE = 0.0466
+# The first-set chain gave WTA underdogs about 0.31 games too many while their
+# favorites were close (48a step 3, 3,906 completed 2026 matches), so only the
+# weaker server's hold drops. Fitted by tennis_first_set_level
+# --fit-underdog-shift WTA. ATP stayed under the pre-registered 0.25 threshold.
+_FIRST_SET_UNDERDOG_HOLD_SHIFT: dict[str, float] = {"WTA": 0.0522}
 _GAMES_WIN_SCALE = 1.25
 _GAMES_LOSE_SCALE = 0.75
+
+# Stats whose projection scales with the match total (48a). Without a book
+# total they run on the model total, which ran low, so they are never a pick.
+TOTALS_DEPENDENT_STATS = frozenset({
+    "total_games", "total_games_won", "games_won", "aces", "double_faults",
+    "break_points_won", "break_points_converted", "fantasy_score",
+})
 
 _SURFACE_ACE_FACTOR: dict[str, float] = {
     "Hard": 1.0,
@@ -58,7 +82,8 @@ _SURFACE_DF_FACTOR: dict[str, float] = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _f(v) -> Optional[float]:
+def opt_float(v) -> Optional[float]:
+    """Coerce a DB value (possibly Decimal) to float, preserving None."""
     return float(v) if v is not None else None
 
 
@@ -76,16 +101,20 @@ def markov_hold(spw: float) -> float:
 
 def serve_hold(stats: "PlayerRollingStats") -> float:
     """Best available hold% estimate: Markov from serve components, else empirical, else baseline."""
-    fip = _f(stats.first_in_pct)
-    fwon = _f(stats.first_won_pct)
-    swon = _f(stats.second_won_pct)
+    fip = opt_float(stats.first_in_pct)
+    fwon = opt_float(stats.first_won_pct)
+    swon = opt_float(stats.second_won_pct)
     if fip is not None and fwon is not None and swon is not None:
         spw = fip * fwon + (1 - fip) * swon
         return markov_hold(spw)
-    return _f(stats.hold_pct) or _BASELINE_HOLD_PCT
+    return opt_float(stats.hold_pct) or _BASELINE_HOLD_PCT
 
 
-def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
+def _league_rate(rates: dict[str, float], pooled: float, tour: Optional[str]) -> float:
+    return rates.get((tour or "").upper(), pooled)
+
+
+def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"], tour: Optional[str] = None) -> float:
     """Multiplier on a player's baseline ace rate based on how the opponent defends serves.
 
     Prefers the opponent's actual allowed-ace rate (`allowed_aces_per_sp`).
@@ -93,10 +122,11 @@ def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
     """
     if opponent_stats is None:
         return 1.0
-    allowed_ace = _f(getattr(opponent_stats, "allowed_aces_per_sp", None))
+    allowed_ace = opt_float(getattr(opponent_stats, "allowed_aces_per_sp", None))
     if allowed_ace is not None and allowed_ace > 0:
-        return clamp(allowed_ace / _LEAGUE_ACE_RATE, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
-    opp_ret_pts_won = _f(opponent_stats.ret_pts_won)
+        league = _league_rate(_LEAGUE_ACE_RATE_BY_TOUR, _LEAGUE_ACE_RATE, tour)
+        return clamp(allowed_ace / league, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
+    opp_ret_pts_won = opt_float(opponent_stats.ret_pts_won)
     if opp_ret_pts_won is None:
         return 1.0
     baseline_nonreturn = max(1e-6, 1.0 - _BASELINE_RET_PTS_WON)
@@ -104,14 +134,17 @@ def ace_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
     return clamp(opp_nonreturn / baseline_nonreturn, _ACE_MATCHUP_FACTOR_MIN, _ACE_MATCHUP_FACTOR_MAX)
 
 
-def double_fault_matchup_factor(opponent_stats: Optional["PlayerRollingStats"]) -> float:
+def double_fault_matchup_factor(
+    opponent_stats: Optional["PlayerRollingStats"], tour: Optional[str] = None,
+) -> float:
     """Multiplier on a player's baseline double-fault rate from opponent pressure."""
     if opponent_stats is None:
         return 1.0
-    allowed_df = _f(getattr(opponent_stats, "allowed_df_per_sp", None))
+    allowed_df = opt_float(getattr(opponent_stats, "allowed_df_per_sp", None))
     if allowed_df is not None and allowed_df > 0:
-        return clamp(allowed_df / _LEAGUE_DF_RATE, _DF_MATCHUP_FACTOR_MIN, _DF_MATCHUP_FACTOR_MAX)
-    opp_ret_pts_won = _f(opponent_stats.ret_pts_won)
+        league = _league_rate(_LEAGUE_DF_RATE_BY_TOUR, _LEAGUE_DF_RATE, tour)
+        return clamp(allowed_df / league, _DF_MATCHUP_FACTOR_MIN, _DF_MATCHUP_FACTOR_MAX)
+    opp_ret_pts_won = opt_float(opponent_stats.ret_pts_won)
     if opp_ret_pts_won is None:
         return 1.0
     return clamp(opp_ret_pts_won / _BASELINE_RET_PTS_WON, _DF_MATCHUP_FACTOR_MIN, _DF_MATCHUP_FACTOR_MAX)
@@ -189,9 +222,9 @@ def expected_break_point_chances(
         stats, opponent_stats, win_prob, market_total_games, best_of
     ) / 2.0
 
-    created_rate = _f(getattr(stats, "break_points_created_per_return_game", None))
+    created_rate = opt_float(getattr(stats, "break_points_created_per_return_game", None))
     allowed_rate = (
-        _f(getattr(opponent_stats, "allowed_break_points_per_service_game", None))
+        opt_float(getattr(opponent_stats, "allowed_break_points_per_service_game", None))
         if opponent_stats is not None
         else None
     )
@@ -210,11 +243,14 @@ def expected_break_point_chances(
 
 
 def first_set_for_matchup(
-    stats: "PlayerRollingStats", opponent_stats: Optional["PlayerRollingStats"],
+    stats: "PlayerRollingStats",
+    opponent_stats: Optional["PlayerRollingStats"],
+    tour: Optional[str] = None,
 ) -> FirstSetDistribution:
     """The first-set chain on the two holds, the opponent at baseline when unknown."""
     opponent_hold = serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT
-    return first_set_distribution(serve_hold(stats), opponent_hold)
+    shift = _FIRST_SET_UNDERDOG_HOLD_SHIFT.get((tour or "").upper(), 0.0)
+    return first_set_distribution(*shift_underdog_hold(serve_hold(stats), opponent_hold, shift))
 
 
 def compute_stat_avg(
@@ -225,6 +261,7 @@ def compute_stat_avg(
     surface: Optional[str] = None,
     market_total_games: Optional[float] = None,
     best_of: int = 3,
+    tour: Optional[str] = None,
 ) -> Optional[float]:
     """Convert per-game rolling stats to a per-match expected value for the given stat type.
 
@@ -232,34 +269,35 @@ def compute_stat_avg(
     surface: court surface used to adjust ace and DF projections.
     market_total_games: live bookmaker total-games line — when available, all projections
         scale to this instead of the model's expected total.
+    tour: the player's `players.tour`, for the league rates and first-set shift (48a).
     """
     st = normalize_stat_type(stat_type)
     surf_key = (surface or "").title()
 
     if st == "aces" and stats.aces_per_game is not None:
-        ace_rate = _f(stats.aces_per_game)
+        ace_rate = opt_float(stats.aces_per_game)
         if ace_rate is None:
             return None
         surf_factor = _SURFACE_ACE_FACTOR.get(surf_key, 1.0)
         svc_pts = expected_service_points(
             stats, opponent_stats, win_prob, market_total_games, best_of
         )
-        matchup = ace_matchup_factor(opponent_stats)
+        matchup = ace_matchup_factor(opponent_stats, tour)
         return ace_rate * svc_pts * surf_factor * matchup
 
     if st == "double_faults" and stats.df_per_game is not None:
-        df_rate = _f(stats.df_per_game)
+        df_rate = opt_float(stats.df_per_game)
         if df_rate is None:
             return None
         df_surf_factor = _SURFACE_DF_FACTOR.get(surf_key, 1.0)
         svc_pts = expected_service_points(
             stats, opponent_stats, win_prob, market_total_games, best_of
         )
-        matchup = double_fault_matchup_factor(opponent_stats)
+        matchup = double_fault_matchup_factor(opponent_stats, tour)
         return df_rate * svc_pts * df_surf_factor * matchup
 
     if st in ("break_points_converted", "break_points_won") and stats.break_pct is not None:
-        bp = _f(stats.break_pct)
+        bp = opt_float(stats.break_pct)
         if bp is None:
             return None
         bp_chances = expected_break_point_chances(
@@ -282,15 +320,15 @@ def compute_stat_avg(
         return expected_total_games(stats, opponent_stats, win_prob, market_total_games, best_of)
 
     if st in FIRST_SET_STATS:
-        return pmf_mean(stat_pmf(st, first_set_for_matchup(stats, opponent_stats)))
+        return pmf_mean(stat_pmf(st, first_set_for_matchup(stats, opponent_stats, tour)))
 
     if st == "total_sets" and stats.win_rate is not None:
-        wr = win_prob if win_prob is not None else _f(stats.win_rate)
+        wr = win_prob if win_prob is not None else opt_float(stats.win_rate)
         return 2 + 2 * wr * (1 - wr)
 
     if st == "total_tie_breaks" and stats.win_rate is not None:
         hold = serve_hold(stats)
-        wr = win_prob if win_prob is not None else _f(stats.win_rate)
+        wr = win_prob if win_prob is not None else opt_float(stats.win_rate)
         expected_sets = 2 + 2 * wr * (1 - wr)
         tb_per_set = max(0.0, (hold - 0.5) * 0.6)
         return tb_per_set * expected_sets
@@ -298,7 +336,7 @@ def compute_stat_avg(
     if st == "fantasy_score" and stats.win_rate is not None:
         hold = serve_hold(stats)
         opp_hold = serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT
-        wr = win_prob if win_prob is not None else _f(stats.win_rate)
+        wr = win_prob if win_prob is not None else opt_float(stats.win_rate)
         # Both sides come off the same total, so games_won and games_lost stay
         # true complements. Deriving them from differently-calibrated totals left
         # games_lost ~1 game low and inflated the score.
@@ -310,13 +348,13 @@ def compute_stat_avg(
         sets_won, sets_lost = expected_sets_won_lost_from_win_prob(wr)
         ace_surf = _SURFACE_ACE_FACTOR.get(surf_key, 1.0)
         df_surf = _SURFACE_DF_FACTOR.get(surf_key, 1.0)
-        ace_m = ace_matchup_factor(opponent_stats)
-        df_m = double_fault_matchup_factor(opponent_stats)
+        ace_m = ace_matchup_factor(opponent_stats, tour)
+        df_m = double_fault_matchup_factor(opponent_stats, tour)
         svc_pts = expected_service_points(
             stats, opponent_stats, wr, market_total_games, best_of
         )
-        ace_rate = _f(stats.aces_per_game)
-        df_rate = _f(stats.df_per_game)
+        ace_rate = opt_float(stats.aces_per_game)
+        df_rate = opt_float(stats.df_per_game)
         aces_per_match = ace_rate * svc_pts * ace_surf * ace_m if ace_rate is not None else 0.0
         dfs_per_match = df_rate * svc_pts * df_surf * df_m if df_rate is not None else 0.0
         return (

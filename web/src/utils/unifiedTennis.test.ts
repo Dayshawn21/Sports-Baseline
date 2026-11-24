@@ -57,6 +57,11 @@ function pick(over: Partial<BestPick> = {}): BestPick {
   }
 }
 
+/** A best pick that clears the priced best-bet bar at its tier. */
+function priced(over: Partial<BestPick> = {}): BestPick {
+  return pick({ confidence: 'STRONG', evPct: 12, kellyFraction: 0.05, ...over })
+}
+
 function bestMatch(over: Partial<MatchBestPicks> = {}): MatchBestPicks {
   return {
     matchId: 1,
@@ -92,8 +97,9 @@ function prop(over: Partial<PropLine> = {}): PropLine {
     startTime: SOON,
     pOver: 0.6,
     pUnder: 0.4,
-    confidence: 'STRONG',
+    confidence: null,
     recommendation: 'OVER',
+    statAvg: 9.4,
     edgePct: 12,
     ...over,
   }
@@ -136,49 +142,29 @@ describe('composeUnifiedMatches', () => {
     expect(result[0].inferredPropLink).toBe(false)
   })
 
-  it('hides LEAN by default and adds it after stronger rows when showLeans is on', () => {
-    const props = [
-      prop({ id: 1, confidence: 'LEAN', statType: 'Aces', edgePct: 99 }),
-      prop({ id: 2, confidence: 'LOCK', statType: 'Double Faults', edgePct: 5 }),
-      prop({ id: 3, confidence: 'STRONG', statType: 'Games Won', edgePct: 5 }),
-    ]
-
-    const hidden = composeUnifiedMatches([prediction()], [], props, BASE_FILTERS)
-    expect(hidden[0].props.map((p) => p.confidence)).toEqual(['LOCK', 'STRONG'])
-
-    const shown = composeUnifiedMatches([prediction()], [], props, { ...BASE_FILTERS, showLeans: true })
-    // LEAN has by far the highest edge and must still sort last.
-    expect(shown[0].props.map((p) => p.confidence)).toEqual(['LOCK', 'STRONG', 'LEAN'])
-  })
-
-  it('sorts equal-confidence rows by EV descending', () => {
-    const props = [
-      prop({ id: 1, statType: 'Aces', evPct: 4 }),
-      prop({ id: 2, statType: 'Double Faults', evPct: 21 }),
-      prop({ id: 3, statType: 'Games Won', evPct: 13 }),
-    ]
-    const result = composeUnifiedMatches([prediction()], [], props, BASE_FILTERS)
-    expect(result[0].props.map((p) => p.evPct)).toEqual([21, 13])
-  })
-
-  it('ranks on EV, not on the projection-vs-line delta', () => {
-    // A cheap goblin can show a huge projection delta and still be the worse
-    // bet — ranking on edgePct used to put it first.
+  it('shows every rateable prop in board order, whatever its EV or the leans toggle (48f)', () => {
     const props = [
       prop({ id: 1, statType: 'Fantasy Score', oddsType: 'goblin', edgePct: 441, evPct: 6 }),
-      prop({ id: 2, statType: 'Total Games', oddsType: 'demon', edgePct: 12, evPct: 38 }),
+      prop({ id: 2, statType: 'Aces', evPct: -12 }),
+      prop({ id: 3, statType: 'Double Faults', evPct: 38, confidence: 'LOCK' }),
+      prop({ id: 4, statType: 'Total Games', evPct: null }),
     ]
-    const result = composeUnifiedMatches([prediction()], [], props, BASE_FILTERS)
-    expect(result[0].props.map((p) => p.id)).toEqual([2, 1])
+    const hidden = composeUnifiedMatches([prediction()], [], props, BASE_FILTERS)
+    const shown = composeUnifiedMatches([prediction()], [], props, { ...BASE_FILTERS, showLeans: true })
+
+    expect(hidden[0].props.map((p) => p.statType)).toEqual(['Aces', 'Double Faults', 'Fantasy Score', 'Total Games'])
+    expect(shown[0].props.map((p) => p.id)).toEqual(hidden[0].props.map((p) => p.id))
   })
 
-  it('falls back to the projection delta when EV is unavailable', () => {
+  it('leaves out props the board would not rate', () => {
     const props = [
-      prop({ id: 1, statType: 'Aces', evPct: null, edgePct: 5 }),
-      prop({ id: 2, statType: 'Total Games', evPct: null, edgePct: 30 }),
+      prop({ id: 1, statType: 'Aces' }),
+      prop({ id: 2, statType: 'Double Faults', recommendation: null }),
+      prop({ id: 3, statType: 'Games Won', dataQualityFlags: ['small_sample'] }),
+      prop({ id: 4, statType: 'Total Games', pOver: null }),
     ]
     const result = composeUnifiedMatches([prediction()], [], props, BASE_FILTERS)
-    expect(result[0].props.map((p) => p.id)).toEqual([2, 1])
+    expect(result[0].props.map((p) => p.id)).toEqual([1])
   })
 
   it('keeps a best pick that has no qualifying prop', () => {
@@ -374,13 +360,13 @@ describe('composeUnifiedMatches', () => {
     expect(result[0].props).toHaveLength(1)
   })
 
-  it('does not re-expose a contradictory prop pick when filtering empties props', () => {
+  it('keeps a market prop best pick when the straight-sets filter empties the prop rows', () => {
     const result = composeUnifiedMatches(
       [prediction()],
       [bestMatch({
         picks: [
           pick({ pickType: 'derived', label: 'Set Score 2-0', pick: 'Sinner wins 2-0' }),
-          pick({ pickType: 'prop', label: 'Games Won', pick: 'Sinner OVER 14.5' }),
+          pick({ pickType: 'prop', label: 'Total Games', pick: 'Total Games UNDER 22.5' }),
         ],
       })],
       [prop({ statType: 'Total Games Won', line: '14.5' })],
@@ -388,14 +374,15 @@ describe('composeUnifiedMatches', () => {
     )
 
     expect(result[0].props).toEqual([])
-    expect(displayedBestPicks(result[0]).map((item) => item.pickType)).toEqual(['derived'])
+    // PrizePicks lines are never best picks (48f), so a prop pick is a book line, not a copy of the row.
+    expect(displayedBestPicks(result[0]).map((item) => item.pickType)).toEqual(['derived', 'prop'])
   })
 
   it('drops a plain prediction with neither a best pick nor a qualifying prop', () => {
     const result = composeUnifiedMatches(
       [prediction()],
       [],
-      [prop({ confidence: 'PASS' })],
+      [prop({ recommendation: null })],
       BASE_FILTERS,
     )
     expect(result).toEqual([])
@@ -468,41 +455,41 @@ describe('composeUnifiedMatches', () => {
   it('ranks a single high-EV match above one holding more, weaker LOCKs', () => {
     // Three picks barely over the LOCK threshold are worth less than one at +40%.
     // The old count-first sort put the three-LOCK match on top.
-    const many = [
-      prop({ id: 1, matchId: 1, statType: 'Aces', confidence: 'LOCK', evPct: 15.1 }),
-      prop({ id: 2, matchId: 1, statType: 'Double Faults', confidence: 'LOCK', evPct: 15.2 }),
-      prop({ id: 3, matchId: 1, statType: 'Games Won', confidence: 'LOCK', evPct: 15.3 }),
-    ]
-    const one = prop({
-      id: 4,
-      matchId: 2,
-      playerName: 'Coco Gauff',
-      statType: 'Aces',
-      confidence: 'LOCK',
-      evPct: 40,
-    })
+    const many = bestMatch({ matchId: 1, picks: [15.1, 15.2, 15.3].map((evPct) => priced({ confidence: 'LOCK', pick: `Pick ${evPct}`, evPct })) })
+    const one = bestMatch({ matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek', picks: [priced({ confidence: 'LOCK', pick: 'Gauff ML', evPct: 40 })] })
     const result = composeUnifiedMatches(
       [prediction({ matchId: 1 }), prediction({ matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' })],
+      [many, one],
       [],
-      [...many, one],
       BASE_FILTERS,
     )
     expect(result.map((m) => m.matchId)).toEqual([2, 1])
   })
 
   it('uses depth as a tiebreak when top EV is equal', () => {
-    const deep = [
-      prop({ id: 1, matchId: 1, statType: 'Aces', evPct: 20 }),
-      prop({ id: 2, matchId: 1, statType: 'Games Won', evPct: 18 }),
-    ]
-    const shallow = prop({ id: 3, matchId: 2, playerName: 'Coco Gauff', statType: 'Aces', evPct: 20 })
+    const deep = bestMatch({ matchId: 1, picks: [priced({ pick: 'A', evPct: 20 }), priced({ pick: 'B', evPct: 18 })] })
+    const shallow = bestMatch({ matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek', picks: [priced({ pick: 'C', evPct: 20 })] })
     const result = composeUnifiedMatches(
       [prediction({ matchId: 1 }), prediction({ matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' })],
+      [shallow, deep],
       [],
-      [...deep, shallow],
       BASE_FILTERS,
     )
     expect(result.map((m) => m.matchId)).toEqual([1, 2])
+  })
+
+  it('never lets PrizePicks props move a card, whatever their EV or tier (48f)', () => {
+    const preds = [
+      prediction({ matchId: 1, startUtc: '2026-08-24T19:00:00Z' }),
+      prediction({ matchId: 2, startUtc: '2026-08-24T20:00:00Z', p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' }),
+    ]
+    const props = [
+      prop({ id: 1, matchId: 2, playerName: 'Coco Gauff', confidence: 'LOCK', evPct: 90 }),
+      prop({ id: 2, matchId: 2, playerName: 'Coco Gauff', statType: 'Double Faults', evPct: 80 }),
+    ]
+    for (const sort of ['opportunity', 'ev', 'confidence', 'items'] as const) {
+      expect(composeUnifiedMatches(preds, [], props.concat(prop({ id: 3, matchId: 1 })), { ...BASE_FILTERS, sort }).map((m) => m.matchId)).toEqual([1, 2])
+    }
   })
 
   it('sorts matches with no priced item after priced ones', () => {
@@ -525,18 +512,17 @@ describe('composeUnifiedMatches', () => {
   it('does not reorder the page when LEANs are revealed', () => {
     // Item counts used to drive the sort, so a match padded with LEANs jumped
     // the queue the moment the toggle was flipped.
-    const props = [
-      prop({ id: 1, matchId: 1, statType: 'Aces', confidence: 'STRONG', evPct: 25 }),
-      prop({ id: 2, matchId: 2, playerName: 'Coco Gauff', statType: 'Aces', confidence: 'STRONG', evPct: 10 }),
-      prop({ id: 3, matchId: 2, playerName: 'Coco Gauff', statType: 'Games Won', confidence: 'LEAN', evPct: 4 }),
-      prop({ id: 4, matchId: 2, playerName: 'Coco Gauff', statType: 'Double Faults', confidence: 'LEAN', evPct: 3 }),
-    ]
+    const one = bestMatch({ matchId: 1, picks: [priced({ pick: 'A', evPct: 25 })] })
+    const two = bestMatch({
+      matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek',
+      picks: [priced({ pick: 'B', evPct: 10 }), priced({ pick: 'C', confidence: 'LEAN', evPct: 6 }), priced({ pick: 'D', confidence: 'LEAN', evPct: 5.5 })],
+    })
     const preds = [
       prediction({ matchId: 1 }),
       prediction({ matchId: 2, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' }),
     ]
-    const hidden = composeUnifiedMatches(preds, [], props, BASE_FILTERS)
-    const shown = composeUnifiedMatches(preds, [], props, { ...BASE_FILTERS, showLeans: true })
+    const hidden = composeUnifiedMatches(preds, [one, two], [], BASE_FILTERS)
+    const shown = composeUnifiedMatches(preds, [one, two], [], { ...BASE_FILTERS, showLeans: true })
 
     expect(hidden.map((m) => m.matchId)).toEqual([1, 2])
     expect(shown.map((m) => m.matchId)).toEqual([1, 2])
@@ -561,14 +547,14 @@ describe('composeUnifiedMatches', () => {
 })
 
 describe('displayedBestPicks', () => {
-  it('suppresses prop-type best picks when real prop rows exist', () => {
+  it('keeps book-priced prop picks beside PrizePicks rows, since those rows are never picks (48f)', () => {
     const withProps = composeUnifiedMatches(
       [prediction()],
       [bestMatch({ picks: [pick(), pick({ pickType: 'prop', pick: 'OVER 8.5' })] })],
       [prop()],
       BASE_FILTERS,
     )
-    expect(displayedBestPicks(withProps[0]).map((p) => p.pickType)).toEqual(['moneyline'])
+    expect(displayedBestPicks(withProps[0]).map((p) => p.pickType)).toEqual(['moneyline', 'prop'])
   })
 
   it('keeps prop-type best picks when there are no prop rows', () => {
@@ -591,14 +577,14 @@ describe('assessPropsHealth', () => {
 
   it('flags an unlinked pipeline break rather than an empty slate', () => {
     const broken = Array.from({ length: 10 }, (_, i) =>
-      prop({ id: i, matchId: null, confidence: null, projectionStatus: 'missing_match' }))
+      prop({ id: i, matchId: null, recommendation: null, projectionStatus: 'missing_match' }))
     const health = assessPropsHealth(broken)
     expect(health).toMatchObject({ total: 10, linked: 0, scored: 0, degraded: true, reason: 'unlinked' })
   })
 
   it('flags a source whose markets the model cannot score', () => {
     const spreads = Array.from({ length: 10 }, (_, i) =>
-      prop({ id: i, statType: 'game_spread', confidence: null, projectionStatus: 'unsupported_stat' }))
+      prop({ id: i, statType: 'game_spread', recommendation: null, projectionStatus: 'unsupported_stat' }))
     const health = assessPropsHealth(spreads)
     expect(health).toMatchObject({ degraded: true, reason: 'unsupported', linked: 10 })
   })
@@ -619,14 +605,10 @@ describe('sort modes', () => {
     prediction({ matchId: 2, startUtc: EARLY, p1Name: 'Coco Gauff', p2Name: 'Iga Swiatek' }),
   ]
   const bests = [
-    bestMatch({ matchId: 1, startUtc: LATE }),
-    bestMatch({ matchId: 2, startUtc: EARLY }),
+    bestMatch({ matchId: 1, startUtc: LATE, picks: [priced({ confidence: 'LOCK', pick: 'A', evPct: 40 })] }),
+    bestMatch({ matchId: 2, startUtc: EARLY, picks: [priced({ pick: 'B', evPct: 12 }), priced({ pick: 'C', evPct: 11 })] }),
   ]
-  const props = [
-    prop({ id: 1, matchId: 1, startTime: LATE, confidence: 'LOCK', evPct: 40 }),
-    prop({ id: 2, matchId: 2, startTime: EARLY, statType: 'Aces', evPct: 8 }),
-    prop({ id: 3, matchId: 2, startTime: EARLY, statType: 'Double Faults', evPct: 7 }),
-  ]
+  const props: PropLine[] = []
 
   function order(sort?: UnifiedSort): Array<number | null> {
     return composeUnifiedMatches(predictions, bests, props, { ...BASE_FILTERS, sort })
@@ -653,13 +635,12 @@ describe('sort modes', () => {
   })
 
   it('breaks ties on a coarse key with opportunity quality', () => {
-    // Both matches sit in the same confidence tier once the LOCK is downgraded,
-    // so the higher-EV card must still lead.
+    // Both matches sit in the same confidence tier, so the higher-EV card must still lead.
     const tied = [
-      prop({ id: 1, matchId: 1, startTime: LATE, evPct: 40 }),
-      prop({ id: 2, matchId: 2, startTime: EARLY, statType: 'Aces', evPct: 8 }),
+      bestMatch({ matchId: 1, startUtc: LATE, picks: [priced({ pick: 'A', evPct: 40 })] }),
+      bestMatch({ matchId: 2, startUtc: EARLY, picks: [priced({ pick: 'B', evPct: 12 })] }),
     ]
-    const result = composeUnifiedMatches(predictions, bests, tied, {
+    const result = composeUnifiedMatches(predictions, tied, [], {
       ...BASE_FILTERS,
       sort: 'confidence',
     })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflGameModel, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { formatKickoffTime } from '~/utils/nflLabels'
-import { nflPropDetail } from '~/utils/nflPropDetail'
+import { history, nflProjectionHero, nflPropDetail } from '~/utils/nflPropDetail'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = Date.parse('2026-09-30T12:00:00Z')
@@ -136,14 +136,25 @@ describe('nflPropDetail history', () => {
     const detail = nflPropDetail(row({
       recentForm: { average: 21.8, values: [{ value: 0, opponentTeam: 'TB' }, { value: 26, opponentTeam: null }] },
     }), game(), [], NOW)
-    expect(detail.recentForm).toEqual({ title: 'Recent form', value: '21.8 avg · 2 games', detail: '0.0 vs TB · 26.0 vs --' })
+    expect(detail.recentForm).toEqual({ title: 'Recent form', value: '21.8 avg · 2 games', detail: '0.0 vs TB · 26.0 vs --', games: ['0.0 vs TB', '26.0 vs --'] })
     expect(detail.context.map(item => item.title)).toEqual(['Vs PIT', 'PIT allowed to all WRs, per game · last 5'])
-    expect(detail.context[0]).toEqual({ title: 'Vs PIT', value: 'No completed history', detail: null })
+    expect(detail.context[0]).toEqual({ title: 'Vs PIT', value: 'No completed history', detail: null, games: [] })
   })
 
   it('reads TD history as TD or No TD', () => {
     const detail = nflPropDetail(row({ market: 'anytime_touchdown', recentForm: { average: 0.2, values: [{ value: 1, opponentTeam: 'TB' }, { value: 0, opponentTeam: 'JAX' }] } }), game(), [], NOW)
     expect(detail.recentForm.detail).toBe('TD vs TB · No TD vs JAX')
+    expect(detail.recentForm.games).toEqual(['TD vs TB', 'No TD vs JAX'])
+  })
+
+  it('lists each game once with its date when the sample has one', () => {
+    const detail = nflPropDetail(row({ market: 'anytime_touchdown', recentForm: { average: 0.5, values: [{ value: 1, opponentTeam: 'TB', gameDate: '2020-10-04' }, { value: 0, opponentTeam: 'JAX' }] } }), game(), [], NOW)
+    expect(detail.recentForm.games).toEqual(["TD vs TB (Oct 4 '20)", 'No TD vs JAX'])
+  })
+
+  it('reads the season from the passed now, not the wall clock', () => {
+    const sample = { average: 26, values: [{ value: 26, opponentTeam: 'TB', gameDate: '2020-10-04' }] }
+    expect(history('Recent form', 'receiving_yards', sample, new Date(2021, 0, 10)).games).toEqual(['26.0 vs TB (Oct 4)'])
   })
 })
 
@@ -192,32 +203,6 @@ describe('nflPropDetail lines', () => {
   })
 })
 
-describe('nflPropDetail game market', () => {
-  it('shows one book with signed moneylines, the home spread, the total, and the model', () => {
-    expect(nflPropDetail(row(), game(), [], NOW).gameMarket).toEqual({
-      book: 'DraftKings',
-      rows: [
-        { label: 'PIT ML', value: '-148' },
-        { label: 'CLE ML', value: '+124' },
-        { label: 'Spread', value: 'CLE +2.5' },
-        { label: 'Total', value: '38.5' },
-      ],
-      modelText: 'PIT -1.6 · CLE 44.3% · 37.2',
-      modelVersion: 'nfl-elo-v1',
-    })
-  })
-
-  it('is null without odds or a game, and has no model text without a model', () => {
-    expect(nflPropDetail(row(), game({ odds: null }), [], NOW).gameMarket).toBeNull()
-    expect(nflPropDetail(row(), null, [], NOW).gameMarket).toBeNull()
-    const noModel = nflPropDetail(row(), game({ model: null }), [], NOW).gameMarket
-    expect(noModel).toMatchObject({ modelText: null, modelVersion: null })
-    const partial = nflPropDetail(row(), game({ odds: { book: 'fanduel', homeMoneyline: null, awayMoneyline: null, homeSpread: null, total: null } }), [], NOW).gameMarket
-    expect(partial?.book).toBe('fanduel')
-    expect(partial?.rows.map(item => item.value)).toEqual(['--', '--', '--', '--'])
-  })
-})
-
 describe('nflPropDetail status and flags', () => {
   it('defaults injury and depth, and reads trust from the flags', () => {
     expect(nflPropDetail(row(), game(), [], NOW).status).toEqual([
@@ -243,5 +228,26 @@ describe('nflPropDetail status and flags', () => {
     expect(nflPropDetail(row(), game(), [], NOW).sportsbook).toBeNull()
     const priced = nflPropDetail(row({ market: 'anytime_touchdown', bookProbability: 0.3, bookCount: 3, bookIncludesMargin: true, bookFetchedAt: '2026-09-30T10:00:00Z' }), game(), [], NOW)
     expect(priced.sportsbook?.summary).toBeTruthy()
+  })
+})
+
+describe('nflProjectionHero', () => {
+  it('shows the panel projection, its gap and its sample', () => {
+    const line = row()
+    expect(nflProjectionHero(line, nflPropDetail(line, game(), [], NOW))).toEqual({
+      label: 'Projected receiving yards',
+      value: '39.1',
+      delta: '+25.6 vs 13.5 line',
+      reason: null,
+      sample: 'based on last 17 games',
+      facts: [],
+    })
+  })
+
+  it('says why there is no number, and drops the delta without a line', () => {
+    const none = row({ projection: null, line: null, edge: null })
+    expect(nflProjectionHero(none, nflPropDetail(none, game(), [], NOW))).toMatchObject({ value: null, delta: null, reason: 'No projection for this market this week.' })
+    const noLine = row({ line: null, edge: null })
+    expect(nflProjectionHero(noLine, nflPropDetail(noLine, game(), [], NOW))).toMatchObject({ value: '39.1', delta: null })
   })
 })

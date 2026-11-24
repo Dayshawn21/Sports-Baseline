@@ -1,6 +1,22 @@
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import type { TrackSignal } from '~/types/tennis'
 
+/** The gray nfl-volume-v1 receptions reference beside v4 on the same line (49c); never a pick. */
+export interface NflVolumeReference {
+  projection: number
+  median: number
+  line: number
+  gap: number
+  gamesInSample: number
+  qVol: number
+  pOver: number
+  pUnder: number
+  pPush: number
+  modelVersion: string
+  overProbabilityVersion: string
+  qualityFlags: string[]
+}
+
 export interface NflSlateLine {
   lineId: number
   playerId: number
@@ -11,6 +27,8 @@ export interface NflSlateLine {
   recentForm: NflHistorySample
   opponentHistory: NflHistorySample
   opponentAllowedHistory: NflHistorySample
+  /** Up to 10 games, newest first, starting with `recentForm`. Absent in a slate snapshot stored before item 51. */
+  recentFormLong?: NflHistorySample
   market: string
   segment: string
   oddsType: string | null
@@ -52,6 +70,9 @@ export interface NflSlateLine {
   /** This week's pre-game depth chart; null when the player is not listed. */
   depthPosition: string | null
   depthRank: number | null
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   /** The player's most recent earlier depth chart, on any team. */
   previousDepthPosition: string | null
   previousDepthRank: number | null
@@ -63,6 +84,8 @@ export interface NflSlateLine {
   pOver: number | null
   pUnder: number | null
   overProbabilityVersion: string | null
+  /** Receptions lines only; absent on older stored slates. */
+  volume?: NflVolumeReference | null
 }
 
 export interface NflHistorySample {
@@ -73,6 +96,8 @@ export interface NflHistorySample {
 export interface NflHistoryResult {
   value: number
   opponentTeam: string | null
+  /** Local game date, YYYY-MM-DD; absent in a slate snapshot stored before dates were served. */
+  gameDate?: string | null
 }
 
 export interface NflUnmatchedLine {
@@ -172,6 +197,41 @@ export interface NflLineOnlyRecent {
   opponent: string | null
   /** Null when a stat the market needs was not loaded for that game, never zero. */
   value: number | null
+}
+
+/** One game behind a line-only market on the player page; `value` is null when a stat was not loaded, never zero. */
+export interface NflOtherMarketGame {
+  season: number
+  week: number
+  gameDate: string | null
+  opponent: string | null
+  value: number | null
+}
+
+export interface NflOtherMarketRung {
+  line: number
+  oddsType: string | null
+  fetchedAt: string
+}
+
+export interface NflOtherMarket {
+  market: string
+  gameId: number
+  /** Ascending by line. */
+  lines: NflOtherMarketRung[]
+  /** Newest first, up to 10 games since 2024; the first 5 are the board's recent values. */
+  recent: NflOtherMarketGame[]
+  /** Newest first, every earlier game against `opponent` since 2024; empty when `opponent` is null. */
+  opponentGames: NflOtherMarketGame[]
+}
+
+/** `GET /nfl/players/{id}/other-markets` (item 52a): display only, never a projection, edge or rank. */
+export interface NflOtherMarkets {
+  playerId: number
+  season: number
+  week: number
+  opponent: string | null
+  markets: NflOtherMarket[]
 }
 
 export interface NflLineOnlyLine {
@@ -280,6 +340,9 @@ export interface NflPlayerDetail {
   week: number
   depthPosition: string | null
   depthRank: number | null
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   injuryStatus: string | null
   practiceStatus: string | null
   injury: string | null
@@ -312,6 +375,35 @@ export interface NflSlateResponse {
   unmatched: NflUnmatchedLine[]
 }
 
+type NflSampleField = 'recentForm' | 'recentFormLong' | 'opponentHistory' | 'opponentAllowedHistory'
+
+/** A slate line as `/nfl/slate` sends it: each history sample is an index into `NflSlateWire.samples`. */
+export interface NflSlateWireLine extends Omit<NflSlateLine, NflSampleField> {
+  recentForm: number
+  opponentHistory: number
+  opponentAllowedHistory: number
+  recentFormLong?: number | null
+}
+
+export interface NflSlateWireGame extends Omit<NflSlateGame, 'lines'> {
+  lines: NflSlateWireLine[]
+}
+
+/** The `/nfl/slate` body, with each history sample written once; `expandNflSlate` turns it back into `NflSlateResponse`. */
+export interface NflSlateWire extends Omit<NflSlateResponse, 'games'> {
+  games: NflSlateWireGame[]
+  samples: NflHistorySample[]
+}
+
+/** The home page's `/nfl/slate/home` slice: standard full-game lines only; `propRowCount` counts the week's rows over every line. */
+export interface NflHomeSlateWire extends NflSlateWire {
+  propRowCount: number
+}
+
+export interface NflHomeSlate extends NflSlateResponse {
+  propRowCount: number
+}
+
 export interface NflNoteInjury {
   playerId: number
   playerName: string
@@ -329,6 +421,9 @@ export interface NflNoteDepthChange {
   team: string
   depthPosition: string
   depthRank: number
+  /** Chart rank after teammates ahead who are Out; null when this player is out, absent in older stored slates. */
+  activeDepthRank?: number | null
+  outAhead?: string[]
   previousDepthPosition: string | null
   previousDepthRank: number | null
   change: 'promoted' | 'demoted' | 'new'
@@ -537,9 +632,38 @@ export interface NflGameNotesResponse {
 /** Model track record (33d). Signals come from the API's 2 SE rules, never from a raw number here. */
 export type NflRankingSlice = PropRankingSlice
 
-export type NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4' | 'nfl-targets-v1'
+export type NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4' | 'nfl-targets-v1' | 'nfl-volume-v1'
 
-export type NflModelRanking = PropRankingRecord<string | null>
+/** 49b's log-loss clause over a set of weeks; blend minus a reference is negative when the blend is better. */
+export interface NflLogLossResult {
+  n: number
+  weeks: number
+  weeksWon: number
+  weeksRequired: number
+  blend: number | null
+  raw: number | null
+  half: number | null
+  rawDifference: number | null
+  rawStandardError: number | null
+  halfDifference: number | null
+  halfStandardError: number | null
+  passed: boolean
+}
+
+export interface NflVolumeSliceState {
+  oddsType: 'standard' | 'goblin' | 'demon'
+  side: 'over' | 'under'
+  state: 'evaluated' | 'not_frozen'
+  logLoss: NflLogLossResult | null
+}
+
+/** Only the `nfl-volume-v1` record carries it; `progress` is progress, never a verdict. */
+export interface NflLogLoss {
+  progress: NflLogLossResult
+  slices: NflVolumeSliceState[]
+}
+
+export type NflModelRanking = PropRankingRecord<string | null> & { logLoss?: NflLogLoss | null }
 
 export interface NflHitRow {
   calls: number

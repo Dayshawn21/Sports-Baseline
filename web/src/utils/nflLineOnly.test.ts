@@ -85,10 +85,23 @@ describe('lineOnlyBars', () => {
     expect(linePct).toBe(50)
   })
 
-  it('has no line mark without a standard line, and skips missing games', () => {
-    const { bars, linePct } = lineOnlyBars({ rungs: [{ line: 1.5, oddsType: 'goblin' }], recent: recent(3, null, 1) })
+  it('marks a row without a standard line against its main rung, and skips missing games', () => {
+    const { bars, linePct } = lineOnlyBars({ rungs: [{ line: 1.5, oddsType: 'goblin' }, { line: 3.5, oddsType: 'demon' }], recent: recent(3, null, 1) })
 
-    expect(bars.map(bar => [bar.value, bar.vsLine])).toEqual([[1, null], [3, null]])
+    expect(bars.map(bar => [bar.value, bar.vsLine])).toEqual([[1, 'below'], [3, 'above']])
+    expect(linePct).toBe(50)
+  })
+
+  it('prefers the standard rung over an alternate listed first', () => {
+    const { linePct } = lineOnlyBars({ rungs: [{ line: 2, oddsType: 'goblin' }, ...rungs], recent: recent(10) })
+
+    expect(linePct).toBe(50)
+  })
+
+  it('has no line mark without any rung', () => {
+    const { bars, linePct } = lineOnlyBars({ rungs: [], recent: recent(4) })
+
+    expect(bars.map(bar => bar.vsLine)).toEqual([null])
     expect(linePct).toBeNull()
   })
 

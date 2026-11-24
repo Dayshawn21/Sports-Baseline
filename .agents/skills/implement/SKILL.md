@@ -50,6 +50,17 @@ project isn't a git repo yet, say so and ask the user to run `git init` first;
 the loop needs branches. On resume, the branch already exists - check it out
 instead of creating a new one.
 
+**Checkout guard.** Before creating or switching a branch, check
+`git branch --show-current`, `git status --short` and `git worktree list`. If
+this checkout is on another work item's branch, or the tree holds another
+item's changes or untracked files, another session may be using it: do not
+switch, stash or clean. Offer to move this item to its own worktree off the
+main branch (`git worktree add .claude/worktrees/<NN-name> -b <branch> <main>`).
+After a yes, create it, copy this spec into its `current-feature.md`, put the
+other item's spec back here if this one replaced it, and tell the user to
+continue `/implement` in a session opened on the worktree. If the branch is
+already checked out in another worktree, continue there instead.
+
 ### Type: Rollback safeguard
 
 For a rollback spec, do not hand-delete the old feature and do not run a whole

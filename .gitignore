@@ -54,11 +54,15 @@ api/data/valuebetennis/
 # Immutable source files and manifests for candidate tennis ELO (41b).
 api/data/tennismylife-elo/
 
+# Ask Lineform eval results (47e): answers from paid runs, kept local.
+api/data/ask-evals/
+
 # Playwright MCP writes snapshots and screenshots here during manual UI checks.
 .playwright-mcp/
 
 # Per-machine Claude Code settings (can hold local connection strings)
 .claude/settings.local.json
+.claude/launch.json
 
 # Scratch output
 output/
@@ -71,3 +75,8 @@ tmp_*.json
 
 # First-person interview coaching; kept local so it never reaches the public repo (37e).
 docs/SportApp-Employer-Interview-Guide.md
+
+# Analysis workspace (46a): exported charts and locally cached public data.
+analysis/output/
+analysis/data/
+.ipynb_checkpoints/

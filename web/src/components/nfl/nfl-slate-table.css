@@ -4,14 +4,14 @@
 /* Fixed widths, sized to the longest value each column holds, so every kickoff window's table lines up with the
    others. Every column has a width, so wider screens spread the spare room across all eight instead of handing
    it to Notes. Below 1100px they no longer fit and the rows go to two lines. */
-.nfl-slate-table col.is-kickoff { width: 116px; }
+.nfl-slate-table col.is-kickoff { width: 140px; }
 .nfl-slate-table col.is-game { width: 144px; }
 .nfl-slate-table col.is-spread { width: 128px; }
 .nfl-slate-table col.is-total { width: 108px; }
 .nfl-slate-table col.is-moneyline { width: 100px; }
 .nfl-slate-table col.is-model { width: 144px; }
 .nfl-slate-table col.is-props { width: 64px; }
-.nfl-slate-table col.is-notes { width: 220px; }
+.nfl-slate-table col.is-notes { width: 196px; }
 .nfl-slate-table th {
   padding: 6px 10px; color: var(--text-muted); text-align: left; white-space: nowrap;
   font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
@@ -31,7 +31,22 @@
 .nfl-slate-table__game .is-loser { color: var(--text-muted); }
 .nfl-slate-table__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: normal; }
 .nfl-slate-table__conditions { color: var(--text-muted); font: 400 11px var(--font-body); }
+.nfl-slate-table td.nfl-slate-table__props { color: var(--text-secondary); }
+.nfl-slate-table td.nfl-slate-table__props.is-empty { color: var(--text-muted); }
 .nfl-slate-table__unit { display: none; }
+/* Each kickoff window is a group row inside the one table (2026-11-09 critique, P2): one header, no boxes. */
+.nfl-slate-table .nfl-slate-table__group th {
+  padding: 22px 10px 8px; color: var(--text-secondary); text-align: left; white-space: normal;
+  font: 800 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nfl-slate-table tbody:first-of-type .nfl-slate-table__group th { padding-top: 10px; }
+.nfl-slate-table .nfl-slate-table__group th small {
+  margin-left: 10px; color: var(--text-muted); font: 400 11px var(--font-body); letter-spacing: 0; text-transform: none;
+}
+.nfl-slate-table tbody tr.nfl-slate-table__group { cursor: default; }
+/* Stale prices step down to the secondary gray (2026-11-09 critique, P2): still readable, no longer the loudest
+   numbers on the row. The head says how old they are; a final's graded close is never stale. */
+.nfl-slate-table.has-stale-odds tr:not(.is-final) :is(.nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline) { color: var(--text-secondary); }
 
 /* Phones and narrow tablets: each game is two lines, kickoff, game and props, then the lines. The header
    hides, so the total, moneyline and model carry short labels; the spread reads as "BUF -4.5" unaided. */
@@ -43,18 +58,32 @@
     padding: 9px 0; border-top: 1px solid var(--border-subtle);
   }
   .nfl-slate-table tbody tr::before { content: ''; order: 3; flex-basis: 100%; }
+  .nfl-slate-table tbody tr.nfl-slate-table__group { display: block; padding: 18px 0 4px; border-top: 0; }
+  .nfl-slate-table tbody:first-of-type tr.nfl-slate-table__group { padding-top: 4px; }
+  .nfl-slate-table tbody tr.nfl-slate-table__group:hover { background: none; }
+  .nfl-slate-table .nfl-slate-table__group th { display: block; padding: 0; }
   .nfl-slate-table td { padding: 0; border: 0; font-size: 12px; overflow: visible; }
   .nfl-slate-table tbody tr:hover td { background: none; }
   .nfl-slate-table tbody tr:hover { background: var(--bg-card-hover); }
   .nfl-slate-table__kickoff { order: 1; }
   .nfl-slate-table .nfl-slate-table__kickoff small { display: inline; margin-left: 6px; }
+  /* Once a game is live, "Live" stands in for the kickoff time, as a final's "Final" does, so line 1 never wraps. */
+  .nfl-slate-table tr.is-live .nfl-slate-table__kickoff small { display: none; }
+  /* A live game with no stored score says so beside "Live", in place of the kickoff time. */
+  .nfl-slate-table tr.is-live .nfl-slate-table__kickoff .nfl-slate-table__pending { display: inline; }
+  .nfl-slate-table__pending::before { content: '· '; }
+  /* An ended game with no stored final says "Result pending" in place of its kickoff time, and a postponed or canceled game says so. */
+  .nfl-slate-table tr:is(.is-pending, .is-off) .nfl-slate-table__time { display: none; }
+  .nfl-slate-table tr:is(.is-pending, .is-off) .nfl-slate-table__kickoff .nfl-slate-table__result { margin-left: 0; }
   .nfl-slate-table__game { order: 1; flex: 1 1 auto; min-width: 0; }
-  .nfl-slate-table .nfl-slate-table__game small { display: inline; margin-left: 6px; }
-  .nfl-slate-table__props { order: 2; color: var(--text-muted); }
+  .nfl-slate-table__props { order: 2; }
   .nfl-slate-table__unit { display: inline; }
+  .nfl-slate-table__props.is-empty { display: none; }
   .nfl-slate-table__spread, .nfl-slate-table__total, .nfl-slate-table__moneyline, .nfl-slate-table__model { order: 4; }
   .nfl-slate-table td[data-label]::before { content: attr(data-label) ' '; color: var(--text-muted); font: 400 11px var(--font-body); }
   .nfl-slate-table .nfl-slate-table__spread small, .nfl-slate-table .nfl-slate-table__total small, .nfl-slate-table .nfl-slate-table__moneyline small { display: none; }
+  /* Stale odds keep their age beside the spread, the first price on line 2, so it reads as the row's age. */
+  .nfl-slate-table .nfl-slate-table__spread .nfl-slate-table__age { display: inline; margin-left: 6px; }
   .nfl-slate-table__notes { order: 5; flex-basis: 100%; }
   .nfl-slate-table__notes:not(:has(.nfl-slate-card__tag)) { display: none; }
   .nfl-slate-table__conditions { display: none; }

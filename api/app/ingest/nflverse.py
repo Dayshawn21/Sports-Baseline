@@ -11,8 +11,8 @@ import argparse
 import asyncio
 import logging
 import sys
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from io import StringIO
 from math import isfinite
@@ -22,6 +22,7 @@ import httpx
 from tenacity import AsyncRetrying, RetryCallState, retry_if_exception_type, retry_if_result, stop_after_attempt, wait_exponential
 
 from app.core.nfl_fantasy import NflFantasyComponents, prizepicks_fantasy_points
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS, prizepicks_points_with_kicking
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,8 @@ class NflversePlayerWeek:
     prizepicks_fantasy_points: float | None = None
     fg_made: int | None = None
     pat_made: int | None = None
+    # Keyed by KICKING_DISTANCE_COLUMNS; a missing key means not loaded.
+    kicking_by_distance: Mapping[str, int | None] = field(default_factory=dict)
 
 
 def current_nfl_season(today: date) -> int:
@@ -166,7 +169,8 @@ def schedule_url(season: int) -> str:
 def player_stats_url(season: int) -> str:
     # The older player_stats aggregate is frozen at 2023-2024 and carries only
     # fantasy-relevant skill players, which is why kickers were unmatchable. The
-    # per-season asset covers 2022 onward and every position.
+    # per-season asset covers every position, back to 2012 at least (checked
+    # 2026-10-29).
     return f"{NFLVERSE_RELEASE_BASE}/stats_player/stats_player_week_{season}.csv"
 
 
@@ -275,6 +279,12 @@ def parse_player_stats(csv_text: str, season: int) -> list[NflversePlayerWeek]:
         opponent = row.get("opponent_team")
         if not player_id or not team or not opponent:
             continue
+        components = _fantasy_components(row)
+        pat_made = _as_optional_int(row.get("pat_made"))
+        kicking_by_distance = {column: _as_optional_int(row.get(column)) for column in KICKING_DISTANCE_COLUMNS}
+        components["prizepicks_fantasy_points"] = prizepicks_points_with_kicking(
+            components["prizepicks_fantasy_points"], {**kicking_by_distance, "pat_made": pat_made},
+        )
         stats.append(
             NflversePlayerWeek(
                 player_id=player_id, player_name=player_name,
@@ -296,9 +306,10 @@ def parse_player_stats(csv_text: str, season: int) -> list[NflversePlayerWeek]:
                 wopr=_as_optional_float(row.get("wopr")),
                 touchdowns=_scoring_touchdowns(row),
                 fantasy_points=_as_optional_float(row.get("fantasy_points_ppr")),
-                **_fantasy_components(row),
+                **components,
                 fg_made=_as_optional_int(row.get("fg_made")),
-                pat_made=_as_optional_int(row.get("pat_made")),
+                pat_made=pat_made,
+                kicking_by_distance=kicking_by_distance,
             )
         )
     return stats
@@ -310,7 +321,7 @@ def _optional_sum(row: dict[str, str], columns: tuple[str, ...]) -> int | None:
 
 
 def _fantasy_components(row: dict[str, str]) -> dict[str, int | float | None]:
-    """Scoring components beyond the prop stats, and PrizePicks points built from them.
+    """Scoring components beyond the prop stats, and PrizePicks offensive points built from them.
 
     A blank component stays None rather than zero, and so does the derived total:
     a missing interception count would otherwise overstate a QB's points.
@@ -459,7 +470,7 @@ async def _main() -> None:
     )
     parser.add_argument(
         "--schedule-only", action="store_true",
-        help="load games without player stats, for seasons before the 2022 stats asset",
+        help="load games without player stats",
     )
     parser.add_argument("--through-season", type=int, default=None, help="last season of a --schedule-only range")
     parser.add_argument("--dry-run", action="store_true")

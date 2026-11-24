@@ -1,31 +1,27 @@
 import { useState, type CSSProperties } from 'react'
 import ErrorState from '~/components/shared/ErrorState'
+import { SegmentSwitch, type SegmentOption } from '~/components/shared/SegmentSwitch'
 import { usePlayerServeReturn } from '~/hooks/useTennisPlayer'
 import type { PlayerSurface } from '~/types/tennis'
 import { SERVE_RETURN_METRICS, defaultSurface, metricBar, metricText } from '~/utils/tennisPlayer'
 
-const SURFACES: { key: PlayerSurface, label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'Hard', label: 'Hard' },
-  { key: 'Clay', label: 'Clay' },
-  { key: 'Grass', label: 'Grass' },
+const SURFACES: SegmentOption<PlayerSurface>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'Hard', label: 'Hard' },
+  { value: 'Clay', label: 'Clay' },
+  { value: 'Grass', label: 'Grass' },
 ]
 const SMALL_SAMPLE = 10
 
 export default function PlayerServeReturn({ playerId, nextSurface }: { playerId: number, nextSurface: string | null | undefined }) {
   const query = usePlayerServeReturn(playerId)
   const [surface, setSurface] = useState<PlayerSurface>(() => defaultSurface(nextSurface))
-  const label = SURFACES.find((s) => s.key === surface)?.label ?? surface
+  const label = SURFACES.find((s) => s.value === surface)?.label ?? surface
 
   const heading = (
     <div className="tennis-player-section-head">
       <h2 className="tennis-match-section">Serve and return · 52 weeks</h2>
-      <div className="segment-toggle" role="group" aria-label="Surface">
-        {SURFACES.map((s) => (
-          <button key={s.key} type="button" className={s.key === surface ? 'is-selected' : ''}
-            aria-pressed={s.key === surface} onClick={() => setSurface(s.key)}>{s.label}</button>
-        ))}
-      </div>
+      <SegmentSwitch label="Surface" options={SURFACES} value={surface} onChange={setSurface} />
     </div>
   )
 

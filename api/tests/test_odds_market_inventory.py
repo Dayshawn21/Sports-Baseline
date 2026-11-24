@@ -116,9 +116,9 @@ def test_inventory_output_defaults_to_the_repository_docs_folder() -> None:
 def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, tmp_path: Path) -> None:
     calls: list[tuple[str, object]] = []
 
-    async def fake_events(client: object, api_key: str) -> list[dict]:
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
         calls.append(("events", api_key))
-        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}]
+        return [{"id": "12"}, {"id": 13}, {"id": "bad"}, {"id": 12}], odds_api.RateLimitState(remaining=60)
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str
@@ -141,8 +141,8 @@ def test_capture_inventory_uses_one_bounded_batch_and_no_database(monkeypatch, t
 
 
 def test_capture_inventory_records_no_active_events_without_an_odds_request(monkeypatch, tmp_path: Path) -> None:
-    async def fake_events(client: object, api_key: str) -> list[dict]:
-        return []
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
+        return [], odds_api.RateLimitState(remaining=60)
 
     async def unexpected_odds_request(*args: object) -> tuple[list[dict], odds_api.RateLimitState]:
         raise AssertionError("No odds batch should be requested without active events")
@@ -158,8 +158,8 @@ def test_capture_inventory_records_no_active_events_without_an_odds_request(monk
 
 
 def test_capture_inventory_records_an_empty_bookmaker_batch(monkeypatch, tmp_path: Path) -> None:
-    async def fake_events(client: object, api_key: str) -> list[dict]:
-        return [{"id": 12}]
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
+        return [{"id": 12}], odds_api.RateLimitState(remaining=60)
 
     async def fake_odds_batch(
         client: object, api_key: str, event_ids: list[int], bookmakers: str
@@ -172,3 +172,111 @@ def test_capture_inventory_records_an_empty_bookmaker_batch(monkeypatch, tmp_pat
     output = asyncio.run(odds_api.capture_market_inventory(tmp_path / "inventory.md", api_key="test-key"))
 
     assert "- Result: No bookmaker markets returned for the scoped batch." in output.read_text(encoding="utf-8")
+
+
+NOW = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+
+LISTING = [
+    {"id": 1, "league": {"name": "ATP - Paris, France"}, "date": "2026-10-29T15:00:00Z"},
+    {"id": 2, "league": {"name": "WTA - Riyadh"}, "date": "2026-10-29T12:30:00Z"},
+    {"id": 3, "league": {"name": "ATP - Paris, France, Doubles"}, "date": "2026-10-29T13:00:00Z"},
+    {"id": 4, "league": {"name": "Challenger - Bari"}, "date": "2026-10-29T13:00:00Z"},
+    {"id": 5, "league": {"name": "ATP - Paris, France"}, "date": "2026-10-30T15:00:00Z"},
+]
+
+
+def _fake_listing(monkeypatch, events: list[dict], remaining: int | None, odds_response: list[dict]) -> list:
+    calls: list = []
+
+    async def fake_events(client: object, api_key: str) -> tuple[list[dict], odds_api.RateLimitState]:
+        calls.append("events")
+        return events, odds_api.RateLimitState(remaining=remaining)
+
+    async def fake_odds_batch(
+        client: object, api_key: str, event_ids: list[int], bookmakers: str
+    ) -> tuple[list[dict], odds_api.RateLimitState]:
+        calls.append(event_ids)
+        return odds_response, odds_api.RateLimitState()
+
+    monkeypatch.setattr(odds_api, "_fetch_events", fake_events)
+    monkeypatch.setattr(odds_api, "_fetch_odds_batch", fake_odds_batch)
+    return calls
+
+
+def _capture(tmp_path: Path, **kwargs: object) -> str:
+    output = asyncio.run(odds_api.capture_market_inventory(
+        tmp_path / "capture.md", bookmakers="DraftKings,FanDuel", api_key="test-key", now=NOW, **kwargs
+    ))
+    return output.read_text(encoding="utf-8")
+
+
+def test_window_capture_sends_the_selected_tour_level_ids_soonest_first(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING, 60, [])
+
+    _capture(tmp_path, within_hours=6, min_requests_remaining=20)
+
+    assert calls == ["events", [2, 1]]
+
+
+def test_window_capture_at_the_floor_sends_no_odds_request(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING, 20, [])
+
+    report = _capture(tmp_path, within_hours=6, min_requests_remaining=20)
+
+    assert calls == ["events"]
+    assert (
+        "- Result: Stopped: Odds-API.io quota at the floor: 20 request(s) remaining, floor 20; no odds request sent."
+        in report
+    )
+
+
+def test_window_capture_with_an_unknown_balance_sends_no_odds_request(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING, None, [])
+
+    report = _capture(tmp_path, within_hours=6, min_requests_remaining=20)
+
+    assert calls == ["events"]
+    assert "Odds-API.io request balance unknown" in report
+
+
+def test_window_capture_with_no_selected_event_sends_no_odds_request(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING[2:], 60, [])
+
+    report = _capture(tmp_path, within_hours=6)
+
+    assert calls == ["events"]
+    assert "- Result: No active tennis events returned." in report
+
+
+def test_window_capture_lists_each_books_markets_per_event(monkeypatch, tmp_path: Path) -> None:
+    _fake_listing(monkeypatch, LISTING, 60, [
+        {"id": 1, "bookmakers": {"DraftKings": [{"name": "ML"}, {"name": "Player Games"}], "FanDuel": [{"name": "ML"}]}},
+        {"id": "2", "bookmakers": {}},
+    ])
+
+    report = _capture(tmp_path, within_hours=6)
+
+    assert "| DraftKings | ML, Player Games |" in report
+    assert report.endswith(
+        "## Per event\n\n"
+        "- WTA - Riyadh, starts in 30 min: no bookmakers\n"
+        "- ATP - Paris, France, starts in 180 min: DraftKings: ML, Player Games; FanDuel: ML\n"
+    )
+
+
+def test_window_capture_marks_an_event_the_odds_response_left_out(monkeypatch, tmp_path: Path) -> None:
+    _fake_listing(monkeypatch, LISTING[:1], 60, [{"id": 99, "bookmakers": {"DraftKings": [{"name": "ML"}]}}])
+
+    report = _capture(tmp_path, within_hours=6)
+
+    assert report.endswith("- ATP - Paris, France, starts in 180 min: not returned\n")
+
+
+def test_capture_without_the_window_keeps_the_first_listed_ids_and_report(monkeypatch, tmp_path: Path) -> None:
+    calls = _fake_listing(monkeypatch, LISTING, 60, [{"id": 1, "bookmakers": {"DraftKings": [{"name": "ML"}]}}])
+
+    report = _capture(tmp_path)
+
+    assert calls == ["events", [1, 2, 3, 4, 5]]
+    assert "## Per event" not in report
+    assert report.endswith("| DraftKings | ML |\n")

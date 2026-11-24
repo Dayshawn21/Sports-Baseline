@@ -11,9 +11,12 @@ from typing import Literal
 from app.repositories.props import Prop
 from app.schemas.props import PropLine
 
-# Bump on any change to projection, probability, EV or tier logic, so grading
-# never pools tiers produced by different code.
-PROJECTION_VERSION = "props-v2"
+# Bump on any change to projection, probability or EV logic, so grading never
+# pools P(over) produced by different code. Rows written after 48f carry no
+# confidence; their probabilities match the earlier v3 rows.
+PROJECTION_VERSION = "props-v3"
+# The match simulation's shadow rows (48c), stored beside v3 and never pooled with it.
+SIM_PROJECTION_VERSION = "props-v4"
 SNAPSHOT_ELIGIBILITY_POLICY = "pre-match-v1"
 
 SkipReason = Literal[
@@ -83,7 +86,9 @@ def skip_reason(prop: Prop, line: PropLine, now: datetime) -> SkipReason | None:
     return None
 
 
-def to_snapshot(prop: Prop, line: PropLine, snapshot_at: datetime) -> PropProjectionSnapshot:
+def to_snapshot(
+    prop: Prop, line: PropLine, snapshot_at: datetime, version: str = PROJECTION_VERSION,
+) -> PropProjectionSnapshot:
     """Freeze the page's projection with the source context observed at capture."""
     if snapshot_at.tzinfo is None or snapshot_at.utcoffset() is None:
         raise ValueError("snapshot_at must be timezone-aware")
@@ -103,7 +108,7 @@ def to_snapshot(prop: Prop, line: PropLine, snapshot_at: datetime) -> PropProjec
         inputs["match_status_at_capture"] = prop.match_status
     return PropProjectionSnapshot(
         prop_id=line.id,
-        projection_version=PROJECTION_VERSION,
+        projection_version=version,
         player_id=line.player_id,
         match_id=line.match_id,
         stat_type=line.stat_type,

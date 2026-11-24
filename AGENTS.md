@@ -17,14 +17,8 @@ Two parts: a FastAPI backend in `api/` (Python 3.11, async SQLAlchemy over
 Postgres, LightGBM/XGBoost models) and a React SPA in `web/` (React 19, Vite,
 TypeScript, Ant Design, Tailwind v4, TanStack Query).
 
-This project is built with the **AI Blueprint**, a workflow layer, not an
-app skeleton. To start a new project, scaffold the app first in an empty folder
-(create-next-app, Vite, etc.), then overlay these files on top. Never run a
-framework scaffolder inside a directory that already holds the blueprint files
-(`AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `blueprint/`); it fails
-because the directory isn't empty.
-
-The workflow is defined by the local skills and context files below.
+This project uses the **AI Blueprint** workflow layer (local skills plus the
+context files below). Never run a framework scaffolder in this directory.
 
 ## Read these for full context
 
@@ -35,90 +29,26 @@ The workflow is defined by the local skills and context files below.
 
 ## Workflow
 
-Build one feature, fix, or rollback at a time, behind review gates. Each step's instructions
-are plain markdown skills any capable agent can read and follow. The workflow is
-exposed through tool-specific adapters:
+Build one feature, fix, or rollback at a time, behind review gates. Skills live
+in `.claude/skills/<skill>/SKILL.md` (Claude Code, `/name`) and
+`.agents/skills/<skill>/SKILL.md` (Codex `$name`, Copilot, OpenCode); when
+changing shared workflow behavior, update the skill in both folders. Each
+skill's own description says when to use it.
 
-- Codex: `.agents/skills/<skill>/SKILL.md`
-- Claude Code: `.claude/skills/<skill>/SKILL.md`
-- GitHub Copilot: `AGENTS.md` plus `.agents/skills/<skill>/SKILL.md`
-- OpenCode: `AGENTS.md` plus the compatible `.agents/skills/` or
-  `.claude/skills/` tree already installed for the selected tools
+Core loop: `brief` -> `feature` (or `fix`) -> `implement` -> `check` / `try` /
+`audit` -> `complete`. Also: `status`, `debug`, `overview`, `rollback`,
+`invariants-review`, and setup skills (`onboard`, `adopt`, `discovery`,
+`doctor`, `tests`, `ci`, `release`, `prototype`).
 
-Unused adapters can be removed. Codex, GitHub Copilot, and OpenCode can share
-`.agents/`. OpenCode can also reuse `.claude/` when Claude Code is selected.
-Codex-only, Copilot-only, or OpenCode-only projects can delete `CLAUDE.md` and
-`.claude/`. Claude Code-only projects can delete `.agents/`, but should keep
-`AGENTS.md` because `CLAUDE.md` imports it. Do not duplicate the same Blueprint
-skills under `.opencode/skills/`; OpenCode already discovers the compatible
-trees.
-
-When changing shared workflow behavior, update the matching skill in both
-adapter folders so Codex, Claude Code, GitHub Copilot, and OpenCode stay aligned.
-
-Core skills:
-
-- `onboard` - tune commands, standards, visibility, ignore rules, and tool adapters after overlaying the Blueprint onto a freshly scaffolded or early project
-- `discovery` - optional deep, multi-turn planning conversation that drafts the two user-owned plans only after review and approval; direct plan writing remains fully supported
-- `doctor` - read-only Blueprint health check for setup, adapters, plans, overview freshness, and workflow drift
-- `adopt` - bootstrap the Blueprint into an existing brownfield app with shipped features
-- `overview` - distill the two planning docs into `blueprint/context/project-overview.md`
-- `brief` - read-only briefing on an upcoming build-plan feature (scope, dependencies, size) before you spec it
-- `feature` - turn a build-plan item into a spec, or propose a reviewed plan addition for a genuinely new feature
-- `debug` - reproduce and isolate a failure without editing code, then hand the evidence to `fix` or `implement`
-- `fix` - document an ad-hoc bug or change into `blueprint/context/current-feature.md`
-- `tests` - add or normalize unit testing and turn on the test gate
-- `ci` - explicitly set up one project-specific Verify command and matching automatic GitHub checks
-- `implement` - build the current spec one small, reviewed step at a time
-- `check` - prove the current spec against the running app
-- `try` - read-only manual review guide: where to go, what to click, what to expect
-- `audit` - branch-aware or full-project review across all concerns or a focused quality, security, performance, or tests lens; records findings with durable IDs and statuses in `blueprint/context/findings.md`, where open or fixed P0/P1 findings block `complete`
-- `rollback` - plan a safe reversal of a completed feature from its archive and exact git commit, with later-dependency review before code changes
-- `complete` - run the final safety pass, log features, fixes, or rollbacks under `blueprint/history/`, then merge with approval
-- `release` - optional Render or Vercel deployment readiness, local config, env review, and smoke-test planning
-- `prototype` - optional, pre-build static mockups to lock the look
-- `status` - read-only progress summary, workflow drift warning, and suggested next action
-
-In Codex, invoke these as skills (`$onboard`, `$discovery`, `$overview`, `$feature`,
-`$implement`, and so on) or ask naturally, such as "run the overview." In Claude
-Code, use the slash commands (`/onboard`, `/discovery`, `/overview`, `/feature`,
-and so on). In OpenCode or other tools without a dedicated invocation syntax,
-ask the agent to run the matching skill or follow its `SKILL.md` manually. The
-conventions in `blueprint/context/` apply however a step is invoked. `/discovery`
-is never required: users may write detailed plans directly or develop them
-through any conversation before running `/overview`.
-
-Optional explicit-only skill: `autopilot` can run one bounded spec/build/check
-and targeted-audit pass when directly invoked. It may create checkpoint commits
-on the feature or fix branch after passing steps, repair confirmed P0/P1 findings
-within scope, and rerun affected checks. It stops before `/complete`, merge, push,
-deploy, or destructive actions.
-
-Deployment is also explicit. `/release` can prepare local Render or Vercel config
-and run readiness checks, but it must stop before deploy, remote service changes,
-push, or publish unless the user gives a separate yes in the current chat.
+`autopilot` runs only when explicitly invoked and stops before `/complete`,
+merge, push, deploy, or destructive actions. `/release` stops before any
+deploy, remote change, push, or publish without a separate yes in chat.
 
 ## Automatic verification
 
-Automatic GitHub checks are a separate explicit setup. `/onboard` and `/adopt`
-only report existing checks and point to `/ci` or `$ci` when none exist. Running
-`/ci` inspects the real project and defines one `Verify` command from checks that
-already exist. Use this order when available: typecheck, tests, then build. Never
-invent a test runner or another check just to fill the command.
-
-For JavaScript and TypeScript projects, prefer a package script such as `verify`
-and use the detected package manager. For other stacks, use the native task
-runner or exact combined command. Record the exact command under Commands below.
-
-The optional `.github/workflows/verify.yml` must run that same command for pull
-requests and pushes to the default branch. Preserve existing workflows, use the
-project's real runtime and install command, and grant only `contents: read` by
-default. This setup does not add local git hooks, coverage, browser tests,
-security scans, or version matrices. Those remain later project choices.
-
-GitHub branch protection or a ruleset can require the check after the repository
-is pushed, but that is a separate remote setting. Missing automatic GitHub
-checks do not make the Blueprint unusable.
+`.github/workflows/verify.yml` runs the Verify command (under Commands) on
+pull requests and pushes to `master`, with `contents: read` only. `/ci` owns
+changes to it; never invent a check just to fill the command.
 
 **This project (37c):** `verify.yml` has two jobs, `verify` (the Verify command,
 with a password-free dummy `DATABASE_URL`, since no test connects) and
@@ -152,9 +82,6 @@ work distinct; do not describe a partially completed spec as shipped. Preserve
 the guide's plain-language interview style and update existing explanations
 instead of appending a changelog. Mention guide updates in the work summary.
 
-These are agent maintenance instructions, not a background file watcher. They
-apply across tools through this shared file, which `CLAUDE.md` imports.
-
 ## Commands
 
 Two apps, two command sets. Paths are relative to the repo root.
@@ -177,62 +104,96 @@ Two apps, two command sets. Paths are relative to the repo root.
 
 ### Ingest (`api/`, each runnable standalone)
 
+One line each. **Read `docs/commands.md` before running, scheduling or changing
+one:** it holds quotas, schedules, dry-run behavior and verification limits.
+
 - Matches: `python -m app.ingest.livetennis --days-back 1 --days-ahead 1`
-- Odds: `python -m app.ingest.odds_api --hours-ahead 4`
-- Props: `python -m app.ingest.prizepicks`
-- NFL schedule + player stats: `python -m app.ingest.nflverse --season 2024`
-- NFL props: `python -m app.ingest.prizepicks_nfl` (add `--relink` to re-resolve
-  stored lines to players and games without spending a provider request)
-- NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14` (add `--dry-run`
-  to report matched and stored market counts without database writes)
+- Tennis odds: `python -m app.ingest.odds_api --hours-ahead 4` (moneyline only
+  since 2026-10-26; stops at `--min-requests-remaining`)
+- Tennis total games: `python -m app.ingest.tennis_totals [--hours-ahead 24] [--min-credits 150] [--dry-run]`
+  (The Odds API, 1 credit per tour-level key with a stored match; dry run spends too)
+- Tennis props: `python -m app.ingest.prizepicks`
 - ELO: `python -m app.ingest.elo --web`
 - Player stats: `python -m app.ingest.player_stats --today-only`
-- TennisMyLife box scores: `python -m app.ingest.tennismylife [--days-back 21]
-  [--since YYYY-MM-DD] [--dry-run]` (tracked players only; TennisAbstract
-  remains authoritative, and TennisMyLife fills display gaps without changing
-  grading or model inputs)
-- Candidate tennis ELO: `python -m app.ingest.tennis_elo` (dry run by
-  default; `--write` stores an isolated, immutable current-UTC-day roster;
-  `--manifest <path>` reuses reviewed cached inputs). Runs after the 11:00 UTC
-  TennisMyLife job, with a separate `tennis-elo` dispatch choice. It never
-  replaces TennisAbstract or the served ELO source.
-- Tennis ELO shadow freeze: `python -m app.ingest.tennis_elo_comparison`
-  (dry run by default; `--write` requires reviewed activation and the first
-  full UTC day; `--cycle <aware-ISO-time>` retries an immutable cycle).
-  `--scheduled` skips inactive/partial-first-day experiments cleanly; it runs
-  after the 13:30 UTC predictions and existing prop snapshots, or by the
-  `tennis-elo-comparison` dispatch choice. `--check-snapshot` only validates
-  today's complete roster and original cached files. The jobs share an exact
-  UTC-day/pinned-implementation Actions cache. Missing or invalid originals
-  freeze no pairs; active cycles retain eligible attempts for coverage. Never
-  substitute newly downloaded files for the originals of a stored daily roster.
-- Tennis ELO report: `python -m app.backtest.tennis_elo --count` (default,
-  no winners or losses loaded). `--score --group ATP|WTA|ATP_CHALLENGER`
-  requires a separate once-only scoring approval after the sample matures.
-  Preserve `api/data/tennismylife-elo/reports/` with the experiment evidence:
-  its locked sample/report artifacts prevent repeating the test. No workflow
-  scores or activates the experiment automatically.
-- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots` (after
-  predictions; safe to re-run, a stored prop row is skipped)
-- NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025]
-  [--days-back 3] [--dry-run]` (no `--season`: the season in progress, whole
-  schedule plus box scores from the last 3 days; `--season` backfills it all)
-- NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD]
-  [--end YYYY-MM-DD] [--dry-run]` (ESPN site API; default Oct 1 to today + 14;
-  stored as `game_type = 'PRE'`, never used by baselines or grading)
-- NBA props: `python -m app.ingest.prizepicks_nba [--dry-run]` (full-game
-  lines, every market line-only until 20g; add `--relink` to re-resolve stored
-  lines to players and games without a provider request)
-- NBA injuries: `python -m app.ingest.nba_injuries [--dry-run]` (ESPN keyless
-  display snapshots; dry run fetches and reads player IDs without writing).
-  Migration `0048` must be applied manually before real writes/API reads.
-  `nba-injuries.yml` refreshes every two hours at minute 43 UTC, October-June,
-  independently of PrizePicks. Six-hour freshness and historical pre-tip
-  selection remain visible. See `docs/nba-injuries.md` for operational limits.
-- NBA game odds: `python -m app.ingest.nba_odds [--days-ahead 2]
-  [--min-credits 100] [--dry-run]` (3 The Odds API credits a run, dry run
-  included; skips the paid call below the credit floor or with no game in the
-  window)
+- TennisMyLife box scores: `python -m app.ingest.tennismylife [--days-back 21] [--since YYYY-MM-DD] [--dry-run]`
+- Candidate tennis ELO: `python -m app.ingest.tennis_elo` (dry run by default)
+- Tennis ELO shadow freeze: `python -m app.ingest.tennis_elo_comparison` (dry
+  run by default; never substitute new downloads for a stored roster's originals)
+- Tennis ELO report: `python -m app.backtest.tennis_elo --count` (`--score`
+  needs a separate once-only approval)
+- PrizePicks projection snapshots: `python -m app.ingest.prop_snapshots [--dry-run]`
+  (stores `props-v3` and the `props-v4` simulation shadow row per line)
+- Tennis forward prop check (48e): `python -m app.backtest.tennis_prop_check
+  [--version props-v3] [--as-of YYYY-MM-DD]` (read-only; the first real run
+  needs a separate yes in chat)
+- Tennis shrinkage diagnostic (66a): `python -m app.backtest.tennis_shrink_diagnostic
+  --live | --history [--data-dir DIR]` (read-only exploration, never a verdict)
+- Tennis shrinkage forward check (66a): `python -m app.backtest.tennis_shrink_check
+  [--score --slice ATP+WTA|CHALLENGER]` (counts only by default; each slice's
+  first `--score` run needs a separate yes in chat)
+- Tennis prop adoption (48g): `python -m app.ingest.tennis_prop_adoption
+  [--version props-v3] [--as-of YYYY-MM-DD] [--dry-run]` (stores the adopted
+  slices the props page ranks; the first real run, dry run included, needs a
+  separate yes in chat)
+- NFL schedule + stats: `python -m app.ingest.nflverse --season 2024`
+- NFL props: `python -m app.ingest.prizepicks_nfl [--relink]`
+- NFL game odds: `python -m app.ingest.nfl_odds --days-ahead 14 [--dry-run]`
+- NFL ESPN injury statuses: `python -m app.ingest.nfl_espn_injuries [--dry-run]`
+  (needs migration `0055`; display only, downgrades the nflverse report, never clears it)
+- NFL depth charts: `python -m app.ingest.nflverse_depth_charts [--season 2024] [--dry-run]`
+  (2025 on is the daily ESPN layout; 2024 is the older weekly layout, where
+  `snapshot_at` is the game date at 00:00 UTC, not an observed time)
+- NFL depth and Out coverage (70b1): `python -m app.backtest.nfl_depth_coverage
+  [--seasons 2024,2025]` (read-only counts; reads no projection or result)
+- NFL usage-shift counts (70b2): `python -m app.backtest.nfl_usage_shift_counts
+  --transfer T --min-own-volume M --max-multiplier X` (2024 only, refuses any
+  other season; counts rows a parameter set would shift, prints no error or
+  result; slow, about 10+ minutes for 18 replay weeks)
+- NFL usage-shift backtest (70b3): `python -m app.backtest.nfl_usage_shift
+  [--count-only]` (2024 development pick; rule pre-registered in `a0941c32`,
+  pick in `43198da1`). The one 2025 holdout read (`--season 2025 --holdout`)
+  is spent: every market read `insufficient` and receiving got worse, so 70c
+  and 70d are not built; never rerun the holdout
+- NBA schedule + box scores: `python -m app.ingest.hoopr_nba [--season 2025] [--days-back 3] [--dry-run]`
+- NBA preseason: `python -m app.ingest.espn_nba_preseason [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--dry-run]`
+- NBA props: `python -m app.ingest.prizepicks_nba [--dry-run] [--relink]`
+- NBA injuries: `python -m app.ingest.nba_injuries [--dry-run]` (needs migration `0048`)
+- NBA game odds: `python -m app.ingest.nba_odds [--days-ahead 2] [--min-credits 100] [--dry-run]`
+  (3 The Odds API credits a run, dry run included)
+- NHL schedule + box scores: `python -m app.ingest.nhl_api [--season 2025] [--days-back 3] [--dry-run]`
+- NHL props: `python -m app.ingest.prizepicks_nhl [--dry-run] [--relink]`
+- NHL frozen predictions (56c4): `python -m app.ingest.nhl_prop_predictions [--dry-run]`
+  (freezes the current week's pre-puck-drop projection and P(over) into
+  `sport_prop_predictions`; the first real run needs a separate yes in chat)
+- NHL game odds: `python -m app.ingest.nhl_odds_io [--days-ahead 2] [--min-requests-remaining 20] [--dry-run]`
+  (dry run still spends hourly Odds-API.io requests)
+- NHL injuries and goalies: `python -m app.ingest.nhl_context [--dry-run] [--date YYYY-MM-DD]`
+  (migration `0050` must be applied before real writes and nonempty NHL reads)
+- NHL projection backtest (56b): `python -m app.backtest.nhl_projections [--season 2024] [--arms reference,last_10]`
+  (read-only; development is 2024-25; any run that reads the 2025-26 holdout
+  needs `--holdout` and a separate yes in chat). The opposing-goalie arms
+  `opp_goalie_b05` and `opp_goalie_b10` (67a, rule in `2a74cfbf`) picked
+  `beta = 0` in every market on 2024-25, so `opp_goalie` has no holdout candidate
+  and the 2025-26 holdout was not read for it
+
+### Ask Lineform (`api/`, 47)
+
+Full notes, the guardrails, the SSE contract and a `curl` example: `docs/commands.md`.
+
+- Tool preview (no API call): `python -m app.services.ask.preview <tool> key=value ...`
+- Chat: `python -m app.services.ask.chat <question>`. **Every run is a paid
+  request**; needs `ANTHROPIC_API_KEY`, read only through `Settings`. Never
+  part of Verify or CI.
+- Evals (47e): `python -m app.evals.ask --dry-run` (no API call), then
+  `--confirm-spend [--only ids] [--out]` for a paid run (30 cases, about
+  $0.02). Never part of Verify or CI.
+- **Off unless `ASK_ENABLED=true`.** In production `ASK_ENABLED` and
+  `ANTHROPIC_API_KEY` are Render dashboard values (`sync: false`); never
+  commit `ASK_ENABLED=true`. Production refuses to start with it on and no
+  key. Locally, set it in `api/app/.env` and restart the API to try the drawer.
+- Guardrails (47d, in memory, reset on restart): 20 questions per client a
+  day and a $1 global daily spend cap, both refused before Claude is called.
+  The Anthropic Console monthly spend limit is the hard stop.
 
 ### Verify (both apps, from the repo root)
 
@@ -252,7 +213,9 @@ No lint command is configured.
 
 - `sportapp-api`: a Python web service on the always-on `0.5c-512mb` plan in
   Virginia, beside Neon's us-east-1. It runs `uvicorn ... --proxy-headers
-  --forwarded-allow-ips '*'` with `API_ENV=production`. Its secrets
+  --forwarded-allow-ips '*'` with `API_ENV=production` (kept for the https
+  scheme); per-client limits key on Cloudflare's `CF-Connecting-IP`, not the
+  spoofable `request.client.host` (F-19). Its secrets
   (`DATABASE_URL`, `ADMIN_API_KEY`, `CORS_ORIGINS`) are entered in the
   dashboard, never committed.
 - `sportapp-web`: a static site built with `VITE_API_BASE_URL` set to the API
@@ -268,12 +231,32 @@ Things that are easy to get wrong:
     current and next week, bounded to weeks 1-18; `--weeks all` backfills).
     The four NFL workflows that write slate inputs run it as their last step,
     so any new slate input's writer must refresh it too.
+    The stored body writes each history sample once (`app/core/nfl_slate_wire.py`)
+    and `fetchNflSlate` expands it, which halved a 25 MB week. To change that
+    shape, ship a web that reads both shapes first, deploy it, and only then
+    rewrite the stored weeks.
+  - `/nfl/slate/home`: the home page's slice of each week (standard full-game
+    lines plus `propRowCount`, `nfl_slate_home_<week>`), stored by the same
+    `nfl_slate_snapshot` run. Week 11 of 2026 was 2.1 MB against 14.2 MB, and
+    the full week was the slowest home call (2026-11-23).
   - `/nfl/model/prop-lines`: `python -m app.ingest.nfl_model_snapshot`, run
     by `nfl-ingest.yml`.
+  - `/nfl/model/ranking`: `python -m app.ingest.nfl_ranking_snapshot`, all
+    three model versions, run by `nfl-ingest.yml`.
+  - `/nba/model/ranking`: `python -m app.ingest.nba_ranking_snapshot`, run
+    by `nba-ingest.yml`. The live builds of these two rankings overlapped and
+    crashed the API on 2026-11-08.
+  - `/nhl/model/ranking`: `python -m app.ingest.nhl_ranking_snapshot`, run
+    by `nhl-ingest.yml`. Its live build took 8.3 s cold and 14 s beside the
+    home page's other builds on 2026-11-22.
 
   Keep any new heavy report off the request path the same way. In dev a
   stored copy also wins over a live build.
 - **Ingest** stays on GitHub Actions; Render runs no cron jobs.
+- **Render installs `api/requirements-api.txt`**, not `requirements.txt`, which
+  adds scikit-learn (about 49 MB at startup, since LightGBM imports it) and
+  pytest. A new runtime dependency goes in `requirements-api.txt`;
+  `tests/test_api_install.py` fails if the app needs scikit-learn to start.
 - **Migrations are manual and run one command at a time** against the shared
   Neon database. `alembic.ini` is untracked, so pass one with `-c`: it needs
   `[alembic] script_location = <repo>/api/app/db/migrations` plus logging
@@ -302,7 +285,3 @@ until separately approved merge/push; GitHub runner acceptance remains pending.
 **Testing is on.** Both `npm run test` and `pytest` are real, so the test gate
 applies: a step that adds logic ships a passing test in the same diff. See the
 Testing section of `blueprint/context/coding-standards.md` for scope.
-
-`pytest` is declared in `api/requirements.txt`. In this managed Codex shell, the
-bare `pytest` command may not be on PATH; use the local venv equivalent
-`.venv\Scripts\python.exe -m pytest` from `api/` when needed.

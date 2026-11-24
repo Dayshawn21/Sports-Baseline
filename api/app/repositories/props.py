@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 import json
-from typing import Any, Optional
+from typing import Optional
 
+from pydantic import JsonValue
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +27,7 @@ class Prop:
     p1_odds: Optional[int] = None
     p2_odds: Optional[int] = None
     surface: Optional[str] = None
-    raw_json: Optional[dict[str, Any]] = None
+    raw_json: Optional[dict[str, JsonValue]] = None
     match_status: Optional[str] = None
     match_link_invalid: bool = False
     # Best-of format of the linked match. None when no match is linked, which is
@@ -33,48 +35,18 @@ class Prop:
     best_of: Optional[int] = None
     source_start_time: Optional[datetime] = None
     match_start_time: Optional[datetime] = None
+    # players.tour (ATP, WTA or CHALLENGER) for 48a's league rates and first-set shift.
+    player_tour: Optional[str] = None
+    # The resolved match's tour and both players' tours, so 48g keys a live
+    # line with the `display_tour` inputs 48e's grader read.
+    match_tour: Optional[str] = None
+    p1_tour: Optional[str] = None
+    p2_tour: Optional[str] = None
 
 
-async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
-    query = """
-        WITH latest_props AS (
-            SELECT DISTINCT ON (
-                p.source,
-                COALESCE(
-                    p.player_id::text,
-                    NULLIF(p.raw_json ->> 'player_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
-                ),
-                p.start_time,
-                p.stat_type,
-                p.line,
-                COALESCE(p.odds_type, '')
-            )
-                p.*
-            FROM props p
-            WHERE p.fetched_at >= now() - interval '24 hours'
-    """
-    params: dict = {}
-    if source:
-        query += " AND p.source = :source"
-        params["source"] = source
-    query += """
-            ORDER BY
-                p.source,
-                COALESCE(
-                    p.player_id::text,
-                    NULLIF(p.raw_json ->> 'player_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
-                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
-                ),
-                p.start_time,
-                p.stat_type,
-                p.line,
-                COALESCE(p.odds_type, ''),
-                p.fetched_at DESC,
-                p.id DESC
-        )
+# The board's columns and its match re-linking, shared so one prop read by id
+# carries exactly the inputs the board enriched it with.
+_PROP_SELECT = """
         SELECT
             p.id,
             p.player_id,
@@ -112,7 +84,11 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
             COALESCE(relinked.best_of, m.best_of) AS best_of,
             p.start_time AS source_start_time,
             CASE WHEN relinked.id IS NOT NULL THEN relinked.start_utc
-                 ELSE m.start_utc END AS match_start_time
+                 ELSE m.start_utc END AS match_start_time,
+            pl.tour AS player_tour,
+            CASE WHEN relinked.id IS NOT NULL THEN relinked.tour ELSE m.tour END AS match_tour,
+            mp1.tour AS p1_tour,
+            mp2.tour AS p2_tour
         FROM latest_props p
         LEFT JOIN players pl ON pl.id = p.player_id
         LEFT JOIN matches m ON m.id = p.match_id
@@ -129,7 +105,7 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
         -- sat within 6h of their match and the rest tailed to 11h before a clean
         -- gap, with the wrong-day matches clustering past 21h.
         LEFT JOIN LATERAL (
-            SELECT mm.id, mm.start_utc, mm.surface, mm.status, mm.best_of
+            SELECT mm.id, mm.start_utc, mm.surface, mm.status, mm.best_of, mm.tour, mm.p1_id, mm.p2_id
             FROM matches mm
             WHERE (
                     p.match_id IS NULL
@@ -158,11 +134,69 @@ async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> lis
                 mm.id ASC
             LIMIT 1
         ) relinked ON TRUE
+        LEFT JOIN players mp1 ON mp1.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p1_id ELSE m.p1_id END
+        LEFT JOIN players mp2 ON mp2.id = CASE WHEN relinked.id IS NOT NULL THEN relinked.p2_id ELSE m.p2_id END
+"""
+
+
+async def get_today_props(db: AsyncSession, source: Optional[str] = None) -> list[Prop]:
+    query = """
+        WITH latest_props AS (
+            SELECT DISTINCT ON (
+                p.source,
+                COALESCE(
+                    p.player_id::text,
+                    NULLIF(p.raw_json ->> 'player_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
+                ),
+                p.start_time,
+                p.stat_type,
+                p.line,
+                COALESCE(p.odds_type, '')
+            )
+                p.*
+            FROM props p
+            WHERE p.fetched_at >= now() - interval '24 hours'
+              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
     """
+    params: dict = {}
+    if source:
+        query += " AND p.source = :source"
+        params["source"] = source
+    query += """
+            ORDER BY
+                p.source,
+                COALESCE(
+                    p.player_id::text,
+                    NULLIF(p.raw_json ->> 'player_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'player_display_name', ''),
+                    NULLIF(p.raw_json -> 'attributes' ->> 'description', '')
+                ),
+                p.start_time,
+                p.stat_type,
+                p.line,
+                COALESCE(p.odds_type, ''),
+                p.fetched_at DESC,
+                p.id DESC
+        )
+    """
+    query += _PROP_SELECT
     query += " ORDER BY p.start_time ASC NULLS LAST, p.player_id, p.stat_type"
 
     rows = await db.execute(text(query), params)
     return [Prop(*r) for r in rows.fetchall()]
+
+
+async def get_prizepicks_prop(db: AsyncSession, prop_id: int) -> Prop | None:
+    """One stored PrizePicks line by id, on any date, shaped as the board reads it."""
+    query = """
+        WITH latest_props AS (
+            SELECT p.* FROM props p WHERE p.id = :prop_id AND p.source = 'prizepicks'
+        )
+    """ + _PROP_SELECT
+    row = (await db.execute(text(query), {"prop_id": prop_id})).first()
+    return Prop(*row) if row else None
 
 
 _BOOK_KEY_SQL = "CASE WHEN LOWER(mo.book) IN ('betonline.ag', 'betonline') THEN 'bet365' ELSE LOWER(mo.book) END"
@@ -340,7 +374,21 @@ async def get_prizepicks_link_coverage(db: AsyncSession) -> PrizePicksCoverage:
     return PrizePicksCoverage(**dict(row.mappings().one()))
 
 
-async def upsert_prop(
+# The line identity `get_today_props` collapses on with DISTINCT ON, so a refreshed
+# row is the one the board already shows.
+_SAME_TODAY_LINE = """
+    p.source = :src
+    AND p.fetched_at >= CURRENT_DATE
+    AND COALESCE(p.player_id::text, NULLIF(p.raw_json ->> 'player_name', ''))
+        = COALESCE(CAST(:pid AS text), NULLIF(:player_name, ''))
+    AND p.start_time IS NOT DISTINCT FROM CAST(:start AS timestamptz)
+    AND p.stat_type = :stat
+    AND p.line = CAST(:line AS numeric(6,1))
+    AND COALESCE(p.odds_type, '') = COALESCE(:odds_type, '')
+"""
+
+
+async def store_today_prop(
     db: AsyncSession,
     player_id: Optional[int],
     match_id: Optional[int],
@@ -349,16 +397,84 @@ async def upsert_prop(
     line: float,
     odds_type: Optional[str] = None,
     start_time: Optional[datetime] = None,
-    raw_json: Optional[dict] = None,
-) -> None:
-    await db.execute(
+    raw_json: Optional[dict[str, object]] = None,
+) -> int:
+    """Refresh today's row for the same line in place, or insert one; returns its id.
+
+    Reusing the id is what keeps a re-run from losing the line's frozen
+    `prop_projection_snapshots` rows, which cascade when their prop is deleted.
+    """
+    params = {
+        "pid": player_id, "mid": match_id, "src": source, "stat": stat_type,
+        "line": line, "odds_type": odds_type, "start": start_time,
+        "player_name": (raw_json or {}).get("player_name"),
+        "raw": json.dumps(raw_json) if raw_json is not None else None,
+    }
+    refreshed = await db.execute(
+        text(f"""
+            UPDATE props
+            SET fetched_at = now(), match_id = :mid, raw_json = CAST(:raw AS jsonb)
+            WHERE id = (
+                SELECT p.id FROM props p
+                WHERE {_SAME_TODAY_LINE}
+                ORDER BY p.id DESC
+                LIMIT 1
+            )
+            RETURNING id
+        """),
+        params,
+    )
+    prop_id = refreshed.scalar_one_or_none()
+    if prop_id is not None:
+        return int(prop_id)
+    inserted = await db.execute(
         text("""
             INSERT INTO props (player_id, match_id, source, stat_type, line, odds_type, start_time, raw_json)
             VALUES (:pid, :mid, :src, :stat, :line, :odds_type, :start, CAST(:raw AS jsonb))
+            RETURNING id
         """),
-        {
-            "pid": player_id, "mid": match_id, "src": source, "stat": stat_type,
-            "line": line, "odds_type": odds_type, "start": start_time,
-            "raw": json.dumps(raw_json) if raw_json is not None else None,
-        },
+        params,
     )
+    return int(inserted.scalar_one())
+
+
+@dataclass(frozen=True)
+class PulledProps:
+    deleted: int
+    withdrawn: int
+
+
+_PULLED_TODAY = """
+    p.source = :src
+    AND p.fetched_at >= CURRENT_DATE
+    AND NOT (p.id = ANY(CAST(:kept AS bigint[])))
+"""
+_HAS_SNAPSHOT = "EXISTS (SELECT 1 FROM prop_projection_snapshots s WHERE s.prop_id = p.id)"
+
+
+async def retire_pulled_today_props(db: AsyncSession, source: str, kept_ids: Sequence[int]) -> PulledProps:
+    """Retire today's rows for `source` this run did not store.
+
+    A row with a frozen snapshot is marked withdrawn instead of deleted, because
+    deleting it would cascade to the snapshot; `get_today_props` skips it (F-34).
+    """
+    params = {"src": source, "kept": list(kept_ids)}
+    withdrawn = await db.execute(
+        text(f"""
+            UPDATE props p
+            SET raw_json = jsonb_set(COALESCE(p.raw_json, '{{}}'::jsonb), '{{withdrawn}}', 'true'::jsonb)
+            WHERE {_PULLED_TODAY}
+              AND {_HAS_SNAPSHOT}
+              AND NOT COALESCE((p.raw_json ->> 'withdrawn')::boolean, false)
+        """),
+        params,
+    )
+    deleted = await db.execute(
+        text(f"""
+            DELETE FROM props p
+            WHERE {_PULLED_TODAY}
+              AND NOT {_HAS_SNAPSHOT}
+        """),
+        params,
+    )
+    return PulledProps(deleted=deleted.rowcount, withdrawn=withdrawn.rowcount)

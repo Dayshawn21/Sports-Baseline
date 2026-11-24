@@ -67,6 +67,11 @@ describe('preferredSeries', () => {
     expect(preferredSeries([series('betfair exchange', [0.4]), series('betonline.ag', [0.4])])?.book).toBe('betonline.ag')
   })
 
+  it('reads FanDuel after stored Bet365 and before the exchange', () => {
+    expect(preferredSeries([series('Betfair Exchange', [0.4]), series('FanDuel', [0.4])])?.book).toBe('FanDuel')
+    expect(preferredSeries([series('fanduel', [0.4]), series('bet365', [0.4])])?.book).toBe('bet365')
+  })
+
   it('falls back to any book, and to null for none', () => {
     expect(preferredSeries([series('pinnacle', [0.4])])?.book).toBe('pinnacle')
     expect(preferredSeries([])).toBeNull()
@@ -134,6 +139,7 @@ describe('bookLabel', () => {
   it('names the stored books, including Bet365 under its old key', () => {
     expect(bookLabel('draftkings')).toBe('DraftKings')
     expect(bookLabel('betonline.ag')).toBe('Bet365')
+    expect(bookLabel('fanduel')).toBe('FanDuel')
     expect(bookLabel('Betfair Exchange')).toBe('Betfair')
     expect(bookLabel('pinnacle')).toBe('pinnacle')
   })

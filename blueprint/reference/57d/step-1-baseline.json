@@ -1,0 +1,13 @@
+﻿{
+  "date": "2026-11-09",
+  "url": "/#/tennis?date=2026-11-09",
+  "captured": "2026-11-08 evening CT, admin view on, before any 57d change",
+  "periodLine": "Mon, Nov 9, 2026 · 40 matches · 106 player props",
+  "headControls": ["Upcoming only", "All tours", "Sort: Best opportunity", "PrizePicks (admin)", "Show Leans"],
+  "tourTabs": ["All", "ATP", "WTA", "Challenger", "WTA 125"],
+  "tableHeaders": ["Time", "Match", "ELO", "ML", "Market", "Model", "Best pick", "EV", "Odds", "Flags (admin)"],
+  "digest": null,
+  "pricedPicks": 0,
+  "w1440": { "rows": 40, "tableHeight": 2985, "firstRow": 74, "scrollWidth": 1425 },
+  "w375": { "rows": 40, "tableHeight": 3892, "firstRow": 97, "filterBlockHeight": 140, "tableTop": 662, "scrollWidth": 375 }
+}

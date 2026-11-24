@@ -1,44 +1,7 @@
 /* NFL prop board (build-plan 31d), after prototypes/nfl-prop-board.html. */
 
-.nfl-prop-summary {
-  display: flex;
-  gap: var(--space-3);
-}
-
 .nfl-prop-board__other > .prop-table-panel + .prop-table-panel {
   margin-top: var(--space-4);
-}
-
-.nfl-prop-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 168px;
-  padding: var(--space-3) var(--space-5);
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius);
-}
-
-.nfl-prop-stat__label {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.nfl-prop-stat__value {
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.nfl-prop-stat__sub {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 12px;
 }
 
 .nfl-prop-pills {
@@ -101,6 +64,13 @@
   min-width: 190px;
 }
 
+@media (max-width: 768px) {
+  .nfl-prop-filter-bar > .ant-select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 /* Filters read as the market tabs do: plain labels, the chosen one underlined. */
 .nfl-prop-seg {
   display: inline-flex;
@@ -147,11 +117,6 @@
 }
 
 @media (max-width: 860px) {
-  .nfl-prop-stat {
-    flex: 1;
-    min-width: 0;
-  }
-
   .nfl-prop-toggle {
     margin-left: 0;
   }

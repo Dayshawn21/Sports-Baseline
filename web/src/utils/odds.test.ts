@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { devigP1 } from '~/utils/odds'
+import { devigP1, fmtPct } from '~/utils/odds'
 
 describe('devigP1', () => {
   it('normalizes the two implied probabilities to sum to one', () => {
@@ -14,5 +14,26 @@ describe('devigP1', () => {
   it('needs both sides', () => {
     expect(devigP1(120, null)).toBeNull()
     expect(devigP1(null, -150)).toBeNull()
+  })
+})
+
+describe('fmtPct', () => {
+  it('shows a probability as a percentage to the given decimals', () => {
+    expect(fmtPct(0.654)).toBe('65.4%')
+    expect(fmtPct(0.12345, 2)).toBe('12.35%')
+    expect(fmtPct(0)).toBe('0.0%')
+  })
+
+  it('rounds a whole percent as Math.round does for any probability, ties included', () => {
+    expect([fmtPct(0.125, 0), fmtPct(0.685, 0), fmtPct(0.995, 0), fmtPct(1, 0)]).toEqual(['13%', '69%', '100%', '100%'])
+    for (let step = 0; step <= 2000; step += 1) {
+      const probability = step / 2000
+      expect(fmtPct(probability, 0)).toBe(`${Math.round(probability * 100)}%`)
+    }
+  })
+
+  it('shows the dash glyph for a missing value', () => {
+    expect(fmtPct(null)).toBe('—')
+    expect(fmtPct(undefined)).toBe('—')
   })
 })

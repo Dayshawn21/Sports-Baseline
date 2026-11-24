@@ -153,7 +153,8 @@ def fitted_group(tour: str) -> str:
 def _market_anchored(inp: EnsembleInput) -> EnsembleResult:
     """26d: the close-anchored log-odds blend. v6 gets no weight (26d D1); a missing,
     gated or median-fallback ELO leaves the market alone. Stale and overround flags
-    still lower a pick's confidence, but no longer move the probability."""
+    no longer move the probability; of the two, only stale odds lower a pick's
+    confidence (bettable_criteria._DOWNGRADE_FLAGS)."""
     flags: list[str] = []
     elo: Optional[float] = None
     if inp.elo_prob is None:

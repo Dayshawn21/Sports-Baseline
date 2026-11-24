@@ -1,4 +1,4 @@
-import type { MatchDetail, MatchPlayerDetail, PropLine } from '~/types/tennis'
+import type { MatchDetail, MatchPlayerDetail } from '~/types/tennis'
 import { fmtSurface, fmtTournament } from '~/utils/format'
 
 export type Side = 'p1' | 'p2'
@@ -74,43 +74,10 @@ export function isFinished(detail: MatchDetail): boolean {
   return detail.status !== 'scheduled' && detail.status !== 'live'
 }
 
-const TIER_ORDER = ['LOCK', 'STRONG', 'LEAN', 'PASS']
-
-function propRank(prop: PropLine): number {
-  const standard = !prop.oddsType || prop.oddsType === 'standard' ? 0 : 1
-  const tier = prop.confidence ? TIER_ORDER.indexOf(prop.confidence.toUpperCase()) : -1
-  return standard * 10 + (tier === -1 ? TIER_ORDER.length : tier)
-}
-
-/** A match's prop lines, standard lines first, then by confidence tier, unrated last. */
-export function matchProps(props: PropLine[], matchId: number): PropLine[] {
-  return props
-    .filter((p) => p.matchId === matchId)
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => propRank(a.p) - propRank(b.p) || a.i - b.i)
-    .map(({ p }) => p)
-}
-
 /** "2/5" break points won, or a dash when the box score is missing or had no chances. */
 export function fmtBreakPoints(converted: number | null, created: number | null): string {
   if (converted == null || created == null || created === 0) return '—'
   return `${converted}/${created}`
-}
-
-const SHORT_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-
-/** A date-only "YYYY-MM-DD" as "Sep 25"; read in UTC so it never slips to the day before. */
-export function fmtMatchDate(isoDate: string): string {
-  const ts = Date.parse(`${isoDate}T00:00:00Z`)
-  return Number.isNaN(ts) ? isoDate : SHORT_DATE.format(new Date(ts))
-}
-
-const DATE_WITH_YEAR = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-
-/** A date-only "YYYY-MM-DD" as "Feb 18, 2026", for lists that span years. */
-export function fmtMatchDateYear(isoDate: string): string {
-  const ts = Date.parse(`${isoDate}T00:00:00Z`)
-  return Number.isNaN(ts) ? isoDate : DATE_WITH_YEAR.format(new Date(ts))
 }
 
 /**

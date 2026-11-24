@@ -25,12 +25,23 @@ export interface MatchPrediction {
   h2hP2Wins: number
   p1Id?: number | null
   p2Id?: number | null
+  bestOf?: number
 }
 
 export interface PredictionsResponse {
   date: string
   count: number
   matches: MatchPrediction[]
+}
+
+/** A line whose slice 48e's forward check adopted, so it is ranked and colored (48g). */
+export interface AdoptedPick {
+  side: 'over' | 'under'
+  probability: number   // push-excluded P(side)
+  breakEven: number
+  margin: number        // probability - breakEven, the ranking key
+  rule: string
+  projectionVersion: string
 }
 
 export interface PropLine {
@@ -58,6 +69,7 @@ export interface PropLine {
   breakEvenPct?: number | null     // hit rate this price needs to break even
   matchesCount?: number | null     // rolling stats sample size
   surface?: string | null          // match surface (Hard / Clay / Grass)
+  bestOf?: number | null           // linked match's stored format; null when unlinked
   marketTotalGames?: number | null       // market total used for match-length context
   expectedServicePoints?: number | null  // service-point volume used for serve props
   projectionSource?: 'market_total' | 'model_total' | string | null
@@ -78,31 +90,7 @@ export interface PropLine {
     projectionFound: boolean
     matchLinkMethod?: string | null
   } | null
-}
-
-export interface PlayerStats {
-  playerId: number
-  surface: string | null
-  statPeriod: string
-  winRate: number | null
-  svcPtsWon: number | null
-  retPtsWon: number | null
-  acesPerGame: number | null
-  dfPerGame: number | null
-  holdPct: number | null
-  breakPct: number | null
-  matchesCount: number | null
-  firstInPct: number | null
-  firstWonPct: number | null
-  secondWonPct: number | null
-  dominanceRatio: number | null
-  breakPointsCreatedPerReturnGame?: number | null
-  allowedBreakPointsPerServiceGame?: number | null
-  // ELO ratings (all surfaces + per surface)
-  elo: number | null
-  eloHard: number | null
-  eloClay: number | null
-  eloGrass: number | null
+  adoptedPick?: AdoptedPick | null
 }
 
 export interface RecentMatchResult {
@@ -260,6 +248,43 @@ export interface PropsResponse {
   source: string | null
   count: number
   props: PropLine[]
+}
+
+export interface PropReason {
+  key: string
+  text: string
+}
+
+export interface PropReasonRecentValue {
+  matchDate: string
+  opponentName: string
+  surface: string | null
+  bestOf: number
+  value: number
+}
+
+export interface PropReasonSummary {
+  matches: number
+  over: number
+  under: number
+  push: number
+  average: number
+  median: number
+}
+
+/** Why a PrizePicks line could go over or under (63): reference, never a pick. */
+export interface TennisPropReasonsResponse {
+  propId: number
+  playerId: number | null
+  statType: string
+  line: number
+  version: string
+  /** Oldest first, at most 10: the chart's order. */
+  recent: PropReasonRecentValue[]
+  summary: PropReasonSummary | null
+  over: PropReason[]
+  under: PropReason[]
+  caveats: PropReason[]
 }
 
 export interface PropsAuditSummary {
@@ -622,4 +647,28 @@ export interface PlayerProps {
   projectionVersion: string
   rows: PastProp[]
   summary: { hits: number, misses: number }
+}
+
+/** A finished match's standard line with the props-v3 projection frozen before it and the settled result (60a). */
+export interface ProjectionHistoryPoint {
+  matchId: number
+  matchDate: string | null
+  tournament: string | null
+  round: string | null
+  surface: string | null
+  opponentId: number
+  opponentName: string
+  stat: string
+  line: number
+  /** Null when no projection was frozen; never recomputed. */
+  projection: number | null
+  actual: number
+  snapshotAt: string
+}
+
+export interface ProjectionHistory {
+  projectionVersion: string
+  points: ProjectionHistoryPoint[]
+  /** Finished lines whose result has not settled (box score not joined, or no settlement source). */
+  unsettled: number
 }

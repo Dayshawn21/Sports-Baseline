@@ -14,6 +14,10 @@ export const APP_ANTD_THEME: ThemeConfig = {
     colorPrimary: '#f5f5f7',
     colorText: '#f5f5f7',
     colorTextPlaceholder: '#85858f',
+    // Ant's dark default link is an off-palette blue at 3.7:1 on the card.
+    colorLink: '#9a9aa3',
+    colorLinkHover: '#f5f5f7',
+    colorLinkActive: '#f5f5f7',
     fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
     fontFamilyCode: "'JetBrains Mono', 'Fira Mono', monospace",
     borderRadius: 8,
@@ -37,4 +41,9 @@ export const APP_ANTD_THEME: ThemeConfig = {
       darkItemSelectedColor: '#f5f5f7',
     },
   },
+}
+
+/** The app theme with Ant Design's own transitions off when the visitor asks for reduced motion. */
+export function appAntdTheme(reducedMotion: boolean): ThemeConfig {
+  return reducedMotion ? { ...APP_ANTD_THEME, token: { ...APP_ANTD_THEME.token, motion: false } } : APP_ANTD_THEME
 }

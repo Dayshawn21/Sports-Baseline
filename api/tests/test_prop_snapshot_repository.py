@@ -12,7 +12,9 @@ from sqlalchemy.sql.elements import TextClause
 
 from app.repositories.prop_snapshots import (
     build_graded_prop_snapshot,
+    build_prop_check_snapshot,
     get_graded_prop_snapshots,
+    get_prop_check_snapshots,
     insert_prop_projection_snapshots,
     SnapshotInsertCounts,
 )
@@ -192,3 +194,58 @@ def test_graded_mapper_turns_the_numeric_line_into_a_float():
     })
     assert row.line == 21.5 and isinstance(row.line, float)
     assert (row.player_id, row.match_id) == (11, 21)
+
+
+@pytest.fixture(scope="module")
+def check_call() -> tuple[str, dict]:
+    session = _GradedSession()
+    asyncio.run(get_prop_check_snapshots(cast(AsyncSession, session), "props-v4"))
+    return session.calls[0]
+
+
+def _where(sql: str) -> str:
+    return sql[sql.index(" WHERE "):sql.index(" ORDER BY ")]
+
+
+class TestPropCheckLoader:
+    def test_the_requested_version_is_the_only_one_read(self, check_call):
+        sql, params = check_call
+        assert "s.projection_version = :version" in sql
+        assert params == {"version": "props-v4", "eligibility_policy": SNAPSHOT_ELIGIBILITY_POLICY}
+
+    def test_it_grades_exactly_the_rows_the_26f_report_grades(self, check_call, graded_call):
+        key = "s.player_id, s.match_id, s.stat_type, COALESCE(s.odds_type, ''), s.line"
+        for sql, _ in (check_call, graded_call):
+            assert f"SELECT DISTINCT ON ({key})" in sql
+            assert f"ORDER BY {key}, s.snapshot_at DESC, s.id DESC" in sql
+        assert _where(check_call[0]) == _where(graded_call[0])
+
+    def test_the_pre_start_and_finished_match_filters_hold(self, check_call):
+        sql, _ = check_call
+        assert "s.snapshot_at < s.start_time" in sql
+        assert "s.snapshot_at < LEAST(" in sql
+        assert "m.status = 'completed' AND m.winner_id IS NOT NULL" in sql
+        assert "s.player_id IN (m.p1_id, m.p2_id)" in sql
+
+    def test_both_player_tours_are_read_for_the_wta_125_label(self, check_call):
+        sql, _ = check_call
+        assert "m.tour AS match_tour, p1.tour AS p1_tour, p2.tour AS p2_tour" in sql
+        assert "LEFT JOIN players p1 ON p1.id = m.p1_id" in sql
+        assert "LEFT JOIN players p2 ON p2.id = m.p2_id" in sql
+
+    def test_the_probabilities_total_and_flags_are_read(self, check_call):
+        sql, _ = check_call
+        assert "s.start_time, s.p_over, s.p_under, s.p_push, s.market_total_games, s.data_quality_flags" in sql
+
+
+def test_check_mapper_turns_the_line_into_a_float_and_flags_into_a_tuple():
+    row = build_prop_check_snapshot({
+        "snapshot_id": 1, "player_id": 11, "match_id": 21, "match_tour": "CHALLENGER", "p1_tour": "WTA",
+        "p2_tour": None, "stat_type": "Aces", "odds_type": "goblin", "line": Decimal("3.5"), "start_time": START,
+        "p_over": 0.8, "p_under": 0.2, "p_push": 0.0, "market_total_games": None,
+        "data_quality_flags": ["no_market_total"], "player_is_p1": True, "score": "6-4 6-3", "best_of": 3,
+    })
+    assert row.line == 3.5 and isinstance(row.line, float)
+    assert row.data_quality_flags == ("no_market_total",)
+    assert build_prop_check_snapshot({**row.__dict__, "line": Decimal("3.5"), "data_quality_flags": None}) \
+        .data_quality_flags == ()

@@ -30,6 +30,23 @@ unchecked item in `build-plan.md`. The build plan is a checklist; finished
 features are checked off, so the first unchecked item is always what's next. (If a
 big item has been split into sub-items, the next unchecked sub-item is the target.)
 
+## Checkout guard
+
+Run this before writing anything. A checkout holds one work item at a time: its
+branch, its `current-feature.md` and its working tree, and another session may
+be using it. Check `git branch --show-current`, `git status --short` and
+`git worktree list`. The checkout is busy when any of these hold:
+
+- `current-feature.md` holds a spec for another item that is not complete
+- the branch is another item's `feature/`, `fix/` or `rollback/` branch
+- the tree has changes or untracked files from another item
+
+When it is busy, never overwrite the spec, switch branches, stash or clean.
+Offer a worktree for this item instead, off the main branch:
+`git worktree add .claude/worktrees/<NN-name> -b feature/<name> <main>`. After a
+yes, create it, write the spec there, and tell the user to run `/implement` in
+a session opened on that folder. `.claude/worktrees/` is git-ignored.
+
 ## Step 1 - pick the target
 
 - Given a number or name that matches a build-plan item -> use it.

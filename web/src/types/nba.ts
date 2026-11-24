@@ -76,6 +76,7 @@ export interface NbaSlateGap {
   gameId: number
   awayTeam: string
   homeTeam: string
+  startUtc: string
   playerId: number
   playerName: string
   market: string
@@ -227,4 +228,92 @@ export interface NbaPropBoardResponse {
   nextDate: string | null
   modelVersion: string
   games: NbaPropBoardGame[]
+}
+
+export interface NbaPlayerGameRef {
+  gameId: number
+  awayTeam: string
+  homeTeam: string
+  startUtc: string | null
+  status: string
+}
+
+export interface NbaPlayerGame {
+  gameDate: string
+  opponent: string | null
+  /** Null when a stat the market needs was not loaded for that game, never zero. */
+  value: number | null
+}
+
+/** One stored line of a market. The model fields are null on a line-only market and where the projection is not served. */
+export interface NbaPlayerRung {
+  line: number
+  oddsType: string | null
+  fetchedAt: string
+  gap: number | null
+  pOver: number | null
+  pUnder: number | null
+  overProbabilityVersion: string | null
+  flags: NbaPropFlag[]
+}
+
+export interface NbaPlayerMarket {
+  market: string
+  kind: 'modelled' | 'line-only'
+  projection: number | null
+  gamesInSample: number | null
+  priorMinutes: number | null
+  /** Line ascending, then odds type. */
+  lines: NbaPlayerRung[]
+  /** Newest first, up to 10. */
+  recent: NbaPlayerGame[]
+  /** Newest first, up to 20; empty when the player has no opponent that date. */
+  opponentGames: NbaPlayerGame[]
+}
+
+/** `GET /nba/players/{id}/props`: display only, never a pick, rank or signal color. */
+export interface NbaPlayerProps {
+  playerId: number
+  name: string
+  position: string | null
+  team: string | null
+  date: string
+  game: NbaPlayerGameRef | null
+  opponent: string | null
+  modelVersion: string
+  injury: NbaInjury | null
+  injuryReport: NbaInjuryReport
+  teamStats: NbaTeamStatsContext | null
+  markets: NbaPlayerMarket[]
+  teammateSplit: NbaTeammateSplit | null
+}
+
+export type NbaSplitSide = 'with' | 'without' | 'before'
+
+export interface NbaSplitGame {
+  gameId: number
+  gameDate: string
+  opponent: string | null
+  /** Keyed by the response's market names; null when a stat the market needs was not loaded. */
+  values: Record<string, number | null>
+}
+
+export interface NbaSplitTeammate {
+  playerId: number
+  espnAthleteId: string
+  playerName: string
+  status: string
+  stale: boolean
+  /** Null when he has no box-score row for the team, so no game can be judged. */
+  firstTeamGameDate: string | null
+  /** One per game in `NbaTeammateSplit.games`. */
+  sides: NbaSplitSide[]
+}
+
+/** This season's played games split by teammates listed out tonight: reference only (69). */
+export interface NbaTeammateSplit {
+  season: number
+  team: string
+  games: NbaSplitGame[]
+  teammates: NbaSplitTeammate[]
 }

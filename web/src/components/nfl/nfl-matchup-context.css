@@ -24,7 +24,6 @@
 .nfl-evidence-context .nfl-context-table tbody th { font-size: 12px; }
 .nfl-evidence-context .nfl-context-metric small, .nfl-evidence-context .nfl-context-rank { font-family: var(--font-body); }
 .nfl-evidence-context__opponent { margin-top: 16px; }
-.nfl-game-drawer .nfl-prop-detail, .nfl-player-drawer .nfl-prop-detail { position: static; max-height: none; overflow: visible; }
 
 @media (max-width: 640px) {
   .nfl-context-table__label { width: 36%; }

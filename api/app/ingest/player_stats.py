@@ -47,6 +47,7 @@ from typing import Optional
 
 import requests
 
+from app.core.ta_slug import ta_slug
 from app.ingest.log_config import configure_ingest_logging
 
 logger = logging.getLogger("player_stats_ingest")
@@ -92,26 +93,6 @@ I_OSWON = 35
 I_OGAMES = 36
 I_OSAVED = 37
 I_OCHANCES = 38
-
-
-# Sofascore name → TennisAbstract slug overrides (add new mismatches here)
-TA_SLUG_OVERRIDES: dict[str, str] = {
-    "Catherine McNally": "CatyMcnally",
-    "Guiomar Maristany": "GuiomarMaristanyZuletaDeReales",
-    # Hyphenated names — _slug() only strips spaces, not hyphens
-    "Felix Auger-Aliassime": "FelixAugerAliassime",
-    "Elena-Gabriela Ruse": "ElenaGabrielaRuse",
-    # Sofascore first-name abbreviations / alternate spellings
-    "Alex De Minaur": "AlexDeMinaur",
-    "Jo-Wilfried Tsonga": "JoWilfriedTsonga",
-}
-
-
-def _slug(name: str) -> str:
-    """'Aryna Sabalenka' -> 'ArynaSabalenka', with known override support."""
-    if name in TA_SLUG_OVERRIDES:
-        return TA_SLUG_OVERRIDES[name]
-    return name.replace(" ", "")
 
 
 _session = requests.Session()
@@ -200,7 +181,9 @@ def _fetch_one(url: str, name: str, slug: str) -> Optional[list]:
     return rows or None
 
 
-def _fetch_matches(name: str, tour: str = "", slug_override: Optional[str] = None) -> Optional[list]:
+def _fetch_matches(
+    name: str, tour: str = "", slug_override: Optional[str] = None, *, today: date,
+) -> Optional[list]:
     """
     Fetch and parse a TennisAbstract player page. Returns list of rows or None.
 
@@ -213,14 +196,14 @@ def _fetch_matches(name: str, tour: str = "", slug_override: Optional[str] = Non
     livetennisapi files women's 125/ITF events under `challenger` alongside the
     men's Challenger tour, so the label cannot tell us which page to use.
     """
-    slug = slug_override if slug_override else _slug(name)
+    slug = slug_override if slug_override else ta_slug(name)
     classic = f"{TA_ATP_PAGE}?p={slug}"
     jsmatches = f"{TA_JS_BASE}/{slug}.js"
 
     # Most likely source first, so the common case still costs one request.
     candidates = [jsmatches, classic] if tour.upper() == "WTA" else [classic, jsmatches]
 
-    fresh_cutoff = (date.today() - timedelta(days=STALE_AFTER_DAYS)).strftime("%Y%m%d")
+    fresh_cutoff = (today - timedelta(days=STALE_AFTER_DAYS)).strftime("%Y%m%d")
     best: Optional[list] = None
     best_date = ""
 
@@ -664,7 +647,7 @@ async def ingest_single_player(
 
     Slug resolution order:
       1. ta_slug_override argument (from admin endpoint or DB ta_slug field)
-      2. _slug(player_name) — computed from name
+      2. ta_slug(player_name), computed from name
 
     NOTE: _fetch_matches uses synchronous requests.get() which blocks the event loop.
     For the admin endpoint (low traffic / one player at a time) this is acceptable.
@@ -675,7 +658,7 @@ async def ingest_single_player(
     today = date.today()
     cutoff = (today - timedelta(days=WINDOW_DAYS)).strftime("%Y%m%d")
 
-    raw_rows = _fetch_matches(player_name, tour=tour or "", slug_override=ta_slug_override)
+    raw_rows = _fetch_matches(player_name, tour=tour or "", slug_override=ta_slug_override, today=today)
 
     if raw_rows is None:
         return {
@@ -790,7 +773,7 @@ async def run(
         # Fetched outside any transaction: a retry must not spend another
         # TennisAbstract request, and the 429 backoff inside this call is exactly
         # what used to hold row locks open for minutes.
-        raw_rows = _fetch_matches(name, tour=tour or "", slug_override=ta_slug)
+        raw_rows = _fetch_matches(name, tour=tour or "", slug_override=ta_slug, today=today)
 
         if raw_rows is None:
             skip += 1

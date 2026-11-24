@@ -2,41 +2,18 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import date
 
 import pytest
 
 from app.core.nfl_availability import NflAvailability
-from app.core.nfl_targets_projection import TargetsObservation, TargetsProjectionInput, project_targets
-from app.repositories.nfl_targets import TargetsHistoryGame, TargetsServingLine
+from app.core.nfl_targets_projection import project_targets
+from app.repositories.nfl_targets import TargetsHistoryGame
 from app.services.nfl.prop_predictions import prediction_row
 from app.services.nfl.targets import targets_over_probability, targets_slate_line
+from tests.helpers.nfl_targets_service import DEFAULT_HISTORY, FETCHED, KICKOFF, NOW, _game, _source
 
-FETCHED = datetime(2026, 10, 24, 15, tzinfo=UTC)
-NOW = datetime(2026, 10, 24, 16, tzinfo=UTC)
-KICKOFF = datetime(2026, 10, 25, 17, tzinfo=UTC)
 QUANTILES = tuple(index / 20 for index in range(41))
-
-
-def _game(game_id: int, value: float | None, *, season: int = 2026, week: int | None = None) -> TargetsHistoryGame:
-    return TargetsHistoryGame(
-        TargetsObservation(game_id, season, week if week is not None else game_id, None, value),
-        opponent_team_id=3, opponent_team="BUF",
-    )
-
-
-DEFAULT_HISTORY = tuple(_game(index, value) for index, value in enumerate([1, 2, 4, 6], start=1))
-
-
-def _source(history: tuple[TargetsHistoryGame, ...] = DEFAULT_HISTORY) -> TargetsServingLine:
-    return TargetsServingLine(
-        line_id=70, game_id=50, player_id=7, player_name="Receiver", position="WR", player_team_id=2,
-        opponent_team_id=3, opponent_team="BUF", start_utc=KICKOFF,
-        market="receiving_targets", segment="full_game", odds_type="standard", line=4.5,
-        provider="prizepicks", fetched_at=FETCHED,
-        input=TargetsProjectionInput(2026, 7, tuple(game.observation for game in history)), history=history,
-        availability=NflAvailability(), practice_status=None, injury=None,
-    )
 
 
 @pytest.mark.parametrize(("values", "expected"), [
@@ -72,6 +49,15 @@ def test_previous_season_baseline_counts_valid_observations_and_ignores_moneylin
     assert result.quality_flags == ["historical_baseline", "stale_baseline_season"]
 
 
+def test_form_samples_carry_each_games_date() -> None:
+    history = (_game(1, 4, game_date=date(2026, 9, 14)), _game(2, 6, game_date=date(2026, 9, 21)), _game(3, 8))
+
+    result = targets_slate_line(_source(history))
+
+    assert [item.game_date for item in result.recent_form.values] == [None, date(2026, 9, 21), date(2026, 9, 14)]
+    assert [item.game_date for item in result.recent_form_long.values] == [None, date(2026, 9, 21), date(2026, 9, 14)]
+
+
 def test_history_uses_valid_pre_week_targets_newest_first_and_separates_opponent_games() -> None:
     history = (
         _game(1, 0), _game(2, 2), replace(_game(3, 4), opponent_team_id=4, opponent_team="DET"),
@@ -85,6 +71,8 @@ def test_history_uses_valid_pre_week_targets_newest_first_and_separates_opponent
     assert result.projection == 5.0 and result.games_in_sample == 6
     assert [item.value for item in result.recent_form.values] == [10, 8, 6, 4, 2]
     assert result.recent_form.average == 6.0
+    assert [item.value for item in result.recent_form_long.values] == [10, 8, 6, 4, 2, 0]
+    assert result.recent_form_long.values[:5] == result.recent_form.values
     assert [item.opponent_team for item in result.recent_form.values] == ["BUF", "BUF", "BUF", "DET", "BUF"]
     assert [item.value for item in result.opponent_history.values] == [10, 8, 6, 2, 0]
     assert result.opponent_history.average == 5.2
@@ -100,7 +88,7 @@ def test_missing_team_keeps_the_baseline_but_no_opponent_evidence_and_flags_avai
 
     assert result.projection == 3.25 and result.opponent_team is None
     assert result.opponent_history.average is None and result.opponent_history.values == []
-    assert result.quality_flags == ["historical_baseline", "injury_out", "depth_promoted", "team_not_in_game"]
+    assert result.quality_flags == ["historical_baseline", "injury_out", "role_changed", "depth_promoted", "team_not_in_game"]
     assert (result.injury_status, result.practice_status, result.injury) == ("Out", "DNP", "Ankle")
     assert (result.depth_position, result.depth_rank, result.previous_depth_position, result.previous_depth_rank) == (
         "WR", 1, "WR", 2,

@@ -1,0 +1,10 @@
+﻿{
+  "date": "2026-11-08",
+  "url": "/#/nhl?date=2026-11-08",
+  "games": 6,
+  "captured": "2026-11-08, before any 57c table change",
+  "rows": "12 (a game row plus a context row per game)",
+  "w1440": { "tableHeight": 1355.6, "firstGameRow": 102.9, "firstGamePlusContext": 218.8 },
+  "w375": { "tableHeight": 3447.0, "firstGameRow": 384.5, "firstGamePlusContext": 574.5, "scrollWidth": 375 },
+  "step3Target": "375px table height at most 2068 (40% shorter than 3447)"
+}

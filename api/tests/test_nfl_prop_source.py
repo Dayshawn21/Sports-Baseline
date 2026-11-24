@@ -8,7 +8,7 @@ from app.core.prop_ranking_check import FrozenLine
 from app.services.nfl import prop_source
 from app.services.nfl.prop_source import NflPropSource
 from app.services.sport_props import ProviderLine, SportPropSource
-from tests.test_nfl_prop_predictions import _game, _line, _slate
+from tests.helpers.nfl_prop_predictions import _game, _line, _slate
 
 NOW = datetime(2026, 9, 27, 15, 0, tzinfo=UTC)
 DB = cast(AsyncSession, object())

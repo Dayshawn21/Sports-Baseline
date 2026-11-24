@@ -49,6 +49,14 @@ Stop before writing when:
 Do not stash, discard, fetch, pull, switch branches, or clean the tree from this
 skill.
 
+When the stop is because another work item owns this checkout (its spec, its
+branch or its changes), another session may be using it. Offer a worktree off
+the main branch for the rollback instead
+(`git worktree add .claude/worktrees/rollback-<name> -b rollback/<name> <main>`),
+which is clean and on main as this preflight requires; after a yes, rerun the
+preflight there and tell the user to continue in a session opened on that
+folder.
+
 ## Step 1 - resolve the exact feature
 
 Match the requested number or name against both the checked build-plan items and

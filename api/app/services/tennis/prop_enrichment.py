@@ -1,0 +1,547 @@
+"""Tennis prop board rows: projection, probabilities, EV and data-quality flags.
+
+The props page, the reasons and audit routes, and the daily snapshot job
+(`app.ingest.prop_snapshots`) all build rows here, so a stored `props-v3`
+snapshot is exactly what the page showed.
+"""
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.prop_ev import assess_prop
+from app.core.prop_probs import (
+    games_won_probabilities,
+    prop_probabilities,
+    prop_side,
+    total_games_mean_from_line,
+)
+from app.core.prop_projection import (
+    _ACE_MATCHUP_FACTOR_MAX,
+    _ACE_MATCHUP_FACTOR_MIN,
+    _BASELINE_HOLD_PCT,
+    _BASELINE_RET_PTS_WON,
+    _BREAK_CHANCES_PER_MATCH,
+    _LEAGUE_ACE_RATE,
+    _SERVICE_GAMES_PER_MATCH,
+    _SERVE_POINTS_PER_MATCH,
+    _SURFACE_ACE_FACTOR,
+    PRIZEPICKS_HARD_BLOCKS,
+    TOTALS_DEPENDENT_STATS,
+    compute_stat_avg as _compute_stat_avg,
+    expected_break_point_chances as _expected_break_point_chances,
+    expected_service_points as _expected_service_points,
+    expected_total_games as _expected_total_games,
+    first_set_for_matchup as _first_set_for_matchup,
+    normalize_stat_type as _normalize_stat_type,
+    opt_float,
+    serve_hold as _serve_hold,
+)
+from app.core.rolling_stats import SMALL_SAMPLE_MATCHES, pick_stats_for_player
+from app.core.tennis_first_set import FIRST_SET_STATS, pmf_probabilities, stat_pmf
+from app.repositories.matches import (
+    MarketTotal,
+    get_market_totals,
+    get_market_win_probs,
+    get_opponent_ids,
+    get_prediction_win_probs,
+)
+from app.repositories.players import PlayerRollingStats, get_rolling_stats_batch_all_surfaces
+from app.repositories.props import Prop
+from app.schemas.props import PropAudit, PropLine, PropsAuditSummary
+
+# Default expected counts per match (used for Poisson when no player stats available)
+_DEFAULT_EXPECTED: dict[str, float] = {
+    "aces": 8.0,
+    "double_faults": 3.0,
+    "break_points": 1.2,
+}
+
+_STATS_STALE_HOURS = 48
+_SUPPORTED_PROJECTION_STATS = {
+    "aces",
+    "double_faults",
+    "break_points_converted",
+    "break_points_won",
+    "total_games_won",
+    "games_won",
+    "total_games",
+    "total_sets",
+    "total_tie_breaks",
+    "fantasy_score",
+    *FIRST_SET_STATS,
+}
+
+def _deciding_set_probability(win_prob: Optional[float], best_of: int) -> Optional[float]:
+    if win_prob is None:
+        return None
+    p = _clamp(float(win_prob), 0.01, 0.99)
+    return 2.0 * p * (1.0 - p)
+
+
+def _match_link_method(prop: Prop) -> Optional[str]:
+    raw = prop.raw_json or {}
+    method = raw.get("match_link_method")
+    return str(method) if method else None
+
+
+def _match_finished(prop: Prop) -> bool:
+    return (prop.match_status or "").lower() in {"completed", "cancelled"}
+
+
+def _clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+def _projection_inputs(
+    stat_type: str,
+    stats: PlayerRollingStats,
+    opponent_stats: Optional[PlayerRollingStats],
+    win_prob: Optional[float],
+    market_total_games: Optional[float],
+    best_of: int = 3,
+) -> dict[str, float | str]:
+    st = _normalize_stat_type(stat_type)
+    inputs: dict[str, float | str] = {
+        "projection_source": "market_total" if market_total_games is not None and market_total_games >= 17.0 else "model_total",
+        "expected_total_games": round(
+            _expected_total_games(stats, opponent_stats, win_prob, market_total_games, best_of), 2
+        ),
+        "expected_service_points": round(
+            _expected_service_points(stats, opponent_stats, win_prob, market_total_games, best_of), 2
+        ),
+    }
+
+    if market_total_games is not None:
+        inputs["market_total_games"] = round(market_total_games, 2)
+    if st == "aces":
+        ace_rate = opt_float(stats.aces_per_game)
+        opp_allowed = opt_float(getattr(opponent_stats, "allowed_aces_per_sp", None)) if opponent_stats is not None else None
+        if ace_rate is not None:
+            inputs["player_ace_rate"] = round(ace_rate, 4)
+        if opp_allowed is not None:
+            inputs["opponent_allowed_ace_rate"] = round(opp_allowed, 4)
+    elif st == "double_faults":
+        df_rate = opt_float(stats.df_per_game)
+        opp_allowed = opt_float(getattr(opponent_stats, "allowed_df_per_sp", None)) if opponent_stats is not None else None
+        if df_rate is not None:
+            inputs["player_df_rate"] = round(df_rate, 4)
+        if opp_allowed is not None:
+            inputs["opponent_allowed_df_rate"] = round(opp_allowed, 4)
+    elif st in FIRST_SET_STATS:
+        inputs["player_hold"] = round(_serve_hold(stats), 4)
+        inputs["opponent_hold"] = round(
+            _serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT, 4
+        )
+    elif st in ("break_points_converted", "break_points_won"):
+        bp_rate = opt_float(stats.break_pct)
+        created_rate = opt_float(getattr(stats, "break_points_created_per_return_game", None))
+        allowed_rate = opt_float(getattr(opponent_stats, "allowed_break_points_per_service_game", None)) if opponent_stats is not None else None
+        if bp_rate is not None:
+            inputs["break_point_conversion_rate"] = round(bp_rate, 4)
+        if created_rate is not None:
+            inputs["player_bp_chances_created_per_return_game"] = round(created_rate, 4)
+        if allowed_rate is not None:
+            inputs["opponent_bp_chances_allowed_per_service_game"] = round(allowed_rate, 4)
+        inputs["expected_break_point_chances"] = round(
+            _expected_break_point_chances(stats, opponent_stats, win_prob, market_total_games),
+            2,
+        )
+
+    return inputs
+
+
+def _compute_opponent_allowed(
+    stat_type: str,
+    opponent_stats: PlayerRollingStats,
+    surface: Optional[str] = None,
+) -> Optional[float]:
+    """Derive what the opponent typically 'gives up' per match for this stat.
+
+    Same units as the line (and stat_avg), so the UI can display side-by-side with player's avg.
+    Returns None for stats where 'opponent concedes' is not meaningful (DFs, moneyline, etc.).
+    """
+    st = _normalize_stat_type(stat_type)
+    surf_key = (surface or "").title()
+
+    if st == "aces":
+        surf_factor = _SURFACE_ACE_FACTOR.get(surf_key, 1.0)
+        # Prefer the opponent's actual allowed-ace rate vs the field when available
+        allowed_ace = opt_float(getattr(opponent_stats, "allowed_aces_per_sp", None))
+        if allowed_ace is not None and allowed_ace > 0:
+            return allowed_ace * _SERVE_POINTS_PER_MATCH * surf_factor
+        # Fallback to league-rate-scaled-by-return-strength (pre-migration-0009 data)
+        opp_ret = opt_float(opponent_stats.ret_pts_won)
+        if opp_ret is None:
+            return None
+        baseline_nonreturn = max(1e-6, 1.0 - _BASELINE_RET_PTS_WON)
+        opp_nonreturn = max(0.05, 1.0 - opp_ret)
+        matchup_factor = _clamp(
+            opp_nonreturn / baseline_nonreturn,
+            _ACE_MATCHUP_FACTOR_MIN,
+            _ACE_MATCHUP_FACTOR_MAX,
+        )
+        return _LEAGUE_ACE_RATE * _SERVE_POINTS_PER_MATCH * surf_factor * matchup_factor
+
+    if st in ("break_points_converted", "break_points_won"):
+        opp_hold = _serve_hold(opponent_stats)
+        if opp_hold is None:
+            return None
+        return (1.0 - opp_hold) * _SERVICE_GAMES_PER_MATCH
+
+    if st in ("total_games_won", "games_won"):
+        opp_hold = _serve_hold(opponent_stats)
+        opp_bp = opt_float(opponent_stats.break_pct)
+        if opp_hold is None or opp_bp is None:
+            return None
+        return opp_hold * _SERVICE_GAMES_PER_MATCH + opp_bp * _BREAK_CHANCES_PER_MATCH
+
+    if st == "total_games":
+        opp_hold = _serve_hold(opponent_stats)
+        opp_bp = opt_float(opponent_stats.break_pct)
+        if opp_hold is None or opp_bp is None:
+            return None
+        opp_games = opp_hold * _SERVICE_GAMES_PER_MATCH + opp_bp * _BREAK_CHANCES_PER_MATCH
+        return opp_games * 2
+
+    return None
+
+
+def _enrich(
+    prop: Prop,
+    stats: Optional[PlayerRollingStats] = None,
+    opponent_stats: Optional[PlayerRollingStats] = None,
+    win_prob: Optional[float] = None,
+    market_total_games: Optional[float] = None,
+    market_total_over_prob: Optional[float] = None,
+    *,
+    now: datetime,
+) -> PropLine:
+    line_f = float(prop.line) if prop.line is not None else None
+    stat_norm = _normalize_stat_type(prop.stat_type)
+    is_prizepicks = prop.source == "prizepicks"
+    match_finished = _match_finished(prop)
+    # An unlinked prop carries no format, so 3 is the fallback rather than a
+    # claim. Every projection below already defaults to 3, so this only changes
+    # behavior for props that really are best-of-5.
+    best_of = prop.best_of or 3
+    data_quality_flags: list[str] = []
+    if prop.player_id is None:
+        data_quality_flags.append("missing_player")
+    if prop.match_id is None:
+        data_quality_flags.append("missing_match")
+    if prop.surface is None:
+        data_quality_flags.append("missing_surface")
+    if stats is None:
+        data_quality_flags.append("missing_stats")
+    if opponent_stats is None and prop.match_id is not None:
+        data_quality_flags.append("missing_opponent_stats")
+    if win_prob is None and prop.match_id is not None:
+        data_quality_flags.append("missing_prediction")
+    if stat_norm not in _SUPPORTED_PROJECTION_STATS:
+        data_quality_flags.append("unsupported_stat")
+    # New and not yet graded forward (26f).
+    if stat_norm in FIRST_SET_STATS:
+        data_quality_flags.append("ungraded_stat")
+    if _match_link_method(prop) == "player_date_fallback":
+        data_quality_flags.append("match_link_fallback")
+    # Set-count stats derive from expected_sets_from_win_prob, which is hardcoded
+    # best-of-3 (2 + 2p(1-p), so 2.0 to 2.5 sets). A best-of-5 match runs 3 to 5,
+    # and there is no fitted best-of-5 set model yet. Flag rather than project:
+    # a confidently wrong number is worse than a blank one.
+    if best_of >= 5 and stat_norm in ("total_sets", "total_tie_breaks"):
+        data_quality_flags.append("bo5_unsupported_stat")
+    if match_finished:
+        data_quality_flags.append("match_finished")
+    if prop.match_link_invalid:
+        data_quality_flags.append("match_link_invalid")
+
+    # Compute player-specific stat average and recommendation
+    stat_avg = edge_pct = recommendation = None
+    expected_service_points = None
+    projection_source = "market_total" if market_total_games is not None and market_total_games >= 17.0 else "model_total"
+    # A book line is the 50/50 point, not the mean (48a), so projections read the
+    # mean it implies. The row still reports the line itself.
+    book_total = market_total_games if projection_source == "market_total" else None
+    total_mean = (
+        total_games_mean_from_line(
+            book_total,
+            market_total_over_prob if market_total_over_prob is not None else 0.5,
+            best_of,
+            _deciding_set_probability(win_prob, best_of),
+        )
+        if book_total is not None
+        else None
+    )
+    projection_total = total_mean if total_mean is not None else market_total_games
+    if book_total is None and stat_norm in TOTALS_DEPENDENT_STATS:
+        data_quality_flags.append("no_market_total")
+    projection_inputs: dict[str, float | str] = {}
+    matches_count = None
+    if stats is not None and line_f is not None:
+        stat_avg = _compute_stat_avg(
+            prop.stat_type,
+            stats,
+            opponent_stats=opponent_stats,
+            win_prob=win_prob,
+            surface=prop.surface,
+            market_total_games=projection_total,
+            best_of=best_of,
+            tour=prop.player_tour,
+        )
+        expected_service_points = _expected_service_points(
+            stats, opponent_stats, win_prob, projection_total, best_of
+        )
+        projection_inputs = _projection_inputs(
+            prop.stat_type, stats, opponent_stats, win_prob, projection_total, best_of
+        )
+        if book_total is not None and total_mean is not None:
+            projection_inputs["market_total_games"] = round(book_total, 2)
+            projection_inputs["market_total_mean"] = round(total_mean, 2)
+            projection_inputs["market_total_price_source"] = (
+                "devigged" if market_total_over_prob is not None else "even"
+            )
+        matches_count = stats.matches_count
+        if matches_count is not None and matches_count < SMALL_SAMPLE_MATCHES:
+            data_quality_flags.append("small_sample")
+        if stat_avg is not None and line_f > 0:
+            edge_pct = round((stat_avg - line_f) / line_f * 100, 1)
+            recommendation = "OVER" if stat_avg >= line_f else "UNDER"
+            # PrizePicks demon/goblin are OVER-only bets, so OVER is the only side
+            # there is, even when the projection sits below the line.
+            if (prop.odds_type or "").lower() in ("demon", "goblin"):
+                recommendation = "OVER"
+    elif stats is not None:
+        matches_count = stats.matches_count
+
+    # Poisson probabilities — stat_avg is already per-match count (same scale as line)
+    expected = stat_avg if stat_avg is not None else _DEFAULT_EXPECTED.get(stat_norm)
+    p_over = p_under = p_push = None
+    ev_pct = break_even_pct = hit_probability = None
+    if expected is not None and line_f is not None:
+        if stat_norm in FIRST_SET_STATS and stats is not None:
+            probs = pmf_probabilities(stat_pmf(stat_norm, _first_set_for_matchup(stats, opponent_stats, prop.player_tour)), line_f)
+        elif stat_norm in ("total_games_won", "games_won") and stats is not None:
+            player_hold = _serve_hold(stats)
+            opp_hold = _serve_hold(opponent_stats) if opponent_stats is not None else _BASELINE_HOLD_PCT
+            probs = games_won_probabilities(line_f, expected, win_prob, player_hold, opp_hold)
+        else:
+            probs = prop_probabilities(
+                prop.stat_type,
+                line_f,
+                expected,
+                best_of,
+                p_deciding_set=_deciding_set_probability(win_prob, best_of),
+            )
+        p_over, p_under, p_push = probs.p_over, probs.p_under, probs.p_push
+
+        # Demon/goblin are OVER-only, so the OVER side is the only playable one.
+        # Standard picks can be taken either way, so take the better side.
+        odds_type_norm = (prop.odds_type or "").lower()
+        if recommendation is not None and odds_type_norm not in ("demon", "goblin"):
+            recommendation = prop_side(p_over, p_under)
+        if odds_type_norm in ("demon", "goblin"):
+            actionable = max(1e-9, 1.0 - p_push)
+            hit_probability = p_over / actionable
+        else:
+            hit_probability = probs.decision_probability
+
+        # Grade on expected value, not raw probability: a goblin that hits 97%
+        # of the time still loses money if its price needs 76% and the line is
+        # nearly free. See app/core/prop_ev.py.
+        # Pass the book's real price when the row carries one. Today only the
+        # match-odds sources populate p1_odds/p2_odds and those markets exit as
+        # unsupported_stat before reaching here, so this changes nothing yet — it
+        # keeps a priced sportsbook player prop from being graded on the
+        # PrizePicks tier table the moment one lands.
+        side_odds = None
+        if recommendation is not None:
+            side_odds = prop.p1_odds if recommendation == "OVER" else prop.p2_odds
+        assessment = assess_prop(
+            hit_probability,
+            prop.odds_type,
+            american_odds=side_odds,
+            source=prop.source,
+        )
+        if assessment is not None:
+            ev_pct = assessment.ev_pct
+            break_even_pct = round(assessment.break_even_probability * 100.0, 1)
+
+    # Opponent "gives up" — derived per-match figure in same units as the line
+    opp_stat_avg = None
+    opp_matches_count = None
+    if opponent_stats is not None:
+        opp_stat_avg = _compute_opponent_allowed(prop.stat_type, opponent_stats, surface=prop.surface)
+        opp_matches_count = opponent_stats.matches_count
+
+    # Stats freshness — use the older of player/opponent computed_at so we flag the whole row
+    stats_computed_at = None
+    stats_stale = None
+    candidate_times = [s.computed_at for s in (stats, opponent_stats) if s is not None and s.computed_at is not None]
+    if candidate_times:
+        stats_computed_at = min(candidate_times)
+        age_hours = (now - stats_computed_at).total_seconds() / 3600.0
+        stats_stale = age_hours > _STATS_STALE_HOURS
+        if stats_stale:
+            data_quality_flags.append("stale_stats")
+
+    if stat_norm in _SUPPORTED_PROJECTION_STATS:
+        if prop.player_id is None:
+            projection_status = "missing_player"
+        elif prop.match_id is None:
+            projection_status = "missing_match"
+        elif stats is None:
+            projection_status = "missing_stats"
+        elif stat_avg is None:
+            projection_status = "unsupported_stat"
+        else:
+            projection_status = "ok"
+    else:
+        projection_status = "unsupported_stat"
+
+    if is_prizepicks and PRIZEPICKS_HARD_BLOCKS.intersection(data_quality_flags):
+        recommendation = None
+
+    projection_found = stat_avg is not None
+    audit = PropAudit(
+        player_resolved=prop.player_id is not None,
+        match_linked=prop.match_id is not None,
+        stats_fresh=False if stats_stale else True if stats_computed_at is not None else None,
+        sample_size=matches_count,
+        opponent_stats_found=opponent_stats is not None,
+        prediction_found=win_prob is not None,
+        projection_found=projection_found,
+        match_link_method=_match_link_method(prop),
+    )
+
+    return PropLine(
+        id=prop.id,
+        player_id=prop.player_id,
+        player_name=prop.player_name,
+        match_id=prop.match_id,
+        source=prop.source,
+        stat_type=prop.stat_type,
+        line=prop.line,
+        odds_type=prop.odds_type,
+        fetched_at=prop.fetched_at,
+        start_time=prop.start_time,
+        match_status=prop.match_status,
+        match_finished=match_finished,
+        match_link_invalid=prop.match_link_invalid,
+        p1_odds=prop.p1_odds,
+        p2_odds=prop.p2_odds,
+        p_over=round(p_over, 3) if p_over is not None else None,
+        p_under=round(p_under, 3) if p_under is not None else None,
+        p_push=round(p_push, 3) if p_push is not None else None,
+        confidence=None,
+        recommendation=recommendation,
+        stat_avg=round(stat_avg, 2) if stat_avg is not None else None,
+        edge_pct=edge_pct,
+        ev_pct=ev_pct,
+        hit_probability=round(hit_probability, 3) if hit_probability is not None else None,
+        break_even_pct=break_even_pct,
+        matches_count=matches_count,
+        surface=prop.surface,
+        best_of=prop.best_of,
+        market_total_games=round(market_total_games, 2) if market_total_games is not None else None,
+        expected_service_points=round(expected_service_points, 2) if expected_service_points is not None else None,
+        projection_source=projection_source if stats is not None else None,
+        projection_inputs=projection_inputs,
+        opponent_stat_avg=round(opp_stat_avg, 2) if opp_stat_avg is not None else None,
+        opponent_matches_count=opp_matches_count,
+        stats_computed_at=stats_computed_at,
+        stats_stale=stats_stale,
+        data_quality_flags=sorted(set(data_quality_flags)),
+        projection_status=projection_status,
+        audit=audit,
+    )
+
+
+def _pick_stats(
+    prop: "Prop",
+    all_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
+) -> Optional[PlayerRollingStats]:
+    return pick_stats_for_player(prop.player_id, prop.surface, all_stats)
+
+
+async def enrich_props(db: AsyncSession, props: list["Prop"], *, now: datetime) -> list[PropLine]:
+    opponent_ids_map = await get_opponent_ids(db, props)
+    player_ids = {p.player_id for p in props if p.player_id is not None}
+    opponent_ids = set(opponent_ids_map.values())
+    rolling_stats = await get_rolling_stats_batch_all_surfaces(db, list(player_ids | opponent_ids))
+    prediction_probs = await get_prediction_win_probs(db, props)
+    market_probs = await get_market_win_probs(db, props)
+    market_totals = await get_market_totals(db, props)
+    return enrich_with(
+        props, opponent_ids_map, rolling_stats, prediction_probs, market_probs, market_totals, now=now,
+    )
+
+
+def enrich_with(
+    props: list["Prop"],
+    opponent_ids_map: dict[tuple[int, int], int],
+    rolling_stats: dict[tuple[int, Optional[str]], PlayerRollingStats],
+    prediction_probs: dict[tuple[int, int], float],
+    market_probs: dict[tuple[int, int], float],
+    market_totals: dict[int, MarketTotal],
+    *,
+    now: datetime,
+) -> list[PropLine]:
+    """The board's rows from already-loaded inputs; best-pick cards read the same rows."""
+    return [
+        _enrich_with_total(
+            p,
+            market_totals.get(p.match_id) if p.match_id is not None else None,
+            _pick_stats(p, rolling_stats),
+            pick_stats_for_player(
+                opponent_ids_map.get((p.player_id, p.match_id)) if p.player_id and p.match_id else None,
+                p.surface,
+                rolling_stats,
+            ),
+            (
+                prediction_probs.get((p.player_id, p.match_id))
+                or market_probs.get((p.player_id, p.match_id))
+            ) if p.player_id and p.match_id else None,
+            now=now,
+        )
+        for p in props
+    ]
+
+
+def _enrich_with_total(
+    prop: Prop,
+    total: Optional[MarketTotal],
+    stats: Optional[PlayerRollingStats],
+    opponent_stats: Optional[PlayerRollingStats],
+    win_prob: Optional[float],
+    *,
+    now: datetime,
+) -> PropLine:
+    return _enrich(
+        prop, stats, opponent_stats, win_prob,
+        market_total_games=total.line if total is not None else None,
+        market_total_over_prob=total.p_over if total is not None else None,
+        now=now,
+    )
+
+
+def audit_summary(props: list[PropLine]) -> PropsAuditSummary:
+    def has(flag: str, prop: PropLine) -> bool:
+        return flag in (prop.data_quality_flags or [])
+
+    flagged = [
+        f"{p.player_name or 'Unknown'} | {p.stat_type} {p.line} | {', '.join(p.data_quality_flags)}"
+        for p in props
+        if p.data_quality_flags
+    ]
+    return PropsAuditSummary(
+        total_props=len(props),
+        unresolved_player_count=sum(1 for p in props if has("missing_player", p)),
+        unlinked_match_count=sum(1 for p in props if has("missing_match", p)),
+        missing_stats_count=sum(1 for p in props if has("missing_stats", p)),
+        stale_stats_count=sum(1 for p in props if has("stale_stats", p)),
+        unsupported_stat_count=sum(1 for p in props if has("unsupported_stat", p)),
+        missing_prediction_count=sum(1 for p in props if has("missing_prediction", p)),
+        small_sample_count=sum(1 for p in props if has("small_sample", p)),
+        top_flagged_examples=flagged[:10],
+    )

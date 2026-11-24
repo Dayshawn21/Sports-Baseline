@@ -2,3 +2,8 @@
 # shifts every chunk boundary mid-token and aborts the process on load. Git must
 # never convert line endings for model artifacts.
 api/models/** -text
+
+# The tennis ELO registry digest hashes these files byte for byte, and the
+# shadow experiment pins that digest. A CRLF checkout on Windows would pin a
+# digest the Linux runner never computes.
+api/app/ingest/data/tennis_elo_*.csv text eol=lf

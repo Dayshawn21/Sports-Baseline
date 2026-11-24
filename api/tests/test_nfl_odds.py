@@ -107,7 +107,13 @@ def test_game_odds_snapshot_serializes_raw_market_as_jsonb() -> None:
     assert session.params["raw_json"] == json.dumps({"key": "h2h"})
 
 
-def test_run_persists_matched_markets_and_honors_quota_floor(monkeypatch) -> None:
+def _balance_of(remaining: int | None):
+    async def free(*_: object) -> int | None:
+        return remaining
+    return free
+
+
+def test_run_persists_matched_markets_for_each_provider(monkeypatch) -> None:
     stored: list[tuple[object, ...]] = []
 
     class Session:
@@ -136,6 +142,7 @@ def test_run_persists_matched_markets_and_honors_quota_floor(monkeypatch) -> Non
     monkeypatch.setattr(nfl_odds.httpx, "AsyncClient", lambda: Client())
     monkeypatch.setattr(nfl_repo, "get_upcoming_games", games)
     monkeypatch.setattr(nfl_odds, "_fetch_odds", odds)
+    monkeypatch.setattr(nfl_odds, "_free_remaining", _balance_of(497))
     monkeypatch.setattr(nfl_repo, "insert_game_odds_snapshot", insert)
     monkeypatch.setattr(nfl_odds.settings, "the_odds_api_key", "test-key")
     assert asyncio.run(nfl_odds.run()) == {"matched": 1, "skipped": 0, "stored": 3}
@@ -190,6 +197,7 @@ def test_run_checks_kickoff_after_fetch(
     monkeypatch.setattr(nfl_odds.httpx, "AsyncClient", Client)
     monkeypatch.setattr(nfl_repo, "get_upcoming_games", games)
     monkeypatch.setattr(nfl_odds, "_fetch_odds", odds)
+    monkeypatch.setattr(nfl_odds, "_free_remaining", _balance_of(497))
     monkeypatch.setattr(nfl_repo, "insert_game_odds_snapshot", insert)
     monkeypatch.setattr(nfl_odds.settings, "the_odds_api_key", "test-key")
 
@@ -200,3 +208,71 @@ def test_run_checks_kickoff_after_fetch(
     provider = "the_odds_api_eu" if pinnacle else "the_odds_api_us"
     assert stored == ([provider] * 3 if eligible and not dry_run else [])
     assert commits == ([] if dry_run else [True])
+
+
+class _Response:
+    def __init__(self, payload: object, remaining: str | None) -> None:
+        self._payload = payload
+        self.headers = {} if remaining is None else {"x-requests-remaining": remaining}
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> object:
+        return self._payload
+
+
+def _patch_provider(monkeypatch: pytest.MonkeyPatch, games: list[dict[str, object]], remaining: str | None) -> tuple[list[str], list[str]]:
+    requested: list[str] = []
+    stored: list[str] = []
+    event = {"home_team": "Dallas Cowboys", "away_team": "Chicago Bears", "commence_time": "2026-09-20T18:00:00Z", "bookmakers": [{"key": "draftkings", "markets": _markets()}]}
+
+    class Session:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args: object): return None
+        async def commit(self): return None
+
+    class Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args: object): return None
+
+        async def get(self, url: str, **_: object) -> _Response:
+            requested.append(url.removeprefix(nfl_odds.BASE_URL))
+            return _Response([event] if url.endswith("/odds/") else [], remaining)
+
+    async def upcoming(*_: object) -> list[dict[str, object]]:
+        return games
+
+    async def insert(*_: object, provider: str) -> int:
+        stored.append(provider)
+        return len(stored)
+
+    monkeypatch.setattr(nfl_odds, "SessionLocal", Session)
+    monkeypatch.setattr(nfl_odds.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(nfl_repo, "get_upcoming_games", upcoming)
+    monkeypatch.setattr(nfl_repo, "insert_game_odds_snapshot", insert)
+    monkeypatch.setattr(nfl_odds.settings, "the_odds_api_key", "test-key")
+    return requested, stored
+
+
+_GAME = {"game_id": 7, "game_date": date(2026, 9, 20), "home_team": "DAL", "away_team": "CHI"}
+
+
+def test_run_makes_no_provider_call_without_games(monkeypatch: pytest.MonkeyPatch) -> None:
+    requested, stored = _patch_provider(monkeypatch, [], "400")
+    assert asyncio.run(nfl_odds.run()) == {"matched": 0, "skipped": 0, "stored": 0}
+    assert requested == [] and stored == []
+
+
+@pytest.mark.parametrize("remaining", ["4", None])
+def test_run_skips_the_paid_call_below_the_floor_or_on_unknown_balance(monkeypatch: pytest.MonkeyPatch, remaining: str | None) -> None:
+    requested, stored = _patch_provider(monkeypatch, [_GAME], remaining)
+    assert asyncio.run(nfl_odds.run(min_requests_remaining=5)) == {"matched": 0, "skipped": 0, "stored": 0}
+    assert requested == ["/sports"] and stored == []
+
+
+def test_run_checks_the_free_balance_before_the_paid_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    requested, stored = _patch_provider(monkeypatch, [_GAME], "5")
+    assert asyncio.run(nfl_odds.run(min_requests_remaining=5)) == {"matched": 1, "skipped": 0, "stored": 3}
+    assert requested == ["/sports", "/sports/americanfootball_nfl/odds/"]
+    assert stored == ["the_odds_api_us"] * 3

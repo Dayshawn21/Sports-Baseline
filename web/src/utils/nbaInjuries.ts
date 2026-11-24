@@ -1,4 +1,5 @@
 import type { NbaInjuryReport } from '~/types/nba'
+import { CENTRAL_TZ } from '~/utils/format'
 
 export const UNAVAILABLE_NBA_INJURIES: NbaInjuryReport = {
   source: 'ESPN', fetchedAt: null, freshness: 'unavailable', injuries: [],
@@ -16,7 +17,7 @@ export function nbaInjuryFreshness(
 }
 
 const INJURY_TIME = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Chicago', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  timeZone: CENTRAL_TZ, year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 })
 
 export function nbaInjuryTime(value: string | null): string {

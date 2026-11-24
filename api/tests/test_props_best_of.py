@@ -27,16 +27,19 @@ def test_prop_best_of_keeps_its_original_positional_index():
 
 @pytest.mark.parametrize(
     "source_fn",
-    [props_repo.get_today_props, props_repo.get_today_match_odds_as_props],
+    [props_repo.get_today_props, props_repo.get_prizepicks_prop, props_repo.get_today_match_odds_as_props],
 )
 def test_every_prop_query_selects_best_of(source_fn):
     sql = inspect.getsource(source_fn)
-    assert "best_of" in sql, "query does not select best_of"
-    # The relinked match wins over the stored link, the same way surface and
-    # match_status already resolve, so a re-resolved match carries its own format.
-    if source_fn is props_repo.get_today_props:
-        assert "COALESCE(relinked.best_of, m.best_of)" in sql
-        assert "mm.best_of" in sql, "relinked lateral must select best_of"
+    if source_fn is props_repo.get_today_match_odds_as_props:
+        assert "best_of" in sql, "query does not select best_of"
+        return
+    # The props-table readers share one SELECT. The relinked match wins over the
+    # stored link, the same way surface and match_status already resolve, so a
+    # re-resolved match carries its own format.
+    assert "_PROP_SELECT" in sql
+    assert "COALESCE(relinked.best_of, m.best_of)" in props_repo._PROP_SELECT
+    assert "mm.best_of" in props_repo._PROP_SELECT, "relinked lateral must select best_of"
 
 
 def test_prop_accepts_a_best_of_five_match():

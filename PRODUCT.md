@@ -41,8 +41,9 @@ publish the graded record, including the failures.
   record pages are secondary jobs.
 - Cadence: tennis daily, NFL weekly (Thursday to Monday), NBA daily from
   October to June.
-- Each sport has three views: Slate, Props (tennis and NFL) and Model, plus
-  game or match, and player detail pages.
+- Each sport (tennis, NFL, NBA, NHL) has three views: Slate, Props and Model,
+  plus game or match, and player detail pages. Sport tabs keep the current
+  view, so switching sport from Props lands on that sport's Props.
 
 ## Capabilities and Constraints
 

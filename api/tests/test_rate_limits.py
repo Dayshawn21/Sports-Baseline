@@ -1,8 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.config import settings
-from app.core.rate_limits import RateRule, rule_for_path
+from app.core.rate_limits import RateRule, client_key, rule_for_path
 from app.main import app
 
 DEFAULT = "120/minute"
@@ -11,13 +12,18 @@ HEAVY = "10/minute"
 
 @pytest.mark.parametrize(
     "path",
-    ["/nfl/model/prop-lines", "/tennis/model/predictions", "/nba/model/ranking", "/nfl/slate", "/admin/session"],
+    [
+        "/nfl/model/prop-lines", "/tennis/model/predictions", "/nba/model/ranking", "/nhl/model/ranking",
+        "/nfl/slate", "/nba/slate", "/nba/slate/gaps", "/nhl/slate", "/admin/session", "/ask",
+    ],
 )
 def test_heavy_routes_get_their_own_bucket(path: str) -> None:
     assert rule_for_path(path, DEFAULT, HEAVY) == RateRule(HEAVY, path)
 
 
-@pytest.mark.parametrize("path", ["/nba/slate", "/tennis/predictions/today", "/nfl/games/1"])
+@pytest.mark.parametrize(
+    "path", ["/nba/props", "/nhl/props", "/nba/slate/other", "/tennis/predictions/today", "/nfl/games/1", "/ask/status"],
+)
 def test_other_routes_share_the_default_bucket(path: str) -> None:
     assert rule_for_path(path, DEFAULT, HEAVY) == RateRule(DEFAULT, "default")
 
@@ -61,3 +67,56 @@ def test_a_429_carries_cors_headers_for_an_allowed_origin(monkeypatch: pytest.Mo
     res = client.get("/openapi.json", headers=origin)
     assert res.status_code == 429
     assert res.headers["access-control-allow-origin"] == "http://localhost:3001"
+
+
+def test_the_cloudflare_address_wins_over_a_spoofed_forwarded_for() -> None:
+    headers = {"cf-connecting-ip": "198.51.100.4", "x-forwarded-for": "203.0.113.7, 198.51.100.4"}
+    assert client_key(headers, "10.0.0.1") == "198.51.100.4"
+
+
+def test_x_forwarded_for_alone_is_ignored() -> None:
+    assert client_key({"x-forwarded-for": "203.0.113.7"}, "10.0.0.1") == "10.0.0.1"
+
+
+@pytest.mark.parametrize("headers", [{}, {"cf-connecting-ip": "  "}])
+def test_a_missing_or_blank_cloudflare_header_falls_back_to_the_peer(headers: dict[str, str]) -> None:
+    assert client_key(headers, "10.0.0.1") == "10.0.0.1"
+
+
+def test_no_header_and_no_peer_is_unknown() -> None:
+    assert client_key({}, None) == "unknown"
+
+
+def _proxied_client() -> TestClient:
+    """Production runs uvicorn with --proxy-headers --forwarded-allow-ips '*', which
+    copies the leftmost X-Forwarded-For entry into `request.client`; TestClient alone
+    never does, so a key read from the peer would pass these tests unproxied."""
+    return TestClient(ProxyHeadersMiddleware(app, trusted_hosts="*"))
+
+
+def test_the_proxied_peer_is_the_spoofable_forwarded_for() -> None:
+    seen: list[str] = []
+
+    async def echo(scope, receive, send):
+        seen.append(scope["client"][0])
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    TestClient(ProxyHeadersMiddleware(echo, trusted_hosts="*")).get("/", headers={"X-Forwarded-For": "203.0.113.9"})
+    assert seen == ["203.0.113.9"]
+
+
+def test_rotating_forwarded_for_does_not_reset_the_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_default", "1/minute")
+    client = _proxied_client()
+    edge = {"CF-Connecting-IP": "198.51.100.1"}
+    client.get("/openapi.json", headers={**edge, "X-Forwarded-For": "203.0.113.1"})
+    assert client.get("/openapi.json", headers={**edge, "X-Forwarded-For": "203.0.113.2"}).status_code == 429
+
+
+def test_each_cloudflare_address_gets_its_own_bucket(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "rate_limit_default", "1/minute")
+    client = TestClient(app)
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.1"}).status_code == 200
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.2"}).status_code == 200
+    assert client.get("/openapi.json", headers={"CF-Connecting-IP": "198.51.100.1"}).status_code == 429

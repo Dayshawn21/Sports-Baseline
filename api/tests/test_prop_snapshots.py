@@ -5,10 +5,12 @@ from decimal import Decimal
 import pytest
 
 from app.repositories.props import Prop
+from app.services.tennis.prop_enrichment import _enrich
 from app.schemas.props import PropLine
 from app.services.tennis.prop_snapshots import (
-    PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
+    PROJECTION_VERSION, SIM_PROJECTION_VERSION, SNAPSHOT_ELIGIBILITY_POLICY, skip_reason, to_snapshot,
 )
+from tests.helpers.props_audit_projection import NOW as STATS_NOW, _stats
 
 NOW = datetime(2026, 9, 25, 13, 30, tzinfo=timezone.utc)
 START = NOW + timedelta(hours=5)
@@ -31,7 +33,7 @@ def _line(**kw) -> PropLine:
         id=7, player_id=11, player_name="A Player", match_id=21, source="prizepicks",
         stat_type="Total Games", line=Decimal("21.5"), odds_type="standard",
         fetched_at=NOW - timedelta(hours=1), start_time=START,
-        p_over=0.44, p_under=0.56, p_push=0.0, confidence="LEAN", recommendation="UNDER",
+        p_over=0.44, p_under=0.56, p_push=0.0, confidence=None, recommendation="UNDER",
         stat_avg=20.9, ev_pct=-3.0, hit_probability=0.56, break_even_pct=57.7,
         matches_count=18, market_total_games=21.5, projection_status="ok",
         projection_inputs={"projection_source": "market_total"}, data_quality_flags=["small_sample"],
@@ -102,13 +104,27 @@ class TestSkipReason:
 
 
 class TestToSnapshot:
+    def test_an_enriched_line_is_frozen_with_its_probabilities_and_no_tier(self):
+        prop = _prop(best_of=3, player_tour="ATP")
+        line = _enrich(prop, _stats(11), _stats(12), 0.6, market_total_games=21.5, now=STATS_NOW)
+        snap = to_snapshot(prop, line, NOW)
+        assert snap.confidence is None
+        assert snap.p_over is not None and (snap.p_over, snap.p_under) == (line.p_over, line.p_under)
+        assert snap.recommendation is not None and snap.recommendation == line.recommendation
+
+    def test_the_page_keeps_v3_and_the_simulation_writes_v4(self):
+        assert (PROJECTION_VERSION, SIM_PROJECTION_VERSION) == ("props-v3", "props-v4")
+        snap = to_snapshot(_prop(), _line(stat_avg=21.7), NOW, SIM_PROJECTION_VERSION)
+        assert (snap.projection_version, snap.stat_avg) == ("props-v4", 21.7)
+
     def test_carries_the_page_projection(self):
         line = _line()
         snap = to_snapshot(_prop(), line, NOW)
         assert snap.projection_version == PROJECTION_VERSION
         assert (snap.prop_id, snap.player_id, snap.match_id) == (7, 11, 21)
         assert snap.line == 21.5 and isinstance(snap.line, float)
-        assert (snap.recommendation, snap.confidence, snap.hit_probability) == ("UNDER", "LEAN", 0.56)
+        assert (snap.recommendation, snap.confidence, snap.hit_probability) == ("UNDER", None, 0.56)
+        assert (snap.p_over, snap.p_under) == (0.44, 0.56)
         assert snap.snapshot_at == NOW
         assert snap.projection_inputs == {
             "projection_source": "market_total",

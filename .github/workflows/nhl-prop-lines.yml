@@ -1,0 +1,57 @@
+name: NHL PrizePicks Prop Lines
+
+# September through June. Secondary markets post on game day and GitHub delays
+# or drops scheduled runs, so three pulls leave the board filled after one miss.
+# The last slot sits about 2.5 hours before a 00:00 UTC puck drop. Minutes are
+# off the other sports' PrizePicks pulls and the nhl-odds.yml :40 slot.
+#
+# Each run then freezes the gray reference projection and P(over) the NHL pages
+# serve for every line not yet at puck drop (item 56c4), the record the forward
+# ranking check (56d) grades. It reads stored goalie and injury context only.
+on:
+  schedule:
+    - cron: "37 14 * 1-6,9-12 *"
+    - cron: "22 18 * 1-6,9-12 *"
+    - cron: "27 21 * 1-6,9-12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  prop-lines:
+    name: PrizePicks NHL Lines
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd api
+          pip install -r requirements.txt
+
+      - name: Snapshot PrizePicks NHL lines
+        run: |
+          cd api
+          status=0
+          python -m app.ingest.prizepicks_nhl || status=$?
+          if [ "$status" -eq 75 ]; then
+            echo "::error::PrizePicks rate limited the NHL line snapshot; no lines were stored this run."
+          fi
+          exit "$status"
+
+      - name: Freeze pre-puck-drop predictions
+        run: |
+          cd api
+          python -m app.ingest.nhl_prop_predictions

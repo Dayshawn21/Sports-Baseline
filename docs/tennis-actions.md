@@ -1,6 +1,6 @@
 # Tennis GitHub Actions
 
-Tennis uses six workflow files, with the same UTC schedules and ingest commands
+Tennis uses eight workflow files, with the same UTC schedules and ingest commands
 as the previous combined workflow. This split is implemented locally; GitHub
 registration and runner behavior require a separately approved merge/push and
 remote verification. It does not reduce API usage or change provider limits.
@@ -9,10 +9,27 @@ remote verification. It does not reduce API usage or change provider limits.
 |---|---|---|---|
 | Tennis Match Ingest | `tennis-ingest.yml` | Daily 06:30 | Run directly; matches and H2H |
 | Tennis Game Odds | `tennis-odds.yml` | Every four hours at :10 | Run directly; next 14 hours |
-| Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 | Run directly |
-| Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30 | `predictions` or `tennis-elo-comparison` |
+| Tennis Total Games | `tennis-totals.yml` | Daily 12:45 | Run directly; next 24 hours |
+| Tennis PrizePicks Prop Lines | `tennis-prop-lines.yml` | Daily 13:00 and 19:45; the 19:45 run then snapshots projections | Run directly |
+| Tennis Predictions and Shadow Freeze | `tennis-predictions.yml` | Daily 13:30; shadow freeze also after each successful Tennis Game Odds run, once that day's candidate ELO is cached | `predictions` or `tennis-elo-comparison` |
 | Tennis Box Scores and Candidate ELO | `tennis-box-scores.yml` | Daily 11:00 | `tennismylife` or `tennis-elo` |
 | Tennis Player Stats | `tennis-player-stats.yml` | Daily 10:00 | Run directly |
+| Tennis Prop Adoption | `tennis-prop-adoption.yml` | None (manual, 48g) | `version`, `dry_run` (default true) |
+
+Game Odds requests DraftKings and FanDuel from Odds-API.io. Since Bet365 went
+paid-only (2026-10-26), both free books send tennis moneylines only, so the
+job stores no total-games or game-spread lines. A run stops before any odds
+batch when the hour's remaining requests are at the safety floor or cannot be
+read (the rule NFL and NHL share, `app/core/odds_api_io_quota.py`), and exits
+nonzero when the provider's plan refuses every odds batch (402/403).
+
+Total Games (48b, added after the split) stores book total-games lines from
+The Odds API for ATP and WTA tour-level matches, Pinnacle first. It runs after
+the 06:30 match ingest stores the draw and before the 13:00 prop lines and
+13:30 predictions, spends 1 credit per tournament key with a stored match, and
+stops below 150 of the 500 monthly credits shared with NFL and NBA. Challenger
+and WTA 125 matches get no book total. Like the other workflows, it registers
+only after a push changes its file.
 
 For manual runs after publication, open Actions, choose the named workflow,
 and select **Run workflow**. The two workflows containing a dependent ELO job
@@ -20,7 +37,15 @@ retain a job selector. All other entries run their single task directly.
 Selecting an ingest operation can spend provider quota or write the shared
 database; runner acceptance has not been tested by dispatching live ingest.
 
+Prop Lines exits 75 with an `::error::` when PrizePicks still rate-limits the
+league catalog or every tennis league after its retries, so a throttled run
+fails instead of reading as an empty board. One throttled league keeps the
+others' lines and skips pruning.
+
 `predictions` persists predictions and then PrizePicks projection snapshots.
+Since 66a, each prediction with a market price also writes a `shrink-v1`
+shadow row to `prediction_shadows` in the same transaction. The shadow is
+never served, and it needs migration `0054`.
 After both succeed, its dependent job freezes the ELO shadow comparison.
 Choosing `tennis-elo-comparison` runs only that dependent operation, even though
 the prediction job is skipped. Prediction or snapshot failure blocks the

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { BestPick, MatchDetail, MatchPrediction, PropLine } from '~/types/tennis'
-import { componentRows, fmtBreakPoints, fmtMatchDate, fmtMatchDateYear, heroSide, isFinished, matchProps, meetingsNote, matchContext, parseMatchId, playerBadge, playerMeta, sideView, weightColumnLabel } from '~/utils/tennisMatch'
+import type { BestPick, MatchDetail, MatchPrediction } from '~/types/tennis'
+import { componentRows, fmtBreakPoints, heroSide, isFinished, meetingsNote, matchContext, parseMatchId, playerBadge, playerMeta, sideView, weightColumnLabel } from '~/utils/tennisMatch'
 
 const prediction: MatchPrediction = {
   matchId: 5, startUtc: null, p1Name: 'Jakub Mensik', p2Name: 'Ben Shelton', tour: 'ATP', tourLabel: 'ATP',
@@ -101,40 +101,6 @@ describe('isFinished', () => {
   })
 })
 
-describe('matchProps', () => {
-  function prop(id: number, matchId: number | null, oddsType: string | null, confidence: string | null): PropLine {
-    return {
-      id, matchId, oddsType, confidence, playerId: null, source: 'prizepicks', statType: 'aces',
-      line: '10.5', fetchedAt: '2026-09-28T00:00:00Z', startTime: null, pOver: null, pUnder: null,
-    }
-  }
-
-  it('keeps this match only, standard before goblin and demon, then by tier', () => {
-    const props = [
-      prop(1, 5, 'demon', null),
-      prop(2, 5, 'standard', 'LEAN'),
-      prop(3, 9, 'standard', 'LOCK'),
-      prop(4, 5, 'goblin', 'STRONG'),
-      prop(5, 5, 'standard', 'STRONG'),
-      prop(6, 5, null, null),
-    ]
-
-    expect(matchProps(props, 5).map((p) => p.id)).toEqual([5, 2, 6, 4, 1])
-  })
-
-  it('is empty for a match with no lines', () => {
-    expect(matchProps([prop(1, 9, 'standard', 'LOCK')], 5)).toEqual([])
-  })
-})
-
-describe('fmtMatchDateYear', () => {
-  it('includes the year and keeps the calendar day', () => {
-    expect(fmtMatchDateYear('2026-02-18')).toBe('Feb 18, 2026')
-    expect(fmtMatchDateYear('2023-01-01')).toBe('Jan 1, 2023')
-    expect(fmtMatchDateYear('soon')).toBe('soon')
-  })
-})
-
 describe('meetingsNote', () => {
   it('says how many counted meetings are listed when some are missing', () => {
     expect(meetingsNote(3, 5)).toBe('3 of 5 meetings shown · stored since 2023')
@@ -155,17 +121,6 @@ describe('fmtBreakPoints', () => {
     expect(fmtBreakPoints(0, 0)).toBe('—')
     expect(fmtBreakPoints(null, 4)).toBe('—')
     expect(fmtBreakPoints(1, null)).toBe('—')
-  })
-})
-
-describe('fmtMatchDate', () => {
-  it('keeps the calendar day whatever the local zone', () => {
-    expect(fmtMatchDate('2026-09-25')).toBe('Sep 25')
-    expect(fmtMatchDate('2026-01-01')).toBe('Jan 1')
-  })
-
-  it('passes through anything it cannot parse', () => {
-    expect(fmtMatchDate('soon')).toBe('soon')
   })
 })
 

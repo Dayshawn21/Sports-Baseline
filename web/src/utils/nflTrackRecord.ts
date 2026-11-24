@@ -1,12 +1,14 @@
 import type { NflModelClv, NflModelRanking, NflRankingModelVersion } from '~/types/nfl'
 import type { PropRankingRecord, PropRankingSlice } from '~/types/propRanking'
 import { sampleProgress } from '~/utils/trackRecord'
+import { fmtSigned } from '~/utils/format'
 
 type SliceVerdict = PropRankingSlice['verdict']
 type ClvVerdict = NflModelClv['markets'][number]['verdict']
 
 export const NFL_V4_RANKING_MODEL: NflRankingModelVersion = 'opponent-dvp-tg-blend-usage-snap-v4'
 export const NFL_TARGETS_RANKING_MODEL: NflRankingModelVersion = 'nfl-targets-v1'
+export const NFL_VOLUME_RANKING_MODEL: NflRankingModelVersion = 'nfl-volume-v1'
 
 export function rankingParams(season: number, modelVersion: NflRankingModelVersion = NFL_V4_RANKING_MODEL) {
   return modelVersion === NFL_V4_RANKING_MODEL ? { season } : { season, model_version: modelVersion }
@@ -69,7 +71,7 @@ const PENDING = '—'
 
 /** The summary strip; each figure waits for its own section, so one slow endpoint never blanks the rest. */
 export function summaryCounts(ranking: NflModelRanking | undefined, clv: NflModelClv | undefined): SummaryCounts {
-  if (ranking?.modelVersion === NFL_TARGETS_RANKING_MODEL) ranking = undefined
+  if (ranking?.modelVersion === NFL_TARGETS_RANKING_MODEL || ranking?.modelVersion === NFL_VOLUME_RANKING_MODEL) ranking = undefined
   const adopted = ranking?.slices.filter((s) => s.verdict === 'adopt').length
   const decided = clv?.markets.filter((m) => m.verdict !== 'accruing')
   const passed = decided?.filter((m) => m.verdict === 'pass').length
@@ -85,7 +87,5 @@ export function summaryCounts(ranking: NflModelRanking | undefined, clv: NflMode
 
 /** Points with an explicit sign, e.g. "+0.42"; CLV is directional, so the sign carries meaning. */
 export function signedPoints(value: number | null): string {
-  if (value === null) return PENDING
-  const fixed = value.toFixed(2)
-  return value > 0 ? `+${fixed}` : fixed
+  return value === null ? PENDING : fmtSigned(value, 2)
 }

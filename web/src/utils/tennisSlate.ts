@@ -2,8 +2,11 @@ import type { BestPick, PropLine } from '~/types/tennis'
 import type { UnifiedSort, UnifiedTennisMatch } from '~/utils/unifiedTennis'
 import { anglePicks, bestBetPicks, unifiedMatchToPrediction } from '~/utils/unifiedTennis'
 import { getDisplayFlags } from '~/components/tennis/qualityFlags'
-import { fmtStartCT, fmtTournament } from '~/utils/format'
+import { fmtSigned, fmtStartCT, fmtTournament } from '~/utils/format'
 import { fmtAmerican } from '~/utils/odds'
+import { propMatchPath } from '~/utils/tennisMatchView'
+import { countPart, dayClockCt } from '~/utils/slatePeriod'
+import type { SlateGapLink } from '~/components/shared/SlateGaps'
 
 type Pair = [number, number]
 
@@ -28,7 +31,7 @@ export interface SlateRow {
   odds: [number | null, number | null]
   primaryPick: BestPick | null
   primaryIsBestBet: boolean
-  /** Highest-EV prop, the fallback the slate shows when a match has no pick. */
+  /** First prop in board order, the fallback the slate shows when a match has no pick. */
   primaryProp: PropLine | null
   propCount: number
   flags: string[]
@@ -52,11 +55,9 @@ function pair(p1: number | null | undefined, p2?: number | null): Pair | null {
   return [p1, p2 ?? 1 - p1]
 }
 
-function bestProp(match: UnifiedTennisMatch): PropLine | null {
-  const sorted = [...match.props].sort(
-    (left, right) => (right.evPct ?? Number.NEGATIVE_INFINITY) - (left.evPct ?? Number.NEGATIVE_INFINITY),
-  )
-  return sorted[0] ?? null
+// The card's first line in board order, never the highest-EV one: only adopted props are ranked (48f, 48g).
+function firstProp(match: UnifiedTennisMatch): PropLine | null {
+  return match.props[0] ?? null
 }
 
 function propPlayers(match: UnifiedTennisMatch): [string, string | null] {
@@ -82,7 +83,7 @@ export function slateRow(match: UnifiedTennisMatch): SlateRow {
     odds: [prediction?.p1OddsAmerican ?? null, prediction?.p2OddsAmerican ?? null],
     primaryPick: bestBet ?? anglePicks(match)[0] ?? null,
     primaryIsBestBet: bestBet != null,
-    primaryProp: bestProp(match),
+    primaryProp: firstProp(match),
     propCount: match.props.length,
     flags: prediction ? getDisplayFlags(prediction.qualityFlags) : [],
   }
@@ -107,7 +108,7 @@ export function groupByTournament(rows: SlateRow[]): TournamentGroup[] {
 /** EV as shown across the slate: signed, one decimal, a dash when unpriced. */
 export function fmtEv(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+  return fmtSigned(value, 1, '%')
 }
 
 export type TourTab = 'all' | 'ATP' | 'WTA' | 'CHALLENGER' | 'WTA 125'
@@ -154,7 +155,7 @@ export function tableGroups(rows: SlateRow[], grouped: boolean): TournamentGroup
 /** One box of the tennis digest; display strings only. The EV is a priced best bet's, so the box shows it green. */
 export interface TennisDigestItem {
   matchKey: string
-  analysisPath: string | null
+  analysisPath: string
   pick: string
   what: string
   when: string
@@ -165,14 +166,17 @@ export interface TennisDigestItem {
   tone: TourTone | null
 }
 
+/** A pick whose match has no analysis page gets no box: the digest only links (F-43). */
 export function tennisDigest(featured: FeaturedPick[], now: number = Date.now()): TennisDigestItem[] {
-  return featured.map(({ match, pick }) => {
+  return featured.flatMap(({ match, pick }) => {
+    const analysisPath = matchAnalysisPath(match)
+    if (analysisPath == null) return []
     const prediction = unifiedMatchToPrediction(match)
     // fmtStartCT answers '' rather than null for a missing or unreadable time.
     const start = fmtStartCT(prediction?.startUtc, now) || 'Time TBA'
-    return {
+    return [{
       matchKey: match.key,
-      analysisPath: matchAnalysisPath(match),
+      analysisPath,
       pick: pick.pick,
       what: prediction ? `${pick.label} · ${prediction.p1Name} vs ${prediction.p2Name}` : pick.label,
       when: `${fmtTournament(prediction?.tournament ?? null)} · ${start}`,
@@ -181,14 +185,8 @@ export function tennisDigest(featured: FeaturedPick[], now: number = Date.now())
       tier: pick.confidence,
       tourLabel: prediction?.tourLabel ?? prediction?.tour ?? null,
       tone: tourTone(prediction?.tour, prediction?.tourLabel),
-    }
+    }]
   })
-}
-
-/** The tab to show so the row with `key` is visible: the current one when it already is, else All. */
-export function revealTab(rows: SlateRow[], key: string, tab: TourTab): TourTab {
-  if (!rows.some((row) => row.key === key)) return tab
-  return filterByTourTab(rows, tab).some((row) => row.key === key) ? tab : 'all'
 }
 
 export function featuredPicks(matches: UnifiedTennisMatch[], limit: number): FeaturedPick[] {
@@ -199,4 +197,80 @@ export function featuredPicks(matches: UnifiedTennisMatch[], limit: number): Fea
     if (featured.length === limit) break
   }
   return featured
+}
+
+export interface SlateDayTime { day: string, time: string }
+
+/** Every row names its day: fmtStartCT omits it for today, so the slate says "Today". */
+export function slateDayTime(startUtc: string | null, now: number): SlateDayTime {
+  const label = fmtStartCT(startUtc, now)
+  if (!label) return { day: '', time: 'TBA' }
+  const [day, time] = label.split(' · ')
+  return time === undefined ? { day: 'Today', time: day } : { day, time }
+}
+
+export interface ModelLeanCell { text: string, ev: string | null, link: string | null }
+
+const NO_LEAN = fmtEv(null)
+
+/** The gray lean; EV only for a priced best bet, which is the one pick the slate may color. */
+export function modelLeanCell(row: SlateRow): ModelLeanCell {
+  if (row.primaryPick) {
+    return { text: row.primaryPick.pick, ev: row.primaryIsBestBet ? fmtEv(row.primaryPick.evPct) : null, link: null }
+  }
+  if (row.primaryProp) {
+    const prop = row.primaryProp
+    return { text: `${prop.playerName ?? 'Player'} · ${prop.statType}`, ev: null, link: propMatchPath(prop) }
+  }
+  return { text: NO_LEAN, ev: null, link: null }
+}
+
+export interface TennisLeanDigestItem {
+  matchKey: string
+  analysisPath: string
+  lean: string
+  what: string
+  when: string
+}
+
+/** The next matches to start that carry a model lean, in start order: no ranking. */
+export function leanDigest(rows: SlateRow[], now: number, limit: number): TennisLeanDigestItem[] {
+  return rows
+    .flatMap((row) => {
+      const analysisPath = matchAnalysisPath(row.match)
+      const start = Date.parse(row.startUtc ?? '')
+      if (!row.primaryPick || analysisPath == null || !Number.isFinite(start) || start <= now) return []
+      return [{ row, analysisPath, start }]
+    })
+    .sort((a, b) => a.start - b.start)
+    .slice(0, limit)
+    .map(({ row, analysisPath }) => ({
+      matchKey: row.key,
+      analysisPath,
+      lean: row.primaryPick?.pick ?? NO_LEAN,
+      what: row.players[1] ? `${row.players[0]} vs ${row.players[1]}` : row.players[0],
+      when: `${fmtTournament(row.tournament)} · ${fmtStartCT(row.startUtc, now)}`,
+    }))
+}
+/** A lean in the gray reference line: the lean leads, the match and its start follow muted. */
+export function leanLink(item: TennisLeanDigestItem): SlateGapLink {
+  return {
+    key: item.matchKey,
+    to: item.analysisPath,
+    playerName: item.lean,
+    market: `${item.what} · ${item.when}`,
+    ariaLabel: `${item.lean}, ${item.what}, ${item.when}, open match analysis`,
+  }
+}
+
+/**
+ * Under "No tennis picks": "12 matches to start · next Tue 9:00 AM CT". Slate rows carry no live or final
+ * state, so a match counts only until its start; "left" would claim matches still in play were done.
+ */
+export function tennisRemainingLine(rows: readonly SlateRow[], now: number): string {
+  if (rows.length === 0) return ''
+  const starts = rows.map(row => Date.parse(row.startUtc ?? '')).filter(start => Number.isFinite(start) && start > now)
+  if (starts.length === 0) return 'Every match has started'
+  const next = dayClockCt(Math.min(...starts))
+  return starts.length === 1 ? `1 match to start · ${next}` : `${countPart(starts.length, 'match', 'matches')} to start · next ${next}`
 }

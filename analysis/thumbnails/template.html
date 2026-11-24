@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-format="youtube">
+<head>
+  <meta charset="utf-8">
+  <title>Thumbnail</title>
+  <link rel="stylesheet" href="template.css">
+</head>
+<body>
+  <main class="canvas">
+    <div class="background" id="background"></div>
+    <div class="safe">
+      <div class="copy">
+        <span class="sport-tag" id="sport">NFL</span>
+        <h1 class="headline" id="headline">Can Dallas save it?</h1>
+        <p class="subline" id="subline">Week 7 check-in</p>
+        <div class="callout" id="callout">
+          <span class="callout-value" id="callout-value">+1.8</span>
+          <span class="callout-label" id="callout-label">wins better than their record</span>
+        </div>
+      </div>
+      <figure class="chart"><img id="chart" src="logo.png" alt=""></figure>
+      <footer class="credit">
+        <img class="logo" id="logo" src="logo.png" alt="">
+        <span class="handle" id="handle">@numbersbehindthegame</span>
+      </footer>
+    </div>
+  </main>
+  <script>
+    const FAMILIES = ['800 40px "Barlow Condensed"', '600 40px "Barlow Condensed"',
+                      '400 40px "DM Sans"', '600 40px "DM Sans"', '500 40px "JetBrains Mono"'];
+
+    function setText(id, text) {
+      const element = document.getElementById(id);
+      element.textContent = text || '';
+      element.hidden = !text;
+    }
+
+    function loaded(img) {
+      return img.complete && img.naturalWidth ? Promise.resolve()
+        : new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error('image failed to load: ' + img.src));
+          });
+    }
+
+    window.fill = async (data) => {
+      const root = document.documentElement;
+      root.dataset.format = data.format;
+      for (const [name, value] of Object.entries(data.tokens)) root.style.setProperty(name, value);
+
+      setText('sport', data.sportTag);
+      setText('headline', data.headline);
+      setText('subline', data.subline);
+      setText('handle', data.handle);
+      document.getElementById('callout').hidden = !data.callout;
+      if (data.callout) {
+        setText('callout-value', data.callout.value);
+        setText('callout-label', data.callout.label);
+      }
+      const background = document.getElementById('background');
+      background.classList.toggle('has-image', Boolean(data.background));
+      background.style.backgroundImage = data.background ? `url("${data.background}")` : '';
+
+      const chart = document.getElementById('chart');
+      const logo = document.getElementById('logo');
+      chart.src = data.chart;
+      logo.src = data.logo;
+
+      for (const family of FAMILIES) {
+        const faces = await document.fonts.load(family);
+        if (!faces.length) throw new Error('bundled font did not load: ' + family);
+      }
+      await document.fonts.ready;
+      await Promise.all([loaded(chart), loaded(logo)]);
+    };
+
+    // Largest size that keeps the headline on at most two lines without overflow.
+    window.fitHeadline = (maxPx, minPx, stepPx) => {
+      const headline = document.getElementById('headline');
+      for (let size = maxPx; size >= minPx; size -= stepPx) {
+        headline.style.fontSize = size + 'px';
+        const lineHeight = parseFloat(getComputedStyle(headline).lineHeight);
+        const lines = Math.round(headline.scrollHeight / lineHeight);
+        if (lines <= 2 && headline.scrollWidth <= headline.clientWidth) {
+          return { fits: true, fontPx: size, lines };
+        }
+      }
+      return { fits: false, fontPx: minPx, lines: null };
+    };
+  </script>
+</body>
+</html>

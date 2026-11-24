@@ -1,4 +1,5 @@
 import type { MatchResearch, MatchResearchStats, MatchWorkload } from '~/types/tennis'
+import { CENTRAL_TZ } from '~/utils/format'
 
 interface ResearchMatch {
   p1: { playerId: number }
@@ -32,7 +33,7 @@ export function researchTimestamp(value: string | null | undefined): string {
   if (!Number.isFinite(date.getTime())) return 'Unavailable'
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-    hour12: true, timeZone: 'America/Chicago',
+    hour12: true, timeZone: CENTRAL_TZ,
   }).format(date) + ' CT'
 }
 

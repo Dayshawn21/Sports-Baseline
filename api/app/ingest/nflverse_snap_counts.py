@@ -16,7 +16,13 @@ from datetime import date
 
 import httpx
 
-from app.ingest.nflverse import NFLVERSE_RELEASE_BASE, SeasonNotPublished, current_nfl_season, get_release_asset
+from app.ingest.nflverse import (
+    NFLVERSE_RELEASE_BASE,
+    SeasonNotPublished,
+    current_nfl_season,
+    franchise_code,
+    get_release_asset,
+)
 
 # The file's position labels, not ours; `HB` appears alongside `RB` in 2024-2025.
 OFFENSIVE_SKILL_POSITIONS = frozenset({"QB", "RB", "HB", "FB", "WR", "TE"})
@@ -91,7 +97,7 @@ def parse_snap_counts(lines: Iterable[str], season: int) -> NflverseSnapSeason:
         if pfr_id is None or team is None or row.get("position") not in OFFENSIVE_SKILL_POSITIONS:
             continue
         by_player_game[(pfr_id, game_id)] = NflverseSnapGame(
-            pfr_player_id=pfr_id, game_id=game_id, season=season, week=week, team=team,
+            pfr_player_id=pfr_id, game_id=game_id, season=season, week=week, team=franchise_code(team),
             offense_snaps=_int(row.get("offense_snaps")), offense_pct=_float(row.get("offense_pct")),
         )
     return NflverseSnapSeason(frozenset(game_ids), list(by_player_game.values()))

@@ -1,32 +1,36 @@
 import { Tag, Tooltip } from 'antd'
 import type { MouseEvent, ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { MiniBars } from '~/components/shared/MiniBars'
+import { StatStrip } from '~/components/shared/StatStrip'
+import { rememberOpened } from '~/hooks/useRestoreOpenedRow'
 import { FLAG_LABELS, formatHistoryValue, marketLabel } from '~/utils/nflLabels'
+import type { NflSeasonWeek } from '~/types/nfl'
 import type { NflBoardCategory, NflBoardLine } from '~/utils/nflPropBoard'
-import { nflPropCard, recentBars, type NflPropCardModel } from '~/utils/nflPropCards'
+import { openedRowKey } from '~/utils/nflOpenedRow'
+import { nflPlayerMarketLink } from '~/utils/nflPlayer'
+import { nflPropCard, recentBars, recentStatStrip, type NflPropCardModel } from '~/utils/nflPropCards'
 import { isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
+import { VOLUME_NOTE, volumeTableText } from '~/utils/nflVolume'
+import { REFERENCE } from '~/utils/propRowVisuals'
+import { FROM_BOARD } from '~/utils/playerPage'
 import '~/components/shared/prop-table.css'
 import './nfl-prop-table.css'
 
 const OTHER_LINES_NOTE = 'Alternate payouts, partial-game segments, and thin samples. The model does not price these against the market.'
-
-export interface NflPropTableRow {
-  row: NflBoardLine
-  rank: number | null
-}
 
 function edgeNote(category: NflBoardCategory): string | null {
   if (category.referenceLine === null) return null
   return `Model minus line, then as a share of a typical ${marketLabel(category.market).toLowerCase()} line (${category.referenceLine.toFixed(1)}). Scoring against one shared line keeps players comparable; a row's own line can be small enough to make any gap look huge.`
 }
 
-function Player({ card, row, selected, inGame, onOpen }: { card: NflPropCardModel, row: NflBoardLine, selected: boolean, inGame: boolean, onOpen: () => void }) {
+function Player({ card, row, to, inGame }: { card: NflPropCardModel, row: NflBoardLine, to: string, inGame: boolean }) {
   // The badge falls back to the position, which the meta line already leads with.
   const team = card.badge === (row.position ?? '--') ? '' : `${card.badge} · `
   const meta = inGame ? card.gameMeta : card.meta
   return <>
     <span className="prop-table__player-name">
-      <button type="button" className="prop-table__open" data-line-id={row.lineId} aria-pressed={selected} onClick={onOpen}>{card.playerName}</button>
+      <Link className="prop-table__open" to={to} state={inGame ? undefined : FROM_BOARD} data-open-key={openedRowKey('table', row.lineId)} onClick={() => rememberOpened('table', row.lineId)}>{card.playerName}</Link>
       {card.injury && <Tag color={card.injury.color}>{card.injury.label}</Tag>}
       {card.depthText && <span className="prop-table__tag">Depth: {card.depthText}</span>}
     </span>
@@ -36,7 +40,7 @@ function Player({ card, row, selected, inGame, onOpen }: { card: NflPropCardMode
 
 function Gap({ card, note }: { card: NflPropCardModel, note: string | null }) {
   if (card.kind === 'reference') return <>
-    <Tooltip title={TARGETS_REFERENCE_NOTE}><b className="nfl-prop-table__share is-reference">{card.edgeText}</b></Tooltip>
+    <Tooltip title={card.referenceNote}><b className="nfl-prop-table__share is-reference">{card.edgeText}</b></Tooltip>
     <small>reference gap</small>
   </>
   const side = card.pickLabel === '--' ? ' is-none' : card.isUnder ? ' is-negative' : ''
@@ -57,24 +61,32 @@ function Sample({ card }: { card: NflPropCardModel }) {
 }
 
 interface RowProps {
-  item: NflPropTableRow
+  row: NflBoardLine
+  /** A "Not rateable" row; Rec Targets references stay at full strength there too. */
+  rateable: boolean
   category: NflBoardCategory
-  selected: boolean
   inGame: boolean
   now: number
-  onOpen: (row: NflBoardLine) => void
+  week: NflSeasonWeek | null
 }
 
-function PropRow({ item: { row, rank }, category, selected, inGame, now, onOpen }: RowProps) {
-  const card = nflPropCard(row, rank, category.referenceLine, now)
-  const classes = ['is-row', selected && 'is-selected', card.rank === null && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
-  // The player button handles its own clicks, so a click on it never opens twice.
-  const open = (event: MouseEvent) => { if (!(event.target instanceof Element && event.target.closest('button'))) onOpen(row) }
-  const player = <td className="prop-table__player"><Player card={card} row={row} selected={selected} inGame={inGame} onOpen={() => onOpen(row)} /></td>
-  const rankCell = <td className="prop-table__lead prop-table__rank">{card.rank === null ? '--' : `#${card.rank}`}</td>
+function PropRow({ row, rateable, category, inGame, now, week }: RowProps) {
+  const navigate = useNavigate()
+  const to = nflPlayerMarketLink(row.playerId, row.market, week)
+  const card = nflPropCard(row, category.referenceLine, now)
+  const volumeText = volumeTableText(row)
+  const classes = ['is-row', !rateable && card.kind !== 'reference' && 'is-dim'].filter(Boolean).join(' ')
+  // Links and the mini bars handle their own clicks; a modified click keeps the browser's new-tab behavior.
+  const open = (event: MouseEvent) => {
+    const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+    if (!plain || (event.target instanceof Element && event.target.closest('a, button'))) return
+    rememberOpened('table', row.lineId)
+    navigate(to, { state: inGame ? undefined : FROM_BOARD })
+  }
+  const player = <td className="prop-table__player"><Player card={card} row={row} to={to} inGame={inGame} /></td>
   if (card.kind === 'td') {
     return <tr className={classes} title={card.why} onClick={open}>
-      {rankCell}{player}
+      {player}
       <td className="prop-table__end is-num">{card.modelText}</td>
       <td className="nfl-prop-table__books" data-label="books">{card.bookText}</td>
       <td className="nfl-prop-table__snap" data-label="snap">{card.snapText ?? '--'}</td>
@@ -82,44 +94,46 @@ function PropRow({ item: { row, rank }, category, selected, inGame, now, onOpen 
     </tr>
   }
   return <tr className={classes} title={card.why} onClick={open}>
-    {rankCell}{player}
+    {player}
     <td className="is-num" data-label="line">{card.lineText}</td>
-    <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}</td>
+    <td className="is-num" data-label={card.kind === 'reference' ? 'reference' : 'model'}>{card.modelText}{volumeText && <small className="nfl-prop-table__volume" title={VOLUME_NOTE}>{volumeText}</small>}</td>
     <td className="prop-table__end is-num nfl-prop-table__gap"><Gap card={card} note={edgeNote(category)} /></td>
-    <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" valueLabel={bar => String(bar.value)} lineLabel={card.lineText} showOpponents title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} /></td>
+    <td className="nfl-prop-table__bars"><MiniBars interactive={inGame} bars={recentBars(row)} empty="No history" valueLabel={bar => String(bar.value)} lineLabel={card.lineText} showOpponents title={bar => `${formatHistoryValue(row.market, bar.value)} vs ${bar.opponentTeam ?? '--'}`} />
+      <StatStrip cells={recentStatStrip(row, REFERENCE)} />
+    </td>
     <td><Sample card={card} /></td>
   </tr>
 }
 
-const STAT_COLUMNS: Array<[string, ReactNode]> = [['rank', '#'], ['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'], ['bars', 'Last 5'], ['sample', 'Sample']]
-const TD_COLUMNS: Array<[string, ReactNode]> = [['rank', '#'], ['player', 'Player'], ['model', 'Model'], ['books', 'Sportsbooks'], ['snap', 'Snap share'], ['sample', 'Sample']]
+const STAT_COLUMNS: Array<[string, ReactNode]> = [['player', 'Player'], ['line', 'Line'], ['model', 'Model'], ['gap', 'Gap'], ['bars', 'Last 5'], ['sample', 'Sample']]
+const TD_COLUMNS: Array<[string, ReactNode]> = [['player', 'Player'], ['model', 'Model'], ['books', 'Sportsbooks'], ['snap', 'Snap share'], ['sample', 'Sample']]
 const NUMERIC = new Set(['line', 'model', 'gap'])
 
 interface Props {
   category: NflBoardCategory
-  rateable: NflPropTableRow[]
-  other: NflPropTableRow[]
-  selectedLineId: number | null
+  rateable: NflBoardLine[]
+  other: NflBoardLine[]
   now: number
   /** On a game page the rows drop the matchup and kickoff the page already shows. */
   inGame?: boolean
-  onOpen: (row: NflBoardLine) => void
+  /** The week these rows belong to, so a row opens the player page on that week. */
+  week?: NflSeasonWeek | null
 }
 
-/** One market's lines, one row each, ranked as the board ranks them; a row opens the evidence drawer. Gray until 27h. */
-export function NflPropTable({ category, rateable, other, selectedLineId, now, inGame = false, onOpen }: Props) {
+/** One market's lines, one row each in board order; a row opens the player page. Gray and unranked until 27h. */
+export function NflPropTable({ category, rateable, other, now, inGame = false, week = null }: Props) {
   const td = category.market === 'anytime_touchdown'
   const reference = isTargetsReference(category.market)
   const columns = td ? TD_COLUMNS : STAT_COLUMNS.map(([key, label]): [string, ReactNode] => [key, reference && key === 'model' ? 'Reference' : label])
-  const row = (item: NflPropTableRow) => <PropRow key={item.row.lineId} item={item} category={category} selected={item.row.lineId === selectedLineId} inGame={inGame} now={now} onOpen={onOpen} />
+  const row = (line: NflBoardLine, isRateable: boolean) => <PropRow key={line.lineId} row={line} rateable={isRateable} category={category} inGame={inGame} now={now} week={week} />
   return <table className={`prop-table nfl-prop-table${td ? ' is-td' : ''}`} aria-label={`${marketLabel(category.market)} lines`}>
     {reference && <caption className="nfl-prop-table__reference-note">{TARGETS_REFERENCE_NOTE} Rows are unranked.</caption>}
     <colgroup>{columns.map(([key]) => <col key={key} className={`is-${key}`} />)}</colgroup>
     <thead><tr>{columns.map(([key, label]) => <th key={key} className={NUMERIC.has(key) || (td && key === 'model') ? 'is-num' : undefined}>{label}</th>)}</tr></thead>
     <tbody>
-      {rateable.map(row)}
+      {rateable.map(line => row(line, true))}
       {other.length > 0 && <tr className="prop-table__divider"><td colSpan={columns.length}><strong>Not rateable</strong><small>{OTHER_LINES_NOTE}</small></td></tr>}
-      {other.map(row)}
+      {other.map(line => row(line, false))}
     </tbody>
   </table>
 }

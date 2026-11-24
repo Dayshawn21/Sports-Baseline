@@ -1,0 +1,11 @@
+{
+  "headline": "Can the Eagles recover?",
+  "subline": "2-4 through week 6",
+  "chart": "week01-phi-feed.png",
+  "sport": "nfl",
+  "callout": {
+    "value": "1 in 8",
+    "label": "chance to make the playoffs"
+  },
+  "name": "week01-phi"
+}

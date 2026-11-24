@@ -15,7 +15,7 @@ from app.backtest.nfl_projections import ENVIRONMENT_ARM_MARKETS
 from app.core.nfl_projection_backtest import REPLAY_MARKETS_BY_POSITION
 from app.nfl.markets import NFL_V4_PROP_MARKETS, NflLineOnlyMarket
 from app.repositories import nfl
-from tests.test_nfl_repository import _RecordingSession
+from tests.helpers.nfl_repository import _RecordingSession
 
 V4_MARKETS = {
     "passing_yards", "passing_attempts", "passing_completions", "rushing_yards",

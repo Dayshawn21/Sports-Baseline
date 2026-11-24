@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+import datetime as dt
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.core.production_settings import is_production
+from app.db.pool import get_db
+from app.schemas.nhl import (
+    NhlGameDetailResponse, NhlLineOnlyPropsResponse, NhlModelRankingResponse, NhlPlayerPropsResponse,
+    NhlProjectionHistoryResponse, NhlPropBoardResponse, NhlSlateResponse,
+)
+from app.season_query import optional_model_season
+from app.services.nhl import ranking_snapshot, track_record
+from app.services.nhl.game_detail import build_game_detail
+from app.services.nhl.line_only_props import build_line_only_props
+from app.services.nhl.player_props import build_player_props
+from app.services.nhl.projection_history import build_projection_history
+from app.services.nhl.prop_board_cache import cached_prop_board_json
+from app.services.nhl.slate import cached_slate
+
+router = APIRouter()
+EASTERN = ZoneInfo("America/New_York")
+
+
+@router.get("/slate", response_model=NhlSlateResponse)
+async def get_slate(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> NhlSlateResponse:
+    clock = dt.datetime.now(dt.timezone.utc)
+    return await cached_slate(db, date, clock.astimezone(EASTERN).date(), as_of=clock)
+
+
+@router.get("/props", response_model=NhlPropBoardResponse)
+async def get_prop_board(date: dt.date | None = None, db: AsyncSession = Depends(get_db)) -> Response:
+    today = dt.datetime.now(dt.timezone.utc).astimezone(EASTERN).date()
+    body = await cached_prop_board_json(db, date, today)
+    if body is None:
+        raise HTTPException(status_code=503, detail="The NHL prop board is unavailable; try again shortly")
+    return Response(content=body, media_type="application/json")
+
+
+@router.get("/games/{game_id}", response_model=NhlGameDetailResponse)
+async def get_game(game_id: int, db: AsyncSession = Depends(get_db)) -> NhlGameDetailResponse:
+    detail = await build_game_detail(db, game_id, as_of=dt.datetime.now(dt.timezone.utc))
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"NHL game {game_id} not found")
+    return detail
+
+
+@router.get("/games/{game_id}/line-only-props", response_model=NhlLineOnlyPropsResponse)
+async def get_game_line_only_props(game_id: int, db: AsyncSession = Depends(get_db)) -> NhlLineOnlyPropsResponse:
+    props = await build_line_only_props(db, game_id, as_of=dt.datetime.now(dt.timezone.utc))
+    if props is None:
+        raise HTTPException(status_code=404, detail=f"NHL game {game_id} not found")
+    return props
+
+
+@router.get("/players/{player_id}/props", response_model=NhlPlayerPropsResponse)
+async def get_player_props(
+    player_id: int, date: dt.date | None = None, db: AsyncSession = Depends(get_db),
+) -> NhlPlayerPropsResponse:
+    clock = dt.datetime.now(dt.timezone.utc)
+    props = await build_player_props(db, player_id, date, clock.astimezone(EASTERN).date(), as_of=clock)
+    if props is None:
+        raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
+    return props
+
+
+@router.get("/players/{player_id}/projection-history", response_model=NhlProjectionHistoryResponse)
+async def get_player_projection_history(player_id: int, db: AsyncSession = Depends(get_db)) -> NhlProjectionHistoryResponse:
+    history = await build_projection_history(db, player_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail=f"NHL player {player_id} not found")
+    return NhlProjectionHistoryResponse.model_validate(history)
+
+
+@router.get("/model/ranking", response_model=NhlModelRankingResponse)
+async def get_model_ranking(
+    season: int | None = Depends(optional_model_season), db: AsyncSession = Depends(get_db),
+) -> NhlModelRankingResponse:
+    # Resolved before the cache, so the cache is always keyed by a concrete season.
+    if season is None:
+        season = await track_record.nhl_season(db, dt.datetime.now(dt.UTC))
+    if season is None:
+        raise HTTPException(status_code=404, detail="No NHL regular-season games are loaded")
+    response = await ranking_snapshot.get_ranking_response(db, season, is_production(settings.api_env))
+    if response is None:
+        raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
+    return response

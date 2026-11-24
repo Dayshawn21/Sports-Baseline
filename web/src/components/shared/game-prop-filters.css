@@ -1,0 +1,16 @@
+.game-prop-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+
+.game-prop-filters .nfl-prop-seg {
+  gap: 0;
+}
+
+.game-prop-filters .nfl-prop-seg button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+}

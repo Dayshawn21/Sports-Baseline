@@ -1,32 +1,30 @@
 import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import ErrorState from '~/components/shared/ErrorState'
 import LoadingState from '~/components/shared/LoadingState'
-import PageHead from '~/components/shared/PageHead'
+import { PlayerPageShell } from '~/components/shared/PlayerPageShell'
 import PlayerEloCard from '~/components/tennis/player/PlayerEloCard'
-import PlayerHeader from '~/components/tennis/player/PlayerHeader'
+import { playerHead } from '~/components/tennis/player/PlayerHeader'
+import PlayerPropTabs from '~/components/tennis/player/PlayerPropTabs'
 import PlayerMatchLog from '~/components/tennis/player/PlayerMatchLog'
+import PlayerProjectionHistory from '~/components/tennis/player/PlayerProjectionHistory'
 import PlayerServeReturn from '~/components/tennis/player/PlayerServeReturn'
-import PlayerSidebar from '~/components/tennis/player/PlayerSidebar'
+import PlayerModelRecord, { PlayerIdentityFooter } from '~/components/tennis/player/PlayerSidebar'
 import { usePlayerDetail, usePlayerMatches } from '~/hooks/useTennisPlayer'
 import { useRegisterDetailTitle } from '~/components/shared/DocumentTitleProvider'
 import { isNotFound } from '~/utils/httpError'
 import { parsePlayerId } from '~/utils/tennisPlayer'
+import { playerPageOrigin } from '~/utils/tennisPlayerProps'
 import './tennis-match.css'
 import './tennis-player.css'
 
 function BackLink() {
-  return <Link className="tennis-match-crumb" to="/">← Tennis slate</Link>
+  const origin = playerPageOrigin(useLocation().state)
+  return <Link className="tennis-match-crumb" to={origin?.path ?? '/tennis'}>← {origin?.label ?? 'Tennis slate'}</Link>
 }
 
 function PlayerPageState({ children }: { children: ReactNode }) {
-  return (
-    <div className="page-shell tennis-player"><div className="page-container is-wide">
-      <BackLink />
-      <PageHead title="Tennis player" />
-      {children}
-    </div></div>
-  )
+  return <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title="Tennis player">{children}</PlayerPageShell>
 }
 
 function NotFound() {
@@ -45,18 +43,18 @@ export default function TennisPlayerPage() {
   if (detail.isLoading) return <PlayerPageState><LoadingState message="Loading player..." /></PlayerPageState>
   if (detail.isError || !detail.data) return <PlayerPageState><ErrorState error={detail.error} onRetry={() => void detail.refetch()} /></PlayerPageState>
 
+  const head = playerHead(detail.data, new Date())
   return (
-    <div className="page-shell tennis-player"><div className="page-container is-wide">
-      <BackLink />
-      <PlayerHeader player={detail.data} now={new Date()} />
-      <div className="tennis-player-layout">
-        <section className="tennis-player-main">
-          <PlayerEloCard player={detail.data} />
-          <PlayerServeReturn playerId={detail.data.playerId} nextSurface={detail.data.nextMatch?.surface} />
-          <PlayerMatchLog query={matches} />
-        </section>
-        <PlayerSidebar player={detail.data} matches={matches} />
-      </div>
-    </div></div>
+    <PlayerPageShell sportClass="tennis-player" crumb={<BackLink />} title={head.title} meta={head.meta} actions={head.actions}>
+      <PlayerPropTabs playerId={detail.data.playerId} playerName={detail.data.name} />
+      <PlayerProjectionHistory playerId={detail.data.playerId} playerName={detail.data.name} />
+      <h2 className="nfl-player-section-title">Season form <small>ELO, serve and return</small></h2>
+      <PlayerEloCard player={detail.data} />
+      <PlayerServeReturn playerId={detail.data.playerId} nextSurface={detail.data.nextMatch?.surface} />
+      <PlayerMatchLog query={matches} />
+      <h2 className="nfl-player-section-title">Model record <small>52-week record and settled props</small></h2>
+      <PlayerModelRecord player={detail.data} matches={matches} />
+      <PlayerIdentityFooter player={detail.data} />
+    </PlayerPageShell>
   )
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { buildNflPropBoard, categoryReferenceLine, compareBoardLines, edgeShare, filterNflPropBoardGames, flattenSlateLines, isRateable, isUpcomingGame } from '~/utils/nflPropBoard'
+import { buildNflPropBoard, categoryReferenceLine, compareNflPropRows, edgeShare, filterNflBoardCategories, filterNflPropBoardGames, flattenSlateLines, isRateable, isUpcomingGame, nflLineTeam } from '~/utils/nflPropBoard'
+import { slateDigest } from '~/utils/nflSlate'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 
@@ -71,6 +72,54 @@ function game(gameId: number, lines: NflSlateLine[], overrides: Partial<NflSlate
   }
 }
 
+describe('filterNflBoardCategories', () => {
+  const board = () => buildNflPropBoard([game(1, [
+    line(1, { playerName: 'Top Jet', opponentTeam: 'MIA', edge: 30 }),
+    line(2, { playerName: 'Middle Dolphin', opponentTeam: 'NYJ', edge: 20 }),
+    line(3, { playerName: 'Last Jet', opponentTeam: 'MIA', edge: 10 }),
+    line(4, { playerName: 'Alternate Jet', opponentTeam: 'MIA', oddsType: 'demon' }),
+    line(5, { playerName: 'Unknown Side', opponentTeam: null, edge: 5 }),
+  ])], 'all')
+  const names = (players: string[], team: string) => filterNflBoardCategories(board(), players, team)[0].rateable.map(row => row.playerName)
+
+  it('narrows to the searched players in board order', () => {
+    expect(names(['Middle Dolphin'], 'all')).toEqual(['Middle Dolphin'])
+    expect(names(['Top Jet', 'Last Jet'], 'all')).toEqual(['Last Jet', 'Top Jet'])
+  })
+
+  it('narrows to a team', () => {
+    expect(names([], 'NYJ')).toEqual(['Last Jet', 'Top Jet'])
+  })
+
+  it('leaves a row with no known team under all teams and in search only', () => {
+    expect(names([], 'all')).toContain('Unknown Side')
+    expect(names(['Unknown Side'], 'all')).toEqual(['Unknown Side'])
+    expect(names(['Unknown Side'], 'NYJ')).toEqual([])
+  })
+
+  it('filters the other rows and keeps the unfiltered reference line', () => {
+    const [full] = board()
+    const [filtered] = filterNflBoardCategories([full], ['Alternate Jet'], 'NYJ')
+
+    expect(filtered.other.map(row => row.playerName)).toEqual(['Alternate Jet'])
+    expect(filtered.category.referenceLine).toBe(full.referenceLine)
+  })
+})
+
+describe('nflLineTeam', () => {
+  const sides = { awayTeam: 'BUF', homeTeam: 'KC' }
+
+  it('is the away team against the home side and the home team against the away side', () => {
+    expect(nflLineTeam({ ...sides, opponentTeam: 'KC' })).toBe('BUF')
+    expect(nflLineTeam({ ...sides, opponentTeam: 'BUF' })).toBe('KC')
+  })
+
+  it('is null when the opponent is missing or in neither side', () => {
+    expect(nflLineTeam({ ...sides, opponentTeam: null })).toBeNull()
+    expect(nflLineTeam({ ...sides, opponentTeam: 'DAL' })).toBeNull()
+  })
+})
+
 describe('categoryReferenceLine', () => {
   it('takes the median of the lines', () => {
     expect(categoryReferenceLine([{ line: 10 }, { line: 30 }, { line: 20 }])).toBe(20)
@@ -107,7 +156,10 @@ describe('edgeShare', () => {
 })
 
 describe('isRateable', () => {
-  const base = { edge: 10, gamesInSample: 8, line: 60, market: 'receiving_yards', oddsType: 'standard', segment: 'full_game' }
+  const base = {
+    edge: 10, gamesInSample: 8, line: 60, market: 'receiving_yards', oddsType: 'standard', segment: 'full_game',
+    injuryStatus: null, qualityFlags: [], depthPosition: 'WR', depthRank: 2, activeDepthRank: 2,
+  }
 
   it('accepts a standard full-game line with enough sample', () => {
     expect(isRateable(base)).toBe(true)
@@ -120,57 +172,45 @@ describe('isRateable', () => {
     ['partial segment', { segment: 'first_half' }],
     ['thin sample', { gamesInSample: 3 }],
     ['anytime TD, until 25c', { market: 'anytime_touchdown', edge: -0.13, line: 0.5 }],
+    ['an Out player', { injuryStatus: 'Out', qualityFlags: ['injury_out', 'role_changed'], activeDepthRank: null }],
+    ['a backup moved up by an Out starter', { activeDepthRank: 1, outAhead: ['Starter'] }],
   ])('rejects %s', (_label, override) => {
     expect(isRateable({ ...base, ...override })).toBe(false)
   })
 })
 
-describe('compareBoardLines', () => {
-  const row = (lineId: number, edge: number, overrides: Partial<NflSlateLine> = {}) =>
-    line(lineId, { edge, ...overrides })
+describe('compareNflPropRows', () => {
+  const EARLY = '2026-09-20T17:00:00Z'
+  const LATE = '2026-09-21T00:20:00Z'
+  const row = (lineId: number, startUtc: string | null, overrides: Partial<NflSlateLine> = {}) =>
+    ({ ...line(lineId, overrides), gameId: 1, awayTeam: 'NYJ', homeTeam: 'MIA', startUtc })
+  const order = (...rows: ReturnType<typeof row>[]) => rows.sort(compareNflPropRows).map(item => item.lineId)
 
-  it('ranks by raw edge against the shared reference, so a tiny line cannot jump the board', () => {
-    const tinyLine = row(1, 11.6, { line: 0.5 })
-    const bigEdge = row(2, 20)
-    // Against its own 0.5 line the first row reads as +2320%; against the category's it is behind.
-    expect([tinyLine, bigEdge].sort(compareBoardLines(26.5)).map(item => item.lineId)).toEqual([2, 1])
+  it('puts Doubtful then Out last, whatever their kickoff or gap', () => {
+    const out = row(1, EARLY, { edge: 40, qualityFlags: ['injury_out'], playerName: 'Aaron A' })
+    const doubtful = row(2, EARLY, { edge: 30, qualityFlags: ['injury_doubtful'], playerName: 'Aaron B' })
+    const clear = row(3, LATE, { edge: 1, playerName: 'Zed Z' })
+    expect(order(out, doubtful, clear)).toEqual([3, 2, 1])
   })
 
-  it('ranks unders alongside overs by magnitude', () => {
-    const under = row(1, -20)
-    const over = row(2, 10)
-    expect([over, under].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([1, 2])
+  it('puts an earlier kickoff first', () => {
+    expect(order(row(1, LATE, { playerName: 'Aaron A' }), row(2, EARLY, { playerName: 'Zed Z' }))).toEqual([2, 1])
   })
 
-  it('drops ruled-out players below everything, whatever the edge', () => {
-    const out = row(1, 40, { qualityFlags: ['injury_out'] })
-    const doubtful = row(2, 30, { qualityFlags: ['injury_doubtful'] })
-    const clear = row(3, 2)
-    expect([out, doubtful, clear].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([3, 2, 1])
+  it('puts a null or unparseable kickoff last', () => {
+    expect(order(row(1, null, { playerName: 'Aaron A' }), row(2, 'TBD', { playerName: 'Aaron B' }), row(3, LATE, { playerName: 'Zed Z' }))).toEqual([3, 1, 2])
   })
 
-  it('drops a thin sample below a full one, however extreme the edge', () => {
-    const thin = row(1, -120, { gamesInSample: 4 })
-    const full = row(2, 10, { gamesInSample: 14 })
-    expect([thin, full].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([2, 1])
-  })
-
-  it('weighs availability above sample depth', () => {
-    const outButDeep = row(1, 30, { gamesInSample: 17, qualityFlags: ['injury_out'] })
-    const thinButActive = row(2, 5, { gamesInSample: 4 })
-    expect([outButDeep, thinButActive].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([2, 1])
-  })
-
-  it('demotes a stale baseline below a current one', () => {
-    const stale = row(1, 30, { qualityFlags: ['stale_baseline_season'] })
-    const current = row(2, 5)
-    expect([stale, current].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([2, 1])
+  it('never moves a row for a larger gap or an under', () => {
+    const small = row(1, EARLY, { playerName: 'Aaron A', edge: 1 })
+    const huge = row(2, EARLY, { playerName: 'Bo B', edge: 50 })
+    const under = row(3, EARLY, { playerName: 'Cy C', edge: -60 })
+    const thinStale = row(4, EARLY, { playerName: 'Di D', edge: 80, gamesInSample: 3, qualityFlags: ['stale_baseline_season'] })
+    expect(order(thinStale, under, huge, small)).toEqual([1, 2, 3, 4])
   })
 
   it('breaks ties on player name then line id', () => {
-    const later = line(2, { playerName: 'Zane Adams' })
-    const earlier = line(1, { playerName: 'Adam Zane' })
-    expect([later, earlier].sort(compareBoardLines(60)).map(item => item.lineId)).toEqual([1, 2])
+    expect(order(row(3, EARLY, { playerName: 'Zane Adams' }), row(2, EARLY, { playerName: 'Adam Zane' }), row(1, EARLY, { playerName: 'Adam Zane' }))).toEqual([1, 2, 3])
   })
 })
 
@@ -207,12 +247,12 @@ describe('filterNflPropBoardGames', () => {
   ]
 
   it('returns every upcoming game with prop lines for All games', () => {
-    expect(filterNflPropBoardGames(games, null, now).map(item => item.gameId)).toEqual([1, 2])
+    expect(filterNflPropBoardGames(games, [], now).map(item => item.gameId)).toEqual([1, 2])
   })
 
   it('narrows the upcoming slate to one selected game', () => {
-    expect(filterNflPropBoardGames(games, 2, now).map(item => item.gameId)).toEqual([2])
-    expect(filterNflPropBoardGames(games, 3, now)).toEqual([])
+    expect(filterNflPropBoardGames(games, [2], now).map(item => item.gameId)).toEqual([2])
+    expect(filterNflPropBoardGames(games, [3], now)).toEqual([])
   })
 })
 
@@ -265,19 +305,25 @@ describe('buildNflPropBoard', () => {
       ]),
     ], 'all')
     expect(board[0].referenceLine).toBe(26.5)
-    // The 0.5-yard line would lead on its own denominator; on the category's it does not.
-    expect(board[0].rateable.map(item => item.lineId)).toEqual([2, 1, 3])
   })
 
-  it('keeps Anytime TD out of the rated picks and ranks it by model probability', () => {
+  it('orders a market by kickoff then player, never by gap', () => {
+    const board = buildNflPropBoard([
+      game(10, [line(1, { playerName: 'Zed Late', edge: 40 })], { startUtc: '2099-09-21T00:20:00Z' }),
+      game(11, [line(2, { playerName: 'Bo Early', edge: 1 }), line(3, { playerName: 'Al Early', edge: -2 })]),
+    ], 'all')
+    expect(board[0].rateable.map(item => item.lineId)).toEqual([3, 2, 1])
+  })
+
+  it('keeps Anytime TD out of the rated picks and orders it like every other market', () => {
     const board = buildNflPropBoard([
       game(10, [
-        line(1, { market: 'anytime_touchdown', projection: 0.28, edge: null }),
-        line(2, { market: 'anytime_touchdown', projection: 0.46, edge: null }),
+        line(1, { market: 'anytime_touchdown', projection: 0.28, edge: null, playerName: 'Al A' }),
+        line(2, { market: 'anytime_touchdown', projection: 0.46, edge: null, playerName: 'Bo B' }),
       ]),
     ], 'all')
     expect(board[0].rateable).toEqual([])
-    expect(board[0].other.map(item => item.lineId)).toEqual([2, 1])
+    expect(board[0].other.map(item => item.lineId)).toEqual([1, 2])
   })
 
   it('falls back to the unrateable lines for a reference when nothing is rateable', () => {
@@ -300,5 +346,31 @@ describe('buildNflPropBoard', () => {
       game(10, [line(1, { market: 'kicking_points' }), line(2, { market: 'receptions' })]),
     ], 'all')
     expect(board.map(category => category.market)).toEqual(['receptions', 'kicking_points'])
+  })
+})
+
+describe('the home page slice', () => {
+  // `home_slate` in api/app/core/nfl_slate_wire.py keeps exactly these lines.
+  const homeSlice = (games: NflSlateGame[]) => games.map(g => ({
+    ...g, lines: g.lines.filter(l => l.segment === 'full_game' && l.oddsType === 'standard'),
+  }))
+  const week = [
+    game(1, [
+      line(1, { playerId: 7, fetchedAt: '2026-09-18T12:00:00Z' }),
+      line(2, { playerId: 7, edge: null, fetchedAt: '2026-09-18T13:00:00Z' }),
+      line(3, { playerId: 7, oddsType: 'demon', line: 80, edge: -10 }),
+      line(4, { playerId: 7, segment: 'first_half', line: 30, edge: 40 }),
+      line(5, { playerId: 8, line: 20, edge: 50 }),
+      line(6, { playerId: 9, line: 100, edge: -5, gamesInSample: 1 }),
+      line(7, { playerId: 10, market: 'anytime_touchdown', line: 0.5, edge: 0.3 }),
+    ]),
+    game(2, [line(8, { playerId: 11, oddsType: 'goblin', line: 40, edge: 30 }), line(9, { playerId: 12, line: 45, edge: 12 })]),
+  ]
+
+  it('ranks the same digest as the full week, a newer null-edge standard line still winning its row', () => {
+    const now = new Date('2026-09-19T00:00:00Z')
+    const full = slateDigest(buildNflPropBoard(week, 'all', now), 10)
+    expect(full.length).toBeGreaterThan(0)
+    expect(slateDigest(buildNflPropBoard(homeSlice(week), 'all', now), 10)).toEqual(full)
   })
 })

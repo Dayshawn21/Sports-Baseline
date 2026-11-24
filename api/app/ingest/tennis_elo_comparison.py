@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 import json
@@ -11,6 +12,7 @@ import logging
 from pathlib import Path
 import sys
 
+from app.core.tennis_elo import EffectiveIdentity
 from app.db.pool import SessionLocal
 from app.ingest import tennis_elo as ratings_cli
 from app.ingest.predictions import MODELS_DIR
@@ -18,13 +20,13 @@ from app.ml.registry import ModelRegistry
 from app.repositories import matches as match_repo
 from app.repositories.tennis_elo import SOURCE, TennisEloSnapshot, get_daily_snapshots
 from app.repositories.tennis_elo_comparison import (
-    FreezeCycle, check_experiment_continuity, freeze_cycle, get_cycle_attempt_count, get_frozen_match_ids,
-    get_resulted_match_ids,
+    FreezeCycle, check_amendment_continuity, check_experiment_continuity, freeze_cycle, get_cycle_attempt_count,
+    get_frozen_match_ids, get_resulted_match_ids, stored,
 )
 from app.services.tennis.elo_comparison import ComparisonPlan, ExperimentConfig, build_plan, source_result_targets
 from app.services.tennis.predictor import load_prediction_batch
 
-EXPERIMENT_PATH = Path(__file__).parent / "data" / "tennis_elo_experiment.json"
+EXPERIMENT_PATH = ratings_cli.EXPERIMENT_PATH
 
 
 def _now() -> datetime:
@@ -33,6 +35,7 @@ def _now() -> datetime:
 
 def validated_candidates(
     snapshots: list[TennisEloSnapshot], now: datetime, identity_sha256: str, cache_dir: Path,
+    amendments: Mapping[str, object] | None = None,
 ) -> dict[int, TennisEloSnapshot]:
     """Verify the entire persisted roster against its immutable reviewed manifest."""
     if not snapshots:
@@ -41,7 +44,8 @@ def validated_candidates(
     first = ordered[0]
     manifest = cache_dir / "manifests" / f"{first.manifest_sha256}.json"
     files, computed, mapping_hash, ratings_hash, identity = ratings_cli.load_manifest(manifest, now.date())
-    if identity != identity_sha256 or computed > now:
+    if (identity != identity_sha256 or computed > now
+            or ratings_cli.manifest_amendments(manifest) != dict(amendments or {})):
         raise ValueError("invalid_daily_snapshot")
     if any(ratings_cli._sha((cache_dir / "files" / f"{f.sha256}.csv").read_bytes()) != f.sha256 for f in files):
         raise ValueError("invalid_daily_snapshot")
@@ -82,13 +86,14 @@ def _report(plan: ComparisonPlan, config: ExperimentConfig, path: Path, inserted
 
 def _candidate_inputs(
     snapshots: list[TennisEloSnapshot], now: datetime, identity: ratings_cli.LoadedRegistry,
-    cache_dir: Path, matches: list[match_repo.Match], resulted: set[int],
+    effective: EffectiveIdentity, cache_dir: Path, matches: list[match_repo.Match], resulted: set[int],
 ) -> tuple[dict[int, TennisEloSnapshot], str | None]:
     try:
-        candidates = validated_candidates(snapshots, now, identity.sha256, cache_dir)
+        candidates = validated_candidates(snapshots, now, identity.sha256, cache_dir,
+                                          ratings_cli.amendment_fields(effective))
         manifest = cache_dir / "manifests" / f"{snapshots[0].manifest_sha256}.json"
         files, *_ = ratings_cli.load_manifest(manifest, now.date())
-        source_matches, _ = ratings_cli.collect_matches(files, cache_dir, now.date(), identity.registry)
+        source_matches, _ = ratings_cli.collect_matches(files, cache_dir, now.date(), effective.registry)
         resulted.update(source_result_targets(matches, source_matches, candidates))
     except (ValueError, OSError, KeyError):
         return {}, "missing_or_invalid_daily_snapshot"
@@ -108,6 +113,7 @@ async def run(
     registry = ModelRegistry(MODELS_DIR)
     identity = ratings_cli.load_identity_registry()
     config.check_runtime(registry, identity.sha256)
+    effective = config.check_identity(identity.registry, identity.amendments, started.date())
     cycle_key = cycle_key or started.replace(minute=0, second=0, microsecond=0)
     if cycle_key.utcoffset() is None or cycle_key > started:
         raise ValueError("Comparison cycle key must be timezone-aware and not in the future")
@@ -115,6 +121,8 @@ async def run(
         raise ValueError("Experiment activation and its first full UTC day require review before a real freeze")
     async with SessionLocal() as db:
         await check_experiment_continuity(db, config.sha256)
+        if config.identity_contract is not None:
+            await check_amendment_continuity(db, identity.amendments)
         existing = await get_cycle_attempt_count(db, cycle_key)
         if existing is not None:
             print(f"Reused immutable cycle {cycle_key.isoformat()}: {existing} attempts, 0 inserted")
@@ -128,7 +136,8 @@ async def run(
         now = _now()
         if now.date() != started.date():
             raise ValueError("UTC day rolled over while loading comparison inputs")
-        candidates, snapshot_error = _candidate_inputs(snapshots, now, identity, cache_dir, matches, resulted)
+        candidates, snapshot_error = _candidate_inputs(snapshots, now, identity, effective, cache_dir, matches,
+                                                       resulted)
         if snapshot_error:
             print(f"Freeze skipped: {snapshot_error}; eligible attempts retained for coverage")
         if batch is None:
@@ -138,9 +147,10 @@ async def run(
             plan = await asyncio.to_thread(
                 build_plan, matches, batch, registry, candidates, config, now=now, cycle_key=cycle_key,
                 resulted=resulted, frozen=frozen, snapshot_error=snapshot_error,
+                identity=effective if config.identity_contract is not None else None,
             )
         contents = ratings_cli._canonical_json({"experiment_sha256": config.sha256,
-                                               "cycle": asdict(plan.cycle), "pairs": [asdict(p) for p in plan.pairs],
+                                               "cycle": stored(plan.cycle), "pairs": stored(plan.pairs),
                                                "preview_pairs": plan.preview_pairs})
         path = cache_dir / "comparisons" / f"{ratings_cli._sha(contents)}.json"
         ratings_cli._immutable_write(path, contents)
@@ -159,9 +169,11 @@ async def check_daily_snapshot(*, cache_dir: Path = ratings_cli.CACHE_DIR) -> No
     """Check the full stored roster and original files before sharing a runner cache."""
     now = _now()
     identity = ratings_cli.load_identity_registry()
+    effective = ratings_cli.resolve_for_day(identity, now.date())
     async with SessionLocal() as db:
         snapshots = await get_daily_snapshots(db, source=SOURCE, as_of_date=now.date())
-    candidates = validated_candidates(snapshots, now, identity.sha256, cache_dir)
+    candidates = validated_candidates(snapshots, now, identity.sha256, cache_dir,
+                                      ratings_cli.amendment_fields(effective))
     if _now().date() != now.date():
         raise ValueError("UTC day rolled over while checking snapshot cache")
     print(f"Complete UTC {now.date()} candidate snapshot and original files: {len(candidates)} players")

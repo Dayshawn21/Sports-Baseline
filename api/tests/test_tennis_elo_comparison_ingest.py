@@ -6,14 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.core.tennis_elo import IDENTITY_CONTRACT, IdentityRegistry, amendments_sha256, parse_amendments
+from app.core.tennis_elo_report import RULE_SHA256
 from app.ingest import tennis_elo as ratings
 from app.ingest import tennis_elo_comparison as ingest
-from app.services.tennis.elo_comparison import ComparisonPlan
+from app.ingest.predictions import MODELS_DIR
+from app.ml.registry import ModelRegistry
+from app.services.tennis.elo_comparison import ComparisonPlan, ExperimentConfig
 from app.repositories.tennis_elo_comparison import FreezeCycle
-from tests.test_tennis_elo_comparison import NOW, Registry, candidates, config
+from tests.helpers.tennis_elo_comparison import NOW, Registry, candidates, config
 
 
-def reviewed_snapshot(tmp_path, monkeypatch):
+def reviewed_snapshot(tmp_path, monkeypatch, extra=None):
     monkeypatch.setattr(ratings, "_now", lambda: NOW)
     values = list(candidates().values())
     data = b"synthetic source contract fixture"
@@ -27,7 +31,7 @@ def reviewed_snapshot(tmp_path, monkeypatch):
             sorted(((s.provider_namespace, s.provider_player_id), s.player_id) for s in values))),
         "ratings_sha256": ratings._sha(ratings._canonical_json(
             [asdict(replace(s, manifest_sha256="0" * 64)) for s in values])),
-        "files": ratings._file_records(files),
+        "files": ratings._file_records(files), **(extra or {}),
     }
     contents = ratings._canonical_json(manifest)
     sha = ratings._sha(contents)
@@ -80,7 +84,7 @@ def setup_run(tmp_path, monkeypatch, active=True, existing=None):
         return len(pairs)
 
     monkeypatch.setattr(ingest, "ModelRegistry", lambda path: Registry())
-    monkeypatch.setattr(ingest.ratings_cli, "load_identity_registry", lambda: SimpleNamespace(sha256="d" * 64))
+    monkeypatch.setattr(ingest.ratings_cli, "load_identity_registry", lambda: ratings.LoadedRegistry(IdentityRegistry(), "d" * 64))
     monkeypatch.setattr(ingest, "SessionLocal", Session)
     monkeypatch.setattr(ingest, "_now", lambda: NOW)
     monkeypatch.setattr(ingest, "check_experiment_continuity", continuity)
@@ -129,7 +133,7 @@ def test_existing_cycle_reuses_frozen_ledger_before_loading_live_inputs(tmp_path
 
 
 def test_incomplete_snapshot_cannot_create_partial_pairs(tmp_path, monkeypatch):
-    from tests.test_tennis_elo_comparison import batch, match
+    from tests.helpers.tennis_elo_comparison import batch, match
     path, state = setup_run(tmp_path, monkeypatch)
     async def upcoming(*args): return [match()]
     async def load(*args): return batch()
@@ -164,7 +168,7 @@ def test_scheduled_inactive_or_partial_first_day_skips_without_database(tmp_path
 
 
 def test_active_scheduled_cache_miss_retains_eligible_denominator(tmp_path, monkeypatch, capsys):
-    from tests.test_tennis_elo_comparison import batch, match
+    from tests.helpers.tennis_elo_comparison import batch, match
     path, state = setup_run(tmp_path, monkeypatch)
     async def upcoming(*args): return [match()]
     async def load(*args): return batch()
@@ -208,3 +212,67 @@ def test_cache_handoff_rejects_incomplete_or_wrong_day_inputs(tmp_path, monkeypa
     with pytest.raises((ValueError, OSError)):
         asyncio.run(ingest.check_daily_snapshot(cache_dir=tmp_path))
     assert state.commits == 0 and state.writes == []
+
+
+def test_committed_experiment_pins_match_the_runtime_the_scheduled_freeze_checks():
+    pinned = ExperimentConfig.from_record(json.loads(ingest.EXPERIMENT_PATH.read_text(encoding="utf-8")))
+    pinned.check_runtime(ModelRegistry(MODELS_DIR), ratings.load_identity_registry().sha256)
+
+
+V3_CONFIG_SHA256 = "475d99ecb7eeca4b3df4ae0c808d644308750073176aaa136829df4be5970696"
+V3_RULE_SHA256 = "35af27828caf237ad5a3e326b029f66b4437bee9b054e179b72c7566a282d5c4"
+
+
+def test_committed_v3_hashes_are_unchanged_while_the_identity_contract_is_dormant():
+    pinned = ExperimentConfig.from_record(json.loads(ingest.EXPERIMENT_PATH.read_text(encoding="utf-8")))
+    assert pinned.identity_contract is None
+    assert (pinned.sha256, RULE_SHA256) == (V3_CONFIG_SHA256, V3_RULE_SHA256)
+    assert ratings.load_identity_registry().amendments == ()
+
+
+def test_snapshot_must_record_the_amendment_set_in_effect_for_its_day(tmp_path, monkeypatch):
+    fields = {"amendment_count": 0, "amendments_sha256": amendments_sha256(())}
+    dormant = reviewed_snapshot(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="invalid_daily_snapshot"):
+        ingest.validated_candidates(dormant, NOW, "d" * 64, tmp_path, fields)
+    pinned = reviewed_snapshot(tmp_path / "pinned", monkeypatch, fields)
+    assert len(ingest.validated_candidates(pinned, NOW, "d" * 64, tmp_path / "pinned", fields)) == len(pinned)
+    later = {"amendment_count": 1, "amendments_sha256": "a" * 64}
+    for expected in (None, later):
+        with pytest.raises(ValueError, match="invalid_daily_snapshot"):
+            ingest.validated_candidates(pinned, NOW, "d" * 64, tmp_path / "pinned", expected)
+
+
+def contract_run(tmp_path, monkeypatch, contract, rows=()):
+    path, state = setup_run(tmp_path, monkeypatch)
+    record = json.loads(path.read_text())
+    if contract:
+        record["identity_contract"] = IDENTITY_CONTRACT
+    path.write_text(json.dumps(record))
+    columns = ("namespace", "kind", "provider_id", "target", "effective_from", "evidence")
+    loaded = ratings.LoadedRegistry(IdentityRegistry(), "d" * 64,
+                                    parse_amendments(dict(zip(columns, (*r, "exact name"))) for r in rows))
+    monkeypatch.setattr(ingest.ratings_cli, "load_identity_registry", lambda: loaded)
+    checked = []
+    async def continuity(_db, amendments): checked.append(amendments)
+    monkeypatch.setattr(ingest, "check_amendment_continuity", continuity)
+    return path, state, checked, loaded
+
+
+def test_dormant_freeze_stops_on_any_amendment_before_touching_the_database(tmp_path, monkeypatch):
+    path, state, checked, _ = contract_run(tmp_path, monkeypatch, False, [("WTA", "alias", "330000", "201000",
+                                                                          NOW.date().isoformat())])
+    with pytest.raises(ValueError, match="accrual stopped for review"):
+        asyncio.run(ingest.run(dry_run=False, experiment_path=path, cache_dir=tmp_path))
+    assert state.db_calls == 0 and checked == []
+
+
+def test_pinned_freeze_checks_append_only_continuity_and_dormant_freeze_does_not(tmp_path, monkeypatch):
+    path, state, checked, loaded = contract_run(tmp_path, monkeypatch, True, [("WTA", "alias", "330000", "201000",
+                                                                               NOW.date().isoformat())])
+    asyncio.run(ingest.run(dry_run=False, experiment_path=path, cache_dir=tmp_path))
+    assert checked == [loaded.amendments] and len(state.writes) == 1
+    (tmp_path / "dormant").mkdir()
+    path, _, checked, _ = contract_run(tmp_path / "dormant", monkeypatch, False)
+    asyncio.run(ingest.run(dry_run=False, experiment_path=path, cache_dir=tmp_path / "dormant"))
+    assert checked == []

@@ -1,24 +1,25 @@
 import type { NflGameNotes, NflGameOdds, NflLineMove, NflSlateGame, NflTeamContext } from '~/types/nfl'
-import { conditionsLabel, hasKickedOff, recordLabel } from '~/utils/nflGame'
+import { conditionsLabel, recordLabel } from '~/utils/nflGame'
 import { nflGameModelSummary, qbChanges, spreadLabel } from '~/utils/nflGameModel'
 import { marketLabel } from '~/utils/nflLabels'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { isReferenceLine } from '~/utils/nflTargets'
 import { edgePctLabel } from '~/utils/nflSignal'
 import { fmtAmerican } from '~/utils/odds'
-import { compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
+import { gapSharePercent, signedGapUnits } from '~/utils/gapUnits'
+import { gameState, isFinalStatus, type GamePhase } from '~/utils/gameState'
+import { dayClockCt, latestTime, rowOddsAge } from '~/utils/slatePeriod'
+import { CONFIDENT_SAMPLE_GAMES, compareBoardTiers, edgeShare, type NflBoardCategory, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { CENTRAL_TZ } from '~/utils/format'
 
-const CENTRAL = 'America/Chicago'
 const PRIME_TIME_HOUR = 18
 const PRIME_TIME_DAYS = new Set(['Sunday', 'Monday'])
 const UNSCHEDULED_KEY = 'unscheduled'
 const PRIME_TIME_KEY = 'prime-time'
 
-const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'long' })
-const HOUR_24 = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', hourCycle: 'h23' })
-const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, hour: 'numeric', minute: '2-digit' })
-const DAY_CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
-const UPDATED = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL, weekday: 'short', hour: 'numeric', minute: '2-digit' })
+const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, weekday: 'long' })
+const HOUR_24 = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', hourCycle: 'h23' })
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: CENTRAL_TZ, hour: 'numeric', minute: '2-digit' })
 
 export interface NflKickoffWindow {
   key: string
@@ -35,6 +36,8 @@ export interface NflSlateSummary {
   outOrDoubtful: number | null
   /** Latest pre-kickoff odds fetch in CT; null without notes or stored movement. */
   oddsUpdated: string | null
+  /** The same fetch as epoch milliseconds, for the stale-odds check. */
+  oddsUpdatedMs: number | null
 }
 
 function kickoffTime(game: Pick<NflSlateGame, 'startUtc'>): number | null {
@@ -86,21 +89,29 @@ export function kickoffWindows(games: NflSlateGame[]): NflKickoffWindow[] {
   }))
 }
 
-function latestOddsFetch(notes: NflGameNotes[]): string | null {
-  const times = notes.flatMap(game => game.lineMovement.map(move => Date.parse(move.currentFetchedAt)))
+/** A window narrowed by search keeps its label and says how many of its games are showing ("1 of 7 games"). */
+export function searchedKickoffWindow(window: NflKickoffWindow, games: NflSlateGame[]): NflKickoffWindow {
+  const total = gamesLabel(window.games.length)
+  return { ...window, games, subtitle: window.subtitle.replace(total, `${games.length} of ${total}`) }
+}
+
+function latestOddsFetch(notes: NflGameNotes[] | undefined): number | null {
+  const times = (notes ?? []).flatMap(game => game.lineMovement.map(move => Date.parse(move.currentFetchedAt)))
     .filter(time => !Number.isNaN(time))
-  return times.length ? `${UPDATED.format(Math.max(...times))} CT` : null
+  return times.length ? Math.max(...times) : null
 }
 
 /** The slate's summary strip. `notes` is undefined until game notes load, or when they fail. */
 export function nflSlateSummary(games: NflSlateGame[], notes: NflGameNotes[] | undefined): NflSlateSummary {
+  const oddsUpdatedMs = latestOddsFetch(notes)
   return {
     games: games.length,
     propLines: groupNflPropRows(games.flatMap(game => game.lines)).length,
-    finals: games.filter(game => game.status === 'completed').length,
+    finals: games.filter(game => isFinalStatus(game.status)).length,
     outOrDoubtful: notes === undefined ? null : notes.flatMap(game => game.injuries)
       .filter(injury => injury.injuryStatus === 'Out' || injury.injuryStatus === 'Doubtful').length,
-    oddsUpdated: notes === undefined ? null : latestOddsFetch(notes),
+    oddsUpdated: oddsUpdatedMs === null ? null : dayClockCt(oddsUpdatedMs),
+    oddsUpdatedMs,
   }
 }
 
@@ -134,14 +145,49 @@ const MISSING = '--'
 export interface NflSlateDigestItem {
   lineId: number
   gameId: number
+  playerId: number
   playerName: string
   market: string
+  /** The raw market, for links; `market` is the display label. */
+  marketKey: string
   matchup: string
+  /** Central kickoff time. */
+  when: string
   line: string
   model: string
   modelLabel?: string
-  /** Signed edge share against the category's reference line, as on the prop cards. */
+  /** Signed edge share against the category's reference line, as on the prop cards (the home page's gaps table). */
   gap: string
+  /** The digest box's lead: model minus line in the market's units ("+32.6 yds"). */
+  gapUnits: string
+  /** The same edge sized against a typical line ("107% of a typical line"); unsigned, so it never reads as a change. */
+  gapScaled: string | null
+  /** That size alone ("107%"), which the strip ranks by after the sample tier. */
+  gapShare: string | null
+  /** "7 games" for a line under the confident sample, which the strip ranks after every line with one; else null. */
+  shortSample: string | null
+}
+
+const MARKET_UNITS: Record<string, string> = {
+  passing_yards: 'yds', rushing_yards: 'yds', receiving_yards: 'yds', rushing_receiving_yards: 'yds', passing_rushing_yards: 'yds',
+  passing_attempts: 'att', rushing_attempts: 'att', passing_completions: 'comp', receptions: 'rec', receiving_targets: 'tgt',
+  passing_touchdowns: 'TD', passing_rushing_receiving_touchdowns: 'TD', interceptions: 'INT', fantasy_points: 'pts',
+  kicking_points: 'pts', field_goals_made: 'FG', punts: 'punts',
+}
+
+/** Model minus line in the market's own units: "+32.6 yds", "-2.8 comp"; a market with no unit shows the number alone. */
+export function gapUnitsLabel(edge: number | null, market: string): string {
+  return signedGapUnits(edge, MARKET_UNITS[market])
+}
+
+/** The edge share as a size, not a change: "107% of a typical line". */
+export function gapScaledLabel(share: number | null): string | null {
+  return share === null ? null : `${Math.round(Math.abs(share) * 100)}% of a typical line`
+}
+
+function digestKickoff(startUtc: string | null): string {
+  const time = startUtc === null ? NaN : Date.parse(startUtc)
+  return Number.isNaN(time) ? 'Kickoff time not set' : dayClockCt(time)
 }
 
 /** The week's largest gaps, from a board built as of now (which already drops started games). */
@@ -149,17 +195,25 @@ export function slateDigest(categories: NflBoardCategory[], limit = 4): NflSlate
   return rankTopProps(categories, limit).map(({ row, edgeShare: share }) => ({
     lineId: row.lineId,
     gameId: row.gameId,
+    playerId: row.playerId,
     playerName: row.playerName,
-    market: isTargetsReference(row.market) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
+    marketKey: row.market,
+    market: isReferenceLine(row) ? `${marketLabel(row.market)} reference` : marketLabel(row.market),
     matchup: `${row.awayTeam} @ ${row.homeTeam}`,
+    when: digestKickoff(row.startUtc),
     line: row.line?.toFixed(1) ?? MISSING,
     model: row.projection?.toFixed(1) ?? MISSING,
-    ...(isTargetsReference(row.market) ? { modelLabel: 'reference' } : {}),
+    ...(isReferenceLine(row) ? { modelLabel: 'reference' } : {}),
     gap: edgePctLabel(share),
+    gapUnits: gapUnitsLabel(row.edge, row.market),
+    gapScaled: gapScaledLabel(share),
+    gapShare: gapSharePercent(share),
+    shortSample: row.gamesInSample < CONFIDENT_SAMPLE_GAMES ? `${row.gamesInSample} game${row.gamesInSample === 1 ? '' : 's'}` : null,
   }))
 }
 
-export type NflSlateRowState = 'upcoming' | 'live' | 'final'
+/** `pending`: the game has ended by the clock, but no final is stored yet; `off`: postponed or canceled. */
+export type NflSlateRowState = GamePhase
 
 export interface NflSlateRowTeam {
   code: string
@@ -178,7 +232,9 @@ export interface NflSlateRowCell {
 export interface NflSlateRowModel {
   gameId: number
   state: NflSlateRowState
-  /** Central weekday and clock ("Sun 12:00 PM"; prime time spans two days); "--" when unscheduled. */
+  /** "Final", "Result pending", "Live", "Postponed" or "Canceled"; null while upcoming. */
+  stateLabel: string | null
+  /** Central weekday and clock ("Sun 12:00 PM CT"; prime time spans two days); "--" when unscheduled. */
   kickoff: string
   away: NflSlateRowTeam
   home: NflSlateRowTeam
@@ -191,19 +247,25 @@ export interface NflSlateRowModel {
   model: { spread: string, total: string } | null
   /** Stored prop lines, counted as the summary strip counts them. */
   props: number
-  conditions: string
+  /** "Indoor" or the forecast; null until a forecast is published, so the row does not say so on every game. */
+  conditions: string | null
   /** Report statuses only; null while game notes are unavailable or once final. */
   injuries: { out: number, doubtful: number, questionable: number } | null
+  /** Only a team on a shorter week than its opponent; when both are, as on a Thursday, it says nothing. */
   shortWeek: string[]
   /** Teams whose QB differs from the one the muted model was built on. */
   qbChange: string[]
+  /** "as of Sat" while the slate's odds are stale, the game has not ended and its fetch differs from the slate's newest; else null. */
+  oddsAge: string | null
+  /** Live with no stored score; the score loads after the game. */
+  scorePending: boolean
 }
 
 const NO_CELL: NflSlateRowCell = { value: MISSING, detail: null }
 
-function rowState(game: NflSlateGame, now: Date): NflSlateRowState {
-  if (game.status === 'completed') return 'final'
-  return hasKickedOff(game.startUtc, now) ? 'live' : 'upcoming'
+function rowState(game: NflSlateGame, now: Date): { state: NflSlateRowState, stateLabel: string | null } {
+  const { phase, label } = gameState(game.status, game.startUtc, now, 'Live')
+  return { state: phase, stateLabel: phase === 'upcoming' ? null : label }
 }
 
 function rowTeam(code: string, context: NflTeamContext | null, score: number | null, otherScore: number | null): NflSlateRowTeam {
@@ -214,10 +276,11 @@ function lineMove(notes: NflGameNotes | undefined, market: NflLineMove['market']
   return notes?.lineMovement.find(move => move.market === market) ?? null
 }
 
-/** "opened BUF -1.5", "no move", or null when only one line is stored. */
-function openedLabel(move: NflLineMove | null, format: (line: number) => string): string | null {
+/** "opened BUF -1.5", "no move", or null when only one line is stored. Stale odds never claim "no move": the line was not checked since. */
+function openedLabel(move: NflLineMove | null, format: (line: number) => string, stale: boolean): string | null {
   if (move === null || move.move === null) return null
-  return move.move === 0 ? 'no move' : `opened ${format(move.openLine)}`
+  if (move.move === 0) return stale ? null : 'no move'
+  return `opened ${format(move.openLine)}`
 }
 
 function moneylineCell(odds: NflGameOdds | null, homeTeam: string, awayTeam: string): NflSlateRowCell {
@@ -231,15 +294,21 @@ function moneylineCell(odds: NflGameOdds | null, homeTeam: string, awayTeam: str
   return { value: favorite, detail: other }
 }
 
-function marketSpread(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+function marketSpread(game: NflSlateGame, notes: NflGameNotes | undefined, stale: boolean): NflSlateRowCell {
   if (game.odds === null) return NO_CELL
   const spread = (line: number) => spreadLabel(line, game.homeTeam, game.awayTeam)
-  return { value: game.odds.homeSpread === null ? MISSING : spread(game.odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread) }
+  return { value: game.odds.homeSpread === null ? MISSING : spread(game.odds.homeSpread), detail: openedLabel(lineMove(notes, 'spread'), spread, stale) }
 }
 
-function marketTotal(game: NflSlateGame, notes: NflGameNotes | undefined): NflSlateRowCell {
+function marketTotal(game: NflSlateGame, notes: NflGameNotes | undefined, stale: boolean): NflSlateRowCell {
   if (game.odds === null) return NO_CELL
-  return { value: game.odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1)) }
+  return { value: game.odds.total?.toFixed(1) ?? MISSING, detail: openedLabel(lineMove(notes, 'total'), line => line.toFixed(1), stale) }
+}
+
+/** The game's newest pre-kickoff fetch; the slate's odds carry no time of their own, so this reads the line movement. */
+function gameOddsAge(game: NflSlateGame, notes: NflGameNotes | undefined, slateFetchedMs: number, now: Date): string | null {
+  if (game.odds === null) return null
+  return rowOddsAge(latestTime((notes?.lineMovement ?? []).map(move => move.currentFetchedAt)), slateFetchedMs, now.getTime())
 }
 
 /** Home spread in book sign: the home side covers when its margin plus the line is positive. */
@@ -272,6 +341,11 @@ function closeTotal(notes: NflGameNotes | undefined): NflSlateRowCell {
   return { value: total.currentLine.toFixed(1), detail: totalResult(total.currentLine, notes.awayScore + notes.homeScore) }
 }
 
+function shortWeekTeams(notes: NflGameNotes | undefined): string[] {
+  const short = [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : [])
+  return short.length === 2 ? [] : short
+}
+
 function injuryCounts(notes: NflGameNotes | undefined): NflSlateRowModel['injuries'] {
   if (notes === undefined) return null
   const count = (status: string) => notes.injuries.filter(injury => injury.injuryStatus === status).length
@@ -286,29 +360,38 @@ function modelLines(game: NflSlateGame): NflSlateRowModel['model'] {
 
 function rowKickoff(game: NflSlateGame): string {
   const time = kickoffTime(game)
-  return time === null ? MISSING : DAY_CLOCK.format(time).replace(',', '')
+  return time === null ? MISSING : dayClockCt(time)
 }
 
-/** One slate row, from the slate game and its game notes. */
-export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date): NflSlateRowModel {
-  const state = rowState(game, now)
+/** One slate row, from the slate game and its game notes. `staleSince` is the slate's newest fetch while its odds are stale. */
+export function nflSlateRow(game: NflSlateGame, notes: NflGameNotes | undefined, now: Date, staleSince: number | null = null): NflSlateRowModel {
+  const { state, stateLabel } = rowState(game, now)
   const final = state === 'final'
+  const off = state === 'off'
+  // An ended game drops its pre-game tags and odds age, as a final does, but keeps its market: there is no score to grade.
+  // A postponed or canceled game drops them too, and its lines with them, as the NBA card does.
+  const ended = final || off || state === 'pending'
+  // Its market is still the stale fetch, so it never claims "no move" either.
+  const stale = staleSince !== null && !final
   const awayScore = notes?.awayScore ?? null
   const homeScore = notes?.homeScore ?? null
   return {
     gameId: game.gameId,
     state,
+    stateLabel,
     kickoff: final ? 'Final' : rowKickoff(game),
     away: rowTeam(game.awayTeam, game.awayContext, awayScore, homeScore),
     home: rowTeam(game.homeTeam, game.homeContext, homeScore, awayScore),
-    spread: final ? closeSpread(game, notes) : marketSpread(game, notes),
-    total: final ? closeTotal(notes) : marketTotal(game, notes),
-    moneyline: final ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
+    spread: off ? NO_CELL : final ? closeSpread(game, notes) : marketSpread(game, notes, stale),
+    total: off ? NO_CELL : final ? closeTotal(notes) : marketTotal(game, notes, stale),
+    moneyline: final || off ? NO_CELL : moneylineCell(game.odds, game.homeTeam, game.awayTeam),
     model: modelLines(game),
     props: groupNflPropRows(game.lines).length,
-    conditions: conditionsLabel(game.weather),
-    injuries: final ? null : injuryCounts(notes),
-    shortWeek: final ? [] : [notes?.awayForm, notes?.homeForm].flatMap(form => form?.shortWeek ? [form.team] : []),
-    qbChange: final ? [] : qbChanges(notes).map(change => change.team),
+    conditions: off ? null : game.weather.venueType !== 'dome' && !game.weather.forecastFor ? null : conditionsLabel(game.weather),
+    injuries: ended ? null : injuryCounts(notes),
+    shortWeek: ended ? [] : shortWeekTeams(notes),
+    qbChange: ended ? [] : qbChanges(notes).map(change => change.team),
+    oddsAge: staleSince !== null && !ended ? gameOddsAge(game, notes, staleSince, now) : null,
+    scorePending: state === 'live' && (awayScore === null || homeScore === null),
   }
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -35,6 +35,17 @@ class PropsAuditSummary(_CamelModel):
     top_flagged_examples: list[str]
 
 
+class AdoptedPick(_CamelModel):
+    """A line whose slice 48e's forward check adopted, so it may be ranked (48g)."""
+
+    side: str                  # "over" | "under"
+    probability: float         # push-excluded P(side)
+    break_even: float
+    margin: float              # probability - break_even, the ranking key
+    rule: str
+    projection_version: str
+
+
 class PropLine(_CamelModel):
     id: int
     player_id: Optional[int]
@@ -63,6 +74,8 @@ class PropLine(_CamelModel):
     break_even_pct: Optional[float] = None   # hit rate this price needs to break even
     matches_count: Optional[int] = None    # rolling stats sample size
     surface: Optional[str] = None          # match surface (Hard / Clay / Grass)
+    # The linked match's stored format; null when unlinked, never the projection's fallback of 3.
+    best_of: Optional[int] = None
     market_total_games: Optional[float] = None      # market total used for match-length context
     expected_service_points: Optional[float] = None # service-point volume used for serve props
     projection_source: Optional[str] = None         # market_total | model_total
@@ -74,6 +87,7 @@ class PropLine(_CamelModel):
     data_quality_flags: list[str] = Field(default_factory=list)
     projection_status: str = "ok"
     audit: Optional[PropAudit] = None
+    adopted_pick: Optional[AdoptedPick] = None  # null unless 48e adopted the line's slice; never snapshotted
 
 
 class PropsResponse(_CamelModel):
@@ -84,3 +98,43 @@ class PropsResponse(_CamelModel):
 
 class PropsAuditResponse(PropsResponse):
     summary: PropsAuditSummary
+
+
+class PropReasonSchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    key: str
+    text: str
+
+
+class RecentValueSchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    match_date: date
+    opponent_name: str
+    surface: Optional[str] = None
+    best_of: int
+    value: int
+
+
+class RecentSummarySchema(_CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+    matches: int
+    over: int
+    under: int
+    push: int
+    average: float
+    median: float
+
+
+class TennisPropReasonsResponse(_CamelModel):
+    """Why a line could go over or under (63): reference, never a pick."""
+
+    prop_id: int
+    player_id: Optional[int]
+    stat_type: str
+    line: float
+    version: str
+    recent: list[RecentValueSchema]   # oldest first, the chart's order
+    summary: Optional[RecentSummarySchema]
+    over: list[PropReasonSchema]
+    under: list[PropReasonSchema]
+    caveats: list[PropReasonSchema]

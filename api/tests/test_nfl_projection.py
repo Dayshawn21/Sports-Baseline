@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from app.core.nfl_baseline import FULL_SEASON_GAMES
 import pytest
@@ -8,7 +8,7 @@ from app.core.nfl_projection import (
     NFL_PROJECTION_MODEL_VERSION,
     NflHistoricalAverages, NflSeasonTouchdowns, anytime_td_probability, baseline_projection, edge, edge_is_comparable, line_quality_flags,
     model_projection, model_quality_flags, moneyline_is_stale, NflProjectionInput, NflUsageInput, opponent_adjustment_pct,
-    quality_flags, slate_line_rank, usage_adjustment_pct,
+    projects_line, quality_flags, slate_line_rank, usage_adjustment_pct,
 )
 from app.core.nfl_season_blend import apply_season_blend
 from app.core.nfl_snap_share import NflSnapSeason, production_anytime_td_probability, season_snap_share
@@ -357,6 +357,41 @@ def test_slate_line_keeps_recent_and_scheduled_opponent_history_separate() -> No
     assert result.opponent_history.average == 43
 
 
+def test_long_form_is_ten_games_and_starts_with_the_five_game_form() -> None:
+    row = _usage_row("receiving_yards") | {"opponent_team_id": 2}
+    history = [_history_row(opponent_team_id=2 + index % 2, opponent_team="CAR" if index % 2 else "ATL", receiving_yards=100 - index) for index in range(12)]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert result.recent_form_long is not None
+    assert [item.value for item in result.recent_form_long.values] == [100 - index for index in range(10)]
+    assert result.recent_form_long.values[:5] == result.recent_form.values
+    assert len(result.recent_form.values) == 5
+
+
+def test_long_form_marks_anytime_td_games_zero_or_one() -> None:
+    row = _usage_row("anytime_touchdown")
+    history = [_history_row(2, 10) | {"touchdowns": touchdowns} for touchdowns in (2, 0, 1, 0, 0, 0, 1)]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert [item.value for item in result.recent_form_long.values] == [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+
+
+def test_every_form_sample_carries_the_game_date_and_a_missing_date_stays_none() -> None:
+    row = _usage_row("receiving_yards") | {"opponent_team_id": 2}
+    history = [
+        _history_row(opponent_team_id=2, receiving_yards=61) | {"game_date": date(2026, 10, 12)},
+        _history_row(opponent_team_id=3, receiving_yards=42),
+    ]
+
+    result = _slate_line(row, 2026, None, history)
+
+    assert [item.game_date for item in result.recent_form.values] == [date(2026, 10, 12), None]
+    assert [item.game_date for item in result.recent_form_long.values] == [date(2026, 10, 12), None]
+    assert [item.game_date for item in result.opponent_history.values] == [date(2026, 10, 12)]
+
+
 def test_weather_schema_uses_registry_venue_when_no_snapshot_exists() -> None:
     assert _weather_schema({"home_team": "LAC"}, {"venue_type": None}).venue_type == "dome"
 
@@ -496,6 +531,43 @@ def test_slate_line_leaves_non_receiving_markets_without_usage_fields() -> None:
 
     assert (result.usage_adjustment_pct, result.usage_sample_games) == (None, None)
     assert not any(flag.startswith("usage_") for flag in result.quality_flags)
+
+
+@pytest.mark.parametrize("position", ["QB", "RB", "WR", "TE", "CB", None])
+def test_fantasy_is_projected_outside_kickers_and_punters(position: str | None) -> None:
+    assert projects_line(NflPropMarket.FANTASY_POINTS, position)
+
+
+@pytest.mark.parametrize("position", ["K", "P"])
+def test_fantasy_is_not_projected_where_scoring_has_no_terms(position: str) -> None:
+    assert not projects_line(NflPropMarket.FANTASY_POINTS, position)
+
+
+def test_other_markets_are_projected_for_any_position() -> None:
+    assert projects_line(NflPropMarket.RECEIVING_YARDS, "K")
+
+
+def test_slate_line_withholds_the_model_from_a_kicker_fantasy_line() -> None:
+    averages = _average_dict(8, 0) | {"fantasy_points": 0.0}
+    row = _usage_row("fantasy_points") | {
+        "position": "K", "line": 8.5, "averages": averages, "position_averages": averages,
+    }
+
+    result = _slate_line(row, 2026, None)
+
+    assert (result.projection, result.edge, result.p_over, result.over_probability_version) == (None, None, None, None)
+    assert "position_not_scored" in result.quality_flags
+    assert result.line == 8.5
+
+
+def test_slate_line_still_projects_a_receiver_fantasy_line() -> None:
+    averages = _average_dict(8, 0) | {"fantasy_points": 12.0}
+    row = _usage_row("fantasy_points") | {"line": 10.5, "averages": averages, "position_averages": averages}
+
+    result = _slate_line(row, 2026, None)
+
+    assert result.projection is not None and result.edge is not None
+    assert "position_not_scored" not in result.quality_flags
 
 
 def _td_row(td_seasons: list[dict[str, float | int]], position: str = "WR") -> dict:

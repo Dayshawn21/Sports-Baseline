@@ -1,13 +1,11 @@
+import { PlayerFooter } from '~/components/shared/PlayerFooter'
 import type { CSSProperties } from 'react'
 import type { NflPlayerDetail } from '~/types/nfl'
 import { marketLabel } from '~/utils/nflLabels'
 import { FOCUS_LABELS } from '~/utils/nflPlayer'
+import { fmtPct } from '~/utils/odds'
 
 const MISSING = '--'
-
-function pct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`
-}
 
 /** Over hits against each stored line, never colored: a few games per market is anecdote, not a verdict. */
 function PastLines({ player }: { player: NflPlayerDetail }) {
@@ -21,13 +19,13 @@ function PastLines({ player }: { player: NflPlayerDetail }) {
       : <div className="nfl-player-card__body">
         {player.pastLines.map(count => <div key={count.market} className="nfl-player-rate">
           <span>{marketLabel(count.market)}</span>
-          <span className="nfl-player-meter" role="img" aria-label={`${count.overs} overs of ${count.decided}, break-even ${pct(player.breakEven)}`}
+          <span className="nfl-player-meter" role="img" aria-label={`${count.overs} overs of ${count.decided}, break-even ${fmtPct(player.breakEven)}`}
             style={{ '--v': `${(count.overs / count.decided) * 100}%`, '--be': `${player.breakEven * 100}%` } as CSSProperties}>
             <i /><b />
           </span>
           <b>{count.overs} of {count.decided}</b>
         </div>)}
-        <p className="nfl-player-note">Overs hit against each stored line; the white tick is the {pct(player.breakEven)} Power break-even. A handful of games is anecdote, so nothing here is colored. The model&apos;s graded record belongs on the Model view (33d).</p>
+        <p className="nfl-player-note">Overs hit against each stored line; the white tick is the {fmtPct(player.breakEven)} Power break-even. A handful of games is anecdote, so nothing here is colored. The model&apos;s graded record is on the Model view.</p>
       </div>}
   </section>
 }
@@ -48,7 +46,7 @@ function Splits({ player, focus, volume }: { player: NflPlayerDetail, focus: str
       <tbody>{player.splits.map(split => <tr key={split.label}>
         <td className="is-text">{split.label}</td><td>{split.games}</td>
         <td>{perGame(split.focusPerGame)}</td><td>{perGame(split.volumePerGame)}</td>
-        <td>{split.snapShare === null ? MISSING : `${Math.round(split.snapShare * 100)}%`}</td>
+        <td>{split.snapShare === null ? MISSING : fmtPct(split.snapShare, 0)}</td>
       </tr>)}</tbody>
     </table></div>
   </section>
@@ -65,8 +63,8 @@ export function NflPlayerRecord({ player }: { player: NflPlayerDetail }) {
 /** Data freshness and provider-name overrides; aliases are omitted when there are none. */
 export function NflPlayerFooter({ player }: { player: NflPlayerDetail }) {
   const through = player.statsThrough ? `NFLverse weekly stats and snaps through ${player.statsThrough.season} W${player.statsThrough.week}.` : 'No weekly stats loaded yet.'
-  return <p className="nfl-player-note nfl-player-footer">
+  return <PlayerFooter>
     {through} Roster, depth and injuries as of week {player.week}.
     {player.aliases.length > 0 && <> Aliases: {player.aliases.map(alias => `"${alias}"`).join(', ')}.</>}
-  </p>
+  </PlayerFooter>
 }

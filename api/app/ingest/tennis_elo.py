@@ -20,8 +20,9 @@ from typing import cast
 import httpx
 
 from app.core.tennis_elo import (
-    REQUIRED_COLUMNS, Family, IdentityRegistry, PlayerKey, TennisEloContractError, TennisEloMatch,
-    TennisEloReplay, normalize_identities, parse_identity_registry, parse_row,
+    REQUIRED_COLUMNS, EffectiveIdentity, Family, IdentityAmendment, IdentityRegistry, PlayerKey,
+    TennisEloContractError, TennisEloMatch, TennisEloReplay, normalize_identities, parse_amendments,
+    parse_identity_registry, parse_row, resolve_identity,
 )
 from app.core.tennismylife import PlayerNameIndex, resolve_name
 from app.db.pool import SessionLocal
@@ -36,6 +37,8 @@ BASE_URL = "https://stats.tennismylife.org/data/"
 MANIFEST_URL = "https://stats.tennismylife.org/api/data-files"
 CACHE_DIR = Path(__file__).resolve().parents[2] / "data" / "tennismylife-elo"
 REGISTRY_DIR = Path(__file__).resolve().parent / "data"
+EXPERIMENT_PATH = REGISTRY_DIR / "tennis_elo_experiment.json"
+AMENDMENTS_FILE = "tennis_elo_identity_amendments.csv"
 START = date(2021, 1, 1)
 
 
@@ -66,7 +69,7 @@ class Counts:
 class LoadedRegistry:
     registry: IdentityRegistry
     sha256: str
-
+    amendments: tuple[IdentityAmendment, ...] = ()
 
 
 @dataclass
@@ -163,7 +166,25 @@ def load_identity_registry(directory: Path = REGISTRY_DIR) -> LoadedRegistry:
     identities, overrides = (csv.DictReader(StringIO(c.decode("utf-8-sig"))) for c in contents)
     registry = parse_identity_registry(identities, overrides)
     digest = _sha(_canonical_json({"version": registry.version, "files": [_sha(c) for c in contents]}))
-    return LoadedRegistry(registry, digest)
+    amendments_path = directory / AMENDMENTS_FILE
+    amendments = parse_amendments(csv.DictReader(StringIO(amendments_path.read_bytes().decode("utf-8-sig")))
+                                  ) if amendments_path.exists() else ()
+    return LoadedRegistry(registry, digest, amendments)
+
+
+def resolve_for_day(loaded: LoadedRegistry, day: date, experiment_path: Path = EXPERIMENT_PATH) -> EffectiveIdentity:
+    """The base digest stays the pin; amendments apply only under the experiment's pinned contract."""
+    record = json.loads(experiment_path.read_text(encoding="utf-8"))
+    activated = record.get("activated_at")
+    activated_on = datetime.fromisoformat(activated).astimezone(timezone.utc).date() if activated else None
+    return resolve_identity(loaded.registry, loaded.amendments, day,
+                            contract=record.get("identity_contract"), activated_on=activated_on)
+
+
+def amendment_fields(identity: EffectiveIdentity) -> dict[str, object]:
+    if identity.amendment_count is None:
+        return {}
+    return {"amendment_count": identity.amendment_count, "amendments_sha256": identity.amendments_sha256}
 
 
 def collect_matches(
@@ -285,6 +306,11 @@ def build_snapshots(
     return snapshots
 
 
+def manifest_amendments(path: Path) -> dict[str, object]:
+    record = json.loads(path.read_bytes())
+    return {k: record[k] for k in ("amendment_count", "amendments_sha256") if k in record}
+
+
 def load_manifest(path: Path, day: date) -> tuple[list[DownloadedFile], datetime, str, str, str]:
     contents = path.read_bytes()
     if path.stem != _sha(contents):
@@ -312,11 +338,15 @@ def load_manifest(path: Path, day: date) -> tuple[list[DownloadedFile], datetime
 def _print_report(
     counts: dict[Family, Counts], replay: TennisEloReplay, mapping: MappingResult,
     snapshots: list[TennisEloSnapshot], manifest_path: Path, identities: LoadedRegistry,
+    effective: EffectiveIdentity,
 ) -> None:
     print(replay.audit_summary())
     registry = identities.registry
     print(f"Identity registry {registry.version} {identities.sha256}: {len(registry.canonical)} aliases, "
           f"{len(registry.local_overrides)} local overrides, {registry.proposed} proposed (not applied)")
+    if effective.amendment_count is not None:
+        print(f"Identity amendments in effect: {effective.amendment_count} of {len(identities.amendments)}; "
+              f"digest {effective.amendments_sha256}")
     print("family       files     rows   unique duplicates malformed  excluded")
     for family, c in counts.items():
         print(f"{family:<12} {c.files:>5} {c.rows:>8} {c.admitted:>8} {c.duplicates:>10} "
@@ -334,10 +364,11 @@ def _print_report(
 
 async def run(
     *, dry_run: bool = True, manifest_path: Path | None = None, cache_dir: Path = CACHE_DIR,
-    registry_dir: Path = REGISTRY_DIR,
+    registry_dir: Path = REGISTRY_DIR, experiment_path: Path = EXPERIMENT_PATH,
 ) -> RunResult:
     day = _now().date()
     identities = load_identity_registry(registry_dir)
+    effective = resolve_for_day(identities, day, experiment_path)
     async with SessionLocal() as db:
         existing = await get_daily_snapshots(db, source=SOURCE, as_of_date=day)
         if existing:
@@ -352,11 +383,11 @@ async def run(
         files = await download_files(day, cache_dir)
     else:
         files, computed, expected_mapping, expected_ratings, expected_identity = load_manifest(manifest_path, day)
-        if expected_identity != identities.sha256:
+        if expected_identity != identities.sha256 or manifest_amendments(manifest_path) != amendment_fields(effective):
             raise ValueError("ELO identity registry changed since the reviewed manifest")
-    matches, counts = collect_matches(files, cache_dir, day, identities.registry)
+    matches, counts = collect_matches(files, cache_dir, day, effective.registry)
     replay = TennisEloReplay(matches)
-    mapping = map_players(matches, index, identities.registry.local_overrides)
+    mapping = map_players(matches, index, effective.registry.local_overrides)
     downloaded = max(f.downloaded_at for f in files)
     if manifest_path is None:
         computed = _now()
@@ -373,13 +404,13 @@ async def run(
             "source": SOURCE, "as_of_date": day.isoformat(), "computed_at": computed.isoformat(),
             "mapping_sha256": mapping_hash, "ratings_sha256": ratings_hash,
             "identity_version": identities.registry.version, "identity_sha256": identities.sha256,
-            "files": _file_records(files),
+            "files": _file_records(files), **amendment_fields(effective),
         }
         contents = _canonical_json(manifest)
         manifest_path = cache_dir / "manifests" / f"{_sha(contents)}.json"
         _immutable_write(manifest_path, contents)
     snapshots = build_snapshots(replay, mapping, day, computed, downloaded, manifest_path.stem)
-    _print_report(counts, replay, mapping, snapshots, manifest_path, identities)
+    _print_report(counts, replay, mapping, snapshots, manifest_path, identities, effective)
     blocked = bool(mapping.conflicts) or not snapshots
     if blocked or dry_run:
         print("BLOCKED, 0 inserted" if blocked else "DRY RUN, 0 inserted")

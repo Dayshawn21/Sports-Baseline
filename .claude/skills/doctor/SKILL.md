@@ -1,6 +1,7 @@
 ---
 name: doctor
 description: "Run a read-only Blueprint health check for setup, onboarding, required files, tool adapters, commands, optional verification and CI, Blueprint visibility, ignore rules, planning readiness, overview freshness, and workflow drift. Use when the user runs /doctor, asks whether the Blueprint is installed correctly, wants a health check, setup check, doctor pass, or says something feels off before starting or resuming work."
+disable-model-invocation: true
 ---
 
 # doctor - Blueprint health check

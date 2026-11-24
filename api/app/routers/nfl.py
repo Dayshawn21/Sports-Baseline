@@ -13,19 +13,21 @@ from app.nfl.markets import NFL_V4_PROP_MARKETS, NflPropMarket
 from app.repositories import nfl as nfl_repo
 from app.schemas.nfl import (
     NflCurrentWeekResponse, NflGameContextResponse, NflGameDetailResponse, NflGameNotesResponse, NflGameSchema, NflGamesResponse,
-    NflLineOnlyPropsResponse, NflLineOnlyBoardResponse,
+    NflLineOnlyPropsResponse, NflLineOnlyBoardResponse, NflOtherMarketsResponse,
     NflModelClvResponse, NflModelFitResponse, NflModelPropLinesResponse, NflModelRankingResponse,
-    NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse, NflPropLineSchema, NflProspectsResponse,
-    NflRankingModelVersion, NflSlateResponse,
+    NflPlayerDetailResponse, NflProjectionSchema, NflProjectionsResponse,
+    NflHomeSlateResponse, NflRankingModelVersion, NflSlateResponse,
 )
+from app.season_query import model_season
 from app.services.nfl.game_detail import build_game_detail
 from app.services.nfl.game_notes import build_game_notes
 from app.services.nfl.line_only_props import build_line_only_props, build_week_line_only_props
 from app.services.nfl.matchup_context import build_game_context
+from app.services.nfl.other_markets import build_player_other_markets
 from app.services.nfl.player_detail import build_player_detail
-from app.services.nfl import prop_lines_snapshot, track_record
+from app.services.nfl import prop_lines_snapshot, ranking_snapshot, track_record
 from app.services.nfl.slate import anytime_td
-from app.services.nfl.slate_cache import cached_slate_json
+from app.services.nfl.slate_cache import cached_home_json, cached_slate_json
 
 router = APIRouter()
 
@@ -87,6 +89,16 @@ async def get_player(player_id: int, db: AsyncSession = Depends(get_db)) -> NflP
     return detail
 
 
+@router.get("/players/{player_id}/other-markets", response_model=NflOtherMarketsResponse)
+async def get_player_other_markets(
+    player_id: int, season: int, week: int, db: AsyncSession = Depends(get_db),
+) -> NflOtherMarketsResponse:
+    markets = await build_player_other_markets(db, player_id, season, week)
+    if markets is None:
+        raise HTTPException(status_code=404, detail=f"NFL player {player_id} not found")
+    return markets
+
+
 @router.get("/projections", response_model=NflProjectionsResponse)
 async def get_projections(
     season: int,
@@ -115,12 +127,7 @@ def _projection_value(market: NflPropMarket, row: dict, season: int, averages: N
     return anytime_td(row, season, row.get("position_td_rate", 0.0))[0]
 
 
-@router.get("/prospects", response_model=NflProspectsResponse)
-async def get_prospects(db: AsyncSession = Depends(get_db)) -> NflProspectsResponse:
-    lines = await nfl_repo.get_latest_prop_lines(db)
-    return NflProspectsResponse(count=len(lines), lines=[NflPropLineSchema(**line) for line in lines])
-
-
+# The body is the stored compact wire shape, sent unvalidated; the model only documents the expanded slate.
 @router.get("/slate", response_model=NflSlateResponse)
 async def get_slate(
     season: int,
@@ -128,6 +135,18 @@ async def get_slate(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     body = await cached_slate_json(db, season, week, is_production(settings.api_env))
+    if body is None:
+        raise HTTPException(status_code=503, detail="The NFL slate is unavailable; try again shortly")
+    return Response(content=body, media_type="application/json")
+
+
+@router.get("/slate/home", response_model=NflHomeSlateResponse)
+async def get_home_slate(
+    season: int,
+    week: int,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    body = await cached_home_json(db, season, week, is_production(settings.api_env))
     if body is None:
         raise HTTPException(status_code=503, detail="The NFL slate is unavailable; try again shortly")
     return Response(content=body, media_type="application/json")
@@ -144,18 +163,18 @@ async def get_game_notes(
 
 @router.get("/model/ranking", response_model=NflModelRankingResponse)
 async def get_model_ranking(
-    season: int,
+    season: int = Depends(model_season),
     model_version: NflRankingModelVersion = NFL_PROJECTION_MODEL_VERSION,
     db: AsyncSession = Depends(get_db),
 ) -> NflModelRankingResponse:
-    record = await track_record.get_ranking_record(db, season, model_version)
-    if record is None:
+    response = await ranking_snapshot.get_ranking_response(db, season, model_version, is_production(settings.api_env))
+    if response is None:
         raise HTTPException(status_code=503, detail="The ranking check is unavailable; try again shortly")
-    return NflModelRankingResponse.model_validate(record)
+    return response
 
 
 @router.get("/model/game-line-clv", response_model=NflModelClvResponse)
-async def get_model_game_line_clv(season: int, db: AsyncSession = Depends(get_db)) -> NflModelClvResponse:
+async def get_model_game_line_clv(season: int = Depends(model_season), db: AsyncSession = Depends(get_db)) -> NflModelClvResponse:
     record = await track_record.get_clv_record(db, season)
     if record is None:
         raise HTTPException(status_code=503, detail="Game-line CLV is unavailable; try again shortly")
@@ -163,7 +182,7 @@ async def get_model_game_line_clv(season: int, db: AsyncSession = Depends(get_db
 
 
 @router.get("/model/prop-lines", response_model=NflModelPropLinesResponse)
-async def get_model_prop_lines(season: int, db: AsyncSession = Depends(get_db)) -> NflModelPropLinesResponse:
+async def get_model_prop_lines(season: int = Depends(model_season), db: AsyncSession = Depends(get_db)) -> NflModelPropLinesResponse:
     response = await prop_lines_snapshot.get_prop_lines_response(db, season, is_production(settings.api_env))
     if response is None:
         raise HTTPException(

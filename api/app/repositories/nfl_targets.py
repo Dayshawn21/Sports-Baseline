@@ -8,6 +8,7 @@ from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.nfl_availability import NflAvailability
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_game_lines import market_home_probability
 from app.core.nfl_targets_projection import TargetsObservation, TargetsProjectionInput, TargetsReplayRow
 from app.repositories.nfl import _AVAILABILITY_COLUMNS, _AVAILABILITY_CTE, _player_teams_cte
@@ -126,24 +127,28 @@ async def _get_history_with_opponents(
     db: AsyncSession, season: int, week: int, player_ids: list[int],
 ) -> dict[int, tuple[TargetsHistoryGame, ...]]:
     result = await db.execute(text("""
-        SELECT s.player_id, s.game_id, g.season, g.week, g.start_utc,
+        SELECT s.player_id, s.game_id, g.season, g.week, g.start_utc, g.game_date,
                s.targets::double precision AS targets, s.opponent_team_id,
                opponent.team_code AS opponent_team
         FROM nfl_player_weekly_stats s
         JOIN sport_games g ON g.sport = 'nfl' AND g.id = s.game_id
         LEFT JOIN sport_teams opponent ON opponent.sport = 'nfl' AND opponent.id = s.opponent_team_id
         WHERE s.player_id = ANY(CAST(:player_ids AS bigint[]))
-          AND g.game_type = 'REG' AND g.status = 'completed'
+          AND g.game_type = 'REG' AND g.status = 'completed' AND g.season >= :first_history_season
           AND (g.season < :season OR (g.season = :season AND g.week < :week))
         ORDER BY s.player_id, g.season DESC, g.week DESC,
                  g.start_utc DESC NULLS LAST, g.id DESC
-    """), {"season": season, "week": week, "player_ids": player_ids})
+    """), {
+        "season": season, "week": week, "player_ids": player_ids,
+        "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    })
     by_player: dict[int, list[TargetsHistoryGame]] = {}
     for row in result.mappings():
         by_player.setdefault(row["player_id"], []).append(TargetsHistoryGame(
             observation=TargetsObservation(
                 game_id=row["game_id"], season=row["season"], week=row["week"], start_utc=row["start_utc"],
                 targets=float(row["targets"]) if row["targets"] is not None else None,
+                game_date=row.get("game_date"),
             ),
             opponent_team_id=row.get("opponent_team_id"), opponent_team=row.get("opponent_team"),
         ))
@@ -171,6 +176,7 @@ def _serving_row(
         availability=NflAvailability(
             injury_status=row["injury_status"], depth_team_id=row["depth_team_id"],
             depth_position=row["depth_position"], depth_rank=row["depth_rank"],
+            active_depth_rank=row.get("active_depth_rank"), out_ahead=tuple(row.get("out_ahead") or ()),
             previous_depth_team_id=row["previous_depth_team_id"],
             previous_depth_position=row["previous_depth_position"], previous_depth_rank=row["previous_depth_rank"],
         ),

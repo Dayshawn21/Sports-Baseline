@@ -1,0 +1,13 @@
+.player-evidence { border-top: 1px solid var(--border-subtle); }
+.player-evidence summary {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: 0 var(--space-4);
+  list-style: none; cursor: pointer;
+}
+.player-evidence summary::-webkit-details-marker { display: none; }
+.player-evidence summary::after { content: '+'; margin-left: auto; color: var(--text-muted); font: 400 16px var(--font-mono); }
+.player-evidence[open] summary::after { content: '-'; }
+.player-evidence summary:hover { background: var(--bg-card-hover); }
+.player-evidence summary:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: -2px; }
+.player-evidence__title { color: var(--text-secondary); font: 600 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.player-evidence__contents { min-width: 0; color: var(--text-muted); font-size: 12px; }
+.player-evidence__body { padding-bottom: var(--space-2); }

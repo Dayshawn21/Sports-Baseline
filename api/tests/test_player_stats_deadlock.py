@@ -99,7 +99,7 @@ def harness(monkeypatch):
     fetches: list = []
     fetch_details: list = []
 
-    def _fetch(name, tour="", slug_override=None):
+    def _fetch(name, tour="", slug_override=None, *, today=None):
         fetches.append(name)
         fetch_details.append((name, tour, slug_override))
         return [["row"]]

@@ -3,7 +3,7 @@ Best-picks generator: for each matchup, score all available angles and return th
 
 Pick sources:
  1. Moneyline value — ensemble prob vs market odds (EV / Kelly edge)
- 2. Prop-line edges — aces, break points, total games, etc. (Poisson + rolling stats)
+ 2. Book-priced Total Games and Game Spread lines (PrizePicks lines are never picks, 48f)
  3. Derived picks — 2-0 sweep, match goes 3 sets, underdog wins a set (from win prob math)
 """
 
@@ -17,12 +17,12 @@ from app.core.bettable_criteria import assess_bettable_pick
 from app.core.kelly import expected_value, kelly_fraction as compute_kelly_fraction
 from app.core.odds import american_to_prob, devig_two_way
 from app.core.poisson import confidence_tier
-from app.core.prop_probs import total_games_probs
-from app.core.prop_projection import compute_stat_avg as _compute_stat_avg
-from app.core.tennis_first_set import FIRST_SET_STATS
+from app.core.prop_probs import normal_cdf, total_games_probs
+from app.core.prop_projection import compute_stat_avg as _compute_stat_avg, opt_float
+from app.core.rolling_stats import pick_stats_for_player
 from app.core.tennis_sets import set_outcomes
 from app.repositories.players import PlayerRollingStats
-from app.schemas.props import PropLine
+from app.services.tennis.moneyline import moneyline_sides, odds_str
 from app.services.tennis.predictor import PredictionOutput
 
 # 26d's holdout: betting the served blend's moneyline gaps at the close lost
@@ -30,21 +30,7 @@ from app.services.tennis.predictor import PredictionOutput
 MONEYLINE_PICKS_ENABLED = False
 
 # Confidence multiplier for scoring
-_CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0, "PASS": 0.3}
-
-STAT_LABELS = {
-    "aces": "Aces",
-    "double_faults": "Double Faults",
-    "total_games": "Total Games",
-    "total_games_won": "Games Won",
-    "break_points_converted": "Break Points",
-    "break_points_won": "Break Points Won",
-    "fantasy_score": "Fantasy Score",
-    "total_sets": "Total Sets",
-    "total_tie_breaks": "Tie Breaks",
-    "game_spread": "Game Spread",
-    "set_handicap": "Set Handicap",
-}
+CONF_MULT = {"LOCK": 2.0, "STRONG": 1.5, "LEAN": 1.0, "PASS": 0.3}
 
 
 @dataclass
@@ -72,15 +58,10 @@ class BestPick:
     score: float = 0.0    # internal ranking score (not exposed to frontend)
 
 
-def _f(v) -> Optional[float]:
-    return float(v) if v is not None else None
-
-
-
 def _score_pick(edge_pct: float, confidence: str, sample_size: Optional[int] = None) -> float:
     """Compute composite score for ranking picks."""
     base = abs(edge_pct)
-    conf_mult = _CONF_MULT.get(confidence, 0.5)
+    conf_mult = CONF_MULT.get(confidence, 0.5)
     sample_bonus = 1.0
     if sample_size is not None:
         if sample_size >= 20:
@@ -94,10 +75,6 @@ def _score_pick(edge_pct: float, confidence: str, sample_size: Optional[int] = N
     return base * conf_mult * sample_bonus
 
 
-def _normal_cdf(z: float) -> float:
-    return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
-
-
 def _poisson_diff_cover_probs(
     mean_a: float,
     mean_b: float,
@@ -108,54 +85,37 @@ def _poisson_diff_cover_probs(
     variance = max(mean_a + mean_b, 1e-6)
     sigma = math.sqrt(variance)
     z = ((-line_from_a_perspective) - mean_diff) / sigma
-    p_a = 1.0 - _normal_cdf(z)
+    p_a = 1.0 - normal_cdf(z)
     p_a = max(0.0, min(1.0, p_a))
     return p_a, 1.0 - p_a
 
 
 def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     """Generate a moneyline value pick if our model has positive EV."""
-    if pred.p1_win_prob is None or pred.p1_odds_american is None or pred.p2_odds_american is None:
+    sides = moneyline_sides(pred)
+    if sides is None:
         return None
+    p1, p2 = sides
+    chosen = p1 if p1.ev > p2.ev else p2
+    ev, player, odds, our_prob, kelly = chosen.ev, chosen.name, chosen.odds, chosen.our_prob, chosen.kelly
 
-    # Check P1 edge
-    p1_ev = expected_value(pred.p1_win_prob, pred.p1_odds_american)
-    p2_ev = expected_value(pred.p2_win_prob, pred.p2_odds_american)
-
-    # Pick the side with more EV
-    if p1_ev > p2_ev:
-        ev = p1_ev
-        player = pred.p1_name
-        odds = pred.p1_odds_american
-        our_prob = pred.p1_win_prob
-    else:
-        ev = p2_ev
-        player = pred.p2_name
-        odds = pred.p2_odds_american
-        our_prob = pred.p2_win_prob
-
-    # Market implied
-    market_p1, _ = devig_two_way(
-        american_to_prob(pred.p1_odds_american),
-        american_to_prob(pred.p2_odds_american),
-    )
-    market_prob = market_p1 if player == pred.p1_name else 1 - market_p1
+    # p2's market stays 1 - p1's de-vigged prob, not p2's own, so the output keeps its last float digit.
+    market_prob = p1.market_prob if player == pred.p1_name else 1 - p1.market_prob
 
     edge_pct = round((our_prob - market_prob) / market_prob * 100, 1)
     ev_pct = round(ev * 100, 1)
-    kelly = compute_kelly_fraction(our_prob, odds)
 
     assessment = assess_bettable_pick(
         our_prob,
         ev,
         kelly,
-        data_quality_flags=getattr(pred, "quality_flags", []) or [],
+        data_quality_flags=pred.quality_flags or [],
         odds_source="posted",
     )
     if assessment is None:
         return None
     conf = assessment.confidence
-    odds_str = f"+{odds}" if odds > 0 else str(odds)
+    odds_text = odds_str(odds)
 
     last_name = player.split()[-1]
     h2h_note = ""
@@ -167,7 +127,7 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
             h2h_note = f" | H2H {player_h2h}-{opp_h2h} edge"
     reasoning = (
         f"Model gives {last_name} {our_prob:.0%} win prob vs {market_prob:.0%} implied — "
-        f"{ev_pct}% EV at {odds_str}{h2h_note}"
+        f"{ev_pct}% EV at {odds_text}{h2h_note}"
     )
 
     score = _score_pick(edge_pct, conf)
@@ -175,7 +135,7 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     return BestPick(
         pick_type="moneyline",
         label="Moneyline",
-        pick=f"{last_name} ML ({odds_str})",
+        pick=f"{last_name} ML ({odds_text})",
         player_name=player,
         edge_pct=edge_pct,
         confidence=conf,
@@ -191,77 +151,169 @@ def generate_ml_pick(pred: PredictionOutput) -> Optional[BestPick]:
     )
 
 
-def _pick_stats_for_player(
-    player_id: Optional[int],
-    surface: Optional[str],
-    all_stats: dict,
-) -> Optional[PlayerRollingStats]:
-    if player_id is None:
-        return None
-    surface_stats = all_stats.get((player_id, surface))
-    if surface_stats is not None and (surface_stats.matches_count or 0) >= 10:
-        return surface_stats
-    return all_stats.get((player_id, None))
+def _devig_prop(prop) -> tuple[Optional[float], Optional[float]]:
+    if prop.p1_odds is None or prop.p2_odds is None:
+        return None, None
+    return devig_two_way(
+        american_to_prob(prop.p1_odds),
+        american_to_prob(prop.p2_odds),
+    )
 
 
-def generate_prop_picks(pred: PredictionOutput, prop_lines: list[PropLine]) -> list[BestPick]:
-    """Prop picks from the board's own assessment of each line (`_enrich`).
+def _expected_total_games(
+    pred: PredictionOutput,
+    p1_stats: Optional[PlayerRollingStats],
+    p2_stats: Optional[PlayerRollingStats],
+    market_total: Optional[float],
+) -> Optional[float]:
+    p1_expected = _compute_stat_avg("total_games", p1_stats, win_prob=pred.p1_win_prob, surface=pred.surface, market_total_games=market_total, best_of=pred.best_of) if p1_stats else None
+    p2_expected = _compute_stat_avg("total_games", p2_stats, win_prob=pred.p2_win_prob, surface=pred.surface, market_total_games=market_total, best_of=pred.best_of) if p2_stats else None
+    if p1_expected is not None and p2_expected is not None:
+        return (p1_expected + p2_expected) / 2.0
+    if p1_expected is not None:
+        return p1_expected
+    return p2_expected
 
-    Side, hit probability, tier and flags are read, never recomputed, so a card
-    cannot outrank the board row or the props-v2 snapshot it came from.
-    """
+
+def _total_games_picks(
+    pred: PredictionOutput,
+    prop,
+    line: float,
+    market_total: Optional[float],
+    p1_stats: Optional[PlayerRollingStats],
+    p2_stats: Optional[PlayerRollingStats],
+) -> list[BestPick]:
     picks: list[BestPick] = []
+    if line < 17.0:
+        return picks
+    # With a book total on file, both projections below return that line, so
+    # the pick would grade the market against itself.
+    if market_total is not None and market_total >= 17.0:
+        return picks
 
-    for line in prop_lines:
-        if line.match_id != pred.match_id or line.line is None:
-            continue
-        if line.recommendation is None or line.confidence in (None, "PASS"):
-            continue
-        stat_key = line.stat_type.strip().lower().replace(" ", "_")
-        # Ungraded (16e): the props page caps them at LEAN, so they are no best pick.
-        if stat_key in FIRST_SET_STATS:
-            continue
-        if line.hit_probability is None or line.stat_avg is None or line.edge_pct is None:
-            continue
+    expected_total = _expected_total_games(pred, p1_stats, p2_stats, market_total)
+    if expected_total is None:
+        return picks
 
-        line_f = float(line.line)
-        direction = line.recommendation
-        prob = line.hit_probability
-        stat_label = STAT_LABELS.get(stat_key, line.stat_type)
-        player_last = (line.player_name or "").split()[-1] if line.player_name else "Unknown"
+    # Total games is a mixture over set count, so it needs the chance the match
+    # goes the distance. This stays on 2*p*(1-p) rather than the fitted
+    # tennis_sets curve until the stored book total lines it is checked
+    # against are trustworthy.
+    wp = pred.p1_win_prob
+    p_deciding = (2 * wp * (1 - wp)) if wp is not None else None
+    tg = total_games_probs(line, expected_total, p_deciding, pred.best_of)
+    mkt_over, mkt_under = _devig_prop(prop)
 
-        avg_word = "projects for" if stat_key in ("fantasy_score", "total_games_won", "games_won") else "averages"
-        reasoning = (
-            f"{player_last} {avg_word} {line.stat_avg:.1f} {stat_label.lower()} vs {line_f:.1f} line — "
-            f"{prob:.0%} probability {direction.lower()}"
+    for direction, prob, odds, market_prob in [
+        ("OVER", tg.p_over, prop.p1_odds, mkt_over),
+        ("UNDER", tg.p_under, prop.p2_odds, mkt_under),
+    ]:
+        if odds is None:
+            continue
+        ev = expected_value(prob, odds)
+        kelly = compute_kelly_fraction(prob, odds)
+        assessment = assess_bettable_pick(
+            prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
         )
-        if line.matches_count and line.matches_count < 10:
-            reasoning += " (small sample)"
-
-        # Only a real book price earns an EV here. The board's PrizePicks EV is
-        # against assumed payouts, which the card has always shown as unpriced.
-        pick_odds = line.p1_odds if direction == "OVER" else line.p2_odds
-        ev_pct = line.ev_pct if pick_odds is not None else None
-        kelly = compute_kelly_fraction(prob, pick_odds) if pick_odds is not None else None
-
+        if assessment is None:
+            continue
+        conf = assessment.confidence
+        edge_pct = round(((prob - (market_prob or 0.5)) / max(market_prob or 0.5, 0.01)) * 100, 1)
         picks.append(BestPick(
             pick_type="prop",
-            label=stat_label,
-            pick=f"{player_last} {stat_label} {direction} {line_f:.1f}",
-            player_name=line.player_name,
-            edge_pct=line.edge_pct,
-            confidence=line.confidence,
-            reasoning=reasoning,
-            odds_american=pick_odds,
-            ev_pct=ev_pct,
+            label="Total Games",
+            pick=f"{direction} {line:.1f} Games",
+            player_name=None,
+            edge_pct=edge_pct,
+            confidence=conf,
+            reasoning=(
+                f"Expected {expected_total:.1f} total games vs {line:.1f} line - "
+                f"{prob:.0%} probability {direction.lower()}"
+            ),
+            odds_american=odds,
+            ev_pct=round(ev * 100, 1),
             model_prob=round(prob, 4),
-            market_prob=None,
-            kelly_fraction=round(kelly, 4) if kelly is not None else None,
-            data_quality_flags=tuple(line.data_quality_flags),
-            odds_source="posted" if pick_odds is not None else "unpriced",
-            score=_score_pick(ev_pct if ev_pct is not None else line.edge_pct, line.confidence, line.matches_count),
+            market_prob=round(market_prob, 4) if market_prob is not None else None,
+            kelly_fraction=round(kelly, 4),
+            data_quality_flags=assessment.data_quality_flags,
+            odds_source=assessment.odds_source,
+            score=_score_pick(ev * 100, conf),
         ))
+    return picks
 
+
+def _game_spread_picks(
+    pred: PredictionOutput,
+    prop,
+    line: float,
+    market_total: Optional[float],
+    p1_stats: Optional[PlayerRollingStats],
+    p2_stats: Optional[PlayerRollingStats],
+) -> list[BestPick]:
+    picks: list[BestPick] = []
+    if p1_stats is None or p2_stats is None:
+        return picks
+
+    p1_games = _compute_stat_avg(
+        "total_games_won",
+        p1_stats,
+        opponent_stats=p2_stats,
+        win_prob=pred.p1_win_prob,
+        surface=pred.surface,
+        market_total_games=market_total,
+        best_of=pred.best_of,
+    )
+    p2_games = _compute_stat_avg(
+        "total_games_won",
+        p2_stats,
+        opponent_stats=p1_stats,
+        win_prob=pred.p2_win_prob,
+        surface=pred.surface,
+        market_total_games=market_total,
+        best_of=pred.best_of,
+    )
+    if p1_games is None or p2_games is None:
+        return picks
+
+    p1_cover, p2_cover = _poisson_diff_cover_probs(p1_games, p2_games, line)
+    mkt_p1, mkt_p2 = _devig_prop(prop)
+
+    for player_name, player_last, spread_line, prob, odds, market_prob in [
+        (pred.p1_name, pred.p1_name.split()[-1], line, p1_cover, prop.p1_odds, mkt_p1),
+        (pred.p2_name, pred.p2_name.split()[-1], -line, p2_cover, prop.p2_odds, mkt_p2),
+    ]:
+        if odds is None:
+            continue
+        ev = expected_value(prob, odds)
+        kelly = compute_kelly_fraction(prob, odds)
+        assessment = assess_bettable_pick(
+            prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
+        )
+        if assessment is None:
+            continue
+        conf = assessment.confidence
+        edge_pct = round(((prob - (market_prob or 0.5)) / max(market_prob or 0.5, 0.01)) * 100, 1)
+        sign = "+" if spread_line > 0 else ""
+        picks.append(BestPick(
+            pick_type="prop",
+            label="Game Spread",
+            pick=f"{player_last} {sign}{spread_line:.1f} Games",
+            player_name=player_name,
+            edge_pct=edge_pct,
+            confidence=conf,
+            reasoning=(
+                f"Projected game margin {p1_games - p2_games:+.1f} vs {line:+.1f} spread - "
+                f"{prob:.0%} probability {player_last} covers"
+            ),
+            odds_american=odds,
+            ev_pct=round(ev * 100, 1),
+            model_prob=round(prob, 4),
+            market_prob=round(market_prob, 4) if market_prob is not None else None,
+            kelly_fraction=round(kelly, 4),
+            data_quality_flags=assessment.data_quality_flags,
+            odds_source=assessment.odds_source,
+            score=_score_pick(ev * 100, conf),
+        ))
     return picks
 
 
@@ -278,8 +330,8 @@ def generate_market_odds_picks(
         return picks
 
     p1_id, p2_id = match_player_ids
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
     mtg_map = market_total_games_map or {}
 
     for prop in props:
@@ -297,146 +349,9 @@ def generate_market_odds_picks(
         market_total = mtg_map.get(prop.match_id) if prop.match_id is not None else None
 
         if stat_type == "total_games":
-            if line < 17.0:
-                continue
-            # With a book total on file, both projections below return that line, so
-            # the pick would grade the market against itself.
-            if market_total is not None and market_total >= 17.0:
-                continue
-
-            p1_expected = _compute_stat_avg("total_games", p1_stats, win_prob=pred.p1_win_prob, surface=pred.surface, market_total_games=market_total, best_of=pred.best_of) if p1_stats else None
-            p2_expected = _compute_stat_avg("total_games", p2_stats, win_prob=pred.p2_win_prob, surface=pred.surface, market_total_games=market_total, best_of=pred.best_of) if p2_stats else None
-            if p1_expected is not None and p2_expected is not None:
-                expected_total = (p1_expected + p2_expected) / 2.0
-            elif p1_expected is not None:
-                expected_total = p1_expected
-            elif p2_expected is not None:
-                expected_total = p2_expected
-            else:
-                continue
-
-            # Total games is a mixture over set count, so it needs the chance the match
-            # goes the distance. This stays on 2*p*(1-p) rather than the fitted
-            # tennis_sets curve until the stored book total lines it is checked
-            # against are trustworthy.
-            wp = pred.p1_win_prob
-            p_deciding = (2 * wp * (1 - wp)) if wp is not None else None
-            tg = total_games_probs(line, expected_total, p_deciding, pred.best_of)
-            p_over, p_under = tg.p_over, tg.p_under
-            directions = [
-                ("OVER", p_over, prop.p1_odds, "Expected"),
-                ("UNDER", p_under, prop.p2_odds, "Expected"),
-            ]
-            mkt_over = mkt_under = None
-            if prop.p1_odds is not None and prop.p2_odds is not None:
-                mkt_over, mkt_under = devig_two_way(
-                    american_to_prob(prop.p1_odds),
-                    american_to_prob(prop.p2_odds),
-                )
-
-            for direction, prob, odds, _ in directions:
-                if odds is None:
-                    continue
-                ev = expected_value(prob, odds)
-                kelly = compute_kelly_fraction(prob, odds)
-                market_prob = mkt_over if direction == "OVER" else mkt_under
-                assessment = assess_bettable_pick(
-                    prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
-                )
-                if assessment is None:
-                    continue
-                conf = assessment.confidence
-                edge_pct = round(((prob - (market_prob or 0.5)) / max(market_prob or 0.5, 0.01)) * 100, 1)
-                picks.append(BestPick(
-                    pick_type="prop",
-                    label="Total Games",
-                    pick=f"{direction} {line:.1f} Games",
-                    player_name=None,
-                    edge_pct=edge_pct,
-                    confidence=conf,
-                    reasoning=(
-                        f"Expected {expected_total:.1f} total games vs {line:.1f} line - "
-                        f"{prob:.0%} probability {direction.lower()}"
-                    ),
-                    odds_american=odds,
-                    ev_pct=round(ev * 100, 1),
-                    model_prob=round(prob, 4),
-                    market_prob=round(market_prob, 4) if market_prob is not None else None,
-                    kelly_fraction=round(kelly, 4),
-                    data_quality_flags=assessment.data_quality_flags,
-                    odds_source=assessment.odds_source,
-                    score=_score_pick(ev * 100, conf),
-                ))
-
+            picks.extend(_total_games_picks(pred, prop, line, market_total, p1_stats, p2_stats))
         elif stat_type == "game_spread":
-            if p1_stats is None or p2_stats is None:
-                continue
-
-            p1_games = _compute_stat_avg(
-                "total_games_won",
-                p1_stats,
-                opponent_stats=p2_stats,
-                win_prob=pred.p1_win_prob,
-                surface=pred.surface,
-                market_total_games=market_total,
-                best_of=pred.best_of,
-            )
-            p2_games = _compute_stat_avg(
-                "total_games_won",
-                p2_stats,
-                opponent_stats=p1_stats,
-                win_prob=pred.p2_win_prob,
-                surface=pred.surface,
-                market_total_games=market_total,
-                best_of=pred.best_of,
-            )
-            if p1_games is None or p2_games is None:
-                continue
-
-            p1_cover, p2_cover = _poisson_diff_cover_probs(p1_games, p2_games, line)
-            mkt_p1 = mkt_p2 = None
-            if prop.p1_odds is not None and prop.p2_odds is not None:
-                mkt_p1, mkt_p2 = devig_two_way(
-                    american_to_prob(prop.p1_odds),
-                    american_to_prob(prop.p2_odds),
-                )
-
-            for player_name, player_last, spread_line, prob, odds, market_prob in [
-                (pred.p1_name, pred.p1_name.split()[-1], line, p1_cover, prop.p1_odds, mkt_p1),
-                (pred.p2_name, pred.p2_name.split()[-1], -line, p2_cover, prop.p2_odds, mkt_p2),
-            ]:
-                if odds is None:
-                    continue
-                ev = expected_value(prob, odds)
-                kelly = compute_kelly_fraction(prob, odds)
-                assessment = assess_bettable_pick(
-                    prob, ev, kelly, data_quality_flags=pred.quality_flags or [], odds_source="posted"
-                )
-                if assessment is None:
-                    continue
-                conf = assessment.confidence
-                edge_pct = round(((prob - (market_prob or 0.5)) / max(market_prob or 0.5, 0.01)) * 100, 1)
-                sign = "+" if spread_line > 0 else ""
-                picks.append(BestPick(
-                    pick_type="prop",
-                    label="Game Spread",
-                    pick=f"{player_last} {sign}{spread_line:.1f} Games",
-                    player_name=player_name,
-                    edge_pct=edge_pct,
-                    confidence=conf,
-                    reasoning=(
-                        f"Projected game margin {p1_games - p2_games:+.1f} vs {line:+.1f} spread - "
-                        f"{prob:.0%} probability {player_last} covers"
-                    ),
-                    odds_american=odds,
-                    ev_pct=round(ev * 100, 1),
-                    model_prob=round(prob, 4),
-                    market_prob=round(market_prob, 4) if market_prob is not None else None,
-                    kelly_fraction=round(kelly, 4),
-                    data_quality_flags=assessment.data_quality_flags,
-                    odds_source=assessment.odds_source,
-                    score=_score_pick(ev * 100, conf),
-                ))
+            picks.extend(_game_spread_picks(pred, prop, line, market_total, p1_stats, p2_stats))
 
     return picks
 
@@ -452,8 +367,8 @@ def generate_serve_edge_picks(
         return picks
 
     p1_id, p2_id = match_player_ids
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
 
     for player_name, player_stats, opp_stats in [
         (pred.p1_name, p1_stats, p2_stats),
@@ -461,8 +376,8 @@ def generate_serve_edge_picks(
     ]:
         if player_stats is None or opp_stats is None:
             continue
-        fwp = _f(player_stats.first_won_pct)
-        opp_ret = _f(opp_stats.ret_pts_won)
+        fwp = opt_float(player_stats.first_won_pct)
+        opp_ret = opt_float(opp_stats.ret_pts_won)
         if fwp is None or opp_ret is None:
             continue
         if fwp > 0.78 and opp_ret < 0.35:
@@ -490,203 +405,230 @@ def generate_serve_edge_picks(
     return picks
 
 
+def _unpriced_pick(
+    label: str, pick: str, player_name: Optional[str], edge: float, conf: str, reasoning: str, prob: float
+) -> BestPick:
+    return BestPick(
+        pick_type="derived",
+        label=label,
+        pick=pick,
+        player_name=player_name,
+        edge_pct=edge,
+        confidence=conf,
+        reasoning=reasoning,
+        model_prob=round(prob, 4),
+        odds_source="unpriced",
+        score=_score_pick(edge, conf),
+    )
+
+
+@dataclass(frozen=True)
+class _Matchup:
+    fav_name: str
+    dog_name: str
+    fav_last: str
+    dog_last: str
+    fav_p: float
+    dog_p: float
+
+
+def _best_of_five_set_picks(m: _Matchup, dr_boost: float) -> list[BestPick]:
+    picks: list[BestPick] = []
+    p_fav_straight = min(m.fav_p ** 3 + dr_boost, 0.95)
+    p_dog_straight = m.dog_p ** 3
+    p_four_plus = max(0.0, min(0.98, 1 - p_fav_straight - p_dog_straight))
+    p_five_sets = min(0.75, 3 * m.fav_p * m.dog_p * min(m.fav_p, m.dog_p))
+
+    if p_fav_straight >= 0.25:
+        conf = confidence_tier(p_fav_straight)
+        edge = round((p_fav_straight - 0.25) / 0.25 * 100, 1)
+        picks.append(_unpriced_pick(
+            label="Set Score 3-0",
+            pick=f"{m.fav_last} wins 3-0",
+            player_name=m.fav_name,
+            edge=edge,
+            conf=conf,
+            reasoning=(
+                f"{m.fav_last} at {m.fav_p:.0%} win prob has a "
+                f"{p_fav_straight:.0%} best-of-5 straight-sets estimate"
+            ),
+            prob=p_fav_straight,
+        ))
+
+    if p_four_plus >= 0.45:
+        conf = confidence_tier(p_four_plus)
+        edge = round((p_four_plus - 0.45) / 0.45 * 100, 1)
+        picks.append(_unpriced_pick(
+            label="Total Sets",
+            pick="Match goes 4+ sets",
+            player_name=None,
+            edge=edge,
+            conf=conf,
+            reasoning=(
+                f"Best-of-5 set mix gives a {p_four_plus:.0%} estimate "
+                "that the match reaches at least four sets"
+            ),
+            prob=p_four_plus,
+        ))
+
+    p_dog_set = 1 - p_fav_straight
+    if p_dog_set >= 0.55 and m.dog_p >= 0.15:
+        conf = confidence_tier(p_dog_set)
+        edge = round((p_dog_set - 0.50) / 0.50 * 100, 1)
+        picks.append(_unpriced_pick(
+            label="Win a Set",
+            pick=f"{m.dog_last} wins a set",
+            player_name=m.dog_name,
+            edge=edge,
+            conf=conf,
+            reasoning=(
+                f"{m.dog_last} has a {p_dog_set:.0%} best-of-5 estimate "
+                "to take at least one set"
+            ),
+            prob=p_dog_set,
+        ))
+
+    if p_five_sets >= 0.30:
+        conf = confidence_tier(p_five_sets)
+        edge = round((p_five_sets - 0.30) / 0.30 * 100, 1)
+        picks.append(_unpriced_pick(
+            label="Total Sets",
+            pick="Match goes 5 sets",
+            player_name=None,
+            edge=edge,
+            conf=conf,
+            reasoning=(
+                f"Close best-of-5 matchup gives a {p_five_sets:.0%} "
+                "estimate to reach a fifth set"
+            ),
+            prob=p_five_sets,
+        ))
+
+    return picks
+
+
+def _best_of_three_set_picks(m: _Matchup, dr_boost: float) -> list[BestPick]:
+    picks: list[BestPick] = []
+    outcomes = set_outcomes(m.fav_p)
+
+    # ── 2-0 Sweep ──
+    # Boost slightly if favorite has dominant serve-vs-return ratio
+    p_fav_sweep = min(outcomes.favorite_straight + dr_boost, 0.95)
+    if p_fav_sweep >= 0.40:  # only suggest if reasonably likely
+        conf = confidence_tier(p_fav_sweep)
+        edge = round((p_fav_sweep - 0.40) / 0.40 * 100, 1)  # edge vs ~40% baseline
+        picks.append(_unpriced_pick(
+            label="Set Score 2-0",
+            pick=f"{m.fav_last} wins 2-0",
+            player_name=m.fav_name,
+            edge=edge,
+            conf=conf,
+            reasoning=f"{m.fav_last} at {m.fav_p:.0%} win prob → {p_fav_sweep:.0%} chance of a straight-sets win",
+            prob=p_fav_sweep,
+        ))
+
+    # ── Match Goes 3 Sets ──
+    p_three_sets = outcomes.three_sets
+    if p_three_sets >= 0.35:
+        conf = confidence_tier(p_three_sets)
+        edge = round((p_three_sets - 0.30) / 0.30 * 100, 1) if p_three_sets > 0.30 else 0.0
+        picks.append(_unpriced_pick(
+            label="Total Sets",
+            pick="Match goes 3 sets",
+            player_name=None,
+            edge=edge,
+            conf=conf,
+            reasoning=f"Close matchup ({m.fav_p:.0%}/{m.dog_p:.0%}) → {p_three_sets:.0%} chance of a 3-set match",
+            prob=p_three_sets,
+        ))
+
+    # ── Underdog Wins a Set ──
+    # P(dog wins >= 1 set) = 1 - P(fav sweeps 2-0)
+    p_dog_set = 1 - p_fav_sweep
+    if p_dog_set >= 0.55 and m.dog_p >= 0.20:
+        conf = confidence_tier(p_dog_set)
+        edge = round((p_dog_set - 0.50) / 0.50 * 100, 1) if p_dog_set > 0.50 else 0.0
+        picks.append(_unpriced_pick(
+            label="Win a Set",
+            pick=f"{m.dog_last} wins a set",
+            player_name=m.dog_name,
+            edge=edge,
+            conf=conf,
+            reasoning=f"{m.dog_last} has a {p_dog_set:.0%} chance of taking at least one set",
+            prob=p_dog_set,
+        ))
+
+    return picks
+
+
+def _serve_dominance_pick(m: _Matchup, fav_stats: Optional[PlayerRollingStats]) -> Optional[BestPick]:
+    """Serve Dominance (dominance_ratio ≥ 1.4)."""
+    if fav_stats is None:
+        return None
+    dr = opt_float(fav_stats.dominance_ratio)
+    if dr is None or dr < 1.4:
+        return None
+    edge = round((dr - 1.0) / 1.0 * 100, 1)
+    conf = confidence_tier(min(m.fav_p + (dr - 1.4) * 0.1, 0.85))
+    if conf == "PASS":
+        return None
+    return _unpriced_pick(
+        label="Serve Dominance",
+        pick=f"{m.fav_last} serve dominance",
+        player_name=m.fav_name,
+        edge=edge,
+        conf=conf,
+        reasoning=(
+            f"{m.fav_last} dominance ratio {dr:.2f} — significantly stronger "
+            f"serving than returning, favoring straight-sets control"
+        ),
+        prob=min(m.fav_p + (dr - 1.4) * 0.1, 0.85),
+    )
+
+
 def generate_derived_picks(
     pred: PredictionOutput,
     p1_stats: Optional[PlayerRollingStats] = None,
     p2_stats: Optional[PlayerRollingStats] = None,
 ) -> list[BestPick]:
     """Generate set-score and upset picks from win probability and optional player stats."""
-    picks: list[BestPick] = []
     if pred.p1_win_prob is None:
-        return picks
+        return []
 
     p = pred.p1_win_prob  # favorite probability (may or may not be P1)
     fav_name = pred.p1_name if p >= 0.5 else pred.p2_name
     dog_name = pred.p2_name if p >= 0.5 else pred.p1_name
     fav_p = max(p, 1 - p)
-    dog_p = 1 - fav_p
-    fav_last = fav_name.split()[-1]
-    dog_last = dog_name.split()[-1]
+    matchup = _Matchup(
+        fav_name=fav_name,
+        dog_name=dog_name,
+        fav_last=fav_name.split()[-1],
+        dog_last=dog_name.split()[-1],
+        fav_p=fav_p,
+        dog_p=1 - fav_p,
+    )
 
     fav_stats = p1_stats if fav_name == pred.p1_name else p2_stats
 
-    # Every set-score derivation below is best-of-3 math: a sweep is 2-0, a long
-    # match is exactly 3 sets, and "wins a set" is the complement of a 2-0. None
-    # of that holds in an ATP slam main draw, where the same formulas would quote
-    # confident numbers for the wrong format. Serve Dominance is format-agnostic
-    # and stays.
-    best_of_three = pred.best_of <= 3
-
     dr_boost = 0.0
     if fav_stats is not None:
-        dr = _f(fav_stats.dominance_ratio)
+        dr = opt_float(fav_stats.dominance_ratio)
         if dr is not None and dr > 1.3:
             dr_boost = min((dr - 1.3) * 0.1, 0.08)
 
-    if not best_of_three:
-        p_fav_straight = min(fav_p ** 3 + dr_boost, 0.95)
-        p_dog_straight = dog_p ** 3
-        p_four_plus = max(0.0, min(0.98, 1 - p_fav_straight - p_dog_straight))
-        p_five_sets = min(0.75, 3 * fav_p * dog_p * min(fav_p, dog_p))
+    # Every set-score derivation in the best-of-3 helper is best-of-3 math: a sweep
+    # is 2-0, a long match is exactly 3 sets, and "wins a set" is the complement of
+    # a 2-0. None of that holds in an ATP slam main draw, where the same formulas
+    # would quote confident numbers for the wrong format. Serve Dominance is
+    # format-agnostic and stays.
+    if pred.best_of <= 3:
+        picks = _best_of_three_set_picks(matchup, dr_boost)
+    else:
+        picks = _best_of_five_set_picks(matchup, dr_boost)
 
-        if p_fav_straight >= 0.25:
-            conf = confidence_tier(p_fav_straight)
-            edge = round((p_fav_straight - 0.25) / 0.25 * 100, 1)
-            picks.append(BestPick(
-                pick_type="derived",
-                label="Set Score 3-0",
-                pick=f"{fav_last} wins 3-0",
-                player_name=fav_name,
-                edge_pct=edge,
-                confidence=conf,
-                reasoning=(
-                    f"{fav_last} at {fav_p:.0%} win prob has a "
-                    f"{p_fav_straight:.0%} best-of-5 straight-sets estimate"
-                ),
-                model_prob=round(p_fav_straight, 4),
-                odds_source="unpriced",
-                score=_score_pick(edge, conf),
-            ))
-
-        if p_four_plus >= 0.45:
-            conf = confidence_tier(p_four_plus)
-            edge = round((p_four_plus - 0.45) / 0.45 * 100, 1)
-            picks.append(BestPick(
-                pick_type="derived",
-                label="Total Sets",
-                pick="Match goes 4+ sets",
-                player_name=None,
-                edge_pct=edge,
-                confidence=conf,
-                reasoning=(
-                    f"Best-of-5 set mix gives a {p_four_plus:.0%} estimate "
-                    "that the match reaches at least four sets"
-                ),
-                model_prob=round(p_four_plus, 4),
-                odds_source="unpriced",
-                score=_score_pick(edge, conf),
-            ))
-
-        p_dog_set = 1 - p_fav_straight
-        if p_dog_set >= 0.55 and dog_p >= 0.15:
-            conf = confidence_tier(p_dog_set)
-            edge = round((p_dog_set - 0.50) / 0.50 * 100, 1)
-            picks.append(BestPick(
-                pick_type="derived",
-                label="Win a Set",
-                pick=f"{dog_last} wins a set",
-                player_name=dog_name,
-                edge_pct=edge,
-                confidence=conf,
-                reasoning=(
-                    f"{dog_last} has a {p_dog_set:.0%} best-of-5 estimate "
-                    "to take at least one set"
-                ),
-                model_prob=round(p_dog_set, 4),
-                odds_source="unpriced",
-                score=_score_pick(edge, conf),
-            ))
-
-        if p_five_sets >= 0.30:
-            conf = confidence_tier(p_five_sets)
-            edge = round((p_five_sets - 0.30) / 0.30 * 100, 1)
-            picks.append(BestPick(
-                pick_type="derived",
-                label="Total Sets",
-                pick="Match goes 5 sets",
-                player_name=None,
-                edge_pct=edge,
-                confidence=conf,
-                reasoning=(
-                    f"Close best-of-5 matchup gives a {p_five_sets:.0%} "
-                    "estimate to reach a fifth set"
-                ),
-                model_prob=round(p_five_sets, 4),
-                odds_source="unpriced",
-                score=_score_pick(edge, conf),
-            ))
-
-    outcomes = set_outcomes(fav_p)
-
-    # ── 2-0 Sweep ──
-    # Boost slightly if favorite has dominant serve-vs-return ratio
-    p_fav_sweep = min(outcomes.favorite_straight + dr_boost, 0.95)
-    if best_of_three and p_fav_sweep >= 0.40:  # only suggest if reasonably likely
-        conf = confidence_tier(p_fav_sweep)
-        edge = round((p_fav_sweep - 0.40) / 0.40 * 100, 1)  # edge vs ~40% baseline
-        picks.append(BestPick(
-            pick_type="derived",
-            label="Set Score 2-0",
-            pick=f"{fav_last} wins 2-0",
-            player_name=fav_name,
-            edge_pct=edge,
-            confidence=conf,
-            reasoning=f"{fav_last} at {fav_p:.0%} win prob → {p_fav_sweep:.0%} chance of a straight-sets win",
-            model_prob=round(p_fav_sweep, 4),
-            odds_source="unpriced",
-            score=_score_pick(edge, conf),
-        ))
-
-    # ── Match Goes 3 Sets ──
-    p_three_sets = outcomes.three_sets
-    if best_of_three and p_three_sets >= 0.35:
-        conf = confidence_tier(p_three_sets)
-        edge = round((p_three_sets - 0.30) / 0.30 * 100, 1) if p_three_sets > 0.30 else 0.0
-        picks.append(BestPick(
-            pick_type="derived",
-            label="Total Sets",
-            pick="Match goes 3 sets",
-            player_name=None,
-            edge_pct=edge,
-            confidence=conf,
-            reasoning=f"Close matchup ({fav_p:.0%}/{dog_p:.0%}) → {p_three_sets:.0%} chance of a 3-set match",
-            model_prob=round(p_three_sets, 4),
-            odds_source="unpriced",
-            score=_score_pick(edge, conf),
-        ))
-
-    # ── Underdog Wins a Set ──
-    # P(dog wins >= 1 set) = 1 - P(fav sweeps 2-0)
-    p_dog_set = 1 - p_fav_sweep
-    if best_of_three and p_dog_set >= 0.55 and dog_p >= 0.20:
-        conf = confidence_tier(p_dog_set)
-        edge = round((p_dog_set - 0.50) / 0.50 * 100, 1) if p_dog_set > 0.50 else 0.0
-        picks.append(BestPick(
-            pick_type="derived",
-            label="Win a Set",
-            pick=f"{dog_last} wins a set",
-            player_name=dog_name,
-            edge_pct=edge,
-            confidence=conf,
-            reasoning=f"{dog_last} has a {p_dog_set:.0%} chance of taking at least one set",
-            model_prob=round(p_dog_set, 4),
-            odds_source="unpriced",
-            score=_score_pick(edge, conf),
-        ))
-
-    # ── Serve Dominance (dominance_ratio ≥ 1.4) ──
-    if fav_stats is not None:
-        dr = _f(fav_stats.dominance_ratio)
-        if dr is not None and dr >= 1.4:
-            edge = round((dr - 1.0) / 1.0 * 100, 1)
-            conf = confidence_tier(min(fav_p + (dr - 1.4) * 0.1, 0.85))
-            if conf != "PASS":
-                picks.append(BestPick(
-                    pick_type="derived",
-                    label="Serve Dominance",
-                    pick=f"{fav_last} serve dominance",
-                    player_name=fav_name,
-                    edge_pct=edge,
-                    confidence=conf,
-                    reasoning=(
-                        f"{fav_last} dominance ratio {dr:.2f} — significantly stronger "
-                        f"serving than returning, favoring straight-sets control"
-                    ),
-                    model_prob=round(min(fav_p + (dr - 1.4) * 0.1, 0.85), 4),
-                    odds_source="unpriced",
-                    score=_score_pick(edge, conf),
-                ))
-
+    serve_pick = _serve_dominance_pick(matchup, fav_stats)
+    if serve_pick is not None:
+        picks.append(serve_pick)
     return picks
 
 
@@ -714,15 +656,14 @@ def build_best_picks(
     pred: PredictionOutput,
     props: list,
     rolling_stats: dict,
-    prop_lines: list[PropLine] | None = None,
     match_player_ids: tuple[Optional[int], Optional[int]] | None = None,
     market_total_games_map: dict | None = None,
 ) -> MatchBestPicks:
     """Build ranked best picks for a single match: top 3 ML/derived + top 3 prop picks."""
 
     p1_id, p2_id = match_player_ids if match_player_ids else (None, None)
-    p1_stats = _pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
-    p2_stats = _pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
+    p1_stats = pick_stats_for_player(p1_id, pred.surface, rolling_stats) if p1_id else None
+    p2_stats = pick_stats_for_player(p2_id, pred.surface, rolling_stats) if p2_id else None
 
     # Bucket A: Moneyline + Derived (top 3). Priced picks lead: a derived pick's
     # score is an edge against a hardcoded baseline, not a price, so it cannot be
@@ -738,8 +679,7 @@ def build_best_picks(
 
     # Bucket B: Prop picks (top 3 by score)
     prop_picks: list[BestPick] = sorted(
-        generate_prop_picks(pred, prop_lines or [])
-        + generate_market_odds_picks(pred, props, rolling_stats, match_player_ids, market_total_games_map),
+        generate_market_odds_picks(pred, props, rolling_stats, match_player_ids, market_total_games_map),
         key=lambda p: p.score,
         reverse=True,
     )[:3]

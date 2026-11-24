@@ -135,6 +135,15 @@ describe('nbaBoardGameLabels', () => {
     expect(nbaBoardGameLabels(game({ startUtc: '2026-10-22T00:01:00Z' }), now).status).toBeNull()
   })
 
+  it('says result pending once the game is over by the clock with no final stored', () => {
+    expect(nbaBoardGameLabels(game({ startUtc: '2026-10-21T18:00:00Z' }), now).status).toBe('Result pending')
+  })
+
+  it('reads a stored status in any case and either spelling of canceled', () => {
+    expect(nbaBoardGameLabels(game({ status: 'Completed' }), now).status).toBe('Final')
+    expect(nbaBoardGameLabels(game({ status: 'cancelled' }), now).status).toBe('Canceled')
+  })
+
   it('labels missing or malformed tips without claiming the game has started', () => {
     for (const startUtc of [null, 'invalid']) {
       expect(nbaBoardGameLabels(game({ startUtc }), now)).toEqual({ tip: 'Tip time not set', status: null })
@@ -155,9 +164,9 @@ describe('board URL selection', () => {
   })
 
   it('builds adjacent-date paths preserving and encoding the market, with no path for a missing date', () => {
-    expect(nbaBoardPath('2026-10-22', 'assists')).toBe('/nba/board?date=2026-10-22&market=assists')
+    expect(nbaBoardPath('2026-10-22', 'assists')).toBe('/nba/props?date=2026-10-22&market=assists')
     expect(nbaBoardPath(null, 'points')).toBeNull()
-    expect(nbaBoardPath('2026-10-22', 'custom + market')).toBe('/nba/board?date=2026-10-22&market=custom+%2B+market')
+    expect(nbaBoardPath('2026-10-22', 'custom + market')).toBe('/nba/props?date=2026-10-22&market=custom+%2B+market')
   })
 
   it('uses the slate date parser to reject invalid calendar dates without shifting a valid Eastern day', () => {

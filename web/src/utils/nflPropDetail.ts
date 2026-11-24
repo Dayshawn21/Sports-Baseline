@@ -1,16 +1,17 @@
-import type { NflGameOdds, NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { bookLabel } from '~/utils/matchOdds'
-import { depthLabel, injuryLabel } from '~/utils/nflAvailability'
+import type { NflHistorySample, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import { availabilityDepthLabel, injuryLabel, roleChangeNote } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence, type NflBookOddsEvidence } from '~/utils/nflBookOdds'
-import { nflGameModelSummary } from '~/utils/nflGameModel'
 import {
-  BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_COLORS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
+  BASELINE_REASON_LABELS, FLAG_LABELS, ODDS_TYPE_LABELS, formatHistoryValue, formatKickoffTime,
   formatProjection, marketLabel, matchupAllowedLabel, segmentLabel,
 } from '~/utils/nflLabels'
 import { teamBadge } from '~/utils/nflPropCards'
+import { formDateText, formHistoryDate } from '~/utils/nflFormWindow'
 import { edgeLabel, overProbabilityLabel, overShareLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
-import { isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
+import { isReferenceLine, isTargetsReference, TARGETS_PROBABILITY_NOTE } from '~/utils/nflTargets'
+import { sampleCaption, type PlayerProjectionHero } from '~/utils/playerProjection'
+import { fmtSigned } from '~/utils/format'
 
 export interface NflDetailRow {
   label: string
@@ -22,22 +23,16 @@ export interface NflDetailHistory {
   title: string
   value: string
   detail: string | null
+  /** The games behind `detail`, one entry each, for a layout that puts one per line. */
+  games: string[]
 }
 
 export interface NflDetailLine {
   key: number
   typeLabel: string
-  typeColor: string
   lineText: string
   pOverText: string | null
   selected: boolean
-}
-
-export interface NflDetailGameMarket {
-  book: string
-  rows: { label: string, value: string }[]
-  modelText: string | null
-  modelVersion: string | null
 }
 
 export interface NflPropDetailModel {
@@ -57,29 +52,29 @@ export interface NflPropDetailModel {
   pOverNote: string | null
   referenceNote?: string
   sportsbook: NflBookOddsEvidence | null
-  gameMarket: NflDetailGameMarket | null
   status: NflDetailRow[]
   flags: { key: string, label: string, tooltip: string }[]
 }
 
 function signedPct(value: number): string {
-  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
-}
-
-function signed(value: number, digits: number): string {
-  return `${value > 0 ? '+' : ''}${value.toFixed(digits)}`
+  return fmtSigned(value, 1, '%')
 }
 
 function typeLabel(oddsType: string | null, fallback: string): string {
   return oddsType ? ODDS_TYPE_LABELS[oddsType] ?? oddsType : fallback
 }
 
-function history(title: string, market: string, sample: NflHistorySample): NflDetailHistory {
-  if (sample.average === null) return { title, value: 'No completed history', detail: null }
+export function history(title: string, market: string, sample: NflHistorySample, now: Date): NflDetailHistory {
+  if (sample.average === null) return { title, value: 'No completed history', detail: null, games: [] }
+  const games = sample.values.map(item => {
+    const date = formDateText(formHistoryDate(item.gameDate, now))
+    return `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}${date ? ` (${date})` : ''}`
+  })
   return {
     title,
     value: `${formatProjection(market, sample.average)} avg · ${sample.values.length} games`,
-    detail: sample.values.map(item => `${formatHistoryValue(market, item.value)} vs ${item.opponentTeam ?? '--'}`).join(' · '),
+    detail: games.join(' · '),
+    games,
   }
 }
 
@@ -95,7 +90,7 @@ function meta(row: NflSlateLine, game: NflSlateGame | null): string {
 function deltaText(row: NflSlateLine): string {
   if (row.line === null) return 'No line'
   const line = `${row.line.toFixed(1)} line`
-  if (isTargetsReference(row.market) && row.edge !== null) return `${edgeLabel(row.edge)} reference gap vs ${line}`
+  if (isReferenceLine(row) && row.edge !== null) return `${edgeLabel(row.edge)} reference gap vs ${line}`
   return row.edge === null ? line : `${edgeLabel(row.edge)} vs ${line}`
 }
 
@@ -127,41 +122,19 @@ function lines(row: NflSlateLine, alternates: NflSlateLine[]): NflDetailLine[] {
   const item = (line: NflSlateLine, selected: boolean): NflDetailLine => ({
     key: line.lineId,
     typeLabel: typeLabel(line.oddsType, selected ? 'Standard' : 'Alternate'),
-    typeColor: ODDS_TYPE_COLORS[line.oddsType ?? ''] ?? 'default',
     lineText: line.line?.toFixed(1) ?? '--',
-    pOverText: isTargetsReference(row.market) ? null : overShareLabel(line.pOver),
+    pOverText: isReferenceLine(row) ? null : overShareLabel(line.pOver),
     selected,
   })
   return [item(row, true), ...alternates.map(line => item(line, false))]
-}
-
-function moneyline(value: number | null): string {
-  return value === null ? '--' : signed(value, 0)
-}
-
-function gameMarket(game: NflSlateGame | null): NflDetailGameMarket | null {
-  const odds: NflGameOdds | null = game?.odds ?? null
-  if (game === null || odds === null) return null
-  const model = nflGameModelSummary(game.model, odds, game.homeTeam, game.awayTeam)
-  return {
-    book: bookLabel(odds.book),
-    rows: [
-      { label: `${game.awayTeam} ML`, value: moneyline(odds.awayMoneyline) },
-      { label: `${game.homeTeam} ML`, value: moneyline(odds.homeMoneyline) },
-      { label: 'Spread', value: odds.homeSpread === null ? '--' : `${game.homeTeam} ${signed(odds.homeSpread, 1)}` },
-      { label: 'Total', value: odds.total?.toFixed(1) ?? '--' },
-    ],
-    modelText: model ? `${model.spread.model} · ${model.winProbability.model} · ${model.total.model}` : null,
-    modelVersion: game.model?.modelVersion ?? null,
-  }
 }
 
 function status(row: NflSlateLine): NflDetailRow[] {
   return [
     { label: 'Line shape', value: `${typeLabel(row.oddsType, 'Standard')} · ${segmentLabel(row.segment)}`, note: null },
     { label: 'Injury', value: injuryLabel(row) ?? 'Clear', note: null },
-    { label: 'Depth', value: depthLabel(row) ?? 'Not listed', note: null },
-    { label: 'Trust', value: isTargetsReference(row.market) ? 'Reference' : trustLabel(row), note: null },
+    { label: 'Depth', value: availabilityDepthLabel(row) ?? 'Not listed', note: null },
+    { label: 'Trust', value: isReferenceLine(row) ? 'Reference' : trustLabel(row), note: null },
   ]
 }
 
@@ -172,34 +145,49 @@ function projectionLabel(market: string): string {
 
 /** What the prop detail panel shows for one line; every string is one the old evidence panel rendered, except the game market. */
 export function nflPropDetail(row: NflSlateLine, game: NflSlateGame | null, alternates: NflSlateLine[], now: number): NflPropDetailModel {
-  const reference = isTargetsReference(row.market)
+  const targets = isTargetsReference(row.market)
+  const reference = isReferenceLine(row)
+  const roleNote = targets ? null : roleChangeNote(row)
   const opponent = row.opponentTeam ?? 'Opponent'
   const group = row.position ? `${row.position}s` : 'the position'
-  const adjustment = reference || row.opponentAdjustmentPct === null ? '' : ` Opponent adjustment: ${signedPct(row.opponentAdjustmentPct)}.`
+  const adjustment = targets || row.opponentAdjustmentPct === null ? '' : ` Opponent adjustment: ${signedPct(row.opponentAdjustmentPct)}.`
+  const today = new Date(now)
   return {
     badge: game ? teamBadge(row, game.awayTeam, game.homeTeam) : row.position ?? '--',
     playerName: row.playerName,
     meta: meta(row, game),
-    projectionLabel: reference ? 'Rec targets reference' : projectionLabel(row.market),
+    projectionLabel: targets ? 'Rec targets reference' : projectionLabel(row.market),
     projectionText: formatProjection(row.market, row.projection),
     deltaText: deltaText(row),
     isUnder: !reference && row.edge !== null && row.edge < 0,
     hasEdge: !reference && row.edge !== null,
-    recentForm: history('Recent form', row.market, row.recentForm),
+    recentForm: history('Recent form', row.market, row.recentForm, today),
     context: [
-      history(`Vs ${opponent}`, row.market, row.opponentHistory),
-      ...(!reference ? [history(`${opponent} allowed to all ${group}, per game · last 5`, row.market, row.opponentAllowedHistory)] : []),
+      history(`Vs ${opponent}`, row.market, row.opponentHistory, today),
+      ...(!targets ? [history(`${opponent} allowed to all ${group}, per game · last 5`, row.market, row.opponentAllowedHistory, today)] : []),
     ],
-    why: `${signalSummary(row)}.${adjustment}`,
+    why: `${roleNote ? `${roleNote} · ` : ''}${signalSummary(row)}.${adjustment}`,
     breakdown: breakdown(row),
     lines: lines(row, alternates),
     pOverNote: reference ? null : overProbabilityLabel(row),
-    ...(reference ? { referenceNote: TARGETS_PROBABILITY_NOTE } : {}),
+    ...(targets ? { referenceNote: TARGETS_PROBABILITY_NOTE } : roleNote ? { referenceNote: `${roleNote}: the projection cannot know this week's role, so this line is a reference, not a pick.` } : {}),
     sportsbook: nflBookOddsEvidence(row, now),
-    gameMarket: gameMarket(game),
     status: status(row),
     flags: row.qualityFlags
       .filter(flag => flag !== 'historical_baseline')
       .map(flag => ({ key: flag, label: flag.replaceAll('_', ' '), tooltip: FLAG_LABELS[flag] ?? flag })),
+  }
+}
+
+/** The shared projection block for one NFL prop, built from the same strings the detail panel shows. Always gray. */
+export function nflProjectionHero(row: NflSlateLine, detail: Pick<NflPropDetailModel, 'projectionLabel' | 'projectionText' | 'deltaText'>): PlayerProjectionHero {
+  const value = row.projection === null ? null : detail.projectionText
+  return {
+    label: detail.projectionLabel,
+    value,
+    delta: value === null || row.line === null ? null : detail.deltaText,
+    reason: value === null ? 'No projection for this market this week.' : null,
+    sample: sampleCaption(value, row.gamesInSample),
+    facts: [],
   }
 }

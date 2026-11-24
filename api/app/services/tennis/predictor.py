@@ -9,7 +9,7 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -103,6 +103,58 @@ def _elo_probability(feat: dict) -> float:
     return 1.0 / (1.0 + 10 ** (-(diff or 0.0) / 400.0))
 
 
+class _Scores(NamedTuple):
+    elo_prob: Optional[float]
+    ml_prob: Optional[float]
+    market_prob: Optional[float]
+    result: Optional[EnsembleResult]
+    quality_flags: list[str]
+
+
+def _score(
+    registry: ModelRegistry,
+    match: Match,
+    feat: dict,
+    feat_flags: list[str],
+    p1_elo: Optional[PlayerElo],
+    p2_elo: Optional[PlayerElo],
+    p1_odds: Optional[int],
+    p2_odds: Optional[int],
+    prior_matches: Optional[int],
+) -> _Scores:
+    """Each source's probability, the served blend, and the merged, sorted quality flags."""
+    flags = list(feat_flags)
+    ml_prob = registry.predict_lgbm(match.tour, feat)
+    if not registry.serves_tour(match.tour):
+        flags.append("ml_not_trained_for_tour")
+
+    elo_prob: Optional[float] = None
+    if p1_elo and p2_elo and p1_elo.elo and p2_elo.elo:
+        elo_prob = _elo_probability(feat)
+
+    market_prob: Optional[float] = None
+    if p1_odds and p2_odds:
+        market_prob, _ = devig_two_way(american_to_prob(p1_odds), american_to_prob(p2_odds))
+
+    # No median ELO is served: a missing rating leaves elo_prob None, so the
+    # blend's fallback weight only exists for reproducing ensemble-v2.
+    result = blend(
+        EnsembleInput(
+            tour=match.tour,
+            elo_prob=elo_prob,
+            ml_prob=ml_prob,
+            market_prob=market_prob,
+            elo_fallback=False,
+            ml_features_partial="ml_features_partial" in flags,
+            market_stale="stale_odds" in flags,
+            market_high_overround="high_overround" in flags,
+            elo_unreliable=elo_is_unreliable(elo_prob, market_prob, prior_matches),
+        )
+    )
+    merged = set(flags) | set(result.quality_flags if result else ["no_predictors"])
+    return _Scores(elo_prob, ml_prob, market_prob, result, sorted(merged))
+
+
 async def predict_match(
     db: AsyncSession,
     registry: ModelRegistry,
@@ -163,38 +215,10 @@ async def predict_match(
         asof=asof_features(history_index, elo_index, match),
     )
 
-    # ── ML inference ─────────────────────────────────────────────────────────
-    ml_prob = registry.predict_lgbm(match.tour, feat)
-    if not registry.serves_tour(match.tour):
-        feat_flags.append("ml_not_trained_for_tour")
-
-    # ── ELO probability (simple logistic from ELO diff) ───────────────────────
-    elo_prob: Optional[float] = None
-    if p1_elo and p2_elo and p1_elo.elo and p2_elo.elo:
-        elo_prob = _elo_probability(feat)
-
-    # ── Market no-vig ─────────────────────────────────────────────────────────
-    market_prob: Optional[float] = None
-    if p1_odds and p2_odds:
-        market_prob, _ = devig_two_way(american_to_prob(p1_odds), american_to_prob(p2_odds))
-
-    # ── Ensemble blend ────────────────────────────────────────────────────────
-    prior_matches = min_prior_matches(history_index, match)
-    result: Optional[EnsembleResult] = blend(
-        EnsembleInput(
-            tour=match.tour,
-            elo_prob=elo_prob,
-            ml_prob=ml_prob,
-            market_prob=market_prob,
-            elo_fallback="elo_missing" in feat_flags,
-            ml_features_partial="ml_features_partial" in feat_flags,
-            market_stale="stale_odds" in feat_flags,
-            market_high_overround="high_overround" in feat_flags,
-            elo_unreliable=elo_is_unreliable(elo_prob, market_prob, prior_matches),
-        )
+    elo_prob, ml_prob, market_prob, result, quality_flags = _score(
+        registry, match, feat, feat_flags, p1_elo, p2_elo, p1_odds, p2_odds,
+        min_prior_matches(history_index, match),
     )
-
-    all_flags = list(set(feat_flags + (result.quality_flags if result else ["no_predictors"])))
 
     return PredictionOutput(
         match_id=match.id,
@@ -212,7 +236,7 @@ async def predict_match(
         p1_ml_prob=ml_prob,
         p1_market_prob=market_prob,
         ensemble_weights=result.weights if result else {},
-        quality_flags=sorted(all_flags),
+        quality_flags=quality_flags,
         p1_odds_american=p1_odds,
         p2_odds_american=p2_odds,
         h2h_p1_wins=h2h_all["p1_wins"],
@@ -287,33 +311,9 @@ def _build_prediction(
         asof=asof,
     )
 
-    ml_prob = registry.predict_lgbm(match.tour, feat)
-    if not registry.serves_tour(match.tour):
-        feat_flags.append("ml_not_trained_for_tour")
-
-    elo_prob: Optional[float] = None
-    if p1_elo and p2_elo and p1_elo.elo and p2_elo.elo:
-        elo_prob = _elo_probability(feat)
-
-    market_prob: Optional[float] = None
-    if p1_odds and p2_odds:
-        market_prob, _ = devig_two_way(american_to_prob(p1_odds), american_to_prob(p2_odds))
-
-    result: Optional[EnsembleResult] = blend(
-        EnsembleInput(
-            tour=match.tour,
-            elo_prob=elo_prob,
-            ml_prob=ml_prob,
-            market_prob=market_prob,
-            elo_fallback="elo_missing" in feat_flags,
-            ml_features_partial="ml_features_partial" in feat_flags,
-            market_stale="stale_odds" in feat_flags,
-            market_high_overround="high_overround" in feat_flags,
-            elo_unreliable=elo_is_unreliable(elo_prob, market_prob, prior_matches),
-        )
+    elo_prob, ml_prob, market_prob, result, quality_flags = _score(
+        registry, match, feat, feat_flags, p1_elo, p2_elo, p1_odds, p2_odds, prior_matches,
     )
-
-    all_flags = list(set(feat_flags + (result.quality_flags if result else ["no_predictors"])))
 
     return PredictionOutput(
         match_id=match.id,
@@ -331,7 +331,7 @@ def _build_prediction(
         p1_ml_prob=ml_prob,
         p1_market_prob=market_prob,
         ensemble_weights=result.weights if result else {},
-        quality_flags=sorted(all_flags),
+        quality_flags=quality_flags,
         p1_odds_american=p1_odds,
         p2_odds_american=p2_odds,
         h2h_p1_wins=h2h_all["p1_wins"],

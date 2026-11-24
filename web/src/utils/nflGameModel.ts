@@ -1,4 +1,5 @@
 import type { NflGameModel, NflGameNotes, NflGameOdds, NflQbChange } from '~/types/nfl'
+import { fmtPct } from '~/utils/odds'
 
 export interface NflGameModelCell {
   model: string
@@ -45,12 +46,12 @@ function spreadCell(model: NflGameModel, odds: NflGameOdds | null, homeTeam: str
 }
 
 function winProbabilityCell(model: NflGameModel, homeTeam: string, awayTeam: string): NflGameModelCell {
-  const modelLabel = `${homeTeam} ${(model.homeWinProbability * 100).toFixed(1)}%`
+  const modelLabel = `${homeTeam} ${fmtPct(model.homeWinProbability)}`
   const market = model.marketHomeWinProbability
   if (market === null) return { model: modelLabel, market: NO_MARKET, gap: null }
   return {
     model: modelLabel,
-    market: `${homeTeam} ${(market * 100).toFixed(1)}%`,
+    market: `${homeTeam} ${fmtPct(market)}`,
     gap: leanGap((model.homeWinProbability - market) * 100, 'pts', homeTeam, awayTeam),
   }
 }

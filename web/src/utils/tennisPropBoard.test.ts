@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
-import { buildTennisPropBoard, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
+import type { AdoptedPick, MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
+import type { TennisBoardLine } from '~/utils/tennisPropBoard'
+import { buildTennisPropBoard, compareLines, DEFAULT_TENNIS_CONTEXT_FILTER, lineTypeApplies, parseTennisContextFilter, tennisContextMatches, withTennisContextFilter, filterTennisBoardCategories, tennisBoardPath, tennisPlayerOptions, enrichTennisPropLines, isTennisRateable, lineNumber, marketLabel, marketTitle, moneylineBoardRows, payoutTier, signalSummary, sourceLabel, trustLabel, winASetBoardRows, winASetStrength } from '~/utils/tennisPropBoard'
 
 const prediction: MatchPrediction = {
   matchId: 10, startUtc: '2026-09-21T16:00:00Z', p1Name: 'Aryna Sabalenka', p2Name: 'Coco Gauff', tour: 'WTA', surface: 'Hard', tournament: 'Beijing', round: 'R32',
@@ -10,7 +11,7 @@ const prediction: MatchPrediction = {
 function prop(id: number, overrides: Partial<PropLine> = {}): PropLine {
   return {
     id, playerId: id, playerName: `Player ${id}`, matchId: 10, source: 'prizepicks', statType: 'aces', line: '5.5', oddsType: 'standard', fetchedAt: '2026-09-21T10:00:00Z', startTime: null,
-    pOver: null, pUnder: null, confidence: 'STRONG', recommendation: 'OVER', statAvg: 7, edgePct: 27, evPct: 12, hitProbability: .62, breakEvenPct: 55, matchesCount: 15, surface: null, dataQualityFlags: [], projectionStatus: 'ok', audit: { playerResolved: true, matchLinked: true, statsFresh: true, sampleSize: 15, opponentStatsFound: true, predictionFound: true, projectionFound: true },
+    pOver: .62, pUnder: .38, confidence: null, recommendation: 'OVER', statAvg: 7, edgePct: 27, evPct: 12, hitProbability: .62, breakEvenPct: 55, matchesCount: 15, surface: null, dataQualityFlags: [], projectionStatus: 'ok', audit: { playerResolved: true, matchLinked: true, statsFresh: true, sampleSize: 15, opponentStatsFound: true, predictionFound: true, projectionFound: true },
     ...overrides,
   }
 }
@@ -22,11 +23,16 @@ describe('isTennisRateable', () => {
     ['stale', { dataQualityFlags: ['stale_stats'] }],
     ['stale odds', { dataQualityFlags: ['stale_odds'] }],
     ['thin', { dataQualityFlags: ['small_sample'] }],
-    ['unpriced', { evPct: null }],
-    ['negative EV', { evPct: -1 }],
-    ['break-even EV', { evPct: 0 }],
+    ['best-of-5 set stat', { dataQualityFlags: ['bo5_unsupported_stat'] }],
+    ['no P(over)', { pOver: null }],
+    ['hard-blocked (no side)', { recommendation: null }],
     ['Moneyline', { statType: 'moneyline', statAvg: 70, line: '-110' }],
   ])('rejects %s lines', (_label, override) => expect(isTennisRateable(prop(1, override))).toBe(false))
+
+  it('rates a line whatever its EV, since tennis lines are gray and unranked (48f)', () => {
+    expect([null, -30, 0, 12].map(evPct => isTennisRateable(prop(1, { evPct })))).toEqual([true, true, true, true])
+    expect(trustLabel(prop(1, { evPct: -30 }))).toBe('Reference')
+  })
 })
 
 describe('buildTennisPropBoard', () => {
@@ -36,11 +42,11 @@ describe('buildTennisPropBoard', () => {
       statAvg: 3.5,
       line: '5.0',
       opponentStatAvg: 4.2,
-    }))).toBe('Model projects 3.5 vs the 5.0 line (Under). Opponent allows 4.2.')
+    }))).toBe('Model projects 3.5 vs the 5.0 line. Opponent allows 4.2.')
   })
 
-  it('filters sources, preserves provider rows, and keeps negative-EV lines review-only', () => {
-    const rows = [prop(1, { playerName: 'Aryna Sabalenka', evPct: 8 }), prop(2, { playerName: 'Aryna Sabalenka', source: 'draftkings', evPct: -16 }), prop(3, { statType: 'double_faults', evPct: 10 })]
+  it('filters sources and preserves provider rows', () => {
+    const rows = [prop(1, { playerName: 'Aryna Sabalenka', evPct: 8 }), prop(2, { playerName: 'Aryna Sabalenka', source: 'draftkings', pOver: null }), prop(3, { statType: 'double_faults', evPct: 10 })]
     const all = buildTennisPropBoard(rows, [prediction], 'all')
     expect(all.map(category => category.market)).toEqual(['aces', 'double_faults'])
     expect(all[0].rateable.map(line => line.id)).toEqual([1])
@@ -53,9 +59,9 @@ describe('buildTennisPropBoard', () => {
     const challenger: MatchPrediction = { ...prediction, matchId: 12, tour: 'CHALLENGER' }
     const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 12 })]
 
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'wta').flatMap(category => category.rateable).map(row => row.id)).toEqual([1])
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'wta_125').flatMap(category => category.rateable).map(row => row.id)).toEqual([2])
-    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', 'challenger').flatMap(category => category.rateable).map(row => row.id)).toEqual([3])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'wta' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([1])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'wta_125' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([2])
+    expect(buildTennisPropBoard(rows, [prediction, wta125, challenger], 'all', { ...DEFAULT_TENNIS_CONTEXT_FILTER, tour: 'challenger' }).flatMap(category => category.rateable).map(row => row.id)).toEqual([3])
   })
 
   it('puts unrateable lines in the separate all-lines bucket', () => {
@@ -74,14 +80,25 @@ describe('buildTennisPropBoard', () => {
     expect(board[0].other).toEqual([])
   })
 
-  it('ranks by confidence tier first and EV within a tier', () => {
+  it('keeps start-time order whatever the EV or P(over), so nothing is ranked (48f)', () => {
     const board = buildTennisPropBoard([
-      prop(1, { confidence: 'LEAN', evPct: 45 }),
-      prop(2, { confidence: 'STRONG', evPct: 11 }),
-      prop(3, { confidence: 'LOCK', evPct: 16 }),
-      prop(4, { confidence: 'STRONG', evPct: 14 }),
+      prop(1, { startTime: '2026-09-21T18:00:00Z', evPct: 45, pOver: .9, pUnder: .1 }),
+      prop(2, { startTime: '2026-09-21T14:00:00Z', evPct: -20, pOver: .3, pUnder: .7 }),
+      prop(3, { startTime: '2026-09-21T16:00:00Z', evPct: 11 }),
     ], [prediction], 'all')
-    expect(board[0].rateable.map(line => line.id)).toEqual([3, 4, 2, 1])
+    expect(board[0].rateable.map(line => line.id)).toEqual([2, 3, 1])
+  })
+
+  it('breaks a start-time tie by player, then stat, and puts lines with no start last', () => {
+    const line = (id: number, overrides: Partial<TennisBoardLine>): TennisBoardLine => ({ ...prop(id), matchup: null, tournament: null, tour: null, bestOf: null, ...overrides })
+    const at = '2026-09-21T16:00:00Z'
+    const rows = [
+      line(1, { startTime: null, playerName: 'Ana' }),
+      line(2, { startTime: at, playerName: 'Zoe' }),
+      line(3, { startTime: at, playerName: 'Ana', statType: 'double_faults' }),
+      line(4, { startTime: at, playerName: 'Ana', statType: 'aces' }),
+    ]
+    expect([...rows].sort(compareLines).map(row => row.id)).toEqual([4, 3, 2, 1])
   })
 
   it('adds linked match context for the evidence panel', () => {
@@ -91,20 +108,27 @@ describe('buildTennisPropBoard', () => {
     expect(row.surface).toBe('Hard')
   })
 
+  it('takes the best-of format from the line first, then its match, else null', () => {
+    const slam: MatchPrediction = { ...prediction, bestOf: 3 }
+    const rows = enrichTennisPropLines([
+      prop(1, { bestOf: 5 }),
+      prop(2, { matchId: null, playerName: 'Coco Gauff' }),
+      prop(3, { matchId: 99 }),
+    ], [slam], 'all')
+    expect(rows.map(row => row.bestOf)).toEqual([5, 3, null])
+  })
+
+  it('gives a moneyline row its match format', () => {
+    const match: MatchPrediction = { ...prediction, bestOf: 5, p1WinProb: .6, p2WinProb: .4, p1OddsAmerican: -150, p2OddsAmerican: 130 }
+    const rows = enrichTennisPropLines(moneylineBoardRows([match]), [match], 'all')
+    expect(rows.map(row => row.bestOf)).toEqual([5, 5])
+  })
+
   it('labels PrizePicks payout tiers and leaves priced sources unlabeled', () => {
     expect(payoutTier({ source: 'prizepicks', oddsType: 'demon' })).toBe('demon')
     expect(payoutTier({ source: 'prizepicks', oddsType: 'Goblin' })).toBe('goblin')
     expect(payoutTier({ source: 'prizepicks', oddsType: null })).toBe('standard')
     expect(payoutTier({ source: 'draftkings', oddsType: 'standard' })).toBeNull()
-  })
-
-  it('sorts EV with its sign, so a -30% line never ranks above a +5% one, and unpriced last', () => {
-    const board = buildTennisPropBoard([
-      prop(1, { confidence: 'LEAN', evPct: -30 }),
-      prop(2, { confidence: 'LEAN', evPct: null }),
-      prop(3, { confidence: 'LEAN', evPct: -5 }),
-    ], [prediction], 'all')
-    expect(board[0].other.map(line => line.id)).toEqual([3, 1, 2])
   })
 
   it('does not rate a row whose match has finished or is mislinked', () => {
@@ -130,6 +154,54 @@ describe('buildTennisPropBoard', () => {
     const [category] = buildTennisPropBoard(rows, [prediction], 'all')
     expect(category.rateable).toEqual([])
     expect(category.other).toHaveLength(2)
+  })
+})
+
+// Synthetic: no real slice has been adopted.
+function adopted(margin: number, side: AdoptedPick['side'] = 'over'): AdoptedPick {
+  return { side, probability: .577 + margin, breakEven: .577, margin, rule: 'tennis-props-check-v1', projectionVersion: 'props-v3' }
+}
+
+describe('adopted lines (48g)', () => {
+  const lines = () => [
+    prop(1, { startTime: '2026-09-21T18:00:00Z', evPct: 45, pOver: .9, pUnder: .1 }),
+    prop(2, { startTime: '2026-09-21T14:00:00Z', evPct: -20, pOver: .3, pUnder: .7 }),
+    prop(3, { startTime: '2026-09-21T16:00:00Z', evPct: 11 }),
+  ]
+
+  it('leaves the 48f order untouched when nothing is adopted', () => {
+    const plain = buildTennisPropBoard(lines(), [prediction], 'all')
+    const withNulls = buildTennisPropBoard(lines().map(line => ({ ...line, adoptedPick: null })), [prediction], 'all')
+    expect(plain[0].rateable.map(line => line.id)).toEqual([2, 3, 1])
+    expect(withNulls[0].rateable.map(line => line.id)).toEqual([2, 3, 1])
+  })
+
+  it('ranks an adopted line ahead of earlier unadopted ones', () => {
+    const [first, second, third] = lines()
+    const board = buildTennisPropBoard([{ ...first, adoptedPick: adopted(.05) }, second, third], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([1, 2, 3])
+  })
+
+  it('orders adopted lines by margin over break-even', () => {
+    const [first, second, third] = lines()
+    const board = buildTennisPropBoard([
+      { ...first, adoptedPick: adopted(.04) }, { ...second, adoptedPick: adopted(.09, 'under') }, third,
+    ], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([2, 1, 3])
+  })
+
+  it('puts an adopted goblin on the board even with alternates hidden', () => {
+    const board = buildTennisPropBoard([
+      prop(1, { oddsType: 'goblin', adoptedPick: adopted(.06) }),
+      prop(2, { oddsType: 'goblin' }),
+    ], [prediction], 'all')
+    expect(board[0].rateable.map(line => line.id)).toEqual([1])
+    expect(board[0].other).toEqual([])
+  })
+
+  it('reads Pick only when adopted', () => {
+    expect(trustLabel(prop(1, { adoptedPick: adopted(.05) }))).toBe('Pick')
+    expect(trustLabel(prop(1))).toBe('Reference')
   })
 })
 
@@ -165,7 +237,7 @@ describe('Win a Set model rows', () => {
 })
 
 describe('first-set props (16e)', () => {
-  const firstSet = prop(1, { statType: '1st Set Total Games', line: '9.5', statAvg: 10.1, confidence: 'LEAN', dataQualityFlags: ['ungraded_stat'] })
+  const firstSet = prop(1, { statType: '1st Set Total Games', line: '9.5', statAvg: 10.1, dataQualityFlags: ['ungraded_stat'] })
 
   it('labels both first-set stats', () => {
     expect(marketLabel('1st Set Total Games')).toBe('1st set games')
@@ -180,6 +252,123 @@ describe('first-set props (16e)', () => {
   })
 
   it('says the stat is new ahead of the projection', () => {
-    expect(signalSummary(firstSet)).toBe('New stat, not yet graded. Model projects 10.1 vs the 9.5 line (Over).')
+    expect(signalSummary(firstSet)).toBe('New stat, not yet graded. Model projects 10.1 vs the 9.5 line.')
+  })
+})
+
+describe('sourceLabel', () => {
+  it('names PrizePicks and DraftKings, and groups any other book under Market odds', () => {
+    expect(sourceLabel('prizepicks')).toBe('PrizePicks')
+    expect(sourceLabel('draftkings')).toBe('DraftKings')
+    expect(sourceLabel('bet365')).toBe('Market odds')
+    expect(sourceLabel('fanduel')).toBe('Market odds')
+  })
+})
+
+describe('filterTennisBoardCategories', () => {
+  const line = (id: number, playerName: string) => ({ id, playerName }) as TennisBoardLine
+  const categories = [
+    { market: 'aces', label: 'Aces', rateable: [line(1, 'Novak Đoković'), line(2, 'Coco Gauff')], other: [line(3, 'Iga Świątek')] },
+    { market: 'games', label: 'Games', rateable: [line(4, 'Coco Gauff')], other: [] },
+  ]
+  const names = (players: string[]) => filterTennisBoardCategories(categories, players).map(item => [item.rateable.map(row => row.playerName), item.other.map(row => row.playerName)])
+
+  it('returns the same categories on an empty selection', () => {
+    expect(filterTennisBoardCategories(categories, [])).toBe(categories)
+  })
+
+  it('narrows rated and review lines to every chosen player, ignoring accents', () => {
+    expect(names(['Novak Dokovic'])).toEqual([[['Novak Đoković'], []], [[], []]])
+    expect(names(['Iga Świątek', 'Coco Gauff'])).toEqual([[['Coco Gauff'], ['Iga Świątek']], [['Coco Gauff'], []]])
+  })
+
+  it('keeps every market so the pills stay put', () => {
+    expect(names(['Nobody'])).toHaveLength(2)
+  })
+})
+
+describe('tennis player picker', () => {
+  const line = (id: number, playerName: string) => ({ id, playerName }) as TennisBoardLine
+  const categories = [{ market: 'aces', label: 'Aces', rateable: [line(1, 'Coco Gauff')], other: [line(2, 'Iga Świątek')] }, { market: 'games', label: 'Games', rateable: [line(3, 'Coco Gauff')], other: [] }]
+
+  it('lists rated and review players once, keeping a chosen name', () => {
+    expect(tennisPlayerOptions(categories, ['Borna Gojo'])).toEqual(['Borna Gojo', 'Coco Gauff', 'Iga Świątek'])
+  })
+
+  it('builds the board address with every chosen player', () => {
+    expect(tennisBoardPath([])).toBe('/tennis/props')
+    expect(tennisBoardPath(['Coco Gauff', 'Borna Gojo'])).toBe('/tennis/props?player=Coco+Gauff&player=Borna+Gojo')
+  })
+
+  it('keeps the context filters in the return path', () => {
+    expect(tennisBoardPath(['Coco Gauff'], { surface: 'clay', bestOf: 'all', tour: 'wta', lineType: 'demon' }))
+      .toBe('/tennis/props?player=Coco+Gauff&surface=clay&tour=wta&line=demon')
+  })
+})
+
+describe('tennis context filters (64a)', () => {
+  const filter = (overrides: Partial<typeof DEFAULT_TENNIS_CONTEXT_FILTER>) => ({ ...DEFAULT_TENNIS_CONTEXT_FILTER, ...overrides })
+  const ids = (board: ReturnType<typeof buildTennisPropBoard>) => board.flatMap(category => [...category.rateable, ...category.other]).map(line => line.id).sort((a, b) => a - b)
+  const clay: MatchPrediction = { ...prediction, matchId: 11, surface: 'Clay', bestOf: 5, tour: 'ATP' }
+  const hard: MatchPrediction = { ...prediction, bestOf: 3 }
+
+  it('narrows by surface case-insensitively and keeps a row with no surface only under all', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 99 })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ surface: 'clay' })))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ surface: 'hard' })))).toEqual([1])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all'))).toEqual([1, 2, 3])
+  })
+
+  it('narrows by best-of and keeps a row with no format only under all', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 99 })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ bestOf: '5' })))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', filter({ bestOf: '3' })))).toEqual([1])
+  })
+
+  it('keeps goblins hidden by default and shows them, unrated, only under Goblin', () => {
+    const rows = [prop(1), prop(2, { oddsType: 'demon' }), prop(3, { oddsType: 'goblin' })]
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all'))).toEqual([1, 2])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'standard' })))).toEqual([1])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'demon' })))).toEqual([2])
+    const [goblins] = buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'goblin' }))
+    expect(goblins.rateable).toEqual([])
+    expect(goblins.other.map(line => line.id)).toEqual([3])
+  })
+
+  it('drops rows with no PrizePicks tier under a line-type choice', () => {
+    const rows = [prop(1), prop(2, { source: 'draftkings' }), prop(3, { source: 'model', oddsType: 'unpriced' })]
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all'))).toEqual([1, 2, 3])
+    expect(ids(buildTennisPropBoard(rows, [hard], 'all', filter({ lineType: 'standard' })))).toEqual([1])
+  })
+
+  it('composes every filter', () => {
+    const rows = [prop(1), prop(2, { matchId: 11 }), prop(3, { matchId: 11, oddsType: 'demon' })]
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', { surface: 'clay', bestOf: '5', tour: 'atp', lineType: 'standard' }))).toEqual([2])
+    expect(ids(buildTennisPropBoard(rows, [hard, clay], 'all', { surface: 'clay', bestOf: '3', tour: 'atp', lineType: 'standard' }))).toEqual([])
+  })
+
+  it('matches a single enriched line the same way', () => {
+    const [line] = enrichTennisPropLines([prop(1, { matchId: 11 })], [clay], 'all')
+    expect(tennisContextMatches(line, filter({ surface: 'clay', bestOf: '5', tour: 'atp' }))).toBe(true)
+    expect(tennisContextMatches(line, filter({ tour: 'wta' }))).toBe(false)
+  })
+
+  it('applies line type only while PrizePicks rows can show', () => {
+    expect((['all', 'prizepicks', 'dk', 'market', 'model'] as const).map(lineTypeApplies)).toEqual([true, true, false, false, false])
+  })
+
+  it('reads unknown or missing params as the defaults', () => {
+    expect(parseTennisContextFilter(new URLSearchParams())).toEqual(DEFAULT_TENNIS_CONTEXT_FILTER)
+    expect(parseTennisContextFilter(new URLSearchParams('surface=carpet&bo=7&tour=itf&line=all'))).toEqual(DEFAULT_TENNIS_CONTEXT_FILTER)
+    expect(parseTennisContextFilter(new URLSearchParams('surface=clay&bo=5&tour=wta_125&line=goblin')))
+      .toEqual({ surface: 'clay', bestOf: '5', tour: 'wta_125', lineType: 'goblin' })
+  })
+
+  it('writes only non-default filters and leaves other params alone', () => {
+    const start = new URLSearchParams('player=Coco+Gauff&market=aces&surface=grass')
+    const written = withTennisContextFilter(start, filter({ bestOf: '5', lineType: 'demon' }))
+    expect(written.toString()).toBe('player=Coco+Gauff&market=aces&bo=5&line=demon')
+    expect(parseTennisContextFilter(written)).toEqual(filter({ bestOf: '5', lineType: 'demon' }))
+    expect(start.get('surface')).toBe('grass')
   })
 })

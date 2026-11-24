@@ -1,0 +1,98 @@
+import type { NhlBook, NhlRecord, NhlSlateGame } from '~/types/nhl'
+import { fmtAmerican } from '~/utils/odds'
+import { gameState, withEndPeriod } from '~/utils/gameState'
+import { dayClockCt } from '~/utils/slatePeriod'
+import { CENTRAL_TZ, fmtSigned } from '~/utils/format'
+
+const FULL_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: CENTRAL_TZ, year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+})
+
+export function validNhlGameId(value: number | null): value is number {
+  return value !== null && Number.isSafeInteger(value) && value > 0
+}
+
+export const validNhlPlayerId = validNhlGameId
+
+export function parseNhlGameId(value: string | undefined): number | null {
+  if (!value || !/^\d+$/.test(value)) return null
+  const id = Number(value)
+  return validNhlGameId(id) ? id : null
+}
+
+export function nhlTimeLabel(value: string | null, full = false): string {
+  const time = value === null ? NaN : Date.parse(value)
+  if (!Number.isFinite(time)) return '--'
+  return full ? `${FULL_TIME.format(time)} CT` : dayClockCt(time)
+}
+
+export function nhlPuckDropLabel(value: string | null, full = false): string {
+  const label = nhlTimeLabel(value, full)
+  return label === '--' ? 'Time TBD' : label
+}
+
+/** `pending`: over by the clock, with no final stored yet. */
+export type NhlGameState = 'upcoming' | 'started' | 'pending' | 'final' | 'off'
+
+export function nhlGameState(game: NhlSlateGame, now: Date): { state: NhlGameState, label: string } {
+  const { phase, label } = withEndPeriod(gameState(game.status, game.startUtc, now, 'Puck dropped'), game.endPeriod)
+  return { state: phase === 'live' ? 'started' : phase, label }
+}
+
+const NHL_BOOK_LABELS: Record<NhlBook, string> = { draftkings: 'DraftKings', fanduel: 'FanDuel', bet365: 'Bet365' }
+
+/** "8-4-2", or "No games yet" as the NBA and NFL records read before a team has played. */
+export function nhlRecordLabel(record: NhlRecord): string {
+  const { wins, losses, otLosses } = record
+  return wins + losses + otLosses === 0 ? 'No games yet' : `${wins}-${losses}-${otLosses}`
+}
+
+export function nhlBookLabel(book: NhlBook): string {
+  return NHL_BOOK_LABELS[book]
+}
+
+export function signedNhlLine(line: number): string {
+  return fmtSigned(line)
+}
+
+export interface NhlMarketCell {
+  label: string
+  value: string
+  detail: string
+  book: NhlBook | null
+  fetchedAt: string | null
+}
+
+/** Home then away; source/timestamp stay attached to each independent market. */
+export function nhlMarketCells(game: NhlSlateGame): NhlMarketCell[] {
+  const { spread, total, moneyline } = game
+  const missing = (label: string): NhlMarketCell => ({ label, value: '--', detail: 'Not stored', book: null, fetchedAt: null })
+  return [
+    spread === null ? missing('Puck line') : {
+      label: 'Puck line', value: `${game.homeTeam} ${signedNhlLine(spread.homeLine)} (${fmtAmerican(spread.homeOdds)})`,
+      detail: `${game.awayTeam} ${signedNhlLine(-spread.homeLine)} (${fmtAmerican(spread.awayOdds)})`,
+      book: spread.book, fetchedAt: spread.fetchedAt,
+    },
+    total === null ? missing('Total') : {
+      label: 'Total', value: total.line.toFixed(1),
+      detail: `Over ${fmtAmerican(total.overOdds)} / Under ${fmtAmerican(total.underOdds)}`,
+      book: total.book, fetchedAt: total.fetchedAt,
+    },
+    moneyline === null ? missing('Moneyline') : {
+      label: 'Moneyline', value: `${game.homeTeam} ${fmtAmerican(moneyline.homeOdds)}`,
+      detail: `${game.awayTeam} ${fmtAmerican(moneyline.awayOdds)}`,
+      book: moneyline.book, fetchedAt: moneyline.fetchedAt,
+    },
+  ]
+}
+
+export function nhlMarketProbability(game: NhlSlateGame): NhlMarketCell {
+  const { moneyline } = game
+  const label = 'Market win probability'
+  if (moneyline === null) return { label, value: '--', detail: 'No moneyline stored', book: null, fetchedAt: null }
+  const home = moneyline.homeWinProbability * 100
+  return {
+    label, value: `${game.homeTeam} ${home.toFixed(1)}% / ${game.awayTeam} ${(100 - home).toFixed(1)}%`,
+    detail: 'De-vigged book probability, includes OT/SO', book: moneyline.book, fetchedAt: moneyline.fetchedAt,
+  }
+}

@@ -1,17 +1,28 @@
 import { useState } from 'react'
+import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import type { TrackCalibrationSeries } from '~/types/tennis'
-import { calibrationPoints } from '~/utils/trackRecord'
+import { type CalibrationDatum, calibrationChartData } from '~/utils/trackRecord'
 
 type Source = TrackCalibrationSeries['source']
 
 const SOURCE_LABELS: Record<Source, string> = { ensemble: 'Ensemble', market: 'Market', ml: 'LightGBM v6' }
-const BOX = { left: 30, right: 310, top: 10, bottom: 250 }
-const TICKS = [0, 0.5, 1]
+const TICKS = [0, 25, 50, 75, 100]
+const AXIS_TICK = { fill: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }
+
+function CalibrationTooltip({ active, payload }: { active?: boolean, payload?: { payload: CalibrationDatum }[] }) {
+  const datum = payload?.[0]?.payload
+  if (!active || datum === undefined) return null
+  return <div className="tennis-model-calibration-tip">
+    <strong>{datum.range}</strong>
+    <span>predicted {datum.predicted.toFixed(0)}%, won {datum.actual.toFixed(0)}%</span>
+    <span>{datum.n.toLocaleString()} matches</span>
+  </div>
+}
 
 export default function ModelCalibrationChart({ series }: { series: TrackCalibrationSeries[] }) {
   const [source, setSource] = useState<Source>('ensemble')
   const bins = series.find((s) => s.source === source)?.bins ?? []
-  const points = calibrationPoints(bins, BOX)
+  const data = calibrationChartData(bins)
   const matches = bins.reduce((sum, b) => sum + b.n, 0)
 
   return (
@@ -27,28 +38,23 @@ export default function ModelCalibrationChart({ series }: { series: TrackCalibra
           ))}
         </div>
       </div>
-      {points.length === 0
+      {data.length === 0
         ? <div className="tennis-model-empty tennis-model-chart-empty">No ATP or WTA match has every component and a market price yet.</div>
         : (
-          <svg className="tennis-model-calibration" viewBox="0 0 320 280" role="img"
-            aria-label={`${SOURCE_LABELS[source]} predicted versus actual p1 win rate`}>
-            <line x1={BOX.left} y1={BOX.bottom} x2={BOX.right} y2={BOX.bottom} className="axis" />
-            <line x1={BOX.left} y1={BOX.top} x2={BOX.left} y2={BOX.bottom} className="axis" />
-            <line x1={BOX.left} y1={BOX.bottom} x2={BOX.right} y2={BOX.top} className="ideal" />
-            {TICKS.map((t) => (
-              <g key={t}>
-                <text x={BOX.left + t * (BOX.right - BOX.left)} y={BOX.bottom + 16}
-                  textAnchor={t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}>{`${t * 100}%`}</text>
-                <text x={BOX.left - 6} y={BOX.bottom - t * (BOX.bottom - BOX.top) + 4} textAnchor="end">{t * 100}</text>
-              </g>
-            ))}
-            <polyline className="series" points={points.map((p) => `${p.x},${p.y}`).join(' ')} />
-            {points.map((p) => (
-              <circle key={p.bin.low} cx={p.x} cy={p.y} r={p.r} className="dot">
-                <title>{`${Math.round(p.bin.low * 100)}-${Math.round(p.bin.high * 100)}%: predicted ${(p.bin.meanPredicted * 100).toFixed(0)}%, won ${(p.bin.actualRate * 100).toFixed(0)}% of ${p.bin.n}`}</title>
-              </circle>
-            ))}
-          </svg>
+          <div className="tennis-model-calibration" role="img" aria-label={`${SOURCE_LABELS[source]} predicted versus actual p1 win rate`}>
+            <ResponsiveContainer width="100%" height={300}>
+              <ScatterChart margin={{ top: 10, right: 12, bottom: 4, left: -12 }}>
+                <CartesianGrid stroke="var(--border-subtle)" />
+                <XAxis type="number" dataKey="predicted" domain={[0, 100]} ticks={TICKS} tickFormatter={(v: number) => `${v}%`}
+                  tick={AXIS_TICK} stroke="var(--border-card)" />
+                <YAxis type="number" dataKey="actual" domain={[0, 100]} ticks={TICKS} tick={AXIS_TICK} stroke="var(--border-card)" />
+                <ZAxis type="number" dataKey="n" range={[20, 160]} />
+                <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="var(--chart-mid)" strokeDasharray="4 4" ifOverflow="extendDomain" />
+                <Tooltip content={<CalibrationTooltip />} cursor={{ stroke: 'var(--border-card)' }} isAnimationActive={false} />
+                <Scatter data={data} fill="var(--text-primary)" line={{ stroke: 'var(--text-primary)', strokeWidth: 2 }} isAnimationActive={false} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
         )}
       <p className="tennis-model-note">
         ATP+WTA all-four sample, {matches.toLocaleString()} matches with ensemble, market, ELO and ML probabilities.

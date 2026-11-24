@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { NbaLineMove, NbaSlateGame, NbaSlateGap } from '~/types/nba'
-import { nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
+import type { NbaLineMove, NbaPropLine, NbaSlateGame, NbaSlateGap } from '~/types/nba'
+import { nbaGameGaps, nbaSlateCard, nbaSlateDigest, nbaSlateRow, nbaSlateSummary, parseSlateDate, slateDateLabel } from '~/utils/nbaSlate'
 
 const NOW = new Date('2026-10-06T15:00:00Z')
 const FETCHED = '2026-10-06T14:34:47Z'
+// A slate fetch from a later run than this game's, so the row's own age differs from the head's.
+const LATER_RUN = Date.parse('2026-10-06T14:55:00Z') + 60 * 60 * 1000
 const LATER = '2026-10-07T22:30:00Z'
 
 function game(overrides: Partial<NbaSlateGame> = {}): NbaSlateGame {
@@ -108,6 +110,7 @@ describe('nbaSlateCard', () => {
     const card = nbaSlateCard(game({ status: 'postponed' }), NOW)
     expect(card).toMatchObject({ state: 'off', stateLabel: 'Postponed', market: null, winBar: null, final: null })
     expect(nbaSlateCard(game({ status: 'canceled' }), NOW).stateLabel).toBe('Canceled')
+    expect(nbaSlateCard(game({ status: 'Cancelled' }), NOW).stateLabel).toBe('Canceled')
   })
 
   it('shows a record once a team has played', () => {
@@ -122,7 +125,12 @@ describe('nbaSlateSummary', () => {
       game({ gameId: 2, propLineCount: 65, total: { book: 'draftkings', line: 230.5, overOdds: -105, underOdds: -115, fetchedAt: LATER } }),
       game({ gameId: 3, status: 'completed', propLineCount: 0, moneyline: null, spread: null, total: null }),
     ]
-    expect(nbaSlateSummary(games)).toEqual({ games: 3, propLines: 126, finals: 1, oddsUpdated: 'Wed 5:30 PM CT' })
+    expect(nbaSlateSummary(games)).toEqual({ games: 3, propLines: 126, finals: 1, oddsUpdated: 'Wed 5:30 PM CT', oddsUpdatedMs: expect.any(Number) })
+  })
+
+  it('counts a final stored in another case, and never a postponed game', () => {
+    const games = [game({ status: 'Completed' }), game({ gameId: 2, status: 'COMPLETED' }), game({ gameId: 3, status: 'postponed' })]
+    expect(nbaSlateSummary(games).finals).toBe(2)
   })
 
   it('has no odds time without a market', () => {
@@ -146,21 +154,21 @@ describe('parseSlateDate', () => {
 
 describe('nbaSlateDigest', () => {
   const gap = (overrides: Partial<NbaSlateGap> = {}): NbaSlateGap => ({
-    gameId: 21319, awayTeam: 'PHI', homeTeam: 'NY', playerId: 7, playerName: 'Jaylen Brown', market: 'points',
+    gameId: 21319, awayTeam: 'PHI', homeTeam: 'NY', startUtc: '2026-10-21T00:00:00Z', playerId: 7, playerName: 'Jaylen Brown', market: 'points',
     line: 20.5, projection: 28.75, gap: 8.25, gapShare: 8.25 / 20.5, ...overrides,
   })
 
-  it('formats line and model to one decimal with a signed gap and share', () => {
+  it('formats line and model to one decimal with a signed gap in units and its share of the line', () => {
     expect(nbaSlateDigest([gap()])).toEqual([{
-      key: '21319-7-points', gameId: 21319, playerName: 'Jaylen Brown', market: 'Points', matchup: 'PHI @ NY',
-      line: '20.5', model: '28.8', gap: '+8.3 · +40%',
+      key: '21319-7-points', gameId: 21319, playerId: 7, playerName: 'Jaylen Brown', marketKey: 'points', market: 'Points', matchup: 'PHI @ NY',
+      when: 'Tue 7:00 PM CT', line: '20.5', model: '28.8', gap: '+8.3 pts', gapScaled: '40% of the line', gapShare: '40%',
     }])
   })
 
   it('signs an under gap negative and labels combo markets', () => {
     const [item] = nbaSlateDigest([gap({ market: 'points_rebounds_assists', line: 27.5, projection: 23.55, gap: -3.95, gapShare: 3.95 / 27.5 })])
     expect(item.market).toBe('Pts + reb + ast')
-    expect(item.gap).toBe('-4.0 · -14%')
+    expect([item.gap, item.gapScaled]).toEqual(['-4.0', '14% of the line'])
   })
 
   it('keeps the API order and gives an empty strip for no items', () => {
@@ -181,11 +189,30 @@ describe('nbaSlateRow', () => {
     expect(row.away).toMatchObject({ code: 'BOS', record: 'No games yet', score: null })
   })
 
+  it('gives a row its odds age when it differs from the slate newest fetch, and drops "no move" only while the slate odds are stale', () => {
+    // NOW is Tue Oct 6, 10:00 AM CT; the fetch was 9:34 AM the same day.
+    const flat = game({ lineMovement: [moved('total', 221.5, 221.5)] })
+    expect(nbaSlateRow(flat, NOW, LATER_RUN)).toMatchObject({ oddsAge: 'as of 9:34 AM', total: { detail: null } })
+    expect(nbaSlateRow(flat, NOW)).toMatchObject({ oddsAge: null, total: { detail: 'no move' } })
+    expect(nbaSlateRow(flat, NOW, Date.parse(FETCHED))).toMatchObject({ oddsAge: null, total: { detail: null } })
+  })
+
+  it('gives no odds age to a final or a game with no market', () => {
+    expect(nbaSlateRow(game({ status: 'completed', awayScore: 100, homeScore: 101 }), NOW, LATER_RUN).oddsAge).toBeNull()
+    expect(nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW, LATER_RUN).oddsAge).toBeNull()
+  })
+
   it('tags a tipped-off game and keeps its latest market', () => {
     const row = nbaSlateRow(game(), new Date('2026-10-20T23:30:00Z'))
     expect(row.state).toBe('started')
     expect(row.tags).toEqual(['Tipped off'])
     expect(row.note).toBe('Scores load the morning after')
+    expect(row.spread.value).toBe('DET -2.5')
+  })
+
+  it('reads a game five hours past tip-off with no final as result pending, with no odds age', () => {
+    const row = nbaSlateRow(game(), new Date('2026-10-21T05:00:00Z'), LATER_RUN)
+    expect([row.state, row.tags, row.note, row.oddsAge]).toEqual(['pending', ['Result pending'], 'Scores load the morning after', null])
     expect(row.spread.value).toBe('DET -2.5')
   })
 
@@ -217,5 +244,34 @@ describe('nbaSlateRow', () => {
   it('shows dashes and no win without a market', () => {
     const row = nbaSlateRow(game({ moneyline: null, spread: null, total: null }), NOW)
     expect([row.spread.value, row.total.value, row.moneyline.value, row.win]).toEqual(['--', '--', '--', null])
+  })
+})
+
+describe('nbaGameGaps', () => {
+  function line(overrides: Partial<NbaPropLine> = {}): NbaPropLine {
+    return {
+      playerId: 1, playerName: 'A Player', position: 'G', team: 'BOS', market: 'points', oddsType: 'standard', line: 20.5,
+      fetchedAt: FETCHED, recent: [], injury: null, projection: 22.5, gamesInSample: 20, priorMinutes: 30, gap: 2,
+      pOver: null, pUnder: null, overProbabilityVersion: null, flags: [], ...overrides,
+    }
+  }
+
+  it('ranks standard projected lines by gap share, one per player, up to the limit', () => {
+    const lines = [
+      line({ playerId: 1, playerName: 'Big Gap', market: 'assists', line: 4.5, projection: 6.5, gap: 2 }),
+      line({ playerId: 1, playerName: 'Big Gap', market: 'points', line: 10.5, projection: 14.5, gap: 4 }),
+      line({ playerId: 2, playerName: 'Small Gap', line: 20.5, projection: 21.5, gap: 1 }),
+      line({ playerId: 3, playerName: 'Goblin', oddsType: 'goblin', line: 2.5, projection: 6, gap: 3.5 }),
+      line({ playerId: 4, playerName: 'No Projection', projection: null, gap: null }),
+    ]
+    const items = nbaGameGaps(game(), lines, NOW, 2)
+    expect(items.map(item => [item.playerName, item.market])).toEqual([['Big Gap', 'assists'], ['Small Gap', 'points']])
+    expect(items[0]).toMatchObject({ gameId: 21320, awayTeam: 'BOS', homeTeam: 'DET', startUtc: game().startUtc, gapShare: 2 / 4.5 })
+  })
+
+  it('is empty once the game has tipped or is not scheduled', () => {
+    expect(nbaGameGaps(game({ startUtc: '2026-10-06T14:00:00Z' }), [line()], NOW)).toEqual([])
+    expect(nbaGameGaps(game({ status: 'completed' }), [line()], NOW)).toEqual([])
+    expect(nbaGameGaps(game({ startUtc: null }), [line()], NOW)).toEqual([])
   })
 })

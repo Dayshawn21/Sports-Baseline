@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BestPick, MatchPrediction, PropLine } from '~/types/tennis'
 import type { UnifiedTennisMatch } from '~/utils/unifiedTennis'
-import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, matchAnalysisPath, revealTab, tableGroups, groupByTournament, slateRow, slateRows, tennisDigest, tourTone } from '~/utils/tennisSlate'
+import { OTHER_TOURNAMENT, featuredPicks, filterByTourTab, fmtEv, isGroupedSort, leanDigest, leanLink, matchAnalysisPath, modelLeanCell, tableGroups, groupByTournament, slateDayTime, slateRow, slateRows, tennisDigest, tennisRemainingLine, tourTone } from '~/utils/tennisSlate'
 
 function prediction(over: Partial<MatchPrediction> = {}): MatchPrediction {
   return {
@@ -90,9 +90,9 @@ describe('matchAnalysisPath', () => {
       .toBe('/tennis/match/91823')
   })
 
-  it('keeps unlinked props inline even when their key resembles a match ID', () => {
+  it('gives unlinked props no path, and no digest box, even when their key resembles a match ID', () => {
     expect(matchAnalysisPath(match({ matchId: null, key: 'm-91823', prediction: null }))).toBeNull()
-    expect(tennisDigest([{ match: match({ matchId: null }), pick: bestBet() }])[0].analysisPath).toBeNull()
+    expect(tennisDigest([{ match: match({ matchId: null, key: 'm-91823' }), pick: bestBet() }])).toEqual([])
   })
 })
 
@@ -120,10 +120,10 @@ describe('slateRow', () => {
     expect(row.primaryIsBestBet).toBe(false)
   })
 
-  it('keeps the highest-EV prop as the fallback when the match has no pick', () => {
+  it('falls back to the first prop in board order, never the highest-EV one (48f)', () => {
     const row = slateRow(match({ props: [prop({ id: 1, evPct: 4 }), prop({ id: 2, statType: 'total_games', evPct: 16.7 }), prop({ id: 3, evPct: null })] }))
     expect(row.primaryPick).toBeNull()
-    expect(row.primaryProp?.id).toBe(2)
+    expect(row.primaryProp?.id).toBe(1)
   })
 
   it('leaves a probability pair null when the prediction lacks it, instead of inventing a 50/50', () => {
@@ -175,7 +175,7 @@ describe('fmtEv', () => {
   it('signs positive and negative EV to one decimal', () => {
     expect(fmtEv(61.25)).toBe('+61.3%')
     expect(fmtEv(-6.4)).toBe('-6.4%')
-    expect(fmtEv(0)).toBe('+0.0%')
+    expect(fmtEv(0)).toBe('0.0%')
   })
 
   it('shows a dash when the pick is unpriced', () => {
@@ -310,23 +310,102 @@ describe('tennisDigest', () => {
   })
 })
 
-describe('revealTab', () => {
-  const rows = slateRows([
-    match({ key: 'atp', prediction: prediction({ tour: 'ATP' }) }),
-    match({ key: 'w125', prediction: prediction({ tour: 'CHALLENGER', tourLabel: 'WTA 125' }) }),
-  ])
+// Noon CT on Tue, Aug 25, 2026.
+const NOW_MS = Date.parse('2026-08-25T17:00:00Z')
 
-  it('keeps the current tab when the row is already visible', () => {
-    expect(revealTab(rows, 'atp', 'ATP')).toBe('ATP')
-    expect(revealTab(rows, 'w125', 'WTA 125')).toBe('WTA 125')
+describe('slateDayTime', () => {
+  it('names today, which fmtStartCT leaves off', () => {
+    expect(slateDayTime('2026-08-25T22:30:00Z', NOW_MS)).toEqual({ day: 'Today', time: '5:30 PM CT' })
   })
-
-  it('falls back to All when the tab hides the row', () => {
-    expect(revealTab(rows, 'w125', 'CHALLENGER')).toBe('all')
-    expect(revealTab(rows, 'atp', 'WTA')).toBe('all')
+  it('names tomorrow and later dates', () => {
+    expect(slateDayTime('2026-08-26T15:00:00Z', NOW_MS)).toEqual({ day: 'Tomorrow', time: '10:00 AM CT' })
+    expect(slateDayTime('2026-08-27T15:00:00Z', NOW_MS)).toEqual({ day: 'Thu, Aug 27', time: '10:00 AM CT' })
   })
+  it('splits days on the CT calendar, not a 24-hour offset', () => {
+    expect(slateDayTime('2026-08-26T04:30:00Z', NOW_MS).day).toBe('Today')
+    expect(slateDayTime('2026-08-26T05:30:00Z', NOW_MS).day).toBe('Tomorrow')
+  })
+  it.each([null, 'not a date'])('shows TBA with no day for %s', value => {
+    expect(slateDayTime(value, NOW_MS)).toEqual({ day: '', time: 'TBA' })
+  })
+})
 
-  it('keeps the tab for a key the table does not hold', () => {
-    expect(revealTab(rows, 'missing', 'ATP')).toBe('ATP')
+describe('modelLeanCell', () => {
+  it('shows a priced best bet with its EV', () => {
+    expect(modelLeanCell(slateRow(match({ bestPicks: [bestBet()] }))))
+      .toEqual({ text: 'Mensik ML (+128)', ev: '+14.2%', link: null })
+  })
+  it('shows an unpriced lean with no EV', () => {
+    expect(modelLeanCell(slateRow(match({ bestPicks: [angle()] }))))
+      .toEqual({ text: 'Set score 2-0', ev: null, link: null })
+  })
+  it('falls back to the first prop, linked to its match props', () => {
+    const cell = modelLeanCell(slateRow(match({ props: [prop({ matchId: 77 })] })))
+    expect(cell.text).toBe('Jakub Mensik · aces')
+    expect(cell.ev).toBeNull()
+    expect(cell.link).toMatch(/^\/tennis\/match\/77\?/)
+  })
+  it('shows the dash placeholder for a row with nothing to show', () => {
+    expect(modelLeanCell(slateRow(match()))).toEqual({ text: fmtEv(null), ev: null, link: null })
+  })
+})
+
+describe('leanDigest', () => {
+  const leanRow = (id: number, startUtc: string, over: Partial<UnifiedTennisMatch> = {}) => slateRow(match({
+    key: `m${id}`, matchId: id, bestPicks: [angle({ pick: `Lean ${id}` })],
+    prediction: prediction({ matchId: id, startUtc, p1Name: `A${id}`, p2Name: `B${id}`, tournament: 'Paris' }), ...over,
+  }))
+
+  it('lists upcoming leans in start order, up to the limit', () => {
+    const rows = [
+      leanRow(3, '2026-08-26T15:00:00Z'), leanRow(1, '2026-08-25T18:00:00Z'),
+      leanRow(2, '2026-08-25T20:00:00Z'), leanRow(4, '2026-08-27T15:00:00Z'),
+    ]
+    const items = leanDigest(rows, NOW_MS, 3)
+    expect(items.map(item => item.lean)).toEqual(['Lean 1', 'Lean 2', 'Lean 3'])
+    expect(items[0]).toEqual({
+      matchKey: 'm1', analysisPath: '/tennis/match/1', lean: 'Lean 1', what: 'A1 vs B1', when: 'Paris · 1:00 PM CT',
+    })
+    expect(items[2].when).toBe('Paris · Tomorrow · 10:00 AM CT')
+  })
+  it('skips started matches, rows without a lean, without a page, or without a time', () => {
+    const rows = [
+      leanRow(1, '2026-08-25T16:00:00Z'),
+      leanRow(2, '2026-08-25T18:00:00Z', { bestPicks: [] }),
+      leanRow(3, '2026-08-25T18:00:00Z', { matchId: null }),
+      leanRow(4, 'not a date'),
+      leanRow(5, '2026-08-25T19:00:00Z'),
+    ]
+    expect(leanDigest(rows, NOW_MS, 4).map(item => item.matchKey)).toEqual(['m5'])
+  })
+  it('is empty for an empty slate', () => {
+    expect(leanDigest([], NOW_MS, 4)).toEqual([])
+  })
+})
+
+describe('leanLink', () => {
+  it('leads with the lean and carries no gap number', () => {
+    expect(leanLink({ matchKey: 'm1', analysisPath: '/tennis/match/1', lean: 'Wild wins 2-0', what: 'A1 vs B1', when: 'Lima 2 · 9:00 AM CT' })).toEqual({
+      key: 'm1', to: '/tennis/match/1', playerName: 'Wild wins 2-0', market: 'A1 vs B1 · Lima 2 · 9:00 AM CT',
+      ariaLabel: 'Wild wins 2-0, A1 vs B1, Lima 2 · 9:00 AM CT, open match analysis',
+    })
+  })
+})
+
+describe('tennisRemainingLine', () => {
+  const row = (id: number, startUtc: string | null) => slateRow(match({
+    key: `m${id}`, matchId: id, prediction: prediction({ matchId: id, startUtc: startUtc ?? undefined }),
+  }))
+
+  it('counts matches yet to start and names the next start', () => {
+    const rows = [row(1, '2026-08-25T16:00:00Z'), row(2, '2026-08-25T20:00:00Z'), row(3, '2026-08-25T18:00:00Z')]
+    expect(tennisRemainingLine(rows, NOW_MS)).toBe('2 matches to start · next Tue 1:00 PM CT')
+  })
+  it('drops "next" for a single match and skips unreadable times', () => {
+    expect(tennisRemainingLine([row(1, '2026-08-25T18:00:00Z'), row(2, 'not a date')], NOW_MS)).toBe('1 match to start · Tue 1:00 PM CT')
+  })
+  it('says when every match has started, and is empty for an empty slate', () => {
+    expect(tennisRemainingLine([row(1, '2026-08-25T16:00:00Z')], NOW_MS)).toBe('Every match has started')
+    expect(tennisRemainingLine([], NOW_MS)).toBe('')
   })
 })

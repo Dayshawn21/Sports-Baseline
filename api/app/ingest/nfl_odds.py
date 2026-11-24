@@ -50,6 +50,17 @@ def _remaining_requests(headers: object) -> int | None:
         return None
 
 
+def credit_gate(remaining: int | None, floor: int) -> bool:
+    """Whether a paid call may run; an unknown balance never spends."""
+    return remaining is not None and remaining >= floor
+
+
+async def _free_remaining(client: httpx.AsyncClient, api_key: str) -> int | None:
+    response = await client.get(f"{BASE_URL}/sports", params={"apiKey": api_key}, timeout=30)
+    response.raise_for_status()
+    return _remaining_requests(response.headers)
+
+
 async def _fetch_odds(client: httpx.AsyncClient, api_key: str, pinnacle: bool = False) -> tuple[list[dict[str, object]], int | None]:
     response = await client.get(f"{BASE_URL}/sports/{DEFAULT_SPORT}/odds/", params=_odds_params(api_key, pinnacle), timeout=30)
     response.raise_for_status()
@@ -71,13 +82,17 @@ async def run(days_ahead: int = 14, min_requests_remaining: int = DEFAULT_MIN_RE
     provider = THE_ODDS_API_EU if pinnacle else THE_ODDS_API_US
     async with SessionLocal() as db, httpx.AsyncClient() as client:
         games = await nfl_repo.get_upcoming_games(db, days_ahead)
-        starts = {game["game_id"]: game.get("start_utc") for game in games}
-        events, remaining = await _fetch_odds(client, _provider_key(), pinnacle)
-        if remaining is not None:
-            logger.info("The Odds API credits remaining: %s", remaining)
-        if remaining is not None and remaining < min_requests_remaining:
-            logger.warning("NFL odds response left %s credits, skipping persistence below safety floor", remaining)
+        if not games:
+            logger.info("No scheduled NFL games in the next %d days, no provider call made", days_ahead)
             return counts
+        starts = {game["game_id"]: game.get("start_utc") for game in games}
+        api_key = _provider_key()
+        remaining = await _free_remaining(client, api_key)
+        if not credit_gate(remaining, min_requests_remaining):
+            logger.warning("The Odds API credits remaining %s, below the NFL floor %d: skipping the paid call", remaining, min_requests_remaining)
+            return counts
+        events, remaining = await _fetch_odds(client, api_key, pinnacle)
+        logger.info("The Odds API credits remaining after the NFL call: %s", remaining)
         for event in events:
             matched = match_scheduled_game(event, games)
             if matched is None:

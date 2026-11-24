@@ -4,8 +4,13 @@ ingest/odds_api.py
 Fetches tennis match odds from Odds-API.io and writes them to `match_odds`.
 
 Bookmakers:
-  - DraftKings: moneyline, totals, set winner markets
-  - Bet365: moneyline, match total, game spread, set handicap (stored as betonline.ag before 2026-09-25)
+  - DraftKings: moneyline (totals and set winners are parsed, but no tennis
+    total has ever arrived; checked 2026-10-28)
+  - FanDuel: moneyline (requested since 2026-10-27)
+  - Bet365: paid-only on Odds-API.io since 2026-10-26, no longer requested; its
+    stored rows (betonline.ag before 2026-09-25) are still read
+
+Tennis total-games lines come from The Odds API instead (app.ingest.tennis_totals).
 
 ENV VARS:
   ODDS_API_KEY   — required
@@ -29,14 +34,14 @@ from typing import Any, Callable, Optional
 import httpx
 
 from app.core.bookmakers import bookmaker_scope_param
-from app.core.tennis_odds_events import event_start, match_event, odds_event_tour
+from app.core.odds_api_io_quota import can_request, remaining_requests
+from app.core.tennis_odds_events import event_start, match_event, near_start_events, odds_event_tour
 from app.ingest.log_config import configure_ingest_logging
 
 logger = logging.getLogger("odds_api_ingest")
 configure_ingest_logging()
 
 BASE_URL = "https://api.odds-api.io/v3"
-DEFAULT_BOOKMAKERS = "DraftKings,Bet365"
 BATCH_SIZE = 10
 DEFAULT_MIN_REQUESTS_REMAINING = 5
 DEFAULT_INVENTORY_OUTPUT = Path(__file__).resolve().parents[3] / "docs" / "odds-market-inventory.md"
@@ -93,13 +98,18 @@ def _parse_int_header(value: str | None) -> int | None:
 def _rate_limit_state(headers: Any) -> RateLimitState:
     return RateLimitState(
         limit=_parse_int_header(headers.get("x-ratelimit-limit")),
-        remaining=_parse_int_header(headers.get("x-ratelimit-remaining")),
+        remaining=remaining_requests(headers),
         reset=headers.get("x-ratelimit-reset"),
     )
 
 
-def _quota_too_low(state: RateLimitState, min_remaining: int) -> bool:
-    return state.remaining is not None and state.remaining <= max(0, min_remaining)
+def _quota_stop_reason(state: RateLimitState, min_remaining: int) -> str | None:
+    """Why the shared hourly quota allows no odds request, or None when one may be sent."""
+    if state.remaining is None:
+        return "Odds-API.io request balance unknown (x-ratelimit-remaining missing or unreadable)"
+    if not can_request(state.remaining, min_remaining):
+        return f"Odds-API.io quota at the floor: {state.remaining} request(s) remaining, floor {min_remaining}"
+    return None
 
 
 def _log_rate_limit_state(label: str, state: RateLimitState) -> None:
@@ -214,6 +224,7 @@ def render_market_inventory(
     captured_at: datetime,
     request_scope: str,
     result: str | None = None,
+    event_lines: list[str] | None = None,
 ) -> str:
     """Render the safe, durable portion of a provider inventory capture."""
     lines = [
@@ -228,7 +239,34 @@ def render_market_inventory(
     for entry in inventory:
         markets = ", ".join(entry.markets) or "No named markets returned"
         lines.append(f"| {entry.bookmaker} | {markets} |")
+    if event_lines is not None:
+        lines.extend(("", "## Per event", ""))
+        lines.extend(event_lines or ["- No events captured."])
     return "\n".join(lines) + "\n"
+
+
+def render_event_lines(selected: list[dict], odds_events: list[dict], captured_at: datetime) -> list[str]:
+    """One line per selected event: league, minutes to start, and each book's market names.
+
+    Markets stay per event here because the merged table cannot show how many
+    captured events carry a market.
+    """
+    odds_by_id = {_event_id(event): event for event in odds_events}
+    lines: list[str] = []
+    for event in selected:
+        league = (event.get("league") or {}).get("name") or "unknown league"
+        start = event_start(event)
+        minutes = "?" if start is None else str(round((start - captured_at).total_seconds() / 60))
+        returned = odds_by_id.get(_event_id(event))
+        if returned is None:
+            books = "not returned"
+        else:
+            inventory = bookmaker_market_inventory(returned.get("bookmakers"))
+            books = "; ".join(
+                f"{entry.bookmaker}: {', '.join(entry.markets) or 'no named markets'}" for entry in inventory
+            ) or "no bookmakers"
+        lines.append(f"- {league}, starts in {minutes} min: {books}")
+    return lines
 
 
 def _find_set_spread_markets(bookmakers: Any) -> dict[str, set[str]]:
@@ -439,6 +477,13 @@ BOOK_CONFIGS = (
         standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),
         spread_parser=_parse_bet365_spread, spread_markets=("game_spread", "set_handicap"),
     ),
+    # FanDuel sends only `ML` for tennis, named as DraftKings names it (probes
+    # 2026-10-27 and 2026-10-28); spreads stay off until a response shows its shape.
+    BookConfig(
+        canonical_name="fanduel", aliases=("fanduel",),
+        standard_parser=_parse_draftkings, standard_markets=("moneyline", "total_games"),
+        spread_parser=None, spread_markets=(),
+    ),
 )
 
 
@@ -446,12 +491,14 @@ BOOK_CONFIGS = (
 # API helpers
 # =============================================================================
 
-async def _fetch_events(client: httpx.AsyncClient, api_key: str) -> list[dict]:
+async def _fetch_events(client: httpx.AsyncClient, api_key: str) -> tuple[list[dict], RateLimitState]:
     r = await client.get(f"{BASE_URL}/events", params={"sport": "tennis", "apiKey": api_key}, timeout=30)
     r.raise_for_status()
-    _log_rate_limit_state("events", _rate_limit_state(r.headers))
+    rate_limit = _rate_limit_state(r.headers)
+    _log_rate_limit_state("events", rate_limit)
     data = r.json()
-    return (data.get("data") or data.get("events") or []) if isinstance(data, dict) else (data or [])
+    events = (data.get("data") or data.get("events") or []) if isinstance(data, dict) else (data or [])
+    return events, rate_limit
 
 
 async def _fetch_odds_batch(
@@ -470,12 +517,18 @@ async def _fetch_odds_batch(
     return events, rate_limit
 
 
+def _event_id(event: dict) -> int | None:
+    try:
+        return int(event["id"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _inventory_event_ids(events: list[dict]) -> list[int]:
     event_ids: list[int] = []
     for event in events:
-        try:
-            event_id = int(event["id"])
-        except (KeyError, TypeError, ValueError):
+        event_id = _event_id(event)
+        if event_id is None:
             continue
         if event_id not in event_ids:
             event_ids.append(event_id)
@@ -484,19 +537,30 @@ def _inventory_event_ids(events: list[dict]) -> list[int]:
     return event_ids
 
 
-def _inventory_request_scope(bookmakers: str, event_count: int) -> str:
-    return (
+def _inventory_request_scope(bookmakers: str, event_count: int, within_hours: float | None = None) -> str:
+    scope = (
         "sport=tennis; one /events request; one /odds/multi request for "
         f"{event_count} event(s), up to {BATCH_SIZE}; bookmakers={bookmakers}"
     )
+    if within_hours is not None:
+        scope += f"; tour-level ATP/WTA singles starting within {within_hours:g}h, soonest first"
+    return scope
 
 
 async def capture_market_inventory(
     output_path: Path,
     bookmakers: str | None = None,
     api_key: str | None = None,
+    within_hours: float | None = None,
+    min_requests_remaining: int = DEFAULT_MIN_REQUESTS_REMAINING,
+    now: datetime | None = None,
 ) -> Path:
-    """Capture one read-only tennis odds batch as a safe market inventory."""
+    """Capture one read-only tennis odds batch as a safe market inventory.
+
+    With within_hours, the batch is the tour-level singles events starting soonest
+    inside that window and the report adds one line per event; without it, the
+    first listed ids, as the 16c inventory did.
+    """
     if api_key is None or bookmakers is None:
         from app.config import settings
 
@@ -508,22 +572,32 @@ async def capture_market_inventory(
         raise RuntimeError("ODDS_API_KEY is required - set it in api/app/.env")
     bookmaker_scope = bookmaker_scope_param(bookmakers)
 
+    captured_at = now or datetime.now(timezone.utc)
     async with httpx.AsyncClient() as client:
-        events = await _fetch_events(client, api_key)
-        event_ids = _inventory_event_ids(events)
-        scope = _inventory_request_scope(bookmaker_scope, len(event_ids))
-        if not event_ids:
-            report = render_market_inventory(
-                [],
-                datetime.now(timezone.utc),
-                scope,
-                "No active tennis events returned.",
-            )
+        events, rate_limit = await _fetch_events(client, api_key)
+        selected = None
+        if within_hours is None:
+            event_ids = _inventory_event_ids(events)
+        else:
+            selected = [
+                event for event in near_start_events(events, captured_at, within_hours, BATCH_SIZE)
+                if _event_id(event) is not None
+            ]
+            event_ids = _inventory_event_ids(selected)
+        scope = _inventory_request_scope(bookmaker_scope, len(event_ids), within_hours)
+        stop_reason = _quota_stop_reason(rate_limit, min_requests_remaining)
+        if stop_reason is not None:
+            result = f"Stopped: {stop_reason}; no odds request sent."
+            report = render_market_inventory([], captured_at, scope, result)
+        elif not event_ids:
+            report = render_market_inventory([], captured_at, scope, "No active tennis events returned.")
         else:
             odds_events, _ = await _fetch_odds_batch(client, api_key, event_ids, bookmaker_scope)
-            inventory = event_market_inventory([event for event in odds_events if isinstance(event, dict)])
+            odds_events = [event for event in odds_events if isinstance(event, dict)]
+            inventory = event_market_inventory(odds_events)
             result = None if inventory else "No bookmaker markets returned for the scoped batch."
-            report = render_market_inventory(inventory, datetime.now(timezone.utc), scope, result)
+            event_lines = None if selected is None else render_event_lines(selected, odds_events, captured_at)
+            report = render_market_inventory(inventory, captured_at, scope, result, event_lines)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
@@ -560,6 +634,41 @@ def _log_odds_api_limit_hint(status_code: int, response_text: str, bookmakers: s
         )
         return
     logger.error("Batch odds error: %s %s", status_code, short_msg)
+
+
+class OddsPlanBlockedError(RuntimeError):
+    """Every odds batch was refused by the plan, so a scheduled run must fail visibly."""
+
+
+async def _fetch_matched_odds(
+    client: httpx.AsyncClient, api_key: str, event_ids: list[int], bookmakers: str,
+    min_requests_remaining: int, sleep_sec: float, rate_limit: RateLimitState,
+) -> tuple[dict[int, dict], bool]:
+    """Event odds by id, and whether a 402/403 stopped the batches.
+
+    `rate_limit` is the quota the previous call (the events fetch) left; the floor
+    is checked before each batch, so a run that starts at the floor sends none.
+    """
+    odds_by_id: dict[int, dict] = {}
+    for i in range(0, len(event_ids), BATCH_SIZE):
+        stop_reason = _quota_stop_reason(rate_limit, min_requests_remaining)
+        if stop_reason is not None:
+            logger.warning("Stopping odds batch fetch: %s.", stop_reason)
+            break
+        batch = event_ids[i:i + BATCH_SIZE]
+        try:
+            results, rate_limit = await _fetch_odds_batch(client, api_key, batch, bookmakers)
+        except httpx.HTTPStatusError as e:
+            code = e.response.status_code
+            _log_odds_api_limit_hint(code, e.response.text, bookmakers)
+            if code in (402, 403):
+                return odds_by_id, True
+        else:
+            for ev in results:
+                odds_by_id[int(ev["id"])] = ev
+        if sleep_sec > 0:
+            await asyncio.sleep(sleep_sec)
+    return odds_by_id, False
 
 
 # =============================================================================
@@ -607,10 +716,7 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
 
     bookmakers = bookmaker_scope_param(bookmakers or settings.live_odds_bookmakers)
 
-    api_key = settings.odds_api_key if hasattr(settings, "odds_api_key") else None
-    if not api_key:
-        import os
-        api_key = os.getenv("ODDS_API_KEY", "").strip()
+    api_key = (settings.odds_api_key or "").strip()
     if not api_key:
         raise RuntimeError("ODDS_API_KEY is required — set it in .env or environment")
 
@@ -622,7 +728,7 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
 
         async with httpx.AsyncClient() as client:
             logger.info("Fetching tennis events from Odds-API.io...")
-            api_events = await _fetch_events(client, api_key)
+            api_events, events_rate_limit = await _fetch_events(client, api_key)
             logger.info("Odds-API events: %d", len(api_events))
 
             singles_events = [
@@ -656,39 +762,15 @@ async def run(hours_ahead: int = 8, sleep_sec: float = 0.1, limit: int = 300,
             if not matched:
                 return
 
-            # Batch fetch odds
-            odds_by_id: dict[int, dict] = {}
-            blocked_by_plan = False
-            event_ids = [m["odds_api_id"] for m in matched]
-            for i in range(0, len(event_ids), BATCH_SIZE):
-                batch = event_ids[i:i + BATCH_SIZE]
-                try:
-                    results, rate_limit = await _fetch_odds_batch(client, api_key, batch, bookmakers)
-                    for ev in results:
-                        odds_by_id[int(ev["id"])] = ev
-                    if _quota_too_low(rate_limit, min_requests_remaining):
-                        logger.warning(
-                            "Stopping odds batch fetch with %s requests remaining at safety floor %s.",
-                            rate_limit.remaining,
-                            min_requests_remaining,
-                        )
-                        break
-                except httpx.HTTPStatusError as e:
-                    code = e.response.status_code
-                    _log_odds_api_limit_hint(code, e.response.text, bookmakers)
-                    if code in (402, 403):
-                        blocked_by_plan = True
-                        break
-                if sleep_sec > 0:
-                    await asyncio.sleep(sleep_sec)
-
+            odds_by_id, blocked_by_plan = await _fetch_matched_odds(
+                client, api_key, [m["odds_api_id"] for m in matched], bookmakers,
+                min_requests_remaining, sleep_sec, events_rate_limit,
+            )
             logger.info("Odds responses: %d", len(odds_by_id))
             if blocked_by_plan and not odds_by_id:
-                logger.warning(
-                    "Stopping ingest: current Odds API plan appears to block requested tennis odds data. "
-                    "Try fewer/supported bookmakers on your tier."
+                raise OddsPlanBlockedError(
+                    f"Odds-API.io plan refused every tennis odds batch for bookmakers={bookmakers}."
                 )
-                return
 
             # Parse and insert
             updated_matches = 0
@@ -744,9 +826,15 @@ async def _main() -> None:
     parser.add_argument("--min-requests-remaining", type=int, default=DEFAULT_MIN_REQUESTS_REMAINING)
     parser.add_argument("--inventory-only", action="store_true")
     parser.add_argument("--inventory-output", type=Path, default=DEFAULT_INVENTORY_OUTPUT)
+    parser.add_argument("--inventory-within-hours", type=float)
     args = parser.parse_args()
     if args.inventory_only:
-        await capture_market_inventory(args.inventory_output, bookmakers=args.bookmakers)
+        await capture_market_inventory(
+            args.inventory_output,
+            bookmakers=args.bookmakers,
+            within_hours=args.inventory_within_hours,
+            min_requests_remaining=args.min_requests_remaining,
+        )
         return
     await run(
         hours_ahead=args.hours_ahead,

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "./fonts.css";
 
 /* Ported from prototypes/theme.css (build-plan 31a). Green is a signal color:
    only a positive, validated signal gets --positive; red is only for negatives. */
@@ -31,6 +31,13 @@
   /* chart grays: secondary series and bars, below the primary text-colored one */
   --chart-mid: #6b6b75;
   --chart-low: #3a3a42;
+
+  /* loading skeleton bars on a card, and the shimmer passing over them */
+  --skeleton-base: rgba(255, 255, 255, 0.07);
+  --skeleton-shine: rgba(255, 255, 255, 0.13);
+
+  /* A hovered card lifting off the black ground. */
+  --shadow-lift: 0 8px 32px rgba(0, 0, 0, 0.45);
 
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -67,6 +74,95 @@ body {
 
 * {
   min-width: 0;
+}
+
+/* JetBrains Mono is already fixed-width; this keeps DM Sans figures from shifting as values change. */
+table,
+.ant-table,
+.stat-chip__value,
+.page-head-period,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+/*
+ * Cards and raised panels only; small chips and 999px pills keep the plain round.
+ * A squircle at the same radius reads tighter than a round corner, so radii grow 1.5x here
+ * (14px to 21px, 10px to 15px); unsupported browsers keep today's radii.
+ */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius: 21px;
+  }
+
+  /* :root outranks the later page CSS and Ant Design's scoped component rules. */
+  :root .nfl-game-card, :root .nfl-player-card,
+  :root .ant-card, :root .ant-modal .ant-modal-content, :root .ant-popover .ant-popover-inner {
+    border-radius: 15px;
+  }
+
+  .home-card, .home-panel, .home-rec,
+  .model-section-empty, .prop-table-panel, .tennis-slate-table,
+  .sport-sheet .ant-drawer-content,
+  .nfl-model-card, .nfl-slate-window, .nfl-game-card, .nfl-player-card,
+  .nhl-player-history,
+  .tennis-match-tile, .tennis-match-card, .tennis-match-empty,
+  .tennis-model-card, .tennis-model-empty, .tennis-prop-evidence,
+  .tools-card,
+  .ant-card, .ant-modal-content, .ant-popover-inner {
+    corner-shape: squircle;
+  }
+}
+
+/*
+ * Page crossfade between sport pages (useViewTransitionLocation); short so a click still feels instant.
+ * The group is included because the transition overlay takes clicks until its longest animation ends.
+ */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease;
+}
+
+/* The hook already skips the API under reduced motion; this covers a setting changed mid-fade. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/*
+ * Touch hit areas: a transparent ::before grows small controls to 44px without changing how they look.
+ * The market pills are left out: their wrapped rows sit flush, so a taller hit area would steal a neighbour's tap.
+ */
+@media (pointer: coarse) {
+  .ant-drawer-close, .ant-modal-close, .ant-switch-small, .alt-lines-chip, .ant-tabs-tab,
+  .ant-select-selector, .ant-picker, .ant-input-affix-wrapper, .tools-card .ant-btn,
+  .board-record__live a, .slate-legend__pick a, .tennis-slate-table__toggle, .game-crumb, .nfl-player-crumb {
+    position: relative;
+  }
+
+  .ant-drawer-close::before, .ant-modal-close::before, .ant-switch-small::before, .alt-lines-chip::before,
+  .ant-tabs-tab::before, .ant-select-selector::before, .ant-picker::before,
+  /* Ant Design's input wrapper already uses ::before as a hidden height strut. */
+  .ant-input-affix-wrapper::after, .tools-card .ant-btn::before, .board-record__live a::before, .slate-legend__pick a::before,
+  .tennis-slate-table__toggle::before, .game-crumb::before, .nfl-player-crumb::before {
+    content: '';
+    position: absolute;
+    top: min(0px, calc(50% - 22px));
+    bottom: min(0px, calc(50% - 22px));
+    left: min(0px, calc(50% - 22px));
+    right: min(0px, calc(50% - 22px));
+  }
 }
 
 .page-shell {
@@ -236,12 +332,65 @@ body {
   border-radius: 999px;
 }
 
+/* 13px and about 30px tall, level with the sport tabs it sits beside. */
 .sport-view-switch a {
-  padding: 5px 14px;
+  padding: 6px 14px;
   border-radius: 999px;
   color: var(--text-secondary);
-  font: 500 12px var(--font-body);
+  font: 500 13px var(--font-body);
   white-space: nowrap;
+}
+
+.lf-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-card);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font: 500 12px var(--font-mono);
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 0;
+}
+
+.shortcut-list__row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.shortcut-list__row dt {
+  display: flex;
+  gap: 6px;
+}
+
+.shortcut-list__row dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shortcut-list__note {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.shortcut-list__note a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .sport-view-switch a:hover {
@@ -309,48 +458,6 @@ body {
   text-transform: uppercase;
 }
 
-.unified-filters {
-  justify-content: flex-end;
-}
-
-.unified-filters .ant-select {
-  min-width: 138px;
-}
-
-.unified-filters .ant-picker {
-  min-width: 158px;
-}
-
-.unified-filter-button {
-  min-height: 32px;
-  padding: 5px 12px;
-  border: 1px solid var(--border-card);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.unified-filter-button:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--text-primary);
-}
-
-.unified-filter-button.is-active {
-  border-color: rgba(255, 255, 255, 0.35);
-  background: var(--bg-raised);
-  color: var(--text-primary);
-}
-
-.unified-filter-button.is-lean {
-  border-color: color-mix(in srgb, var(--caution) 40%, transparent);
-  background: var(--caution-soft);
-  color: var(--caution);
-}
-
 .unified-notices {
   display: grid;
   gap: 8px;
@@ -385,19 +492,17 @@ body {
 
 .props-audit--issues {
   border: 1px solid color-mix(in srgb, var(--caution) 28%, transparent);
-  border-left: 3px solid var(--caution);
   background: var(--caution-soft);
 }
 
 .props-audit--clean {
   border: 1px solid color-mix(in srgb, var(--positive) 22%, transparent);
-  border-left: 3px solid var(--positive);
   background: var(--positive-soft);
 }
 
 .props-audit__title {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -476,21 +581,12 @@ body {
   margin: 0 0 14px;
 }
 
-@media (max-width: 768px) {
-  .unified-filters {
-    width: 100%;
-  }
-
-  .unified-filters .ant-select,
-  .unified-filters .ant-picker,
-  .unified-filter-button {
-    width: 100%;
-  }
-}
-
 /* ── App shell ── */
 
 .app-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: 20px;
@@ -498,6 +594,9 @@ body {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+
+.app-wordmark:hover, .app-wordmark:focus-visible { color: var(--text-primary); }
+.app-wordmark:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; border-radius: 2px; }
 
 .app-wordmark b {
   color: var(--positive);
@@ -512,7 +611,22 @@ body {
 }
 
 .shell-tabs--end {
+  flex: none;
   margin-left: auto;
+}
+
+/* The search field is the one header item that gives up width; the rest keep theirs. */
+.app-wordmark,
+.ant-layout-header .ask-trigger {
+  flex: none;
+}
+
+/* Sport and view read as one control: tighter than the bar's 24px gap between groups. */
+.shell-nav-cluster {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
 }
 
 .shell-tabs a {
@@ -527,9 +641,12 @@ body {
   color: var(--text-primary);
 }
 
+/* Weight alone is a weak cue at low vision; the underline marks the active tab without using color. */
 .shell-tabs a.is-active {
   color: var(--text-primary);
   font-weight: 700;
+  text-decoration: underline 2px;
+  text-underline-offset: 7px;
 }
 
 .lf-page-head {
@@ -565,6 +682,12 @@ body {
   font: 500 16px var(--font-body);
 }
 
+.lf-page-head__link {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .lf-page-head__controls {
   display: flex;
   align-items: center;
@@ -582,7 +705,19 @@ body {
 
 .page-head-period {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.page-head-period__picker {
+  display: flex;
+  min-width: 0;
+}
+
+.page-head-period__picker .ant-select,
+.page-head-period__picker .ant-picker {
+  width: 100%;
+  min-width: 168px;
 }
 
 .page-head-period__link {
@@ -606,9 +741,20 @@ body {
 }
 
 @media (max-width: 768px) {
+  /* Phones: a tighter head so a slate's first rows reach the first screen. */
+  .lf-page-head {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .lf-page-head .unified-page-title {
+    font-size: 28px;
+  }
+
   .lf-page-head__row {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .lf-page-head__controls {
@@ -622,19 +768,159 @@ body {
 }
 
 .shell-mobile-sport {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
   margin-right: auto;
-  color: var(--text-secondary);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
   font: 700 15px var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.shell-mobile-sport:active {
+  background: var(--bg-raised);
+}
+
+.shell-mobile-sport:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.shell-mobile-sport__chevron {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* The sport sheet rises from the bottom so the choice lands under the thumb. */
+.sport-sheet .ant-drawer-content {
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--bg-card);
+}
+
+.sport-sheet .ant-drawer-header {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sport-sheet .ant-drawer-body {
+  padding: 8px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.sport-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.sport-sheet__row.is-active {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.sport-sheet__row:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+
+.sport-sheet__sport {
+  font: 700 18px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sport-sheet__view {
+  color: var(--text-muted);
+  font: 500 13px var(--font-body);
 }
 
 .shell-views-row {
   margin: 10px 0 0 max(16px, env(safe-area-inset-left, 0px));
 }
 
+/* The phone header runs to 900px (PHONE_HEADER_MAX_WIDTH in App.tsx): its controls reach 44px and the views row spans the width. */
+@media (max-width: 900px) {
+  .shell-views-row {
+    display: flex;
+    margin-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .shell-views-row a {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .shell-menu-button.ant-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 768px) {
+  .lf-page-head__controls .ant-select,
+  .nfl-prop-filter-bar .ant-select {
+    height: 44px;
+  }
+
+  .page-head-period__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* One row on phones: the arrows keep their width and the picker takes what is left. */
+  .page-head-period {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .page-head-period__link {
+    padding: 0 10px;
+  }
+
+  .page-head-period__picker {
+    flex: 1;
+  }
+
+  .page-head-period__picker .ant-select,
+  .page-head-period__picker .ant-picker {
+    min-width: 0;
+    height: 44px;
+  }
+}
+
 .shell-tabs a:focus-visible,
 .sport-view-switch a:focus-visible {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
+}
+
+/* iOS Safari zooms into any focused field under 16px. Setting 16px on touch screens stops the jump without blocking pinch zoom. */
+@media (pointer: coarse) {
+  :root input,
+  :root textarea,
+  :root select,
+  :root .ant-select,
+  :root .slate-command__field input,
+  :root .ask-form textarea {
+    font-size: 16px;
+  }
+
+  /* Ant Design sizes its select text box with a four-class selector of its own. */
+  .ant-select .ant-select-selection-search-input {
+    font-size: 16px !important;
+  }
 }

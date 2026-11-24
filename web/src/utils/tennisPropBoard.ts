@@ -1,12 +1,15 @@
 import type { MatchBestPicks, MatchPrediction, PropLine } from '~/types/tennis'
+import { playerOptions, playerSelected, withPropListFilters } from '~/utils/propFilters'
+import { impliedProbFromAmerican } from '~/utils/oddsMath'
 
-export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'bet' | 'market' | 'model'
+export type TennisPropSource = 'all' | 'prizepicks' | 'dk' | 'market' | 'model'
 export type TennisTourFilter = 'all' | 'atp' | 'wta' | 'challenger' | 'wta_125'
 
 export interface TennisBoardLine extends PropLine {
   matchup: string | null
   tournament: string | null
   tour: string | null
+  bestOf: number | null
   reason?: string | null
 }
 
@@ -21,7 +24,6 @@ export const TENNIS_PROP_SOURCES: Array<{ value: TennisPropSource, label: string
   { value: 'all', label: 'All' },
   { value: 'prizepicks', label: 'PrizePicks' },
   { value: 'dk', label: 'DraftKings' },
-  { value: 'bet', label: 'Bet365' },
   { value: 'market', label: 'Market odds' },
   { value: 'model', label: 'Model only' },
 ]
@@ -33,6 +35,79 @@ export const TENNIS_TOUR_FILTERS: Array<{ value: TennisTourFilter, label: string
   { value: 'challenger', label: 'Challenger' },
   { value: 'wta_125', label: 'WTA 125' },
 ]
+
+export type TennisSurfaceFilter = 'all' | 'hard' | 'clay' | 'grass'
+export type TennisBestOfFilter = 'all' | '3' | '5'
+/** `default` is today's board: standard and demon lines, goblins hidden unless adopted. */
+export type TennisLineTypeFilter = 'default' | 'standard' | 'demon' | 'goblin'
+
+export interface TennisContextFilter {
+  surface: TennisSurfaceFilter
+  bestOf: TennisBestOfFilter
+  tour: TennisTourFilter
+  lineType: TennisLineTypeFilter
+}
+
+export const DEFAULT_TENNIS_CONTEXT_FILTER: TennisContextFilter = { surface: 'all', bestOf: 'all', tour: 'all', lineType: 'default' }
+
+export const TENNIS_SURFACE_FILTERS: Array<{ value: TennisSurfaceFilter, label: string }> = [
+  { value: 'all', label: 'All surfaces' },
+  { value: 'hard', label: 'Hard' },
+  { value: 'clay', label: 'Clay' },
+  { value: 'grass', label: 'Grass' },
+]
+
+export const TENNIS_BEST_OF_FILTERS: Array<{ value: TennisBestOfFilter, label: string }> = [
+  { value: 'all', label: 'Any format' },
+  { value: '3', label: 'Best of 3' },
+  { value: '5', label: 'Best of 5' },
+]
+
+export const TENNIS_LINE_TYPE_FILTERS: Array<{ value: TennisLineTypeFilter, label: string }> = [
+  { value: 'default', label: 'Standard + demon' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'demon', label: 'Demon' },
+  { value: 'goblin', label: 'Goblin' },
+]
+
+const CONTEXT_PARAMS = { surface: 'surface', bestOf: 'bo', tour: 'tour', lineType: 'line' } as const
+
+function parseOption<T extends string>(value: string | null, options: ReadonlyArray<{ value: T }>, fallback: T): T {
+  return options.find(option => option.value === value)?.value ?? fallback
+}
+
+/** An unknown value, as from an old or edited link, reads as that filter's default. */
+export function parseTennisContextFilter(params: URLSearchParams): TennisContextFilter {
+  return {
+    surface: parseOption(params.get(CONTEXT_PARAMS.surface), TENNIS_SURFACE_FILTERS, 'all'),
+    bestOf: parseOption(params.get(CONTEXT_PARAMS.bestOf), TENNIS_BEST_OF_FILTERS, 'all'),
+    tour: parseOption(params.get(CONTEXT_PARAMS.tour), TENNIS_TOUR_FILTERS, 'all'),
+    lineType: parseOption(params.get(CONTEXT_PARAMS.lineType), TENNIS_LINE_TYPE_FILTERS, 'default'),
+  }
+}
+
+/** Writes each filter that differs from its default and leaves every other param alone. */
+export function withTennisContextFilter(params: URLSearchParams, filter: TennisContextFilter): URLSearchParams {
+  const next = new URLSearchParams(params)
+  for (const key of Object.keys(CONTEXT_PARAMS) as Array<keyof TennisContextFilter>) {
+    if (filter[key] === DEFAULT_TENNIS_CONTEXT_FILTER[key]) next.delete(CONTEXT_PARAMS[key])
+    else next.set(CONTEXT_PARAMS[key], filter[key])
+  }
+  return next
+}
+
+/** Line type is a PrizePicks payout tier, so it applies only while PrizePicks rows can show. */
+export function lineTypeApplies(source: TennisPropSource): boolean {
+  return source === 'all' || source === 'prizepicks'
+}
+
+/** A null surface or format passes only "all"; a row with no PrizePicks tier passes only the default line type. */
+export function tennisContextMatches(line: TennisBoardLine, filter: TennisContextFilter): boolean {
+  return (filter.surface === 'all' || normalized(line.surface) === filter.surface)
+    && (filter.bestOf === 'all' || line.bestOf === Number(filter.bestOf))
+    && tourMatches(line, filter.tour)
+    && (filter.lineType === 'default' || payoutTier(line) === filter.lineType)
+}
 
 const MARKET_LABELS: Record<string, string> = {
   aces: 'Aces',
@@ -56,8 +131,8 @@ const MARKET_LABELS: Record<string, string> = {
 }
 
 const BLOCKING_FLAGS = new Set([
-  'missing_player', 'missing_match', 'missing_stats', 'unsupported_stat',
-  'stale_stats', 'stale_odds', 'market_stale', 'small_sample', 'missing_prediction', 'missing_projection',
+  'missing_player', 'missing_match', 'missing_stats', 'unsupported_stat', 'bo5_unsupported_stat',
+  'stale_stats', 'stale_odds', 'small_sample', 'missing_prediction',
   'match_finished', 'match_link_invalid', 'ungraded_stat',
 ])
 
@@ -69,6 +144,11 @@ function numeric(value: string | number | null | undefined): number | null {
 
 function normalized(value: string | null | undefined): string {
   return (value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+/** The category key a stat type has on the board, and so in `?market=` on the match and player pages. */
+export function marketKey(statType: string): string {
+  return normalized(statType)
 }
 
 function sourceMatches(line: PropLine, source: TennisPropSource): boolean {
@@ -87,9 +167,8 @@ function sourceKey(source: string): TennisPropSource {
   const value = source.toLowerCase()
   if (value === 'prizepicks') return 'prizepicks'
   if (value === 'draftkings' || value === 'dk') return 'dk'
-  if (value === 'market') return 'market'
   if (value === 'model') return 'model'
-  return 'bet'
+  return 'market'
 }
 
 function findPrediction(line: PropLine, predictions: MatchPrediction[]): MatchPrediction | null {
@@ -145,10 +224,6 @@ export function winASetStrength(modelProbability: number | null | undefined): 'L
   return null
 }
 
-function americanImpliedProbability(odds: number): number {
-  return odds > 0 ? 100 / (odds + 100) : Math.abs(odds) / (Math.abs(odds) + 100)
-}
-
 /**
  * Turns existing match predictions into side-specific board rows without adding a new API.
  * Reference only: tennis moneyline picks are off since 26d (MONEYLINE_PICKS_ENABLED in
@@ -157,12 +232,10 @@ function americanImpliedProbability(odds: number): number {
 export function moneylineBoardRows(predictions: MatchPrediction[]): PropLine[] {
   return predictions.flatMap(match => {
     if (match.p1WinProb == null || match.p2WinProb == null || match.p1OddsAmerican == null || match.p2OddsAmerican == null) return []
-    const p1Raw = americanImpliedProbability(match.p1OddsAmerican)
-    const p2Raw = americanImpliedProbability(match.p2OddsAmerican)
-    const denominator = p1Raw + p2Raw
+    const [p1Market, p2Market] = impliedProbFromAmerican(match.p1OddsAmerican, match.p2OddsAmerican)
     const sides = [
-      { playerName: match.p1Name, modelProb: match.p1WinProb, odds: match.p1OddsAmerican, marketProb: p1Raw / denominator, id: -(match.matchId * 2 + 1) },
-      { playerName: match.p2Name, modelProb: match.p2WinProb, odds: match.p2OddsAmerican, marketProb: p2Raw / denominator, id: -(match.matchId * 2 + 2) },
+      { playerName: match.p1Name, modelProb: match.p1WinProb, odds: match.p1OddsAmerican, marketProb: p1Market, id: -(match.matchId * 2 + 1) },
+      { playerName: match.p2Name, modelProb: match.p2WinProb, odds: match.p2OddsAmerican, marketProb: p2Market, id: -(match.matchId * 2 + 2) },
     ]
     return sides.map(side => ({
       id: side.id,
@@ -236,24 +309,28 @@ export function winASetBoardRows(matches: MatchBestPicks[]): PropLine[] {
     }))
 }
 
+/** A line with a complete, unblocked projection. Rated, never ranked: tennis props carry no tier (48f). */
 export function isTennisRateable(line: PropLine): boolean {
   const status = line.projectionStatus ?? 'ok'
   const flags = line.dataQualityFlags ?? []
   return !isMoneyline(line)
     && line.recommendation != null
     && line.statAvg != null
-    && line.evPct != null
-    && line.evPct > 0
+    && line.pOver != null
     && numeric(line.line) != null
     && status === 'ok'
     && !flags.some(flag => BLOCKING_FLAGS.has(flag))
     && line.audit?.matchLinked !== false
 }
 
+/** True only on a line 48e's forward check adopted; nothing else is ranked or colored. */
+export function isAdopted(line: Pick<PropLine, 'adoptedPick'>): boolean {
+  return line.adoptedPick != null
+}
+
 export function trustLabel(line: PropLine): string {
-  if (!isTennisRateable(line)) return 'Review'
-  if (line.confidence === 'LOCK' || line.confidence === 'STRONG') return 'Ready'
-  return 'Lean'
+  if (isAdopted(line)) return 'Pick'
+  return isTennisRateable(line) ? 'Reference' : 'Review'
 }
 
 export function signalSummary(line: PropLine): string {
@@ -263,45 +340,44 @@ export function signalSummary(line: PropLine): string {
   if (line.dataQualityFlags?.includes('small_sample')) return 'Thin rolling sample'
   const lineValue = numeric(line.line)
   if (!isMoneyline(line) && line.statAvg != null && lineValue != null && line.recommendation) {
-    const pick = line.recommendation.toUpperCase() === 'UNDER' ? 'Under' : 'Over'
     const opponent = line.opponentStatAvg != null ? ` Opponent allows ${line.opponentStatAvg.toFixed(1)}.` : ''
     const ungraded = line.dataQualityFlags?.includes('ungraded_stat') ? 'New stat, not yet graded. ' : ''
-    return `${ungraded}Model projects ${line.statAvg.toFixed(1)} vs the ${lineValue.toFixed(1)} line (${pick}).${opponent}`
+    return `${ungraded}Model projects ${line.statAvg.toFixed(1)} vs the ${lineValue.toFixed(1)} line.${opponent}`
   }
   if (line.opponentStatAvg != null) return `Opponent allows ${line.opponentStatAvg.toFixed(1)}`
   if (line.matchesCount != null) return `${line.matchesCount}-match rolling sample`
   return line.recommendation ? 'Model context is limited' : 'Model score unavailable'
 }
 
-const CONFIDENCE_RANK: Record<string, number> = { LOCK: 0, STRONG: 1, LEAN: 2 }
-
-function confidenceRank(line: TennisBoardLine): number {
-  return CONFIDENCE_RANK[(line.confidence ?? '').toUpperCase()] ?? 3
+function startMs(line: Pick<PropLine, 'startTime'>): number {
+  const time = line.startTime ? Date.parse(line.startTime) : Number.NaN
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
 }
 
-// Highest EV first with its sign, so a -30% line never outranks a +5% one;
-// unpriced lines go last.
-function compareEv(left: number | null | undefined, right: number | null | undefined): number {
-  if (left == null || right == null) return (left == null ? 1 : 0) - (right == null ? 1 : 0)
-  return right - left
-}
-
-// Tier before EV: the tiers carry a hit-probability floor, so a high-EV coin-flip
-// demon cannot outrank a reliable standard pick.
-function compareLines(left: TennisBoardLine, right: TennisBoardLine): number {
+// Only adopted lines are ranked, by margin over break-even (48g). Every other
+// line reads in start order, never by EV or probability. Win a Set is a
+// derived match angle and keeps its order.
+export function compareLines(left: PropLine, right: PropLine): number {
+  const leftMargin = left.adoptedPick?.margin
+  const rightMargin = right.adoptedPick?.margin
+  if (leftMargin != null || rightMargin != null) {
+    if (leftMargin == null) return 1
+    if (rightMargin == null) return -1
+    if (rightMargin !== leftMargin) return rightMargin - leftMargin
+  }
   if (isWinASet(left) && isWinASet(right)) {
     const probability = (right.hitProbability ?? Number.NEGATIVE_INFINITY) - (left.hitProbability ?? Number.NEGATIVE_INFINITY)
     if (probability !== 0) return probability
   }
-  const tier = confidenceRank(left) - confidenceRank(right)
-  if (tier !== 0) return tier
-  const ev = compareEv(left.evPct, right.evPct)
-  if (ev !== 0) return ev
-  return (left.playerName ?? '').localeCompare(right.playerName ?? '') || left.id - right.id
+  const start = startMs(left) - startMs(right)
+  if (start !== 0 && !Number.isNaN(start)) return start
+  return (left.playerName ?? '').localeCompare(right.playerName ?? '')
+    || left.statType.localeCompare(right.statType)
+    || left.id - right.id
 }
 
 export function enrichTennisPropLines(props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, includeAlternates = false): TennisBoardLine[] {
-  return props.filter(line => sourceMatches(line, source) && (includeAlternates || !isGoblin(line))).map(line => {
+  return props.filter(line => sourceMatches(line, source) && (includeAlternates || !isGoblin(line) || isAdopted(line))).map(line => {
     const match = findPrediction(line, predictions)
     const opponent = match && normalized(match.p1Name) === normalized(line.playerName)
       ? match.p2Name
@@ -314,16 +390,24 @@ export function enrichTennisPropLines(props: PropLine[], predictions: MatchPredi
       tournament: match?.tournament ?? null,
       tour: match?.tourLabel ?? match?.tour ?? null,
       surface: line.surface ?? match?.surface ?? null,
+      bestOf: line.bestOf ?? match?.bestOf ?? null,
       startTime: line.startTime ?? match?.startUtc ?? null,
     }
   })
 }
 
+// An adopted goblin is a pick, so it leaves the alternates bucket.
+function isBoardRateable(line: PropLine): boolean {
+  return isAdopted(line) || (!isGoblin(line) && isTennisRateable(line))
+}
+
 export function buildTennisPropBoard(
-  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource, tour: TennisTourFilter = 'all', includeAlternates = false,
+  props: PropLine[], predictions: MatchPrediction[], source: TennisPropSource,
+  filter: TennisContextFilter = DEFAULT_TENNIS_CONTEXT_FILTER, includeAlternates = false,
 ): TennisBoardCategory[] {
   const byMarket = new Map<string, TennisBoardLine[]>()
-  for (const line of enrichTennisPropLines(props, predictions, source, includeAlternates).filter(line => tourMatches(line, tour))) {
+  const lines = enrichTennisPropLines(props, predictions, source, includeAlternates || filter.lineType === 'goblin')
+  for (const line of lines.filter(line => tennisContextMatches(line, filter))) {
     const market = normalized(line.statType)
     byMarket.set(market, [...(byMarket.get(market) ?? []), line])
   }
@@ -332,7 +416,23 @@ export function buildTennisPropBoard(
     .map(([market, lines]) => ({
       market,
       label: marketLabel(market),
-      rateable: lines.filter(line => !isGoblin(line) && isTennisRateable(line)).sort(compareLines),
-      other: lines.filter(line => isGoblin(line) || !isTennisRateable(line)).sort(compareLines),
+      rateable: lines.filter(isBoardRateable).sort(compareLines),
+      other: lines.filter(line => !isBoardRateable(line)).sort(compareLines),
     }))
+}
+
+/** Every market stays, emptied ones included, so the pills do not reshuffle as a selection narrows them. */
+export function filterTennisBoardCategories(categories: TennisBoardCategory[], players: readonly string[]): TennisBoardCategory[] {
+  if (players.length === 0) return categories
+  const keep = (line: TennisBoardLine) => playerSelected(line.playerName, players)
+  return categories.map(category => ({ ...category, rateable: category.rateable.filter(keep), other: category.other.filter(keep) }))
+}
+
+export function tennisBoardPath(players: readonly string[], filter: TennisContextFilter = DEFAULT_TENNIS_CONTEXT_FILTER): string {
+  const search = withTennisContextFilter(withPropListFilters(new URLSearchParams(), { player: players }), filter).toString()
+  return search === '' ? '/tennis/props' : `/tennis/props?${search}`
+}
+
+export function tennisPlayerOptions(categories: TennisBoardCategory[], players: readonly string[]): string[] {
+  return playerOptions(categories.flatMap(category => [...category.rateable, ...category.other].map(line => line.playerName)), players)
 }

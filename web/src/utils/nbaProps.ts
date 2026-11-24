@@ -1,6 +1,8 @@
 import type { NbaInjury, NbaLineOnlyRecent, NbaPropFlag, NbaPropLine } from '~/types/nba'
 import { NBA_LINE_ONLY_MARKETS } from '~/utils/nbaLineOnly'
 import { mainRung, overAgainstStandard } from '~/utils/nflLineOnly'
+import { fmtSigned } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 /** `NbaPropMarket` order (20g2): the modelled markets, every NBA market except double-double. */
 export const NBA_PROP_MARKETS = NBA_LINE_ONLY_MARKETS.filter(market => market !== 'double_double')
@@ -36,6 +38,7 @@ export interface NbaPropCard {
   projectionRow: NbaProjectionRow | null
   gamesInSample: number
   priorMinutes: number | null
+  /** The main rung's own note. "P(over) not fitted" is market-wide, so the table says it once (`pOverNotFitted`). */
   flagText: string | null
   recent: NbaLineOnlyRecent[]
   overCount: number | null
@@ -58,13 +61,15 @@ export function nbaPropFlagText(flag: NbaPropFlag): string {
   return FLAG_TEXT[flag]
 }
 
+export const P_OVER_NOT_FITTED_NOTE = 'P(over) is not fitted for this market yet. Model and gap are reference only.'
+
+export function pOverNotFitted(cards: Pick<NbaPropCard, 'main'>[]): boolean {
+  return cards.some(card => card.main.flags.includes('no_over_probability'))
+}
+
 function marketRank(market: string): number {
   const index = NBA_PROP_MARKETS.indexOf(market)
   return index === -1 ? NBA_PROP_MARKETS.length : index
-}
-
-function percent(probability: number): string {
-  return `${Math.round(probability * 100)}%`
 }
 
 function oneDecimal(value: number): string {
@@ -74,13 +79,13 @@ function oneDecimal(value: number): string {
 }
 
 export function signedGap(gap: number): string {
-  const text = oneDecimal(gap)
-  return gap > 0 && text !== '0.0' ? `+${text}` : text
+  // Half-up like oneDecimal, so the gap always equals the shown projection minus the line.
+  return fmtSigned(Math.round(gap * 10) / 10)
 }
 
 export function rungLabel(rung: Pick<NbaPropRung, 'line' | 'oddsType' | 'pOver'>): string {
   const name = rung.oddsType && rung.oddsType !== 'standard' ? `${rung.line} ${rung.oddsType}` : `${rung.line}`
-  return rung.pOver === null ? name : `${name} · ${percent(rung.pOver)}`
+  return rung.pOver === null ? name : `${name} · ${fmtPct(rung.pOver, 0)}`
 }
 
 function projectionRow(projection: number | null, main: NbaPropRung): NbaProjectionRow | null {
@@ -88,8 +93,8 @@ function projectionRow(projection: number | null, main: NbaPropRung): NbaProject
   return {
     projection: oneDecimal(projection),
     gap: signedGap(main.gap),
-    pOver: main.pOver === null ? null : percent(main.pOver),
-    pUnder: main.pUnder === null ? null : percent(main.pUnder),
+    pOver: main.pOver === null ? null : fmtPct(main.pOver, 0),
+    pUnder: main.pUnder === null ? null : fmtPct(main.pUnder, 0),
   }
 }
 
@@ -99,7 +104,7 @@ function card(playerLines: NbaPropLine[]): NbaPropCard {
     .map(line => ({ line: line.line, oddsType: line.oddsType, pOver: line.pOver, pUnder: line.pUnder, gap: line.gap, flags: line.flags }))
     .sort((a, b) => a.line - b.line)
   const main = mainRung({ rungs })
-  const flag = main.flags[0]
+  const flag = main.flags.find(name => name !== 'no_over_probability')
   return {
     playerId: first.playerId, playerName: first.playerName, position: first.position, team: first.team, injury: first.injury ?? null,
     rungs, main, also: rungs.filter(rung => rung !== main).map(rungLabel),

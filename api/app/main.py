@@ -1,26 +1,44 @@
+import logging
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.production_settings import is_production, validate_production_settings
-from app.core.rate_limits import rule_for_path
+from app.core.rate_limits import client_key, rule_for_path
 from app.db.pool import engine
 from app.ml.registry import ModelRegistry
 from app.rate_limit import retry_after_seconds
-from app.routers import tennis, props, admin, nfl, nba
+from app.routers import tennis, props, admin, nfl, nba, nhl, ask
 from app.security import require_api_key
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
 
+def configure_app_logging() -> None:
+    """Uvicorn configures only its own loggers, so without this every INFO line
+    from `app.*` (Ask Lineform's cost line among them) is dropped. Ingest CLIs
+    never import this module and keep their own basicConfig."""
+    app_log = logging.getLogger("app")
+    app_log.setLevel(logging.INFO)
+    if not app_log.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s - %(message)s"))
+        app_log.addHandler(handler)
+
+
+configure_app_logging()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     problems = validate_production_settings(
-        settings.api_env, settings.admin_api_key, settings.cors_origins
+        settings.api_env, settings.admin_api_key, settings.cors_origins,
+        settings.ask_enabled, settings.anthropic_api_key,
     )
     if problems:
         raise RuntimeError("Refusing to start in production: " + "; ".join(problems))
@@ -42,7 +60,7 @@ async def rate_limit(
 ) -> Response:
     rule = rule_for_path(request.url.path, settings.rate_limit_default, settings.rate_limit_heavy)
     if rule is not None:
-        client = request.client.host if request.client else "unknown"
+        client = client_key(request.headers, request.client.host if request.client else None)
         retry_after = retry_after_seconds(client, rule)
         if retry_after is not None:
             return JSONResponse(
@@ -75,6 +93,15 @@ async def security_headers(
     return response
 
 
+# Outermost, so 429s and CORS responses are compressed too. Level 4, not the
+# default 9: on the 15 MB NFL slate, 9 cost about 4x the CPU for 26% fewer
+# bytes, and Render gives the API half a core. Starlette leaves
+# text/event-stream (Ask Lineform) uncompressed. The http middlewares above
+# stream every body, so GZip's minimum_size never applies and small bodies
+# are compressed too; that costs a few bytes, not CPU worth measuring.
+app.add_middleware(GZipMiddleware, compresslevel=4)
+
+
 app.include_router(tennis.router, prefix="/tennis", tags=["tennis"])
 app.include_router(props.router, prefix="/tennis/props", tags=["props"])
 app.include_router(
@@ -82,6 +109,8 @@ app.include_router(
 )
 app.include_router(nfl.router, prefix="/nfl", tags=["nfl"])
 app.include_router(nba.router, prefix="/nba", tags=["nba"])
+app.include_router(nhl.router, prefix="/nhl", tags=["nhl"])
+app.include_router(ask.router, prefix="/ask", tags=["ask"])
 
 
 @app.get("/health")

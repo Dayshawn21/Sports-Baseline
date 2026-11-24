@@ -1,0 +1,96 @@
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.config import settings
+from app.db.pool import get_db
+from app.repositories import report_snapshots
+from app.routers import nhl as nhl_router
+from app.services.nhl import track_record
+from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
+
+
+@pytest.fixture(autouse=True)
+def no_snapshot_in_dev(monkeypatch):
+    async def no_snapshot(_db, _report, _season):
+        return None
+
+    monkeypatch.setattr(report_snapshots, "get_snapshot", no_snapshot)
+    monkeypatch.setattr(settings, "api_env", "dev")
+
+
+def _client() -> TestClient:
+    app = FastAPI()
+    app.include_router(nhl_router.router, prefix="/nhl")
+    app.dependency_overrides[get_db] = lambda: None
+    return TestClient(app)
+
+
+def _serve(monkeypatch, current_season: int | None) -> list[int]:
+    graded: list[int] = []
+
+    async def season(_db, _now):
+        return current_season
+
+    async def record(_db, season):
+        graded.append(season)
+        return track_record.build_ranking_record(_inputs([_call(i) for i in range(3)]), season, GRADED_AT)
+
+    monkeypatch.setattr(track_record, "nhl_season", season)
+    monkeypatch.setattr(track_record, "get_ranking_record", record)
+    return graded
+
+
+def test_ranking_route_serves_nhl_versions_in_the_shared_camel_case_shape(monkeypatch):
+    graded = _serve(monkeypatch, current_season=2026)
+
+    res = _client().get("/nhl/model/ranking", params={"season": 2025})
+
+    assert res.status_code == 200
+    assert graded == [2025]
+    body = res.json()
+    assert body["season"] == 2025
+    assert (body["modelVersion"], body["overProbabilityVersion"]) == ("nhl-reference-v1", "nhl-pover-v1")
+    assert body["lastSettledWeek"] == 3 and body["rule"]["minPicks"] == 200
+    assert body["funnel"]["withPOver"] == 3
+    assert [(s["oddsType"], s["side"]) for s in body["slices"]] == [
+        ("standard", "over"), ("standard", "under"), ("goblin", "over"), ("demon", "over"),
+    ]
+    assert set(body["slices"][0]) >= {"hitRate", "standardError", "breakEven", "signal", "weeks"}
+
+
+def test_ranking_route_defaults_to_the_current_nhl_season(monkeypatch):
+    graded = _serve(monkeypatch, current_season=2026)
+
+    res = _client().get("/nhl/model/ranking")
+
+    assert res.status_code == 200
+    assert graded == [2026] and res.json()["season"] == 2026
+
+
+def test_ranking_route_refuses_an_unknown_season_before_grading(monkeypatch):
+    graded = _serve(monkeypatch, current_season=2026)
+
+    responses = [_client().get("/nhl/model/ranking", params={"season": s}) for s in (1999, 9999)]
+
+    assert [r.status_code for r in responses] == [422, 422]
+    assert graded == []
+
+
+def test_ranking_route_404s_with_no_regular_season_game(monkeypatch):
+    graded = _serve(monkeypatch, current_season=None)
+
+    res = _client().get("/nhl/model/ranking")
+
+    assert res.status_code == 404
+    assert res.json()["detail"] == "No NHL regular-season games are loaded"
+    assert graded == []
+
+
+def test_ranking_route_503s_when_grading_failed(monkeypatch):
+    async def failed(_db, _season):
+        return None
+
+    monkeypatch.setattr(track_record, "get_ranking_record", failed)
+
+    assert _client().get("/nhl/model/ranking", params={"season": 2026}).status_code == 503

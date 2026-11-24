@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import type { ModelPropTiersResponse, TrackTierRow } from '~/types/tennis'
 import { sampleProgress, signalClass } from '~/utils/trackRecord'
+import { fmtPct } from '~/utils/odds'
 
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
 const VERDICT_LABELS: Record<Exclude<TrackTierRow['verdict'], 'accruing'>, string> = {
   pass: 'Beats break-even',
@@ -21,8 +21,8 @@ function TierCard({ tier, sample }: { tier: TrackTierRow, sample: number }) {
         : <>
           <div className={`tennis-model-tier__value ${valueClass}`}>{tier.hits} / {tier.decided}</div>
           <div className="tennis-model-tier__sub">
-            {tier.hitRate != null && pct(tier.hitRate)}
-            {tier.standardError != null && <> &plusmn;{pct(tier.standardError)}</>}
+            {tier.hitRate != null && fmtPct(tier.hitRate)}
+            {tier.standardError != null && <> &plusmn;{fmtPct(tier.standardError)}</>}
             {tier.pushes > 0 && <> · {tier.pushes} push{tier.pushes === 1 ? '' : 'es'}</>}
           </div>
         </>}
@@ -32,7 +32,7 @@ function TierCard({ tier, sample }: { tier: TrackTierRow, sample: number }) {
           ? <>{tier.verdictSampleSize} of {sample} picks to a verdict</>
           : <span className={signalClass(tier.signal)}>
             {VERDICT_LABELS[tier.verdict]}
-            {tier.verdictHitRate != null && <> · {pct(tier.verdictHitRate)} on {tier.verdictSampleSize}</>}
+            {tier.verdictHitRate != null && <> · {fmtPct(tier.verdictHitRate)} on {tier.verdictSampleSize}</>}
           </span>}
       </div>
     </div>
@@ -42,7 +42,7 @@ function TierCard({ tier, sample }: { tier: TrackTierRow, sample: number }) {
 export default function ModelTierCards({ data }: { data: ModelPropTiersResponse }) {
   return (
     <>
-      <section className="tennis-model-tiers" aria-label="Hit rate by confidence tier">
+      <section className="tennis-model-tiers" aria-label="Retired hit rate by confidence tier">
         {data.tiers.map((tier) => <TierCard key={tier.tier} tier={tier} sample={data.verdictSample} />)}
         <div className="tennis-model-card tennis-model-tier">
           <div className="tennis-model-tier__name">PASS</div>
@@ -53,8 +53,10 @@ export default function ModelTierCards({ data }: { data: ModelPropTiersResponse 
         </div>
       </section>
       <p className="tennis-model-note">
+        History only: tennis props carry no tier since 2026-10-28. Lines are now rated by P(over) against each
+        payout&apos;s break-even, gray and unranked until a pre-registered forward check adopts a slice.{' '}
         Graded from <code>prop_projection_snapshots</code> frozen before the start, {data.projectionVersion} standard
-        lines only, against the {pct(data.breakEven)} per-leg break-even. The verdict sample is each tier&apos;s first
+        lines only, against the {fmtPct(data.breakEven)} per-leg break-even. The verdict sample is each tier&apos;s first
         whole snapshot days, 3 or more days old, holding {data.verdictSample} decided picks; it passes only if its hit
         rate minus 2 SE beats break-even, and a reject is final for {data.projectionVersion}. Rates stay gray until
         then. {data.excluded.nonStandard.toLocaleString()} goblin and demon picks are not graded here, and{' '}

@@ -28,6 +28,7 @@
 .hiw-legend__swatch.is-positive { background: var(--positive); }
 .hiw-legend__swatch.is-negative { background: var(--negative); }
 .hiw-legend__swatch.is-neutral { background: var(--text-secondary); }
+.hiw-legend__row dt:has(.lf-kbd) { gap: 6px; }
 @media (max-width: 640px) {
   .hiw-legend__row { grid-template-columns: minmax(0, 1fr); }
 }

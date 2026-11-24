@@ -39,37 +39,13 @@ class MatchPrediction(_CamelModel):
     h2h_p2_wins: int = Field(alias="h2hP2Wins")
     p1_id: Optional[int] = None
     p2_id: Optional[int] = None
+    best_of: int = 3
 
 
 class PredictionsResponse(_CamelModel):
     date: date
     count: int
     matches: list[MatchPrediction]
-
-
-class PlayerStatsResponse(_CamelModel):
-    player_id: int
-    surface: Optional[str]
-    stat_period: str
-    win_rate: Optional[float]
-    svc_pts_won: Optional[float]
-    ret_pts_won: Optional[float]
-    aces_per_game: Optional[float]
-    df_per_game: Optional[float]
-    hold_pct: Optional[float]
-    break_pct: Optional[float]
-    matches_count: Optional[int]
-    first_in_pct: Optional[float] = None
-    first_won_pct: Optional[float] = None
-    second_won_pct: Optional[float] = None
-    dominance_ratio: Optional[float] = None
-    break_points_created_per_return_game: Optional[float] = None
-    allowed_break_points_per_service_game: Optional[float] = None
-    # ELO ratings (all surfaces + per surface)
-    elo: Optional[float] = None
-    elo_hard: Optional[float] = None
-    elo_clay: Optional[float] = None
-    elo_grass: Optional[float] = None
 
 
 class RecentMatchResult(_CamelModel):
@@ -594,3 +570,27 @@ class PlayerPropsResponse(_CamelModel):
     projection_version: str
     rows: list[PastPropSchema]
     summary: PastPropSummarySchema
+
+
+class ProjectionHistoryPointSchema(_CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+    match_id: int
+    match_date: Optional[date]
+    tournament: Optional[str]
+    round: Optional[str]
+    surface: Optional[str]
+    opponent_id: int
+    opponent_name: str
+    stat: str
+    line: float
+    projection: Optional[float]
+    """The props-v3 projection frozen before the match; null when none was made, never recomputed."""
+    actual: int
+    snapshot_at: datetime
+
+
+class ProjectionHistoryResponse(_CamelModel):
+    projection_version: str
+    points: list[ProjectionHistoryPointSchema]
+    unsettled: int
+    """Finished, fully played lines whose result has not settled yet (box score not joined, or no settlement source)."""

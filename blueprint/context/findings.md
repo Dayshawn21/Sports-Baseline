@@ -60,7 +60,7 @@ rule from this read. If pursued, add a reporting-only frozen-row calibration
 to the model page (no new verdict). Any refit or method change is a new
 `nfl-pover-v2` under a rule fixed before reading its outcomes, validated
 forward, never on the 2025 holdout again.
-**Resolution:**
+**Resolution:** `load_projection_inputs` now raises `ValueError` when the games span more than one date and reads the history with the real date (no type ignore); its docstring records why history is read before the context. Two tests cover the guard and the degraded context read. Closed 2026-11-04 by /audit (scope: current; lens: all): re-read the repaired `load_projection_inputs`; the guard fires before any read, the date is a real `dt.date`, and the repair introduced no new defect.
 
 ## Tennis audit evidence, 2026-10-18
 
@@ -319,3 +319,199 @@ the standard-under and demon-over samples. Then F-11's ingest guard and
 reader cutoffs as one data-guard fix, with a before/after slate comparison.
 F-12 stays a reporting question: no refit, gate or rule change without a new
 version and forward validation.
+
+## Full audit evidence, 2026-11-06
+
+**Scope:** full, all four lenses, on `claude/audit-d40214` at `eaa95078` (equal to `master`; no active feature, clean tree). **Coverage was partial**, not a complete full-project audit: four parallel reviewers covered API security, API performance and quality, the web app, and ingest plus the API tests, reading hot paths in full and the rest by grep and AST scan. Not read in depth: NBA and NHL board builders and track records (beyond prizepicks-rerun-snapshots/F-14's repair), the `nflverse*`, `hoopr_nba`, `nhl_api`, `tennismylife`, `tennis_elo*` bodies, `app/ml`, `backtest`, `evals`, most NBA, NFL and NHL web components, Ask core helpers past their entry points, git history for secrets, and dependency CVEs. Excluded: `blueprint/`, `analysis/`, `.claude/`, `.agents/`, `.impeccable/`, `api/models/`, `node_modules`, build output.
+**Signals:** web verify (typecheck, 81 test files / 1,235 tests, build) passed. API `pytest` passed, 5,799 tests, run with a dummy `DATABASE_URL` because this worktree has no `api/app/.env` (the first run failed at collection on the missing setting, an environment gap, not a code defect). No lint command exists. No skipped, focused or xfail tests found on either side.
+**Clean:** no SQL injection (every `text(f"...")` interpolates module constants; values are bound), admin key compared with `hmac.compare_digest`, production settings refuse weak keys and wildcard CORS, workflows use `contents: read` and no `pull_request_target`, no tracked secret, Ask output renders only allowlisted internal links, no `any` or `@ts-ignore` in the web, `app/core` has no I/O, dry runs guard their writes.
+**Ledger:** added prizepicks-rerun-snapshots/F-19 to F-33; closed prizepicks-rerun-snapshots/F-14, prizepicks-rerun-snapshots/F-17 and prizepicks-rerun-snapshots/F-18.
+
+### F-42 [P3] open - Windows checkouts made before the eol=lf rule keep CRLF registry CSVs until they are checked out again
+
+**File:** .gitattributes:9; api/tests/test_tennis_elo_identities.py:177
+**Found:** 2026-11-06 by /audit (scope: current; lenses: all)
+**Why it matters:**
+- Git only applies a new `eol` attribute when it writes the file. In an existing Windows checkout (the main `C:\dev\SportAppV2` and the sibling worktrees), a merge rewrites `tennis_elo_identities.csv` but leaves an unchanged `tennis_elo_local_overrides.csv` as CRLF.
+- There, the new LF test and the committed-pin test fail, and any pins derived on that checkout would be wrong again. CI on Linux is unaffected.
+**Suggested fix:** after merging, delete both registry CSVs in each existing checkout and run `git checkout --` on them. The data README already says to re-check them out before deriving pins.
+**Resolution:** Still open after a byte check on 2026-11-06.
+- CRLF registry CSVs were found only in `.claude/worktrees/sports-drawer-pages-747c69` (re-checked out to LF; its 59 registry tests pass), `.claude/worktrees/55-home-page` and the leftover `fix-f26-ask-spend-cap-ae1ff5` worktree. The main checkout and the other worktrees were already LF.
+- The last two are on commits without the `eol=lf` rule (`2ce4cf00`, `c0728da0`). Their `tennis_elo_identities.csv` differs from `master`, so a merge rewrites it as LF, but their `tennis_elo_local_overrides.csv` is byte-identical to `master` in git and still CRLF on disk (11 CR bytes each), so a merge leaves it CRLF: the exact case this finding describes.
+- To close: after either checkout next merges `master`, delete its `tennis_elo_local_overrides.csv` and run `git checkout -- api/app/ingest/data/tennis_elo_local_overrides.csv`, or remove the leftover worktree. Not done here, since both checkouts belong to other work.
+
+### F-43 [P2] fixed - Prop board caches key the default date and the same explicit date separately, so returning to today rebuilds the board
+
+**File:** api/app/services/nba/prop_board_cache.py:41; api/app/services/nhl/prop_board_cache.py:38
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- `_BOARDS.get((requested, today), ...)` keys on the raw request, so `/nba/props` and `/nba/props?date=2026-11-13` are two builds of one body. Measured on production: default warm at 0.18 s while explicit today took 1.14 s (NBA) and 0.52 s (NHL) on first hit.
+- The previous/next date links always carry an explicit date, so stepping away and back to today pays a cold build. The web query keys (`['nba', 'prop-board', null]` vs the date) also miss each other, so the client refetches too.
+**Suggested fix:** resolve the requested date to the board date first (one `get_game_dates` read, or a short memo of it) and key the cache on the resolved date. Optionally seed the dated web query key from the default response.
+**Resolution:** Fixed on `fix/prop-board-cache` (2026-11-13): both board caches key on the resolved date, and the default date is memoized per `today` for 5 minutes. Unit-tested; not yet re-reviewed or measured on production.
+
+### F-44 [P2] fixed - Every prop board date is rebuilt on request each 5 minutes, and the first visitor pays 1-2 s
+
+**File:** api/app/services/nba/prop_board_cache.py:19; api/app/services/nhl/prop_board_cache.py:18; api/app/services/serial_build_cache.py:46
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- `SerialBuildCache` drops an entry at its 5-minute TTL and rebuilds inside the request. Uncached dates on production: NBA 0.99 s and 1.95 s TTFB, NHL 1.03 s, against 0.15-0.3 s warm. The NBA build runs eight sequential reads (`prop_board.py:23-36`).
+- Builds share one lock, so a cold NBA board also queues any other date's request behind it. This is the most likely source of the "a little slow" loads, since it hits whoever arrives first after each expiry.
+**Suggested fix:** serve the stale body while one background rebuild runs (stale-while-revalidate) in `SerialBuildCache`, so only a process's very first request waits. A longer TTL is a cheaper partial fix, since lines ingest on a schedule rather than continuously.
+**Resolution:** Fixed on `fix/prop-board-cache` (2026-11-13): `SerialBuildCache` gained an opt-in `max_stale_seconds`. Both board caches serve an expired body for up to 30 minutes while one background rebuild runs on its own session. A process's first build, and any after 30 idle minutes, still runs inline. Unit-tested; not yet re-reviewed or measured on production.
+
+### F-45 [P2] open - The board request waits for the lazy page chunk before it starts
+
+**File:** web/src/routes/sportPages.tsx:19; web/src/routes/sportPages.tsx:23; web/src/pages/NbaPropBoardPage.tsx:25
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- The query starts only when the lazily imported page mounts. On a direct load (desktop, headless Chromium) the NBA chunk set (54 files) finished at 230-400 ms but `/nba/props` started at 455-580 ms; NHL started at 420-580 ms. The API answers in about 100 ms, so the chunk wait is the larger share.
+- Phones pay this on slower parse and network.
+**Suggested fix:** start the board query beside the chunk import, for example a `prefetchQuery(nbaPropBoardQuery(date))` fired from the route or the nav link (NHL already exposes `nhlPropBoardQuery`; NBA needs the same `queryOptions` factory).
+**Resolution:**
+
+### F-46 [P2] open - The NBA board ships 3 MB of JSON and costs a 200-260 ms main-thread task to show one market
+
+**File:** api/app/services/nba/prop_board.py:40; web/src/pages/NbaPropBoardPage.tsx:26
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:**
+- The 2026-11-13 body is 3.0 MB raw (124 KB gzipped) for 4,432 lines, though one market (about 95 rows) renders. Each line repeats its player's `injury` object (about 360 B, roughly 1.6 MB of the body) across every market.
+- After the response lands, a 207-259 ms long task runs on a fast desktop: grouping and filtering every market, React render, about 75 ms of forced layout (first read is rc-select's `scrollWidth` in `BoardFilterBar`) and 30-45 ms of GC. A mid-range phone runs several times slower. The NHL board (190 KB raw) costs 60-80 ms and is fine.
+**Suggested fix:** send injuries once per player (or per game, as `injuryReport` already is) and join them on the client, as `nhlJoinProjections` does for NHL projections. That roughly halves the body, parse and GC. Per-market fetching is the larger option if the task stays heavy on phones.
+**Resolution:**
+
+### F-47 [P3] open - The NBA slate digest waits for the board, then re-renders the page
+
+**File:** web/src/pages/NbaPropBoardPage.tsx:37
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:** `useNbaSlateGaps(board.data?.date ?? null)` only starts once the board has rendered (measured start at 907-943 ms, done about 65 ms later), and its arrival triggers a second 57-84 ms task that re-renders the whole page including the table. NHL's goalie slate query waits the same way but is needed for its filter.
+**Suggested fix:** when the URL carries a date, start the gaps query with it at mount; memoize the market table so the digest update does not re-render it.
+**Resolution:**
+
+### F-48 [P3] unverified - The API re-gzips the 3 MB NBA board on every request
+
+**File:** api/app/main.py:102; api/app/services/nba/prop_board_cache.py:27
+**Found:** 2026-11-13 by /audit (scope: NBA and NHL prop pages; lens: performance)
+**Why it matters:** the cache holds uncompressed bytes and `GZipMiddleware` compresses each response, on the 0.5-CPU Render plan. Warm TTFB was 0.15-0.37 s against about 0.13 s for the tiny ranking route, so some of that gap may be compression. Not profiled on the server.
+**Suggested fix:** time a warm request with and without `Accept-Encoding: gzip` first. If compression is the gap, cache the gzipped body beside the raw one. F-46 shrinks this either way.
+**Resolution:**
+
+### F-50 [P2] open - `repositories/nfl.py` is 2,832 lines with ten separable areas
+
+**File:** api/app/repositories/nfl.py
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the largest file in the project mixes writes, model inputs, baselines, slate lines, ranking and replay readers. `_slate_line_rows` (1893) is 144 lines. It also has two helpers doing the same job (`_optional_float` 1454, `_float_or_none` 1884) and about 51 bare `dict` returns.
+**Suggested fix:** first move the shared fragments (`_player_teams_cte`, `MODELLED_MARKET_FILTER`, `NOT_OTHER_MODEL`, `_LATEST_LINES_CTE`, about 1266-1360) into a small shared module, then split by seam: context 42-240, writes 242-815, model inputs 816-1030, baselines 1146-1500, slate lines 1888-2242, line-only 2242-2360, ranking 2361-2650, replay 2653-2762, leaving games/week/profile in `nfl.py`. Keep public names re-exported so callers do not change in the same step.
+**Resolution:**
+
+### F-51 [P2] open - Frozen-ranking SQL is copied across five repositories
+
+**File:** api/app/repositories/nba.py:649-737; api/app/repositories/nhl.py:629-794; api/app/repositories/nfl.py:2554-2650; api/app/repositories/nfl_targets_ranking.py:12-68; api/app/repositories/nfl_volume_ranking.py:34-91
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `get_frozen_gradeable_lines`, `get_finished_weeks` and `get_frozen_coverage` are the same shape in each sport, and the targets and volume CTEs are textually the same apart from market, odds types, prediction identity and two columns. The copies have already drifted (F-52), and the market filter is written two different ways (preformatted string in NBA, expanding bindparam in NHL).
+**Suggested fix:** after F-52 is decided, factor one SQL builder for the eligible/frozen/coverage CTEs that takes sport, market predicate, settle-table join and prediction-identity predicate as required arguments (no defaults for the sport or model filters).
+**Resolution:**
+
+### F-54 [P2] open - The served NBA/NHL game-type filter is retyped as a literal in about 13 queries
+
+**File:** api/app/repositories/nhl.py:200; api/app/repositories/nhl.py:491; api/app/repositories/nhl_context.py:43; api/app/repositories/nba.py:203; api/app/repositories/nba.py:264; api/app/repositories/nba_injuries.py:87; api/app/core/nhl_projection_backtest.py:33
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NHL has `SERVED_GAME_TYPES = ("REG","PST")` in core, but only nhl.py:491 uses it. `IN ('REG', 'PST')` is retyped at nhl.py 200, 224, 240, 255, 298, 374, 475 and nhl_context.py 43, 157, 228. NBA's `_SERVED_GAME_TYPES` is private and restated at nba.py:203 and nba_injuries.py:87. This is a load-bearing invariant, and one missed edit would split the served set.
+**Suggested fix:** expose one public SQL fragment per sport built from the core tuple, and use it at every site.
+**Resolution:**
+
+### F-56 [P2] open - The Odds API client lives inside the NFL script, and NBA and tennis import its privates
+
+**File:** api/app/ingest/nba_odds.py:21; api/app/ingest/tennis_totals.py:22-24
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `nba_odds` imports `BASE_URL, _bookmaker_sets, _free_remaining, _odds_params, _provider_key, _remaining_requests, credit_gate` from `nfl_odds`, and `tennis_totals` gets `credit_gate` through `nba_odds` plus `_insert_odds` and `_load_upcoming` from `odds_api`. Tennis depends on NBA, which depends on NFL, and underscore names act as the public API.
+**Suggested fix:** move the shared helpers into `app/ingest/the_odds_api.py` (the pure credit gate may go to `core/`) and import from there.
+**Resolution:**
+
+### F-57 [P2] open - Ingest scripts run SQL inline instead of through repositories
+
+**File:** api/app/ingest/odds_api.py:677-699; api/app/ingest/livetennis.py:690-715; api/app/ingest/livetennis.py:1012; api/app/ingest/player_stats.py:518-535; api/app/ingest/player_stats.py:742-764
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** these break "repositories own SQL". `player_stats.run` builds its player-selection query by string concatenation. `_insert_odds` is a pass-through over `repositories.matches.upsert_odds`. Backtests set read-only transactions inline (`nhl_over_probability_fit.py:247`, `nhl_projections.py:262`) while `tennis_elo` uses the repository helper.
+**Suggested fix:** move the four queries into `repositories/matches.py` and `repositories/players.py`, drop `_insert_odds`, and use one shared read-only-transaction helper in every backtest.
+**Resolution:**
+
+### F-58 [P2] open - Four ingest scripts hand-roll 429 retry loops with different rules
+
+**File:** api/app/ingest/livetennis.py:156-200; api/app/ingest/prizepicks.py:47-120; api/app/ingest/nhl_context.py:36-84; api/app/ingest/player_stats.py:164-185
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** the standard says to use tenacity for transient retry, and 6 ingest files do. These four each have their own attempt count, Retry-After parsing and backoff. Some carry provider rules (the livetennis daily quota, fatal 4xx), so they cannot be swapped blindly.
+**Suggested fix:** add one tenacity-based retry helper beside `log_config.py` that honors Retry-After, and keep provider-specific stop conditions as `retry_if_*` predicates.
+**Resolution:**
+
+### F-62 [P2] open - Cross-sport shared code lives under `nfl_` names in core and web utils
+
+**File:** api/app/core/nfl_over_probability_calibration.py; api/app/core/nfl_resolution.py; web/src/utils/nflPlayer.ts; web/src/utils/nbaGame.ts:5
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** NBA and NHL import calibration and player resolution from `nfl_*` core modules. On the web, `FROM_BOARD`, `arrivedFromBoard`, `playerSearch` and `propSectionIds` live in `nflPlayer.ts` and are used by 9 NBA, NHL and tennis files, and 10 NBA/NHL files import `nfl-*.css`. `nbaPlayerTabs`/`nhlPlayerTabs` are identical and return `string[]`, which forces `as` casts in `NhlPlayerPropTabs.tsx:12,15`.
+**Suggested fix:** move the generic modules to neutral names (`core/calibration.py`, `core/player_resolution.py`, `~/utils/playerPage.ts`), keeping re-export shims at the old Python paths because generated and pre-registered files hard-code them. Make the tab helper generic to remove the casts.
+**Resolution:** Partly fixed, still open. The web part landed in `86d381cd` (2026-11-16; pushed to master 2026-11-18): `FROM_BOARD`, `arrivedFromBoard`, `playerSearch` and `propSectionIds` moved to `utils/playerPage.ts` with generic `playerTabs` and `selectedMarket`, so no non-NFL file imports `utils/nflPlayer` and the NHL casts are gone. Remaining: the API `core/nfl_*` calibration and resolution modules and the `nfl-*.css` imports.
+
+### F-63 [P2] open - Over-probability verdict, normal-Brier and cross-fit code is copied per sport
+
+**File:** api/app/core/nfl_over_probability_calibration.py:99; api/app/core/nba_over_probability.py:82; api/app/core/nhl_over_probability.py:81; api/app/core/nfl_targets_over_probability.py:144; api/app/core/nba_over_probability_v2_crossfit.py:131-139; api/app/core/nhl_over_probability_crossfit.py:163-207
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** there are four near-identical display-verdict functions, and the normal-Brier sum is repeated in 7 places. NHL `evaluate` guards empty input. NBA `evaluate` divides by `len(lines)` unguarded (its current caller probably never passes an empty list).
+**Suggested fix:** add one `display_verdict(...)` and one `normal_brier(lines)` to the shared calibration module. Each sport passes its own pre-registered constants so no result changes. Add the empty guard to NBA.
+**Resolution:**
+
+### F-64 [P2] open - Odds-feed game matchers and number parsers are copied with different hardening
+
+**File:** api/app/core/nba_odds.py:43; api/app/core/nhl_odds.py:62-89; api/app/core/nfl_odds.py:35-55; api/app/core/nfl_odds_io.py:21
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** all three matchers use the same unique-candidate loop, but only NHL rejects home == away, non-int game ids and naive datetimes. NBA and NFL call `int(str(game["game_id"]))` unchecked. NHL's `_number` rejects `bool` and the NFL copies accept `True` as 1.0.
+**Suggested fix:** add a shared `finite_number` (NHL semantics) and `unique_game_match(home, away, games, within)`. Per-sport code then supplies only team mapping and the time window.
+**Resolution:**
+
+### F-65 [P2] open - The pre-0007 split-column fallback is repeated across `players.py`
+
+**File:** api/app/repositories/players.py:123; api/app/repositories/players.py:328-710
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** every rolling-stats reader and the upsert catch `ProgrammingError` and rerun a legacy query for databases without migration 0007 (migrations are at 0054). The 26-column list is written out 10 times. The upsert fallback calls `db.rollback()`, which would discard earlier writes in the caller's transaction if it were ever reached.
+**Suggested fix:** drop the fallback branches and `tests/test_players_repository_split_columns.py`, and share one `_ROLLING_COLUMNS` constant.
+**Resolution:**
+
+### F-71 [P3] open - Dead code across both apps
+
+**File:** api/app/ingest/api_sports_nfl.py:37-53; api/app/config.py:24; api/app/repositories/players.py:436-493; api/app/scripts/seed_elo.py; api/app/ingest/elo.py:289; api/app/routers/tennis.py:494-502; web/src/utils/nflLabels.ts:27-81
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `api_sports_nfl.py` has no importer, workflow or doc entry, and its `completed_game_players(self, ...)` sits after a `return` inside a module function, so it can never run. `get_rolling_stats_batch` has no callers. `seed_elo.py` reads the old pre-V2 repo and is the only caller of `ingest_from_csv`. `/tennis/parlays/suggested` has no web caller. On the web, `segmentRank` and `SEGMENT_COLORS` are unused, and about 12 exports are used only by their own tests (`kickoffLabel`, `formatTime`, `summarizePricedEdges`, `summarizeBaselineMix`, `describeBaselineMix`, `spreadMoveLabel`, `totalMoveLabel`, `playerInitials`, `groupNflSlateLinesByPosition`, `filterNflSlateLinesByPeriod`, `DEFAULT_BOARD_VIEW`, `matchProps`).
+**Suggested fix:** delete each with its tests and the `api_sports_nfl_key` setting. Confirm no external consumer of the parlays endpoint first. Leave `backtest/nfl_anytime_td.py` (the record of the 19j/19m/19n evaluations) and `core/nba_over_probability_v2_fit.py` (the frozen 44a fit) in place.
+**Resolution:** Partly fixed, still open. PR #46 (`08bf91e8`, 2026-11-18) removed `/tennis/parlays/suggested` after the user confirmed no external consumer; a test pins the 404. The web part landed in `3f152da5` (2026-11-16; pushed to master 2026-11-18): the unused exports listed above are deleted with their tests. Remaining: `api_sports_nfl.py` and `api_sports_nfl_key`, `get_rolling_stats_batch`, `seed_elo.py` and `ingest_from_csv`.
+
+### F-72 [P3] open - Small helpers duplicated across files
+
+**File:** api/app/schemas/*.py (`_CamelModel` x7); api/app/core/prop_ev.py:75; api/app/core/odds.py:85-92; api/app/services/tennis/best_picks.py:60-82; api/app/core/nba_names.py:23; api/app/core/nhl_names.py:14; web/src/pages/ParlaysPage.tsx:15; web/src/pages/AdminPage.tsx:23; web/src/utils/tennisMatch.ts:96-110; web/src/utils/tennisPlayer.ts:110-122
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** `_CamelModel` is defined in 7 schema modules. `american_to_decimal` exists in `prop_ev` and `odds`, `decimal_to_american` in 3 places with different invalid-input behavior, `_normal_cdf` and `_f` 3 times each, `fold_name` twice. `TOUR_COLORS` exists twice and only the Parlays copy has Challenger. The tennis date formatters exist twice and only one slices ISO timestamps. `CENTRAL = 'America/Chicago'` is declared 5 times. `tennisPropBoard.ts:226-232` restates the odds math in `oddsMath.ts`.
+**Suggested fix:** one shared definition each (`schemas/base.py`, `core/odds.py`, `format.ts`, `oddsMath.ts`, a `tourColor` util), imported at every site.
+**Resolution:** Partly fixed, still open. PR #45 (`79b68881`, 2026-11-17) made `core/prop_probs.normal_cdf` and `core/prop_projection.opt_float` public and removed the `_normal_cdf` and `_f` copies in `best_picks` and `prop_enrichment`. The web part landed in `dd5c3d9c` (2026-11-16; pushed to master 2026-11-18): one `CENTRAL` constant and day key, one tennis date formatter, `tennisPropBoard.ts` on `oddsMath.ts`, and one tour-colour helper for Parlays and Admin. Remaining (API only): `_CamelModel`, the odds converters, `fold_name` and `ingest/elo._f`.
+
+### F-73 [P3] open - Oversized functions in services, core and ingest
+
+**File:** api/app/core/prop_projection.py:255-366; api/app/services/tennis/best_picks.py:179-354; api/app/services/tennis/best_picks.py:404-604; api/app/services/tennis/bankroll_builder.py:204-465; api/app/ingest/livetennis.py:922; api/app/ingest/player_stats.py:716; api/app/ingest/odds_api.py:710
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** these run 107-200 lines against the roughly 50-line guideline. `compute_stat_avg` repeats the ace and double-fault formulas inside its fantasy branch. `odds_api.run` loads, pairs, fetches, parses and writes in one body.
+**Suggested fix:** split into named stages or per-market functions. In `compute_stat_avg`, keep the inline unclamped sets formula: switching to the clamped `expected_sets_from_win_prob` would change props-v3/v4 output and needs a versioned change, not a refactor.
+**Resolution:** Partly fixed, still open. PR #45 (`79b68881`, 2026-11-17) split `generate_market_odds_picks`, `generate_derived_picks`, `_generate_set_picks` and `_generate_total_picks` into named helpers (37-44 lines each), pinned by 53 golden cases written on the unsplit code. Remaining: `compute_stat_avg` (keep its unclamped sets formula), and `livetennis`, `player_stats` and `odds_api.run` in ingest.
+
+### F-74 [P3] open - Flat `core/` (148 modules) and `utils/` (115 modules) directories
+
+**File:** api/app/core/; web/src/utils/
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** filename prefixes already form groups (core: nfl 51, tennis 21, nba 20, nhl 17, prop 9, ask 7; utils: nfl 35, tennis 12, nba 9, nhl 9, slate 8, ask 6). Navigation and ownership are harder than they need to be.
+**Suggested fix:** do this last, after F-62, as a mechanical move per sport (`core/nfl/`, `utils/nfl/`, and a `shared/`). Keep Python re-export shims for paths hard-coded in generated or pre-registered files. Approve it separately because it touches most imports.
+**Resolution:**
+
+### F-75 [P3] open - Layering leaks and stale docs
+
+**File:** api/app/repositories/nfl.py (ingest dataclass imports); api/app/repositories/matches.py:484-733; api/app/db/pool.py; api/app/security.py:3-6; api/app/ingest/prizepicks_nfl.py:3; api/app/ingest/prizepicks_props.py:17-22; docs/commands.md
+**Found:** 2026-11-15 by /audit (scope: full; lens: quality)
+**Why it matters:** repositories import ingest dataclasses, which forces lazy imports in `hoopr_nba`, `nflverse` and `nhl_api` to avoid cycles. `matches.py` runs the win/loss streak loop in Python twice. `get_db` is typed `-> AsyncSession` but is a generator. The shared PrizePicks pipeline imports private functions from the tennis module, and the three team CLIs are copies. `security.py` says the app runs on localhost. The `prizepicks_nfl` docstring names API-Sports as the source. `nfl_weather`, `nfl_team_elo`, `nba_prop_predictions`, `nfl_odds_io` and `nfl_prop_odds` are scheduled but missing from `docs/commands.md`.
+**Suggested fix:** move transfer types into core, the streak loop into core, and the PrizePicks HTTP/parse layer into a neutral `prizepicks_client.py`. Fix the `get_db` type and the stale docstrings, and add the missing commands.
+**Resolution:**

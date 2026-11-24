@@ -2,8 +2,9 @@ import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSlateCommand } from '~/components/shared/SlateCommandProvider'
-import { firstSlateCommandPath, matchingSlateCommandTargets, normalizeSlateCommand } from '~/utils/slateCommand'
+import { firstSlateCommandPath, matchingSlateCommandTargets, normalizeSlateCommand, slateCommandPlaceholder } from '~/utils/slateCommand'
 import { sportViewForPath } from '~/utils/sportNav'
+import { isEditableTarget } from '~/utils/keyboard'
 import '~/components/shared/slate-command.css'
 
 const KIND_LABEL = { match: 'Match', game: 'Game', team: 'Team', player: 'Player' } as const
@@ -14,9 +15,14 @@ interface Props {
   onMobileExpandedChange?: (expanded: boolean) => void
 }
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement
-    && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'))
+function resultCount(count: number): string {
+  return `${count} slate result${count === 1 ? '' : 's'}`
+}
+
+/** A dead end names what the slate can find instead of only saying nothing matched. */
+function noMatch(query: string, pathname: string): string {
+  const hint = pathname.startsWith('/tennis') ? 'a player or tournament' : 'a team code, team name or player'
+  return `No match for "${query.trim()}". Try ${hint}.`
 }
 
 export default function SlateCommandField({ mobile = false, mobileExpanded = false, onMobileExpandedChange }: Props) {
@@ -28,7 +34,8 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const active = sportViewForPath(pathname) === 'slate'
+  // Slates own the field; a game page shows it too once it registers its week's games.
+  const active = sportViewForPath(pathname) === 'slate' || scope !== null
   const normalizedQuery = normalizeSlateCommand(query)
   const targets = scope ? matchingSlateCommandTargets(scope.rows, query) : []
   const open = focused && normalizedQuery.length > 0
@@ -46,11 +53,16 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
       if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
       if (event.defaultPrevented || event.repeat || event.isComposing || isEditableTarget(event.target)) return
       event.preventDefault()
-      inputRef.current?.focus()
+      // Collapsed to a button, the field has no input yet: open it, and the expand effect focuses it.
+      if (mobile && !mobileExpanded) {
+        if (scope) onMobileExpandedChange?.(true)
+      } else {
+        inputRef.current?.focus()
+      }
     }
     window.addEventListener('keydown', focusFromShortcut)
     return () => window.removeEventListener('keydown', focusFromShortcut)
-  }, [active])
+  }, [active, mobile, mobileExpanded, onMobileExpandedChange, scope])
 
   if (!active) return null
 
@@ -129,7 +141,7 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-activedescendant={open && selectedIndex >= 0 ? `${listId}-option-${selectedIndex}` : undefined}
-          placeholder={scope ? 'Jump to a match or player...' : 'Slate search loading...'}
+          placeholder={slateCommandPlaceholder(pathname, scope !== null)}
           disabled={!scope}
           value={query}
           onChange={event => setQuery(event.target.value)}
@@ -158,13 +170,14 @@ export default function SlateCommandField({ mobile = false, mobileExpanded = fal
             ))}
           </div>
           {targets.length > 0 && (
-            <div className="slate-command__status" role="status">
-              {targets.length} slate result{targets.length === 1 ? '' : 's'}
-            </div>
+            <div className="slate-command__status" aria-hidden="true">{resultCount(targets.length)}</div>
           )}
-          {targets.length === 0 && <div className="slate-command__empty" role="status">No slate matches</div>}
+          {targets.length === 0 && <div className="slate-command__empty" aria-hidden="true">{noMatch(query, pathname)}</div>}
         </div>
       )}
+      <div className="slate-command__live" role="status">
+        {open ? targets.length > 0 ? resultCount(targets.length) : noMatch(query, pathname) : ''}
+      </div>
     </div>
   )
 

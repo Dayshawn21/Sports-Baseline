@@ -4,7 +4,7 @@ import { usePrizePicksPropsAudit } from '~/hooks/useProps'
  * Data-health readout for the PrizePicks props pipeline.
  *
  * Props are linked to matches upstream, and an unlinked prop also loses its
- * confidence — which the opportunity board can only report as an absence. This
+ * side — which the opportunity board can only report as an absence. This
  * banner names the actual failure counts, so a broken link step is visible as a
  * broken link step rather than as "no picks today".
  */

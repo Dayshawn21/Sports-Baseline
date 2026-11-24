@@ -4,7 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.core.tennis_odds_events import event_start, match_event, names_player, odds_event_tour
+from app.core.tennis_odds_events import (
+    event_start,
+    match_event,
+    names_player,
+    near_start_events,
+    odds_event_tour,
+    tour_level_circuit,
+)
 
 START = datetime(2026, 9, 25, 14, 0, tzinfo=timezone.utc)
 
@@ -92,3 +99,47 @@ class TestNameSuffixes:
 
     def test_a_suffix_alone_is_still_a_name(self):
         assert names_player("Jr", "Jr") is True
+
+
+class TestTourLevelCircuit:
+    @pytest.mark.parametrize(("league", "tour"), [
+        ("ATP - Paris, France", "ATP"),
+        ("WTA - Riyadh", "WTA"),
+    ])
+    def test_main_tour_singles_map_to_their_tour(self, league, tour):
+        assert tour_level_circuit(league) == tour
+
+    @pytest.mark.parametrize("league", [
+        "ATP - Paris, Doubles",
+        "WTA 125K - Adana",
+        "Challenger - Bari",
+        "Tennis - ITF Men Columbia - R16",
+        "",
+    ])
+    def test_doubles_wta_125_challenger_and_itf_are_rejected(self, league):
+        assert tour_level_circuit(league) is None
+
+
+def _event(event_id, league, start):
+    return {"id": event_id, "league": {"name": league}, "date": start}
+
+
+class TestNearStartEvents:
+    def test_only_main_tour_singles_inside_the_window_are_kept(self):
+        events = [
+            _event(1, "ATP - Paris, France", "2026-09-25T15:00:00Z"),
+            _event(2, "ATP - Paris, France", "2026-09-25T13:59:00Z"),
+            _event(3, "WTA - Riyadh", "2026-09-25T20:01:00Z"),
+            _event(4, "WTA - Riyadh", "soon"),
+            _event(5, "Challenger - Bari", "2026-09-25T15:00:00Z"),
+            {"league": {"name": "ATP - Paris, France"}, "date": "2026-09-25T15:00:00Z"},
+            _event(6, "WTA - Riyadh", "2026-09-25T20:00:00Z"),
+        ]
+        assert [e["id"] for e in near_start_events(events, START, 6, 10)] == [1, 6]
+
+    def test_the_result_is_sorted_soonest_first_and_capped(self):
+        events = [_event(i, "ATP - Paris, France", f"2026-09-25T{19 - i}:00:00Z") for i in range(5)]
+        assert [e["id"] for e in near_start_events(events, START, 6, 3)] == [4, 3, 2]
+
+    def test_an_empty_listing_gives_an_empty_list(self):
+        assert near_start_events([], START, 6, 10) == []

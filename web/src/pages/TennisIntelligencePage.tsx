@@ -1,40 +1,45 @@
-import { useMemo, useState } from 'react'
-import { DatePicker, Select } from 'antd'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Select } from 'antd'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTennisToday } from '~/hooks/useTennisToday'
 import { useBestPicks } from '~/hooks/useBestPicks'
 import { useAdminView } from '~/hooks/useAdmin'
-import { useBetProps, useDKProps, usePrizePicksProps } from '~/hooks/useProps'
-import LoadingState from '~/components/shared/LoadingState'
+import { useDKProps, usePrizePicksProps } from '~/hooks/useProps'
+import { usePhoneLayout } from '~/hooks/usePhoneLayout'
+import TableSkeleton from '~/components/shared/TableSkeleton'
 import PageHead from '~/components/shared/PageHead'
-import TennisSlateSummary from '~/components/tennis/TennisSlateSummary'
+import SlateDatePicker from '~/components/shared/SlateDatePicker'
+import SlateLegend from '~/components/shared/SlateLegend'
 import TennisSlateDigest from '~/components/tennis/TennisSlateDigest'
 import TennisSlateTable from '~/components/tennis/TennisSlateTable'
 import { useRegisterSlateCommand, useSlateCommand } from '~/components/shared/SlateCommandProvider'
 import type { PropsHealth, UnifiedSort } from '~/utils/unifiedTennis'
-import {
-  UNIFIED_SORT_OPTIONS,
-  assessPropsHealth,
-  bestBetPicks,
-  composeUnifiedMatches,
-} from '~/utils/unifiedTennis'
+import { assessPropsHealth, composeUnifiedMatches } from '~/utils/unifiedTennis'
 import type { TourTab } from '~/utils/tennisSlate'
-import { featuredPicks, isGroupedSort, revealTab, slateRows, tennisDigest } from '~/utils/tennisSlate'
-import { slateDateLabel } from '~/utils/nbaSlate'
-import { matchingSlateCommandRows, normalizeSlateCommand, tennisSlateCommandRows } from '~/utils/slateCommand'
+import { featuredPicks, isGroupedSort, leanDigest, slateRows, tennisDigest, tennisRemainingLine } from '~/utils/tennisSlate'
+import { ctDayKey } from '~/utils/format'
+import { parseSlateDate, slateDateLabel } from '~/utils/slateDates'
+import { tennisLegend } from '~/utils/slateLegend'
+import { countPart, slatePeriodLine } from '~/utils/slatePeriod'
+import { defaultTennisDay, tennisDateNeighbors } from '~/utils/tennisDates'
+import { matchingSlateCommandRows, normalizeSlateCommand } from '~/utils/slateCommand'
+import { tennisSlateCommandRows } from '~/utils/slateCommandRows'
 import '~/components/tennis/tennis-slate.css'
 
-type PropSource = 'prizepicks' | 'dk' | 'bet'
+type PropSource = 'prizepicks' | 'dk'
 
 const SOURCE_OPTIONS = [
   { value: 'prizepicks', label: 'PrizePicks' },
   { value: 'dk', label: 'DraftKings' },
-  { value: 'bet', label: 'Bet365' },
 ]
+
+// Start time is the slate's only order (57d), which keeps its tournament headers.
+const SLATE_SORT: UnifiedSort = 'start'
 
 function SourceNotice({ label, onRetry }: { label: string; onRetry: () => void }) {
   return (
     <div className="unified-source-notice" role="alert">
-      <span>{label} could not be loaded. Available picks are still shown.</span>
+      <span>{label} could not be loaded. Other rows are still shown.</span>
       <button type="button" onClick={onRetry}>Retry</button>
     </div>
   )
@@ -42,7 +47,7 @@ function SourceNotice({ label, onRetry }: { label: string; onRetry: () => void }
 
 /**
  * A props response can succeed and still be unusable — unlinked props lose their
- * confidence upstream, so the page would otherwise show a clean `0` for what is
+ * side upstream, so the page would otherwise show a clean `0` for what is
  * actually a broken pipeline.
  */
 function PropsHealthNotice({ label, health }: { label: string; health: PropsHealth }) {
@@ -59,7 +64,7 @@ function PropsHealthNotice({ label, health }: { label: string; health: PropsHeal
         ) : (
           <>
             {total.toLocaleString()} {label} props loaded, but only {linked.toLocaleString()} are
-            linked to a match and {scored.toLocaleString()} have a confidence rating. Prop rows are
+            linked to a match and {scored.toLocaleString()} have a projected P(over). Prop rows are
             mostly unavailable — this is a data pipeline issue, not an empty slate.
           </>
         )}
@@ -69,73 +74,60 @@ function PropsHealthNotice({ label, health }: { label: string; health: PropsHeal
 }
 
 export default function TennisIntelligencePage() {
-  const [tour, setTour] = useState<string | undefined>()
-  const [date, setDate] = useState<string | undefined>()
-  const [sort, setSort] = useState<UnifiedSort>('opportunity')
-  const [upcomingOnly, setUpcomingOnly] = useState(true)
-  const [showLeans, setShowLeans] = useState(false)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const date = parseSlateDate(searchParams.get('date')) ?? undefined
+  // No date (or an invalid one) loads today and tomorrow CT, then opens on one of them.
+  const today = ctDayKey(Date.now())
+  const candidateDays = date ? undefined : [today, tennisDateNeighbors(today).next]
   const adminView = useAdminView()
   const [chosenSource, setSource] = useState<PropSource>('prizepicks')
   // Visitors get PrizePicks only: the book switch and its health warning are owner diagnostics.
   const source: PropSource = adminView ? chosenSource : 'prizepicks'
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [tourTab, setTourTab] = useState<TourTab>('all')
   const { query } = useSlateCommand()
+  const phone = usePhoneLayout()
 
-  const predictionsQuery = useTennisToday({ tour, date })
-  const bestPicksQuery = useBestPicks({ tour, date })
+  const predictionsQuery = useTennisToday({ date, days: candidateDays })
+  const bestPicksQuery = useBestPicks({ date, days: candidateDays })
   const prizePicksQuery = usePrizePicksProps()
   const draftKingsQuery = useDKProps(source === 'dk')
-  const betOnlineQuery = useBetProps(source === 'bet')
-  const propsQuery = source === 'dk'
-    ? draftKingsQuery
-    : source === 'bet'
-      ? betOnlineQuery
-      : prizePicksQuery
+  const propsQuery = source === 'dk' ? draftKingsQuery : prizePicksQuery
   const sourceLabel = SOURCE_OPTIONS.find((option) => option.value === source)?.label ?? 'Props'
 
+  const day = useMemo(() => date ?? defaultTennisDay([
+    ...(predictionsQuery.data?.matches ?? []),
+    ...(bestPicksQuery.data?.matches ?? []),
+  ].map(match => match.startUtc), Date.now()), [bestPicksQuery.data?.matches, date, predictionsQuery.data?.matches])
+
+  // Every lean shows (57d), and the day lists all its matches, started ones included, as NBA and NHL do.
   const matches = useMemo(() => composeUnifiedMatches(
     predictionsQuery.data?.matches ?? [],
     bestPicksQuery.data?.matches ?? [],
     propsQuery.data?.props ?? [],
-    { showLeans, upcomingOnly, tour, date, sort },
+    { showLeans: true, upcomingOnly: false, date: day, sort: SLATE_SORT },
   ), [
     predictionsQuery.data?.matches,
     bestPicksQuery.data?.matches,
     propsQuery.data?.props,
-    showLeans,
-    upcomingOnly,
-    tour,
-    date,
-    sort,
+    day,
   ])
 
-  const counts = useMemo(() => {
-    let props = 0
-    let locks = 0
-    let strongOrBetter = 0
-    for (const match of matches) {
-      const picks = bestBetPicks(match)
-      props += match.props.length
-      for (const item of [...match.props, ...picks]) {
-        if (item.confidence === 'LOCK') locks += 1
-        if (item.confidence === 'LOCK' || item.confidence === 'STRONG') strongOrBetter += 1
-      }
-    }
-    return { props, locks, strongOrBetter }
-  }, [matches])
+  const propCount = useMemo(() => matches.reduce((sum, match) => sum + match.props.length, 0), [matches])
 
   const digest = useMemo(() => tennisDigest(featuredPicks(matches, 4)), [matches])
   const rows = useMemo(() => slateRows(matches), [matches])
+  const leans = useMemo(() => leanDigest(rows, Date.now(), 4), [rows])
+  const remaining = useMemo(() => tennisRemainingLine(rows, Date.now()), [rows])
 
   // Predictions and Best Picks are the primary sources; gating on props too
   // would let a fast props failure render the empty state mid-load.
   const primaryLoading = predictionsQuery.isLoading || bestPicksQuery.isLoading
   const commandRows = useMemo(() => tennisSlateCommandRows(rows), [rows])
   const commandScope = useMemo(() => primaryLoading ? null : ({
-    periodKey: JSON.stringify({ date, tour, source, upcomingOnly, showLeans, sort }),
+    periodKey: JSON.stringify({ day, source }),
     rows: commandRows,
-  }), [commandRows, date, primaryLoading, showLeans, sort, source, tour, upcomingOnly])
+  }), [commandRows, day, primaryLoading, source])
   useRegisterSlateCommand(commandScope)
 
   const commandActive = normalizeSlateCommand(query).length > 0
@@ -145,98 +137,56 @@ export default function TennisIntelligencePage() {
     return rows.filter(row => matchingKeys.has(row.key))
   }, [commandActive, commandRows, query, rows])
 
-  function toggleRow(matchKey: string) {
-    setExpandedKey((open) => (open === matchKey ? null : matchKey))
-  }
-
-  // Only unlinked props need the digest's inline-detail fallback.
-  function openFromDigest(matchKey: string) {
-    setTourTab(revealTab(rows, matchKey, tourTab))
-    setExpandedKey(matchKey)
-    requestAnimationFrame(() => {
-      const toggle = document.querySelector<HTMLButtonElement>(`[data-match-key="${CSS.escape(matchKey)}"]`)
-      toggle?.focus({ preventScroll: true })
-      toggle?.closest('tr')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
   const propsHealth = useMemo(
     () => assessPropsHealth(propsQuery.data?.props ?? []),
     [propsQuery.data?.props],
   )
+
+  // The admin picks the prop source in the legend's Props part; visitors read "PrizePicks" there.
+  const legend = tennisLegend(sourceLabel)
+  const legendParts: { label: string, text: ReactNode }[] = adminView
+    ? legend.parts.map(part => part.label !== 'Props' ? part : {
+      ...part,
+      text: <Select
+        aria-label="Prop source"
+        size="small"
+        variant="borderless"
+        value={source}
+        options={SOURCE_OPTIONS}
+        onChange={(value) => setSource(value as PropSource)}
+        popupMatchSelectWidth={false}
+      />,
+    })
+    : legend.parts
+
+  const periodLabel = slateDateLabel(day)
+  const neighbors = tennisDateNeighbors(day)
+  const datePath = (target: string | null) => target ? `/tennis?date=${target}` : '/tennis'
 
   return (
     <div className="page-shell">
       <div className="page-container is-wide unified-tennis-page">
         <PageHead
           title="Tennis slate"
-          meta={date ? slateDateLabel(date) : 'Today and tomorrow'}
-          actions={
-            <div className="filter-bar-responsive unified-filters">
-              <button
-                type="button"
-                className={`unified-filter-button${upcomingOnly ? ' is-active' : ''}`}
-                aria-pressed={upcomingOnly}
-                onClick={() => setUpcomingOnly((value) => !value)}
-              >
-                Upcoming only
-              </button>
-              <Select
-                aria-label="Tour"
-                placeholder="All tours"
-                allowClear
-                value={tour}
-                options={[
-                  { value: 'ATP', label: 'ATP' },
-                  { value: 'WTA', label: 'WTA' },
-                  { value: 'CHALLENGER', label: 'Challenger' },
-                ]}
-                onChange={setTour}
-              />
-              <DatePicker
-                aria-label="Match date"
-                placeholder="Today & tomorrow"
-                allowClear
-                onChange={(_, value) => setDate((value as string) || undefined)}
-              />
-              <Select
-                aria-label="Sort by"
-                value={sort}
-                options={UNIFIED_SORT_OPTIONS}
-                labelRender={({ label }) => <>Sort: {label}</>}
-                onChange={(value) => setSort(value as UnifiedSort)}
-              />
-              {adminView && (
-                <Select
-                  aria-label="Prop source"
-                  value={source}
-                  options={SOURCE_OPTIONS}
-                  onChange={(value) => setSource(value as PropSource)}
-                />
-              )}
-              <button
-                type="button"
-                className={`unified-filter-button${showLeans ? ' is-active is-lean' : ''}`}
-                aria-pressed={showLeans}
-                onClick={() => setShowLeans((value) => !value)}
-              >
-                {showLeans ? 'Hide Leans' : 'Show Leans'}
-              </button>
-            </div>
-          }
-          stats={!primaryLoading && (
-            <TennisSlateSummary
-              matches={matches.length}
-              props={counts.props}
-              locks={counts.locks}
-              strongOrBetter={counts.strongOrBetter}
-            />
-          )}
+          meta={primaryLoading ? periodLabel : slatePeriodLine([
+            periodLabel,
+            countPart(matches.length, 'match', 'matches'),
+            propCount > 0 && countPart(propCount, 'player prop'),
+          ])}
+          period={{
+            label: 'Slate date',
+            previous: datePath(neighbors.previous),
+            next: datePath(neighbors.next),
+            picker: <SlateDatePicker
+              date={day}
+              onPick={picked => navigate(datePath(picked))}
+            />,
+          }}
         />
 
         <div className="unified-notices">
           {predictionsQuery.isError && <SourceNotice label="Predictions" onRetry={predictionsQuery.refetch} />}
-          {bestPicksQuery.isError && <SourceNotice label="Best Picks" onRetry={bestPicksQuery.refetch} />}
+          {bestPicksQuery.isError && <SourceNotice label="Model leans" onRetry={bestPicksQuery.refetch} />}
           {propsQuery.isError && <SourceNotice label={sourceLabel} onRetry={propsQuery.refetch} />}
           {adminView && !propsQuery.isError && propsHealth.degraded && (
             <PropsHealthNotice label={sourceLabel} health={propsHealth} />
@@ -247,27 +197,28 @@ export default function TennisIntelligencePage() {
             flight would show prop-linked matches as "Prediction unavailable"
             and then reshuffle them once predictions land. */}
         {primaryLoading ? (
-          <LoadingState message="Finding the best opportunities..." />
+          <TableSkeleton label="Loading tennis slate..." columns={adminView ? 9 : 8} />
         ) : matches.length === 0 ? (
-          <div className="unified-empty-state">
-            <div className="unified-empty-title">No Best Bets found</div>
-            <p>Try another date or tour{adminView ? ', switch the prop source,' : ''} or include Lean picks.</p>
-            {!showLeans && <button type="button" onClick={() => setShowLeans(true)}>Show Leans</button>}
+          <div className="nfl-empty">
+            No tennis matches on {slateDateLabel(day)}.{' '}
+            {adminView && 'Try switching the prop source. '}
+            {neighbors.next && <Link className="nfl-empty__next" to={datePath(neighbors.next)}>Next slate: {slateDateLabel(neighbors.next)} →</Link>}
           </div>
         ) : (
           <>
-          <TennisSlateDigest items={digest} selectedKey={expandedKey} onSelect={openFromDigest} />
+          <TennisSlateDigest priced={digest} leans={leans} remaining={remaining} />
+          {!phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
           <TennisSlateTable
             rows={filteredRows}
-            grouped={isGroupedSort(sort)}
-            expandedKey={expandedKey}
-            onToggle={toggleRow}
+            grouped={isGroupedSort(SLATE_SORT)}
             showFlags={adminView}
             tab={tourTab}
             onTabChange={setTourTab}
             searchAllTabs={commandActive}
+            total={rows.length}
             emptyMessage={commandActive ? 'No matches found for this slate search.' : undefined}
           />
+          {phone && <SlateLegend parts={legendParts} pick={legend.pick} />}
           </>
         )}
       </div>

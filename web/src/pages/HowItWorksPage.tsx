@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import PageHead from '~/components/shared/PageHead'
-import { SPORTS } from '~/utils/sportNav'
+import { SPORTS, sportViews } from '~/utils/sportNav'
+import { SHELL_SHORTCUTS } from '~/utils/shellShortcuts'
 import { SPORT_STATUS } from './howItWorksContent'
 import './nfl-model.css'
 import './how-it-works.css'
@@ -24,6 +25,7 @@ function SportCards() {
   return <div className="hiw-sports">
     {SPORTS.map(sport => {
       const status = SPORT_STATUS[sport.code]
+      const modelPath = sportViews(sport.code).find(view => view.view === 'model')?.path
       return <article key={sport.code} className="nfl-model-card hiw-sport" aria-label={sport.label}>
         <h3 className="hiw-sport__name">{sport.label}</h3>
         <dl className="hiw-sport__rows">
@@ -34,7 +36,7 @@ function SportCards() {
         </dl>
         <nav className="hiw-sport__links" aria-label={`${sport.label} pages`}>
           <Link to={sport.views.slate}>Slate</Link>
-          <Link to={sport.views.model}>Track record</Link>
+          {modelPath && <Link to={modelPath}>Track record</Link>}
         </nav>
       </article>
     })}
@@ -55,7 +57,7 @@ const LEGEND = [
   {
     tone: 'is-neutral',
     name: 'Gray',
-    meaning: 'Everything else. Gray means reference, not a recommendation. NFL and NBA numbers are always gray until a check passes.',
+    meaning: 'Everything else. Gray means reference, not a recommendation. NFL, NBA and NHL numbers are always gray until a check passes.',
   },
 ] as const
 
@@ -86,7 +88,7 @@ export default function HowItWorksPage() {
     <Section title="How data flows">
       <div className="nfl-model-card hiw-card">
         <ol className="hiw-flow">
-          <li>Scheduled jobs (GitHub Actions) collect schedules, box scores, sportsbook odds and prop lines for tennis, the NFL and the NBA.</li>
+          <li>Scheduled jobs (GitHub Actions) collect schedules, box scores, sportsbook odds and prop lines for tennis, the NFL, the NBA and the NHL.</li>
           <li>Each provider's names are matched to the same players, teams and games.</li>
           <li>Models produce win probabilities and stat projections. Sportsbook odds are de-vigged (the book's margin removed) into a fair market probability.</li>
           <li>Predictions are stored before each event starts, then graded against the result once it ends.</li>
@@ -97,6 +99,19 @@ export default function HowItWorksPage() {
 
     <Section title="What each sport shows">
       <SportCards />
+    </Section>
+
+    <Section title="Keyboard shortcuts">
+      <div className="nfl-model-card hiw-card">
+        <dl className="hiw-legend">
+          {SHELL_SHORTCUTS.map(shortcut => (
+            <div key={shortcut.action} className="hiw-legend__row">
+              <dt>{shortcut.keys.map(key => <kbd key={key} className="lf-kbd">{key}</kbd>)}</dt>
+              <dd>{shortcut.action}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </Section>
 
     <Section title="How a model earns a pick">

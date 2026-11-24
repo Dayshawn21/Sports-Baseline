@@ -17,11 +17,14 @@ from app.core.nfl_over_probability_fit import FIT_PROJECTION_MODEL_VERSION, QUAN
 from app.core.nfl_projection import (
     NflHistoricalAverages, NflSeasonTouchdowns, baseline_projection, edge, edge_is_comparable, line_quality_flags,
     model_projection, model_quality_flags, moneyline_is_stale, MONEYLINE_UNSCALED_MARKETS, NflProjectionInput,
-    NFL_PROJECTION_MODEL_VERSION,
-    NflUsageInput, opponent_adjustment_pct, slate_line_rank, USAGE_ADJUSTED_MARKETS,
+    NFL_PROJECTION_MODEL_VERSION, POSITION_NOT_SCORED_FLAG,
+    NflUsageInput, opponent_adjustment_pct, projects_line, slate_line_rank, USAGE_ADJUSTED_MARKETS,
     td_seasons_used, usage_adjustment_pct,
 )
 from app.core.nfl_availability import NflAvailability, availability_flags
+from app.core.nfl_kicker_projection import (
+    KICKER_PROJECTED, KICKER_PROJECTION_SERVED, NFL_KICKER_MODEL_VERSION, kicker_row,
+)
 from app.core.nfl_elo import NFL_ELO_MODEL_VERSION
 from app.core.nfl_game_lines import game_model_line
 from app.core.nfl_scoring_ratings import NFL_SCORING_V1, replay as replay_scoring
@@ -36,7 +39,9 @@ from app.nfl.markets import NflPropMarket
 from app.nfl.weather import stadium_for_home_team
 from app.repositories import nfl as nfl_repo
 from app.repositories import nfl_targets as targets_repo
+from app.repositories import nfl_volume_serving as volume_repo
 from app.services.nfl.targets import targets_slate_line
+from app.services.nfl.volume import volume_reference
 from app.schemas.nfl import (
     NflGameModelSchema, NflHistoryResultSchema, NflHistorySampleSchema, NflSlateGameSchema, NflSlateLineSchema,
     NflSlateResponse, NflUnmatchedLineSchema, NflWeatherSchema,
@@ -92,7 +97,7 @@ def _history_value(market: NflPropMarket, row: dict) -> float:
 def _history_sample(market: NflPropMarket, rows: list[dict], limit: int | None = None) -> NflHistorySampleSchema:
     values = [
         NflHistoryResultSchema(
-            value=_history_value(market, item), opponent_team=item.get("opponent_team"),
+            value=_history_value(market, item), opponent_team=item.get("opponent_team"), game_date=item.get("game_date"),
         )
         for item in rows[:limit]
     ]
@@ -161,6 +166,7 @@ def _availability(row: dict) -> NflAvailability:
         injury_status=row.get("injury_status"),
         depth_team_id=row.get("depth_team_id"), depth_position=row.get("depth_position"),
         depth_rank=row.get("depth_rank"),
+        active_depth_rank=row.get("active_depth_rank"), out_ahead=tuple(row.get("out_ahead") or ()),
         previous_depth_team_id=row.get("previous_depth_team_id"),
         previous_depth_position=row.get("previous_depth_position"),
         previous_depth_rank=row.get("previous_depth_rank"),
@@ -228,7 +234,10 @@ def _slate_line(
         wind_adjustment_pct=row.get("wind_adjustment_pct"),
         moneyline_scaled=market not in MONEYLINE_UNSCALED_MARKETS,
     )
-    projection = model_projection(model_input) if has_baseline else None
+    # A kicker fantasy row is projected only when `kicker_row` prepared it (27l3); never from PPR's 0.
+    kicker = row.get(KICKER_PROJECTED, False)
+    scored = kicker or projects_line(market, row["position"])
+    projection = model_projection(model_input) if has_baseline and scored else None
     comparable = edge_is_comparable(market, label_games, row["segment"], row["odds_type"])
     player_history = history or []
     opponent_history = [
@@ -236,7 +245,10 @@ def _slate_line(
     ]
     snap = _snap_evidence(market, row, line_season)
     snap_flags = [SNAP_SHARE_UNAVAILABLE_FLAG] if snap is not None and snap.share is None else []
-    over = slate_over_probability(market.value, row["position"], row["segment"], label_games, projection, row["line"])
+    # The 27g fit describes v4's residuals, so a kicker line has no P(over).
+    over = None if kicker else slate_over_probability(
+        market.value, row["position"], row["segment"], label_games, projection, row["line"],
+    )
     return NflSlateLineSchema(
         line_id=row["id"], player_id=row["player_id"], player_name=row["player_name"],
         position=row["position"], opponent_team=row.get("opponent_team"),
@@ -244,6 +256,7 @@ def _slate_line(
             baseline_projection(market, opponent_averages) if opponent_averages is not None else None
         ),
         recent_form=_history_sample(market, player_history, limit=5),
+        recent_form_long=_history_sample(market, player_history, limit=10),
         opponent_history=_history_sample(market, opponent_history),
         opponent_allowed_history=_history_sample(market, opponent_allowed or [], limit=5),
         market=market.value, segment=row["segment"],
@@ -256,11 +269,12 @@ def _slate_line(
         usage_adjustment_pct=usage_adjustment_pct(model_input),
         usage_sample_games=usage.games if usage is not None else None,
         provider=row["provider"], fetched_at=row["fetched_at"],
-        projection_model_version=NFL_PROJECTION_MODEL_VERSION,
+        projection_model_version=NFL_KICKER_MODEL_VERSION if kicker else NFL_PROJECTION_MODEL_VERSION,
         quality_flags=line_quality_flags(
             label_averages, label_season, line_season, row["segment"], row["odds_type"],
             row.get("current_season_games"),
-        ) + model_quality_flags(model_input) + _team_flags(row) + availability_flags(_availability(row)) + snap_flags,
+        ) + model_quality_flags(model_input) + _team_flags(row) + availability_flags(_availability(row)) + snap_flags
+        + ([] if scored else [POSITION_NOT_SCORED_FLAG]),
         book_probability=book_odds.probability if book_odds else None,
         book_count=book_odds.book_count if book_odds else None,
         book_includes_margin=book_odds.includes_margin if book_odds else None,
@@ -270,6 +284,7 @@ def _slate_line(
         book_probability_devigged=devigged if book_odds and book_odds.includes_margin else None,
         injury_status=row.get("injury_status"), practice_status=row.get("practice_status"),
         injury=row.get("injury"), depth_position=row.get("depth_position"), depth_rank=row.get("depth_rank"),
+        active_depth_rank=row.get("active_depth_rank"), out_ahead=list(row.get("out_ahead") or []),
         previous_depth_position=row.get("previous_depth_position"),
         previous_depth_rank=row.get("previous_depth_rank"),
         snap_share=round(snap.share, 3) if snap is not None and snap.share is not None else None,
@@ -303,6 +318,7 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
     elo_games = await nfl_repo.get_elo_games(db)
     targets_rows = await targets_repo.get_targets_serving_lines(db, season, week)
     unmatched_targets = await targets_repo.get_unmatched_targets_lines(db, season, week)
+    volume_rows = await volume_repo.get_volume_serving_lines(db, season, week)
 
     # Everything below is CPU only. Run in a worker thread so the event loop keeps
     # answering /health and other visitors: inline, a cold week stalled the loop for
@@ -324,22 +340,27 @@ async def build_slate(db: AsyncSession, season: int, week: int, now: datetime) -
             for game_id, players in devigged_by_game.items()
         }
 
+        volume_by_line = {row.line_id: volume_reference(row) for row in volume_rows}
         lines_by_game: dict[int, list[NflSlateLineSchema]] = {}
         for row in line_rows:
             row = apply_season_blend(apply_team_game_dvp(
                 row | team_game_inputs(team_game_totals, team_game_league, row.get("opponent_team_id"), row["position"]),
             ), season)
+            if KICKER_PROJECTION_SERVED:
+                row = kicker_row(row, season)
             home_market_prob, market_fetched_at = market_probabilities.get(row["game_id"], (None, None))
             book_odds = slate_book_odds(row["market"], row["segment"], prop_odds.get((row["game_id"], row["player_id"]), []))
-            lines_by_game.setdefault(row["game_id"], []).append(
-                _slate_line(
-                    row, season, home_market_prob,
-                    history_by_player.get(row["player_id"], []), book_odds,
-                    devigged_by_game.get(row["game_id"], {}).get(row["player_id"]),
-                    opponent_allowed_history.get((row.get("opponent_team_id"), row["position"]), []),
-                    market_is_stale=moneyline_is_stale(market_fetched_at, kickoffs.get(row["game_id"]), now),
-                )
+            line = _slate_line(
+                row, season, home_market_prob,
+                history_by_player.get(row["player_id"], []), book_odds,
+                devigged_by_game.get(row["game_id"], {}).get(row["player_id"]),
+                opponent_allowed_history.get((row.get("opponent_team_id"), row["position"]), []),
+                market_is_stale=moneyline_is_stale(market_fetched_at, kickoffs.get(row["game_id"]), now),
             )
+            volume = volume_by_line.get(line.line_id)
+            if volume is not None:
+                line = line.model_copy(update={"volume": volume})
+            lines_by_game.setdefault(row["game_id"], []).append(line)
         for row in targets_rows:
             lines_by_game.setdefault(row.game_id, []).append(targets_slate_line(row))
         for game_lines in lines_by_game.values():

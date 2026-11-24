@@ -1,10 +1,12 @@
-import { depthLabel, injuryTag, type InjuryTag } from '~/utils/nflAvailability'
+import type { NflHistorySample } from '~/types/nfl'
+import { activeDepthLabel, depthLabel, depthShifted, injuryTag, roleChangeNote, type InjuryTag } from '~/utils/nflAvailability'
 import { nflBookOddsEvidence } from '~/utils/nflBookOdds'
 import { formatKickoffTime, formatProjection, marketLabel, segmentLabel } from '~/utils/nflLabels'
 import { edgeShare, isConfidentSample, type NflBoardLine } from '~/utils/nflPropBoard'
 import { edgeLabel, edgePctLabel, signalSummary, trustLabel } from '~/utils/nflSignal'
 import { snapShareLabel } from '~/utils/nflSnapShare'
-import { isTargetsReference } from '~/utils/nflTargets'
+import { isReferenceLine, isTargetsReference, TARGETS_REFERENCE_NOTE } from '~/utils/nflTargets'
+import { statStrip, type RowSignal, type StatCell } from '~/utils/propRowVisuals'
 
 const TD_MARKET = 'anytime_touchdown'
 const DEPTH_FLAGS = ['depth_promoted', 'depth_demoted', 'depth_new']
@@ -12,7 +14,6 @@ const DEPTH_FLAGS = ['depth_promoted', 'depth_demoted', 'depth_new']
 export interface NflPropCardModel {
   key: number
   kind: 'stat' | 'td' | 'reference'
-  rank: number | null
   playerName: string
   badge: string
   meta: string
@@ -31,6 +32,8 @@ export interface NflPropCardModel {
   depthText: string | null
   flags: string[]
   why: string
+  /** Why a reference line is not a pick; null on a pick-eligible line. */
+  referenceNote: string | null
   bookText: string | null
   snapText: string | null
 }
@@ -38,7 +41,10 @@ export interface NflPropCardModel {
 export interface NflRecentBar {
   value: number
   opponentTeam: string | null
+  gameDate?: string | null
   heightPct: number
+  /** Where the bar's bottom edge sits; present only when the plot reaches below zero, otherwise bars start at 0. */
+  bottomPct?: number
   vsLine: 'above' | 'below' | 'push' | null
 }
 
@@ -73,14 +79,15 @@ function gameMeta(row: NflBoardLine): string {
   return row.segment === 'full_game' ? row.position ?? '--' : `${row.position ?? '--'} · ${segmentLabel(row.segment)}`
 }
 
-export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLine: number | null, now: number): NflPropCardModel {
+export function nflPropCard(row: NflBoardLine, referenceLine: number | null, now: number): NflPropCardModel {
   const td = row.market === TD_MARKET
-  const reference = isTargetsReference(row.market)
-  const confident = reference ? row.projection !== null : isConfidentSample(row)
+  const targets = isTargetsReference(row.market)
+  const reference = isReferenceLine(row)
+  const roleNote = targets ? null : roleChangeNote(row)
+  const confident = targets ? row.projection !== null : isConfidentSample(row)
   return {
     key: row.lineId,
     kind: reference ? 'reference' : td ? 'td' : 'stat',
-    rank: reference ? null : rank,
     playerName: row.playerName,
     badge: teamBadge(row, row.awayTeam, row.homeTeam),
     meta: meta(row),
@@ -93,12 +100,14 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
     edgeShareText: edgePctLabel(edgeShare(row, referenceLine)),
     edgeText: edgeLabel(row.edge),
     trust: reference ? 'Reference' : trustLabel(row),
-    sampleText: `${row.gamesInSample}g${confident ? '' : reference ? ' unavailable' : ' thin'}`,
+    sampleText: `${row.gamesInSample}g${confident ? '' : targets ? ' unavailable' : ' thin'}`,
     thin: !confident,
     injury: injuryTag(row.injuryStatus),
-    depthText: row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,
+    depthText: depthShifted(row) ? activeDepthLabel(row)
+      : row.qualityFlags.some(flag => DEPTH_FLAGS.includes(flag)) ? depthLabel(row) : null,
     flags: row.qualityFlags.filter(flag => flag !== 'historical_baseline'),
-    why: signalSummary(row),
+    why: roleNote ? `${roleNote} · ${signalSummary(row)}` : signalSummary(row),
+    referenceNote: targets ? TARGETS_REFERENCE_NOTE : roleNote,
     bookText: td ? nflBookOddsEvidence(row, now)?.summary ?? 'No book price' : null,
     snapText: td ? snapShareLabel(row) : null,
   }
@@ -109,18 +118,35 @@ export function nflPropCard(row: NflBoardLine, rank: number | null, referenceLin
  * so TD gets none. History is whole-game, so a partial-segment line is not drawn against it.
  */
 export function recentBars(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'segment'>): NflRecentBars {
-  if (row.market === TD_MARKET || !row.recentForm.values.length) return { bars: [], linePct: null }
-  const values = [...row.recentForm.values].reverse()
+  return formBars(row.recentForm, row)
+}
+
+/** The stat strip under the bars, on the same terms: only where the bars draw a line, from up to ten games when served. */
+export function recentStatStrip(row: Pick<NflBoardLine, 'market' | 'line' | 'recentForm' | 'recentFormLong' | 'segment'>, signal: RowSignal): StatCell[] {
+  if (row.line === null || recentBars(row).linePct === null) return []
+  const sample = row.recentFormLong?.values.length ? row.recentFormLong : row.recentForm
+  return statStrip(sample.values.map(game => game.value), row.line, signal)
+}
+
+/** The same bars for any newest-first sample of the row's market. */
+export function formBars(sample: NflHistorySample, row: Pick<NflBoardLine, 'market' | 'line' | 'segment'>): NflRecentBars {
+  if (row.market === TD_MARKET || !sample.values.length) return { bars: [], linePct: null }
+  const values = [...sample.values].reverse()
   const line = row.segment === 'full_game' ? row.line : null
-  const scale = Math.max(line ?? 0, ...values.map(item => item.value))
-  const pct = (value: number) => (scale > 0 ? Math.min(100, Math.max(0, (value / scale) * 100)) : 0)
+  const amounts = values.map(item => item.value)
+  const low = Math.min(0, line ?? 0, ...amounts)
+  const span = Math.max(line ?? 0, ...amounts, 0) - low
+  const pct = (value: number) => (span > 0 ? Math.min(100, Math.max(0, (value / span) * 100)) : 0)
+  const signed = low < 0
   return {
     bars: values.map(item => ({
       value: item.value,
       opponentTeam: item.opponentTeam,
-      heightPct: pct(item.value),
+      gameDate: item.gameDate ?? null,
+      heightPct: pct(Math.abs(item.value)),
+      ...(signed ? { bottomPct: pct(Math.min(item.value, 0) - low) } : {}),
       vsLine: line === null ? null : item.value > line ? 'above' : item.value < line ? 'below' : 'push',
     })),
-    linePct: line === null ? null : pct(line),
+    linePct: line === null ? null : pct(line - low),
   }
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
-import { buildNflPropBoard } from '~/utils/nflPropBoard'
-import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerInitials, playerWeekLines, usageBars } from '~/utils/nflPlayer'
+import { isNflSpecialist, nflPlayerMarketLink, SPECIALIST_COLUMNS, playerWeekLines, playerWeekParams, selectedPropMarket, usageBars } from '~/utils/nflPlayer'
 
 const EMPTY_SAMPLE = { average: null, values: [] }
 const NOW = new Date('2026-10-04T12:00:00Z')
@@ -42,22 +41,19 @@ const WEEK = [
 ]
 
 describe('playerWeekLines', () => {
-  it('keeps the player full-game primary rows with board ranks and edge share', () => {
+  it('keeps the player full-game primary rows with edge share', () => {
     const week = playerWeekLines(WEEK, COOK, NOW)
-    const board = buildNflPropBoard(WEEK, 'all', NOW)
-    const rushing = board.find(category => category.market === 'rushing_yards')
 
     expect(week?.game.gameId).toBe(1)
     expect(week?.lines.map(item => item.row.lineId)).toEqual([11, 13])
-    expect(week?.lines[0]?.rank).toBe((rushing?.rateable.findIndex(row => row.lineId === 11) ?? -1) + 1)
     expect(week?.lines[0]?.edgeShare).toBeCloseTo(9 / 60)
     expect(week?.lines[0]?.alternates.map(alternate => alternate.lineId)).toEqual([12])
   })
 
-  it('keeps anytime TD without a rank or edge', () => {
+  it('keeps anytime TD without an edge', () => {
     const td = playerWeekLines(WEEK, COOK, NOW)?.lines.find(item => item.row.market === 'anytime_touchdown')
 
-    expect([td?.rank, td?.edgeShare, td?.row.bookProbabilityDevigged]).toEqual([null, null, 0.44])
+    expect([td?.edgeShare, td?.row.bookProbabilityDevigged]).toEqual([null, 0.44])
   })
 
   it('is null for a player without a line this week', () => {
@@ -97,20 +93,6 @@ describe('usageBars', () => {
   })
 })
 
-describe('playerInitials', () => {
-  it.each([
-    ['James Cook', 'JC'],
-    ['Oronde Gadsden II', 'OG'],
-    ['Michael Penix Jr.', 'MP'],
-    ["Ja'Marr Chase", 'JC'],
-    ['Pelé', 'P'],
-    ['', '--'],
-  ])('%s is %s', (name, initials) => {
-    expect(playerInitials(name)).toBe(initials)
-  })
-})
-
-
 describe('specialist player pages', () => {
   it('restricts specialist layout to kickers and punters', () => {
     expect(['K', 'P', 'QB', 'RB', 'WR', 'TE', null].map(isNflSpecialist)).toEqual([true, true, false, false, false, false, false])
@@ -121,8 +103,40 @@ describe('specialist player pages', () => {
     ])
     expect(SPECIALIST_COLUMNS.P).toEqual([{ field: 'punts', label: 'Punts', market: 'punts' }])
   })
-  it('carries the encoded market to the player game log', () => {
-    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points#game-log')
+  it('carries the encoded market to the player page', () => {
+    expect(nflPlayerMarketLink(40440, 'kicking_points')).toBe('/nfl/player/40440?market=kicking_points')
     expect(nflPlayerMarketLink(1, 'a&b')).toContain('market=a%26b')
+  })
+  it('carries the week the row was opened from', () => {
+    expect(nflPlayerMarketLink(40440, 'receptions', { season: 2025, week: 7 })).toBe('/nfl/player/40440?market=receptions&season=2025&week=7')
+  })
+})
+
+describe('playerWeekParams', () => {
+  const parse = (query: string) => playerWeekParams(new URLSearchParams(query))
+  it('reads a linked season and week', () => {
+    expect(parse('market=receptions&season=2025&week=7')).toEqual({ season: 2025, week: 7 })
+  })
+  it('is null unless both are whole numbers', () => {
+    expect(parse('market=receptions')).toBeNull()
+    expect(parse('season=2025')).toBeNull()
+    expect(parse('week=7')).toBeNull()
+    expect(parse('season=2025&week=abc')).toBeNull()
+    expect(parse('season=2025&week=')).toBeNull()
+    expect(parse('season=2025&week=7.5')).toBeNull()
+  })
+})
+
+describe('selectedPropMarket', () => {
+  const markets = ['receiving_yards', 'receptions']
+
+  it('returns a market that has a section', () => {
+    expect(selectedPropMarket(new URLSearchParams('market=receptions'), markets)).toBe('receptions')
+  })
+
+  it('ignores an absent, empty or unknown market', () => {
+    expect(selectedPropMarket(new URLSearchParams(''), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market='), markets)).toBeNull()
+    expect(selectedPropMarket(new URLSearchParams('market=passing_yards'), markets)).toBeNull()
   })
 })

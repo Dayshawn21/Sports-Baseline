@@ -1,4 +1,4 @@
-"""Grade stored pre-match PrizePicks projections by confidence tier (26f).
+"""Grade stored pre-match PrizePicks projections by stat, and by confidence tier up to props-v2 (26f).
 
 Read-only. Each graded row is the app's own recommendation, frozen before the
 start by app.ingest.prop_snapshots, settled against the final score or, for
@@ -24,6 +24,9 @@ from app.repositories.prop_snapshots import GradedPropSnapshot
 from app.services.tennis.prop_snapshots import PROJECTION_VERSION
 
 TIERS = ("LOCK", "STRONG", "LEAN", "PASS")
+# Tennis props carry no tier from 48f on; early props-v3 rows hold a LEAN or PASS
+# that nothing grades.
+TIERED_VERSIONS = ("props-v1", "props-v2")
 Pair = tuple[int, int]
 ODDS_TYPES = ("standard", "goblin", "demon")
 
@@ -98,7 +101,9 @@ _HEADER = (f"  {'tier':<18}{'n':>5} {'push':>5}   {'hit':>6}{'':<10}  {'p(hit)':
            f"{'units':>7}")
 
 
-def _tier_section(picks: list[GradedPick]) -> list[str]:
+def _tier_section(picks: list[GradedPick], version: str) -> list[str]:
+    if version not in TIERED_VERSIONS:
+        return [f"By confidence tier: no tiers under {version} (retired by 48f)"]
     lines = ["By confidence tier and odds type (hit excludes pushes; units per line at the app's assumed payout)",
              _HEADER]
     for odds_type in ODDS_TYPES:
@@ -157,7 +162,7 @@ def report(
     for stat, count in awaiting.not_settleable.most_common():
         totals.append(f"    {stat:<44}{count:>6}")
     totals.append(f"  graded:                                         {len(picks)}")
-    sections = [totals, _tier_section(picks), _stat_section(picks), _calibration_section(picks)]
+    sections = [totals, _tier_section(picks, version), _stat_section(picks), _calibration_section(picks)]
     return "\n\n".join("\n".join(section) for section in sections)
 
 
@@ -166,7 +171,7 @@ async def _main() -> None:
     from app.repositories.player_match_stats import get_box_score_candidates
     from app.repositories.prop_snapshots import get_graded_prop_snapshots
 
-    parser = argparse.ArgumentParser(description="Grade stored PrizePicks projections by confidence tier")
+    parser = argparse.ArgumentParser(description="Grade stored PrizePicks projections")
     parser.add_argument("--version", default=PROJECTION_VERSION)
     args = parser.parse_args()
     async with SessionLocal() as db:

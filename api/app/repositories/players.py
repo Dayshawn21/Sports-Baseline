@@ -214,14 +214,6 @@ async def upsert_player(
     return row.scalar_one()
 
 
-async def update_birth_date(db: AsyncSession, player_id: int, birth_date: date) -> None:
-    """Set birth_date for a player."""
-    await db.execute(
-        text("UPDATE players SET birth_date = :bd WHERE id = :id"),
-        {"bd": birth_date, "id": player_id},
-    )
-
-
 async def upsert_alias(db: AsyncSession, canonical_id: int, alias_name: str, source: str) -> None:
     norm = normalize_name(alias_name)
     await db.execute(
@@ -830,5 +822,37 @@ async def get_tour_serve_return_rows(db: AsyncSession, tour: str) -> list[Surfac
     )
     return [
         SurfaceServeReturnRow(r[0], r[1], r[2], ServeReturnStats(*(None if v is None else float(v) for v in r[3:])))
+        for r in rows.fetchall()
+    ]
+
+
+@dataclass(frozen=True)
+class LeagueRateRow:
+    tour: str
+    matches: int
+    allowed_aces_per_sp: Optional[float]
+    allowed_df_per_sp: Optional[float]
+    aces_per_sp: Optional[float]
+    df_per_sp: Optional[float]
+
+
+async def get_league_rate_rows(db: AsyncSession) -> list[LeagueRateRow]:
+    """Every player's latest all-surface 52-week row: the window the props page reads (48a)."""
+    rows = await db.execute(
+        text("""
+            SELECT DISTINCT ON (r.player_id)
+                p.tour, COALESCE(r.matches_count, 0),
+                r.allowed_aces_per_sp, r.allowed_df_per_sp, r.aces_per_game, r.df_per_game
+            FROM player_rolling_stats r
+            JOIN players p ON p.id = r.player_id
+            WHERE r.stat_period = 'last_52w'
+              AND r.split_type = 'overall'
+              AND r.split_value = 'all'
+              AND r.surface IS NULL
+            ORDER BY r.player_id, r.computed_at DESC
+        """),
+    )
+    return [
+        LeagueRateRow(r[0], r[1], *(None if v is None else float(v) for v in r[2:]))
         for r in rows.fetchall()
     ]

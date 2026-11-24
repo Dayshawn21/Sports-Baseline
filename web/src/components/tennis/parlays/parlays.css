@@ -1,0 +1,14 @@
+.parlay-single-row:hover {
+  background: var(--bg-card-hover);
+}
+
+/* The hover tint is TIER_STYLE's muted color, at the alphas the cards used before (F-21 keeps every tier muted). */
+.parlay-card {
+  border: 1px solid var(--border-card);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.parlay-card:hover {
+  border-color: color-mix(in srgb, var(--text-muted) 31%, transparent);
+  box-shadow: var(--shadow-lift), 0 0 0 1px color-mix(in srgb, var(--text-muted) 8%, transparent);
+}

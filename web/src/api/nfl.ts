@@ -1,9 +1,10 @@
 import client from './client'
 import type {
-  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
+  NflCurrentWeek, NflGameContext, NflGameDetail, NflGameNotesResponse, NflHomeSlate, NflHomeSlateWire, NflLineOnlyProps, NflModelClv, NflModelFit, NflModelPropLines,
   NflModelRanking, NflRankingModelVersion,
-  NflPlayerDetail, NflSlateResponse, NflLineOnlyBoard,
+  NflOtherMarkets, NflPlayerDetail, NflSlateResponse, NflSlateWire, NflLineOnlyBoard,
 } from '~/types/nfl'
+import { expandNflSlate } from '~/utils/nflSlateWire'
 import { rankingParams } from '~/utils/nflTrackRecord'
 
 // The hosted demo builds a cold week in about 34 s (2026-10-16), and a second week
@@ -11,11 +12,16 @@ import { rankingParams } from '~/utils/nflTrackRecord'
 const SLATE_TIMEOUT_MS = 90_000
 
 export async function fetchNflSlate(season: number, week: number): Promise<NflSlateResponse> {
-  const { data } = await client.get<NflSlateResponse>('/nfl/slate', {
+  const { data } = await client.get<NflSlateWire | NflSlateResponse>('/nfl/slate', {
     params: { season, week },
     timeout: SLATE_TIMEOUT_MS,
   })
-  return data
+  return expandNflSlate(data)
+}
+
+export async function fetchNflHomeSlate(season: number, week: number): Promise<NflHomeSlate> {
+  const { data } = await client.get<NflHomeSlateWire>('/nfl/slate/home', { params: { season, week }, timeout: SLATE_TIMEOUT_MS })
+  return { ...expandNflSlate(data), propRowCount: data.propRowCount }
 }
 
 export async function fetchNflGameNotes(season: number, week: number): Promise<NflGameNotesResponse> {
@@ -45,6 +51,11 @@ export async function fetchNflLineOnlyProps(gameId: number): Promise<NflLineOnly
 
 export async function fetchNflWeekLineOnlyProps(season: number, week: number): Promise<NflLineOnlyBoard> {
   const { data } = await client.get<NflLineOnlyBoard>('/nfl/line-only-props', { params: { season, week } })
+  return data
+}
+
+export async function fetchNflOtherMarkets(playerId: number, season: number, week: number): Promise<NflOtherMarkets> {
+  const { data } = await client.get<NflOtherMarkets>(`/nfl/players/${playerId}/other-markets`, { params: { season, week } })
   return data
 }
 

@@ -14,9 +14,10 @@ import io
 import sys
 import tempfile
 from bisect import bisect_left
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime, time
+from itertools import chain
 
 import httpx
 
@@ -98,6 +99,72 @@ def reduce_depth_charts(
     ]
 
 
+def reduce_weekly_depth_charts(
+    lines: Iterable[str],
+    season: int,
+    schedule: Mapping[str, Sequence[tuple[int, date]]],
+) -> list[NflverseDepthWeek]:
+    """One skill-position depth row per player per team-week, from the weekly layout (2024 and earlier).
+
+    That layout publishes one chart per team-week with no timestamp, so
+    `snapshot_at` is the team's game date at 00:00 UTC, a stand-in rather than
+    an observed time. Position comes from `position`, never `depth_position`,
+    which is often blank or names another slot (an RB listed at FB stays an RB).
+    """
+    game_days = {team: dict(games) for team, games in schedule.items()}
+    best: dict[tuple[str, int, str], tuple[str, int]] = {}
+    for row in csv.DictReader(lines):
+        if row.get("game_type") != "REG" or row.get("formation") != "Offense":
+            continue
+        position, team, player_id = row.get("position"), row.get("club_code") or "", row.get("gsis_id")
+        week, rank = _rank(row.get("week")), _rank(row.get("depth_team"))
+        if position not in SKILL_POSITIONS or not player_id or week is None or rank is None:
+            continue
+        if week not in game_days.get(team, {}):
+            continue
+        listed = best.get((team, week, player_id))
+        if listed is None or rank < listed[1]:
+            best[(team, week, player_id)] = (position, rank)
+    teams_by_player_week: dict[tuple[str, int], set[str]] = {}
+    for team, week, player_id in best:
+        teams_by_player_week.setdefault((player_id, week), set()).add(team)
+    return [
+        NflverseDepthWeek(
+            player_id, season, week, team, position, rank,
+            datetime.combine(game_days[team][week], time.min, tzinfo=UTC),
+        )
+        for (team, week, player_id), (position, rank) in sorted(best.items())
+        if _charting_team(teams_by_player_week, player_id, week) == team
+    ]
+
+
+def _charting_team(teams_by_player_week: Mapping[tuple[str, int], set[str]], player_id: str, week: int) -> str | None:
+    """The one team that charts the player this week.
+
+    A player traded midweek can sit on both charts (2024 week 10: Mike Williams,
+    NYJ and PIT). The table holds one row per player-week, so the team that also
+    charts him the next week wins; if that does not settle it, the week is dropped.
+    """
+    teams = teams_by_player_week[(player_id, week)]
+    if len(teams) == 1:
+        return next(iter(teams))
+    following = teams & teams_by_player_week.get((player_id, week + 1), set())
+    return next(iter(following)) if len(following) == 1 else None
+
+
+DepthReducer = Callable[[Iterable[str], int, Mapping[str, Sequence[tuple[int, date]]]], list[NflverseDepthWeek]]
+
+
+def reducer_for(header: str) -> DepthReducer:
+    """The reducer for a file's layout, told apart by its header row."""
+    columns = set(next(csv.reader([header]), []))
+    if {"dt", "pos_abb", "pos_rank"} <= columns:
+        return reduce_depth_charts
+    if {"club_code", "depth_team", "formation"} <= columns:
+        return reduce_weekly_depth_charts
+    raise ValueError(f"unknown depth chart layout, columns: {sorted(columns)}")
+
+
 def depth_charts_url(season: int) -> str:
     return f"{NFLVERSE_RELEASE_BASE}/depth_charts/depth_charts_{season}.csv"
 
@@ -124,7 +191,9 @@ async def fetch_depth_charts(
             raise SeasonNotPublished(season, "depth charts")
         response.raise_for_status()
         spool.seek(0)
-        return reduce_depth_charts(io.TextIOWrapper(spool, encoding="utf-8", newline=""), season, schedule)
+        text = io.TextIOWrapper(spool, encoding="utf-8", newline="")
+        header = text.readline()
+        return reducer_for(header)(chain([header], text), season, schedule)
 
 
 async def run(season: int, dry_run: bool = False) -> str:

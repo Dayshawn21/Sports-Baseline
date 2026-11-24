@@ -122,12 +122,12 @@
   text-transform: uppercase;
   color: var(--text-secondary);
 }
-.tennis-model-calibration { display: block; width: 100%; height: auto; max-height: 300px; margin-top: var(--space-3); }
-.tennis-model-calibration text { font-family: var(--font-mono); font-size: 11px; fill: var(--text-muted); }
-.tennis-model-calibration .axis { stroke: var(--border-card); }
-.tennis-model-calibration .ideal { stroke: var(--chart-mid); stroke-dasharray: 4 4; }
-.tennis-model-calibration .series { fill: none; stroke: var(--text-primary); stroke-width: 2; }
-.tennis-model-calibration .dot { fill: var(--text-primary); }
+.tennis-model-calibration { margin-top: var(--space-3); }
+.tennis-model-calibration-tip {
+  display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+  background: var(--bg-raised); color: var(--text-secondary); font: 400 12px/1.4 var(--font-mono);
+}
+.tennis-model-calibration-tip strong { color: var(--text-primary); font-weight: 600; }
 .tennis-model-chart-empty { margin-top: var(--space-3); }
 
 .tennis-model-clv {

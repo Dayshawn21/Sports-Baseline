@@ -1,0 +1,264 @@
+import { describe, expect, it } from 'vitest'
+import type { HomeGap, HomeMoneyline, HomeSource } from '~/utils/homeSources'
+import {
+  allGapRows, gapTabs, gapsBody, homeCard, matchupSegment, newestUpdate, nextStart, parseGapKind, parseGapTab, sportNoun, startLabel, todayStatus,
+  type HomeSportData, type HomeSportView,
+} from '~/utils/home'
+
+const HOUR = 60 * 60 * 1000
+// Tue 2026-11-03 17:00 UTC = 11:00 CT.
+const NOW = Date.UTC(2026, 10, 3, 17, 0)
+
+function sportData(sport: HomeSportData['sport'], hoursFromNow: number[], overrides: Partial<HomeSportData> = {}): HomeSportData {
+  return { sport, status: 'ready', gameCount: hoursFromNow.length, startsMs: hoursFromNow.map(h => NOW + h * HOUR), ...overrides }
+}
+
+describe('nextStart', () => {
+  it('takes the soonest start strictly after now and ignores past and equal starts', () => {
+    expect(nextStart(sportData('nba', [-2, 0, 5, 3]), NOW)).toBe(NOW + 3 * HOUR)
+  })
+
+  it('is null when nothing is left', () => {
+    expect(nextStart(sportData('nba', [-1, 0]), NOW)).toBeNull()
+    expect(nextStart(sportData('nba', []), NOW)).toBeNull()
+  })
+})
+
+describe('startLabel', () => {
+  it('uses Central time and adds the weekday only off today', () => {
+    expect(startLabel(NOW + 7 * HOUR, NOW)).toBe('6:00 PM')
+    expect(startLabel(NOW + 56 * HOUR, NOW)).toBe('Thu 7:00 PM')
+  })
+
+})
+
+describe('todayStatus and sportNoun', () => {
+  it('leads with the Central date and time, then when the newest slate loaded', () => {
+    expect(todayStatus(NOW, NOW - 30 * 60 * 1000)).toBe('Tue Nov 3 · 11:00 AM CT · slates refreshed 10:30 AM')
+    expect(todayStatus(NOW, null)).toBe('Tue Nov 3 · 11:00 AM CT')
+  })
+
+  it('takes the newest load time and ignores slates that have not loaded', () => {
+    expect(newestUpdate([0, 5, 9, 0])).toBe(9)
+    expect(newestUpdate([0, 0])).toBeNull()
+    expect(newestUpdate([])).toBeNull()
+  })
+
+  it('counts games or matches', () => {
+    expect(sportNoun('nba', 1)).toBe('game')
+    expect(sportNoun('tennis', 92)).toBe('matches')
+  })
+})
+
+const source = (overrides: Partial<HomeSource> = {}): HomeSource => ({
+  gameCount: 0, startsMs: [], propLines: null, gaps: [], moneyline: [], nextGames: [], schedule: [], period: null, days: [], ...overrides,
+})
+const game = (key: string, title: string) => ({ key, title, when: '', path: `/nba/game/${key}` })
+
+describe('homeCard', () => {
+  it('describes the NFL week with its days', () => {
+    const days = [
+      { key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL', path: '/nfl/game/1' },
+      { key: 'b', label: 'Sun', count: 12, title: 'x', path: '/nfl/game/2' },
+      { key: 'c', label: 'Mon', count: 1, title: 'DEN @ CAR', path: '/nfl/game/3' },
+    ]
+    const card = homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW)
+    expect(card).toMatchObject({
+      sport: 'nfl', label: 'NFL', period: 'WEEK 9', when: 'Next kickoff Thu 7:00 PM CT', count: '2', noun: 'games', tone: 'normal',
+      next: 'Thu: JAX @ BAL · Sun: 12 games · Mon: DEN @ CAR',
+    })
+    expect(card.links.map(link => [link.label, link.path])).toEqual([['Slate', '/nfl'], ['Props', '/nfl/props'], ['Model', '/nfl/model']])
+  })
+
+  it('lists the next games for a day-based sport and tags it TODAY', () => {
+    const next = [game('1', 'ORL @ CHA'), game('2', 'DET @ TOR'), game('3', 'LAL @ GSW')]
+    const card = homeCard(sportData('nba', [7, 9]), source({ nextGames: next }), NOW)
+    expect(card).toMatchObject({ period: 'TODAY', when: 'First tip 6:00 PM CT', count: '2', next: 'Next: ORL @ CHA, DET @ TOR, LAL @ GSW' })
+    expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ when: 'First puck 6:00 PM CT', next: '' })
+  })
+
+  it('splits the next games so each matchup can carry its logos, with the same text', () => {
+    const nba = homeCard(sportData('nba', [7, 9]), source({ nextGames: [game('1', 'ORL @ CHA'), game('2', 'DET @ TOR')] }), NOW)
+    expect(nba.nextSegments).toEqual([
+      { text: 'Next: ' }, { away: 'ORL', home: 'CHA', path: '/nba/game/1' }, { text: ', ' }, { away: 'DET', home: 'TOR', path: '/nba/game/2' },
+    ])
+    expect(nba.next).toBe('Next: ORL @ CHA, DET @ TOR')
+    const days = [{ key: 'a', label: 'Thu', count: 1, title: 'JAX @ BAL', path: '/nfl/game/1' }, { key: 'b', label: 'Sun', count: 12, title: 'x', path: '/nfl/game/2' }]
+    expect(homeCard(sportData('nfl', [56, 100]), source({ period: 'Week 9', days }), NOW).nextSegments).toEqual([
+      { text: 'Thu: ' }, { away: 'JAX', home: 'BAL', path: '/nfl/game/1' }, { text: ' · ' }, { text: 'Sun: 12 games' },
+    ])
+    expect(homeCard(sportData('nhl', [7]), source(), NOW)).toMatchObject({ next: '', nextSegments: [] })
+  })
+
+  it('keeps a title that is not "AWAY @ HOME" as plain text', () => {
+    expect(matchupSegment('Rune vs Sinner')).toEqual({ text: 'Rune vs Sinner' })
+    expect(matchupSegment('LAL @ ATL')).toEqual({ away: 'LAL', home: 'ATL' })
+    const tennis = homeCard(sportData('tennis', [3]), source({ nextGames: [{ key: '1', title: 'Rune vs Sinner', when: '', path: '/tennis/match/1' }] }), NOW)
+    expect(tennis.nextSegments).toEqual([{ text: 'Next: ' }, { text: 'Rune vs Sinner', path: '/tennis/match/1' }])
+  })
+
+  it('gives NHL and tennis all three links', () => {
+    expect(homeCard(sportData('nhl', [7]), source(), NOW).links.map(link => link.label)).toEqual(['Slate', 'Props', 'Model'])
+    expect(homeCard(sportData('tennis', [3]), source(), NOW).links.map(link => link.label)).toEqual(['Slate', 'Props', 'Model'])
+  })
+
+  it('counts priced matches for tennis and singular nouns', () => {
+    expect(homeCard(sportData('tennis', [3, 4]), source(), NOW)).toMatchObject({ when: 'First match 2:00 PM CT', noun: 'matches priced' })
+    expect(homeCard(sportData('nba', [3]), source(), NOW).noun).toBe('game')
+  })
+
+  it('goes quiet with its own text when the slate is empty', () => {
+    expect(homeCard(sportData('nhl', []), source(), NOW)).toMatchObject({ when: 'No games today', count: '0', tone: 'quiet', next: '' })
+    expect(homeCard(sportData('nfl', []), source(), NOW).when).toBe('No games scheduled')
+    expect(homeCard(sportData('nba', []), source(), NOW).when).toBe('No games scheduled')
+    expect(homeCard(sportData('tennis', []), source(), NOW)).toMatchObject({ when: 'No priced matches', tone: 'quiet' })
+  })
+
+  it('counts started games that are not final as in progress', () => {
+    expect(homeCard(sportData('nba', [-3, -1]), source(), NOW)).toMatchObject({ when: '2 in progress', count: '2', tone: 'normal' })
+    expect(homeCard(sportData('nfl', [-1]), source(), NOW)).toMatchObject({ when: '1 in progress', tone: 'normal' })
+  })
+
+  it('names the next start, not the live games, while one is still to come', () => {
+    expect(homeCard(sportData('nba', [-1, 2]), source(), NOW).when).toBe('First tip 1:00 PM CT')
+  })
+
+  it('says nothing is left when every game is final, and never calls a tennis match live', () => {
+    expect(homeCard(sportData('nba', [], { gameCount: 3 }), source(), NOW)).toMatchObject({ when: 'No upcoming games', tone: 'quiet' })
+    expect(homeCard(sportData('tennis', [-1]), source(), NOW)).toMatchObject({ when: 'No upcoming matches', tone: 'quiet' })
+  })
+
+  it('marks a loading or failed sport without a made-up count', () => {
+    expect(homeCard(sportData('nba', [], { status: 'loading' }), source(), NOW)).toMatchObject({ when: 'Loading', count: '--', tone: 'loading', next: '' })
+    expect(homeCard(sportData('nba', [], { status: 'error' }), source(), NOW)).toMatchObject({ when: 'Could not load', count: '--', tone: 'error' })
+  })
+})
+
+describe('gaps tabs', () => {
+  const gap = (sport: HomeGap['sport'], key: string): HomeGap => ({
+    key, sport, playerName: key, market: 'm', matchup: 'A @ B', when: 'w', line: '1', model: '2', gap: 'g', share: null, path: `/p/${key}`,
+  })
+  const view = (sport: HomeSportData['sport'], hours: number[], overrides: Partial<HomeSource> = {}, data: Partial<HomeSportData> = {}): HomeSportView => ({
+    data: sportData(sport, hours, data), source: source({ gameCount: hours.length, ...overrides }),
+  })
+  const sports = (): HomeSportView[] => [
+    view('nfl', [56], { gaps: [gap('nfl', 'f1'), gap('nfl', 'f2')] }),
+    view('nba', [7], { gaps: [gap('nba', 'b1')] }),
+    view('nhl', [], { schedule: [{ key: '1', title: 'A @ B', when: '6:00 PM', path: '/nhl/game/1' }] }),
+    view('tennis', [], {}, { status: 'loading' }),
+  ]
+
+  it('lists All then each sport in the cards order, with the next start on a sport that has one', () => {
+    expect(gapTabs(sports(), NOW).map(tab => [tab.key, tab.text])).toEqual([
+      ['all', 'All'], ['nfl', 'NFL · Thu 7:00 PM CT'], ['nba', 'NBA · 6:00 PM CT'], ['nhl', 'NHL'], ['tennis', 'Tennis'],
+    ])
+  })
+
+  it('shows no start when the sport has nothing left or has not loaded', () => {
+    const list = sports()
+    list[1] = view('nba', [-3])
+    list[0] = view('nfl', [56], {}, { status: 'error' })
+    expect(gapTabs(list, NOW).map(tab => tab.text)).toEqual(['All', 'NFL', 'NBA', 'NHL', 'Tennis'])
+  })
+
+  it('reads a missing or unknown tab as All', () => {
+    expect(parseGapTab(null)).toBe('all')
+    expect(parseGapTab('golf')).toBe('all')
+    expect(parseGapTab('nba')).toBe('nba')
+  })
+
+  it('puts NFL rows before NBA rows and never sorts across sports', () => {
+    expect(allGapRows(sports()).map(row => row.key)).toEqual(['f1', 'f2', 'b1'])
+  })
+
+  it('gives a sport tab its own rows and a link to the props board', () => {
+    expect(gapsBody('nba', sports())).toMatchObject({
+      kind: 'rows', rows: [{ key: 'b1' }], footer: { label: 'View all NBA props', path: '/nba/props' },
+    })
+  })
+
+  it('says why a sport tab is empty, including a failed gap query', () => {
+    const noGaps = [view('nfl', [], {}), ...sports().slice(1)]
+    expect(gapsBody('nfl', noGaps)).toMatchObject({ rows: [], empty: 'No games scheduled' })
+    const quiet = [view('nfl', [56]), ...sports().slice(1)]
+    expect(gapsBody('nfl', quiet)).toMatchObject({ empty: 'No gap lines yet.' })
+    const failed = [...sports().slice(0, 1), view('nba', [7], { gapsFailed: true }), ...sports().slice(2)]
+    expect(gapsBody('nba', failed)).toMatchObject({ rows: [], empty: 'Gap lines could not load.' })
+  })
+
+  it('lists next games for NHL, and says why, with a link to its props board', () => {
+    expect(gapsBody('nhl', sports())).toMatchObject({
+      kind: 'games', games: [{ key: '1' }], footer: { label: 'View all NHL props', path: '/nhl/props' },
+      intro: expect.stringContaining('no gaps to show'),
+    })
+  })
+
+  it('keeps an empty All tab loading until every sport has answered, then says none', () => {
+    const empty = (status: HomeSportData['status']) => (['nfl', 'nba', 'nhl', 'tennis'] as const).map(sport => view(sport, [], {}, { status }))
+    expect(gapsBody('all', empty('loading'))).toEqual({ kind: 'loading' })
+    const partly = [view('nfl', [56]), ...empty('loading').slice(1)]
+    expect(gapsBody('all', partly)).toEqual({ kind: 'loading' })
+    expect(gapsBody('all', empty('ready'))).toMatchObject({ kind: 'rows', rows: [], empty: 'No gap lines yet.' })
+  })
+
+  it('shows All rows as soon as one sport has them, while others still load', () => {
+    expect(gapsBody('all', sports())).toMatchObject({ kind: 'rows', rows: [{ key: 'f1' }, { key: 'f2' }, { key: 'b1' }] })
+  })
+
+  it('shows a loading or failed sport as such', () => {
+    expect(gapsBody('tennis', sports())).toEqual({ kind: 'loading' })
+    const list = sports()
+    list[0] = view('nfl', [], {}, { status: 'error' })
+    expect(gapsBody('nfl', list)).toEqual({ kind: 'error', text: 'Could not load' })
+  })
+
+  describe('moneyline view', () => {
+    const ml = (sport: HomeMoneyline['sport'], key: string): HomeMoneyline => ({
+      key, sport, side: 'S', matchup: 'A @ B', when: 'w', market: '50.0%', model: '55.0%', gap: '+5.0 pp', path: `/m/${key}`,
+    })
+    const mlSports = (): HomeSportView[] => {
+      const list = sports()
+      list[0] = view('nfl', [56], { moneyline: [ml('nfl', 'f1')] })
+      list[1] = view('nba', [7], { schedule: [{ key: '9', title: 'X @ Y', when: '7:00 PM', path: '/nba/game/9' }] })
+      list[3] = view('tennis', [3], { moneyline: [ml('tennis', 't1')] })
+      return list
+    }
+
+    it('reads junk as the props view', () => {
+      expect(parseGapKind('ml')).toBe('ml')
+      expect(parseGapKind(null)).toBe('props')
+      expect(parseGapKind('x')).toBe('props')
+    })
+
+    it('groups NFL then tennis under All and says the caveats once', () => {
+      const body = gapsBody('all', mlSports(), 'ml')
+      expect(body).toMatchObject({ kind: 'moneyline', footer: null, note: expect.stringContaining('did not beat closing lines') })
+      expect(body.kind === 'moneyline' && body.rows.map(row => row.key)).toEqual(['f1', 't1'])
+    })
+
+    it('gives NFL and tennis their rows, caveat and slate link', () => {
+      expect(gapsBody('tennis', mlSports(), 'ml')).toMatchObject({
+        kind: 'moneyline', rows: [{ key: 't1' }], note: expect.stringContaining('not ahead of the market'), footer: { path: '/tennis' },
+      })
+      expect(gapsBody('nfl', [view('nfl', [], {}), ...mlSports().slice(1)], 'ml')).toMatchObject({ rows: [], empty: 'No games scheduled' })
+    })
+
+    it('says plainly that NBA and NHL have no win model and lists their next games', () => {
+      expect(gapsBody('nba', mlSports(), 'ml')).toMatchObject({
+        kind: 'games', intro: expect.stringContaining('NBA has no win-probability model'), games: [{ key: '9' }], footer: { path: '/nba' },
+      })
+      expect(gapsBody('nhl', mlSports(), 'ml')).toMatchObject({ kind: 'games', intro: expect.stringContaining('NHL has no win-probability model') })
+    })
+
+    it('shows a loading or failed sport as such', () => {
+      expect(gapsBody('tennis', [...mlSports().slice(0, 3), view('tennis', [], {}, { status: 'loading' })], 'ml')).toEqual({ kind: 'loading' })
+    })
+
+    it('keeps an empty All tab loading while NFL or tennis has not answered, whatever NBA and NHL do', () => {
+      const waiting = [view('nfl', [], {}, { status: 'loading' }), view('nba', [7]), view('nhl', [5]), view('tennis', [3])]
+      expect(gapsBody('all', waiting, 'ml')).toEqual({ kind: 'loading' })
+      const settled = [view('nfl', [56]), view('nba', [], {}, { status: 'loading' }), view('nhl', [5]), view('tennis', [3])]
+      expect(gapsBody('all', settled, 'ml')).toMatchObject({ kind: 'moneyline', rows: [], empty: 'No moneyline gaps yet.' })
+    })
+  })
+})

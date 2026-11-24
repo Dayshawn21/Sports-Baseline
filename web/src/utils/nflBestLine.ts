@@ -1,5 +1,6 @@
 import type { NflBestLine, NflBestMarket, NflBestSide, NflFairPrice } from '~/types/nfl'
-import { fmtAmerican } from '~/utils/odds'
+import { fmtAmerican, fmtPct } from '~/utils/odds'
+import { fmtSigned } from '~/utils/format'
 
 const BOOKS: Record<string, [full: string, short: string]> = {
   bet365: ['Bet365', 'B365'],
@@ -42,19 +43,14 @@ export function sideLabel(side: NflBestSide, homeTeam: string, awayTeam: string)
 
 /** "+0.1% vs fair" at the fair line, "+1.5 pts vs fair" off it, null without a fair price. */
 export function vsFairLabel(side: NflBestSide): string | null {
-  if (side.evPct !== null) {
-    const pct = (side.evPct * 100).toFixed(1)
-    // A price that rounds to fair carries no sign: "-0.0%" reads as a loss.
-    if (Number(pct) === 0) return '0.0% vs fair'
-    return `${side.evPct > 0 ? '+' : ''}${pct}% vs fair`
-  }
-  if (side.pointsVsFair !== null) return `${side.pointsVsFair >= 0 ? '+' : ''}${side.pointsVsFair.toFixed(1)} pts vs fair`
+  if (side.evPct !== null) return fmtSigned(side.evPct * 100, 1, '% vs fair')
+  if (side.pointsVsFair !== null) return fmtSigned(side.pointsVsFair, 1, ' pts vs fair')
   return null
 }
 
 /** The fair line ("DAL -8.0", "47.5"), or the home win chance for a moneyline ("DAL 78.7%"). */
 export function fairLabel(market: NflBestMarket['market'], fair: NflFairPrice, homeTeam: string, awayTeam: string): string {
-  if (market === 'moneyline' || fair.line === null) return `${homeTeam} ${(fair.firstProbability * 100).toFixed(1)}%`
+  if (market === 'moneyline' || fair.line === null) return `${homeTeam} ${fmtPct(fair.firstProbability)}`
   if (market === 'total') return fair.line.toFixed(1)
   return fair.line <= 0 ? `${homeTeam} ${signedLine(fair.line)}` : `${awayTeam} ${signedLine(-fair.line)}`
 }

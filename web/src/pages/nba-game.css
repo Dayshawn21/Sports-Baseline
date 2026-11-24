@@ -2,13 +2,7 @@
 
 .nba-game .nfl-game-layout { grid-template-columns: minmax(0, 1fr); }
 
-.nba-game-score { display: flex; justify-content: center; gap: 18px; color: var(--text-primary); font: 500 30px/1.1 var(--font-mono); }
-.nba-game-score .is-loser { color: var(--text-muted); }
-
 .nba-game-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 .nba-game-cells > div { display: grid; gap: 4px; padding: 12px 16px; }
 .nba-game-cells small { color: var(--text-muted); font: 400 11px var(--font-mono); }
 
-@media (max-width: 640px) {
-  .nba-game-score { justify-content: flex-start; font-size: 24px; }
-}

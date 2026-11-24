@@ -8,9 +8,8 @@ from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
-from app.repositories.matches import get_all_market_odds_batch
+from app.repositories.matches import get_all_market_odds_batch, get_market_totals
 from app.repositories.props import _BOOK_KEY_SQL, get_today_match_odds_as_props
-from app.routers.props import _fetch_market_total_games
 
 
 class _Rows:
@@ -56,5 +55,5 @@ def test_all_markets_break_same_run_ties_by_book_after_recency():
 
 
 def test_the_total_games_reader_prefers_the_newest_line_over_the_preferred_book():
-    order = _sql(lambda db: _fetch_market_total_games(db, [SimpleNamespace(match_id=1)])).split("ORDER BY", 1)[1]
+    order = _sql(lambda db: get_market_totals(db, [SimpleNamespace(match_id=1)])).split("ORDER BY", 1)[1]
     assert order.index("mo.fetched_at DESC") < order.index("CASE")

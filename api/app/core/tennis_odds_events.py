@@ -31,6 +31,35 @@ def odds_event_tour(league_name: str) -> Optional[str]:
     return None
 
 
+def tour_level_circuit(league_name: str) -> str | None:
+    """ATP or WTA for a main-tour singles league, or None for anything else.
+
+    Unlike odds_event_tour, WTA 125 and Challenger are left out: the 48d probe asks
+    what books price on main-tour singles only.
+    """
+    if "Doubles" in league_name or "Mixed" in league_name:
+        return None
+    circuit = league_name.split(" - ", 1)[0].strip()
+    return circuit if circuit in ("ATP", "WTA") else None
+
+
+def near_start_events(events: list[dict], now: datetime, within_hours: float, limit: int) -> list[dict]:
+    """Main-tour singles events starting after now and within the window, soonest first."""
+    horizon = now + timedelta(hours=within_hours)
+    timed: list[tuple[datetime, dict]] = []
+    for event in events:
+        if event.get("id") is None:
+            continue
+        if tour_level_circuit((event.get("league") or {}).get("name") or "") is None:
+            continue
+        start = event_start(event)
+        if start is None or not now < start <= horizon:
+            continue
+        timed.append((start, event))
+    timed.sort(key=lambda pair: pair[0])
+    return [event for _, event in timed[:limit]]
+
+
 def event_start(event: dict) -> Optional[datetime]:
     """UTC start of an Odds-API.io event, or None when absent or unparseable."""
     raw = event.get("start") or event.get("date") or event.get("commenceTime")

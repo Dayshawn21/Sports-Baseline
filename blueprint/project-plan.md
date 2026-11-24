@@ -28,7 +28,7 @@ and grades them against results, making the edge measurable rather than assumed.
 Placed bets are tracked outside the app, in Pikkit.
 
 **Tennis is the first sport, not the only one.** The intended scope is NFL, NBA,
-WNBA, and soccer as well. The core machinery is deliberately sport-agnostic in
+NHL, WNBA, and soccer as well. The core machinery is deliberately sport-agnostic in
 principle: ingest a schedule, ingest odds, model an outcome, compare to market,
 size a stake, track the result. Only the feature engineering and the market shapes
 are sport-specific. Tennis came first because it is a two-outcome sport with no
@@ -90,6 +90,21 @@ These already exist and are working. This section describes the shipped app.
 - Admin surface for flagged players, with manual stat and ELO refresh
 - Scheduled ingest via GitHub Actions and a local Windows batch fallback
 
+**Ask Lineform (build-plan item 47)**
+
+- A public chat panel answering questions about slates, props, games, players
+  and model track records, using Claude with tools over the existing services.
+  Answers come only from tool results, cite the Lineform page behind each
+  number, and keep reference-only signals labelled as reference. Limited to 20
+  questions per IP per day under a global daily spend cap.
+
+**Content analysis (outside the app)**
+
+- An `analysis/` workspace of Jupyter notebooks (build-plan item 46) that turns
+  stored data into plain-language explainers, charts and thumbnails for the
+  owner's Numbers Behind the Game social account. Read-only against the
+  database, in its own venv, never part of the app, its models or its picks.
+
 ### Planned sports, in intended order
 
 Tennis is shipped. NFL data sourcing, schedule and stats ingest, prop-line
@@ -113,6 +128,7 @@ backtested against closing lines before it is shown as more than display
 |---|---|
 | NFL | Teams rather than individuals. Weekly rather than daily cadence, so far fewer rows and a much smaller training set. Spreads and totals matter more than moneyline. |
 | NBA | Teams, but back to a dense daily schedule. Heavy player-prop volume. |
+| NHL | Teams, dense daily schedule like NBA. Low-scoring, so count props (shots, saves, points) are small integers and the puck line is fixed at +/-1.5. Moneylines may be priced with or without overtime. Skaters and goalies have different stat sets. |
 | WNBA | Same shape as NBA, but a shorter season and thinner public data. |
 | Soccer | **Three-way markets.** Draws break the two-outcome assumption baked into the ensemble, de-vigging, and every `p1`/`p2` column in the schema. |
 
@@ -198,6 +214,19 @@ No NBA team-rating tables are planned. Injuries come from ESPN's feed for
 display; the official NBA injury report is the source if a later item
 tests availability in a model, because its archive is backtestable.
 
+**NHL data (45a, decided 2026-10-23).** NHL uses the league's own ids
+throughout: the NHL web API for schedules, status and scores, and the NHL
+stats REST per-game reports for box scores, with sportsdataverse release
+files as the fallback on the same ids. Games, players and teams go in the
+shared `sport_*` tables with `sport = 'nhl'`; box scores in new
+`nhl_skater_game_stats` and `nhl_goalie_game_stats`, where a missing row
+means the player did not play. Stored scores are the official final,
+shootout winner included, with a nullable `sport_games.end_period` (`REG`,
+`OT`, `SO`); player stats exclude shootouts. `season` is the start year and
+the prop period is NBA's regular-season week. Game odds come from
+Odds-API.io, because The Odds API's free 500 credits are already about 397
+a month with NFL and NBA running.
+
 ## 5. Tech - What stack are we using?
 
 **Backend**
@@ -207,6 +236,12 @@ tests availability in a model, because its archive is backtestable.
 - Pydantic 2 and pydantic-settings for config and schemas
 - LightGBM, XGBoost, scikit-learn, joblib for models and calibration
 - Playwright, httpx, requests, tenacity for ingest
+- Anthropic Python SDK (Messages API, own tool loop; model in Settings) for Ask Lineform
+
+**Analysis workspace (item 46)**
+
+- Jupyter, pandas, matplotlib, nfl_data_py and nba_api in `analysis/.venv`
+- Playwright renders the HTML/CSS thumbnail template to PNG
 
 **Frontend**
 
@@ -226,6 +261,7 @@ because it is a pure client for an API that already exists.
 | Tennis | livetennisapi | TennisAbstract (ELO, per-match stats, WTA 125); TennisMyLife (per-match stats for ATP, Challenger and WTA tour; MIT, daily CSVs) | Odds-API.io | PrizePicks, DraftKings |
 | NFL | NFLverse | NFLverse weekly player stats | The Odds API (free plan: us books, Pinnacle via eu); Odds-API.io (Bet365, DraftKings; free plan's 2-book cap, shared with tennis) | PrizePicks, The Odds API (anytime TD) |
 | NBA | hoopR ESPN releases (`espn_nba_schedules`) | hoopR ESPN player box scores (`espn_nba_player_boxscores`); ESPN injuries (display) | The Odds API (free plan, game lines only) | PrizePicks |
+| NHL | NHL web API (`api-web.nhle.com`) | NHL stats REST per-game skater and goalie reports (`api.nhle.com/stats/rest`); sportsdataverse `nhl_player_boxscores` fallback; ESPN injuries and probable goalies (display, 45f) | Odds-API.io (DraftKings, Bet365; no The Odds API credits) | PrizePicks |
 | WNBA / Soccer | > TODO | > TODO | The Odds API | > TODO |
 
 **Cost constraint: prefer free sources.** The stated preference is to source as
@@ -308,6 +344,10 @@ one command-bar shell across every page (sport tabs, Slate / Props / Model, a
 by tennis, NFL and NBA (a plays digest, then one row per game; tennis rows
 expand inline instead of a side panel), and props shown as table rows instead
 of cards. The palette, fonts and signal rules above are unchanged.
+In 2026-11 (item 57) NHL and tennis moved fully onto that slate: one period
+control (Previous, period picker, Next) and a one-line legend on every sport,
+NHL's goalie and injury context as gray note tags, and tennis's pick wording
+replaced by a gray model lean while its picks are off.
 
 Typography is deliberately three-part: Barlow Condensed for display, DM Sans for
 body, JetBrains Mono for numbers. Numeric alignment matters here because the whole
@@ -351,7 +391,10 @@ Hosted read-only demo on Render since 2026-10-16 (item 37d), deployed from
 `ODDS_API_KEY` (Odds-API.io: tennis, and NFL Bet365 and DraftKings),
 `THE_ODDS_API_KEY` (The Odds API: NFL and NBA), `LIVETENNIS_API_KEY`,
 `LIVETENNIS_TIER`, `ADMIN_API_KEY`, `API_ENV` (`dev` or `production`),
-`CORS_ORIGINS`, `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_HEAVY`.
+`CORS_ORIGINS`, `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_HEAVY`, `ANTHROPIC_API_KEY`
+(Ask Lineform, read only through Settings, never in the web build). A monthly
+spend limit on the Anthropic Console is the backstop behind Ask Lineform's
+in-app daily cap.
 
 **Health check:** `GET /health`.
 

@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.core.bookmakers import MAX_BOOKMAKER_COUNT, bookmaker_scope_param, normalize_bookmaker_scope
+from app.core.bookmakers import MAX_BOOKMAKER_COUNT, bookmaker_scope_param, normalize_bookmaker_scope, stored_book_keys
 from app.ingest import odds_api
 
 
@@ -32,3 +32,7 @@ def test_normalize_bookmaker_scope_rejects_more_than_thirty_unique_books() -> No
 def test_invalid_capture_scope_fails_before_any_network_call(tmp_path) -> None:
     with pytest.raises(ValueError, match="At least one bookmaker"):
         asyncio.run(odds_api.capture_market_inventory(tmp_path / "inventory.md", bookmakers="", api_key="test-key"))
+
+
+def test_stored_book_keys_match_how_the_ingest_names_books() -> None:
+    assert stored_book_keys("DraftKings, FanDuel,draftkings") == ["draftkings", "fanduel"]

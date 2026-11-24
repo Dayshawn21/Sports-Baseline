@@ -1,9 +1,12 @@
+import csv
 from datetime import date, datetime, timezone
+from io import StringIO
 from pathlib import Path
 
 import httpx
 import pytest
 
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.ingest.nflverse import (
     RELEASE_RETRY_ATTEMPTS,
     NflverseClient,
@@ -288,6 +291,29 @@ def test_kicking_counts_are_read_and_a_blank_cell_stays_unknown() -> None:
     assert (punter.fg_made, punter.pat_made) == (None, None)
 
 
+def test_kicking_by_distance_is_read_and_a_blank_cell_stays_unknown() -> None:
+    header = f"{_STATS_HEADER},{','.join(KICKING_DISTANCE_COLUMNS)}"
+    kicker_values = "1,0,1,1,0,0,0,0,0,1,0,0,1"
+    receiver_values = ",".join(["0"] * len(KICKING_DISTANCE_COLUMNS))
+    punter_values = "," * (len(KICKING_DISTANCE_COLUMNS) - 1)
+    csv_text = f"""{header}
+00-0035000,Kicker,K,CHI,DET,2026_01_DET_CHI,2026,1,REG,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9.0,{kicker_values}
+00-0040000,Receiver,WR,CHI,DET,2026_01_DET_CHI,2026,1,REG,0,0,0,12,2,88,7,10,0.30,0.35,0.65,0,0,3,22.1,{receiver_values}
+00-0045000,Punter,P,CHI,DET,2026_01_DET_CHI,2026,1,REG,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,{punter_values}
+"""
+
+    kicker, receiver, punter = parse_player_stats(csv_text, 2026)
+
+    assert kicker.kicking_by_distance["fg_made_0_19"] == 1
+    assert kicker.kicking_by_distance["fg_made_40_49"] == 1
+    assert kicker.kicking_by_distance["fg_made_50_59"] == 0
+    assert kicker.kicking_by_distance["fg_missed_40_49"] == 1
+    assert kicker.kicking_by_distance["pat_missed"] == 1
+    assert set(receiver.kicking_by_distance.values()) == {0}
+    assert set(punter.kicking_by_distance.values()) == {None}
+    assert list(kicker.kicking_by_distance) == list(KICKING_DISTANCE_COLUMNS)
+
+
 def test_a_file_without_kicking_columns_loads_them_as_unknown() -> None:
     csv_text = f"""{_STATS_HEADER}
 00-0030000,Quarterback,QB,CHI,DET,2026_01_DET_CHI,2026,1,REG,275,34,24,18,4,0,0,0,0,0,0,2,1,0,25.8
@@ -296,6 +322,7 @@ def test_a_file_without_kicking_columns_loads_them_as_unknown() -> None:
     [stat] = parse_player_stats(csv_text, 2026)
 
     assert (stat.fg_made, stat.pat_made) == (None, None)
+    assert set(stat.kicking_by_distance.values()) == {None}
 
 
 def test_passing_attempts_is_read_from_the_column_nflverse_actually_publishes() -> None:
@@ -375,6 +402,32 @@ def test_a_blank_scoring_component_stays_unknown_and_so_do_prizepicks_points() -
     assert mahomes.interceptions is None
     assert mahomes.prizepicks_fantasy_points is None
     assert mahomes.passing_tds == 1
+
+
+def test_a_real_kicker_row_scores_prizepicks_kicking_points() -> None:
+    stats = parse_player_stats(_REAL_SAMPLE, 2025)
+    prater, allen = _by_name(stats, "Matt Prater"), _by_name(stats, "Keenan Allen")
+
+    # FGs from 20-29, 30-39 and 40-49 yards (3 + 3 + 4) and 2 PATs; PPR scores none of it.
+    assert prater.prizepicks_fantasy_points == 12.0
+    assert prater.fantasy_points == 0.0
+    assert allen.prizepicks_fantasy_points == allen.fantasy_points == 19.8
+
+
+def test_a_punter_with_a_pat_gains_its_point_and_a_blank_kicking_cell_is_unknown() -> None:
+    reader = csv.DictReader(StringIO(_REAL_SAMPLE))
+    prater = next(row for row in reader if row["player_display_name"] == "Matt Prater")
+    punter = prater | {column: "0" for column in ("fg_made", *KICKING_DISTANCE_COLUMNS)} | {"position": "P", "pat_made": "1"}
+    blank = punter | {"fg_made_50_59": ""}
+    out = StringIO()
+    writer = csv.DictWriter(out, fieldnames=reader.fieldnames or [])
+    writer.writeheader()
+    writer.writerows([punter, blank])
+
+    with_pat, unknown = parse_player_stats(out.getvalue(), 2025)
+
+    assert with_pat.prizepicks_fantasy_points == 1.0
+    assert unknown.prizepicks_fantasy_points is None
 
 
 def test_receiving_fields_read_non_zero_from_a_real_row() -> None:

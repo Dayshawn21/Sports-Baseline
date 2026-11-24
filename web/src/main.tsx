@@ -2,7 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import App from './App'
+import App, { preloadHomePage } from './App'
+import { isHomeRoute } from '~/utils/homeRoute'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -16,11 +17,22 @@ const queryClient = new QueryClient({
   },
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </React.StrictMode>
-)
+function render() {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </React.StrictMode>
+  )
+}
+
+if (isHomeRoute(window.location.hash)) {
+  // Imported on demand: a static import put the home hooks' modules in the entry bundle (+8.4 KB gzip).
+  void import('~/hooks/homePrefetch').then(({ prefetchHome }) => prefetchHome(queryClient, new Date()))
+  // A failed load still renders: the route's `lazy` fallback then retries and shows its error.
+  preloadHomePage().catch(() => {}).finally(render)
+} else {
+  render()
+}

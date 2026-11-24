@@ -18,7 +18,6 @@ button.slate-digest__play { font: inherit; text-align: left; cursor: pointer; }
 .slate-digest__play strong { overflow: hidden; font: 700 14px var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
 .slate-digest__what { overflow: hidden; color: var(--text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .slate-digest__num { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font: 500 15px var(--font-mono); }
-.slate-digest__gap { color: var(--text-muted); font: 500 11px var(--font-mono); }
 @media (max-width: 1100px) {
   .slate-digest__plays { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -28,5 +27,7 @@ button.slate-digest__play { font: inherit; text-align: left; cursor: pointer; }
     grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 70%;
     overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: 4px;
   }
-  .slate-digest__play { scroll-snap-align: start; }
+  .slate-digest { margin-top: 14px; }
+  .slate-digest__play { padding: 10px 12px; scroll-snap-align: start; }
+  .slate-digest__num { margin-top: 4px; }
 }

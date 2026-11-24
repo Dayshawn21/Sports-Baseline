@@ -1,14 +1,30 @@
-import type { NflPlayerUsage, NflSlateGame, NflSlateLine } from '~/types/nfl'
+import type { NflPlayerUsage, NflSeasonWeek, NflSlateGame, NflSlateLine } from '~/types/nfl'
 import { nflGameProps } from '~/utils/nflGameProps'
 import { edgeShare, type NflBoardLine } from '~/utils/nflPropBoard'
 import { groupNflPropRows } from '~/utils/nflPropRows'
+import { fmtPct } from '~/utils/odds'
 
 export function isNflSpecialist(position: string | null): boolean {
   return position === 'K' || position === 'P'
 }
 
-export function nflPlayerMarketLink(playerId: number, market: string): string {
-  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}#game-log`
+/** `week` is the week the row was opened from; without it the player page shows the current week. */
+export function nflPlayerMarketLink(playerId: number, market: string, week: NflSeasonWeek | null = null): string {
+  const weekQuery = week ? `&season=${week.season}&week=${week.week}` : ''
+  return `/nfl/player/${playerId}?market=${encodeURIComponent(market)}${weekQuery}`
+}
+
+/** The linked week, or null unless both `season` and `week` are positive whole numbers. */
+export function playerWeekParams(params: URLSearchParams): NflSeasonWeek | null {
+  const season = params.get('season') ?? ''
+  const week = params.get('week') ?? ''
+  return /^\d+$/.test(season) && /^\d+$/.test(week) ? { season: Number(season), week: Number(week) } : null
+}
+
+/** The `market` param when it names a section on the page, else null. Plain `#` anchors cannot be used under HashRouter. */
+export function selectedPropMarket(params: URLSearchParams, markets: string[]): string | null {
+  const market = params.get('market')
+  return market !== null && markets.includes(market) ? market : null
 }
 
 export const SPECIALIST_COLUMNS = {
@@ -22,8 +38,6 @@ export const SPECIALIST_COLUMNS = {
 
 export interface NflPlayerWeekLine {
   row: NflBoardLine
-  /** The line's rank on the week-wide board; null for lines the board does not rate. */
-  rank: number | null
   /** Null for anytime TD, which carries no edge until 25c. */
   edgeShare: number | null
   alternates: NflSlateLine[]
@@ -35,19 +49,17 @@ export interface NflPlayerWeek {
 }
 
 /**
- * The player's full-game lines this week, ranked and scored against the week-wide board as the
- * game page reads it, so a row never disagrees with `/nfl/board`. Null when the player has no line.
+ * The player's full-game lines this week, scored against the week-wide board as the game page
+ * reads it, so a row never disagrees with `/nfl/props`. Null when the player has no line.
  */
 export function playerWeekLines(games: NflSlateGame[], playerId: number, now = new Date()): NflPlayerWeek | null {
   const game = games.find(item => item.lines.some(line => line.playerId === playerId))
   if (!game) return null
   const alternates = new Map(groupNflPropRows(game.lines).map(item => [item.primary.lineId, item.alternates]))
   const lines = nflGameProps(games, game.gameId, 'all', 'full_game', now).flatMap(({ category, rateable, other }) => [
-    ...rateable.filter(item => item.row.playerId === playerId).map(item => ({ row: item.row, rank: item.rank as number | null })),
-    ...other.filter(row => row.playerId === playerId).map(row => ({ row, rank: null })),
-  ].map(({ row, rank }) => ({
+    ...rateable, ...other,
+  ].filter(row => row.playerId === playerId).map(row => ({
     row,
-    rank,
     edgeShare: row.market === 'anytime_touchdown' ? null : edgeShare(row, category.referenceLine),
     alternates: alternates.get(row.lineId) ?? [],
   })))
@@ -97,7 +109,7 @@ export function usageBars(usage: NflPlayerUsage[], stat: string): NflUsageRow {
   return {
     stat,
     label: USAGE_LABELS[stat] ?? stat,
-    average: mean === null ? '--' : isShare ? `${Math.round(mean * 100)}%` : `${mean.toFixed(1)} / g`,
+    average: mean === null ? '--' : isShare ? fmtPct(mean, 0) : `${mean.toFixed(1)} / g`,
     bars: usage.map((game, index) => {
       const value = values[index]
       return {
@@ -108,17 +120,6 @@ export function usageBars(usage: NflPlayerUsage[], stat: string): NflUsageRow {
       }
     }),
   }
-}
-
-const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v'])
-
-/** "JC" for James Cook; a suffix such as "Jr." or "II" is skipped. */
-export function playerInitials(name: string): string {
-  const words = name.split(/\s+/).filter(word => word && !NAME_SUFFIXES.has(word.replace(/\./g, '').toLowerCase()))
-  if (!words.length) return '--'
-  const first = words[0][0] ?? ''
-  const last = words.length > 1 ? words[words.length - 1][0] ?? '' : ''
-  return `${first}${last}`.toUpperCase()
 }
 
 /** The chip labels for a focus market: the focus stat, then the volume stat. */

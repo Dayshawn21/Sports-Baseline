@@ -44,6 +44,10 @@ testable without fixtures. Do not introduce I/O into `core/`.
   edited once applied.
 - `AsyncSession` is passed into repository functions, never created inside them.
 - Some indexes rely on `NULLS NOT DISTINCT`, which requires PostgreSQL 15 or newer.
+- A model's history reads carry an explicit lower season bound from the seasons
+  it was validated on, as a named constant (NFL v4 and Rec Targets use
+  `PROJECTION_FIRST_HISTORY_SEASON`). An unbounded "every season before the week"
+  read lets a later backfill change the model's output under the same version.
 
 ## Configuration and secrets
 

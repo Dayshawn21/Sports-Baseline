@@ -1,9 +1,13 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import settings
+from pydantic import ValidationError
+
+from app.config import Settings, settings
 from app.core.production_settings import validate_production_settings
-from app.main import app
+from app.main import app, configure_app_logging
 
 STRONG_KEY = "k" * 32
 SITE = ["https://sportapp.example.com"]
@@ -68,3 +72,90 @@ def test_hsts_is_sent_in_production_only(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(settings, "api_env", "production")
     res = TestClient(app).get("/health")
     assert res.headers["Strict-Transport-Security"].startswith("max-age=")
+
+
+def test_production_allows_ask_with_a_key() -> None:
+    assert validate_production_settings("production", STRONG_KEY, SITE, True, "sk-ant-test") == []
+
+
+@pytest.mark.parametrize("key", ["", "   "])
+def test_production_refuses_ask_without_a_key(key: str) -> None:
+    [problem] = validate_production_settings("production", STRONG_KEY, SITE, True, key)
+    assert problem == "ANTHROPIC_API_KEY is empty while ASK_ENABLED is on"
+
+
+def test_production_allows_ask_off_without_a_key() -> None:
+    assert validate_production_settings("production", STRONG_KEY, SITE, False, "") == []
+
+
+def test_dev_allows_ask_without_a_key() -> None:
+    assert validate_production_settings("dev", "", SITE, True, "") == []
+
+
+def test_production_start_with_ask_and_no_key_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "api_env", "production")
+    monkeypatch.setattr(settings, "admin_api_key", STRONG_KEY)
+    monkeypatch.setattr(settings, "cors_origins", SITE)
+    monkeypatch.setattr(settings, "ask_enabled", True)
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY is empty while ASK_ENABLED is on"):
+        with TestClient(app):
+            pass
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("ask_max_tokens", 255), ("ask_max_tokens", 4097),
+        ("ask_max_tool_iterations", 0), ("ask_max_tool_iterations", 9),
+        ("ask_daily_questions_per_ip", 0), ("ask_daily_questions_per_ip", 201),
+        ("ask_daily_spend_cap_usd", 0), ("ask_daily_spend_cap_usd", 20.01),
+    ],
+)
+def test_out_of_range_ask_limits_fail_validation(field: str, value: float) -> None:
+    with pytest.raises(ValidationError, match=field):
+        Settings(database_url="postgresql://localhost/ci", _env_file=None, **{field: value})
+
+
+def test_the_ask_defaults_are_in_range() -> None:
+    defaults = Settings(database_url="postgresql://localhost/ci", _env_file=None)
+    assert (defaults.ask_max_tokens, defaults.ask_max_tool_iterations) == (2048, 5)
+    assert (defaults.ask_daily_questions_per_ip, defaults.ask_daily_spend_cap_usd) == (20, 1.0)
+
+
+def _ask_settings(**overrides: object) -> Settings:
+    return Settings(database_url="postgresql://localhost/ci", _env_file=None, **overrides)
+
+
+def test_an_enabled_cap_below_one_question_hold_fails_validation() -> None:
+    reserve = _ask_settings().ask_question_reserve_usd
+    with pytest.raises(ValidationError, match="below one question's worst-case hold"):
+        _ask_settings(ask_enabled=True, ask_daily_spend_cap_usd=reserve * 0.99)
+
+
+def test_a_cap_of_exactly_one_hold_is_allowed() -> None:
+    reserve = _ask_settings().ask_question_reserve_usd
+    assert _ask_settings(ask_enabled=True, ask_daily_spend_cap_usd=reserve).ask_daily_spend_cap_usd == reserve
+
+
+def test_a_low_cap_is_not_checked_while_ask_is_off() -> None:
+    assert _ask_settings(ask_daily_spend_cap_usd=0.001).ask_daily_spend_cap_usd == 0.001
+
+
+def test_the_default_cap_fits_the_largest_allowed_hold() -> None:
+    largest = _ask_settings(ask_enabled=True, ask_max_tokens=4096, ask_max_tool_iterations=8)
+    assert largest.ask_question_reserve_usd < largest.ask_daily_spend_cap_usd
+
+
+def test_the_api_prints_its_own_info_lines() -> None:
+    # Importing app.main (as uvicorn does) must make app.* INFO visible.
+    app_log = logging.getLogger("app")
+    assert app_log.getEffectiveLevel() == logging.INFO
+    assert app_log.handlers
+    assert logging.getLogger("app.services.ask.answer_stream").isEnabledFor(logging.INFO)
+
+
+def test_configuring_twice_adds_no_second_handler() -> None:
+    before = len(logging.getLogger("app").handlers)
+    configure_app_logging()
+    assert len(logging.getLogger("app").handlers) == before

@@ -1,5 +1,6 @@
 import type { NbaTeamStatsContext } from '~/types/nba'
 import { nbaOpponentContext, nbaTeamRateText } from '~/utils/nbaTeamStats'
+import './nba-evidence.css'
 
 interface Props {
   context: NbaTeamStatsContext | null

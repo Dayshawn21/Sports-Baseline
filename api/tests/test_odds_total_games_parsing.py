@@ -62,3 +62,12 @@ def test_totals_keep_over_and_under_when_the_away_player_is_p1():
     for home_is_p1 in (True, False):
         total = next(r for r in _bookmaker_market_rows(bet365, [lopsided], home_is_p1) if r.market == "total_games")
         assert (total.line, total.p1_odds, total.p2_odds) == (21.5, -139, 100)
+
+
+def test_fanduel_rows_parse_moneyline_and_total_like_draftkings():
+    fanduel = next(c for c in BOOK_CONFIGS if c.canonical_name == "fanduel")
+    markets = [{"name": "ML", "odds": [{"home": "1.50", "away": "2.60"}]}, GAMES]
+    rows = {r.market: r for r in _bookmaker_market_rows(fanduel, markets, home_is_p1=False)}
+    assert set(rows) == {"moneyline", "total_games"}
+    assert (rows["moneyline"].p1_odds, rows["moneyline"].p2_odds) == (160, -200)
+    assert rows["total_games"].line == 24.5

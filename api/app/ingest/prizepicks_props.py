@@ -14,7 +14,12 @@ from decimal import Decimal
 import httpx
 
 from app.core.prop_sports import SportPropConfig, board_leagues, market_for_stat
-from app.ingest.prizepicks import _fetch_leagues, _fetch_projections, _parse_projections
+from app.ingest.prizepicks import (
+    PrizePicksRateLimited,
+    _fetch_leagues,
+    _fetch_projections,
+    _parse_projections,
+)
 from app.repositories import sport_props
 from app.services.sport_props import LineLinkage, PropLineSource, ProviderLine
 
@@ -22,10 +27,6 @@ PROVIDER = "prizepicks"
 REQUEST_PACE_SECONDS = 1.0
 
 BoardLine = tuple[dict, str, str]
-
-
-class PrizePicksRateLimited(RuntimeError):
-    """Raised when every league request for a sport exhausted its retry budget on HTTP 429."""
 
 
 def _logger(config: SportPropConfig) -> logging.Logger:

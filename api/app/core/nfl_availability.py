@@ -1,7 +1,8 @@
 """Role-change flags from a player's injury report and depth-chart movement.
 
-Display only: these flags warn the reader; they never change a projection, an
-edge, or the slate's ranking. Pure: no DB, no I/O.
+Display and selection only: these flags warn the reader, and `role_changed`
+keeps a line from being called or ranked as a pick, but no flag changes a
+projection, an edge or the API's slate order. Pure: no DB, no I/O.
 """
 from __future__ import annotations
 
@@ -11,6 +12,9 @@ INJURY_FLAGS = {"Out": "injury_out", "Doubtful": "injury_doubtful", "Questionabl
 DEPTH_PROMOTED = "depth_promoted"
 DEPTH_DEMOTED = "depth_demoted"
 DEPTH_NEW = "depth_new"
+# The projection is a role average that cannot know this week's role: the
+# player is Out, or a teammate ahead of him is Out and he moves up (70a).
+ROLE_CHANGED = "role_changed"
 
 
 @dataclass(frozen=True)
@@ -22,6 +26,10 @@ class NflAvailability:
     previous_depth_team_id: int | None = None
     previous_depth_position: str | None = None
     previous_depth_rank: int | None = None
+    # The chart rank once teammates ahead who are Out step aside; None when this
+    # player is Out. Never used for the week-over-week move flags.
+    active_depth_rank: int | None = None
+    out_ahead: tuple[str, ...] = ()
 
 
 def availability_flags(availability: NflAvailability) -> list[str]:
@@ -34,6 +42,8 @@ def availability_flags(availability: NflAvailability) -> list[str]:
     flags = []
     if availability.injury_status in INJURY_FLAGS:
         flags.append(INJURY_FLAGS[availability.injury_status])
+    if role_changed(availability):
+        flags.append(ROLE_CHANGED)
     if availability.depth_rank is None:
         return flags
     same_role = (
@@ -48,3 +58,14 @@ def availability_flags(availability: NflAvailability) -> list[str]:
     elif availability.depth_rank > availability.previous_depth_rank:
         flags.append(DEPTH_DEMOTED)
     return flags
+
+
+def role_changed(availability: NflAvailability) -> bool:
+    """Out, or an active depth that differs from the chart rank because a teammate ahead is Out."""
+    if availability.injury_status == "Out":
+        return True
+    return (
+        availability.depth_rank is not None
+        and availability.active_depth_rank is not None
+        and availability.active_depth_rank != availability.depth_rank
+    )

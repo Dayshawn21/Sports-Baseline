@@ -18,7 +18,7 @@ from app.core.nfl_odds import parse_game_markets
 from app.core.odds_providers import THE_ODDS_API_US
 from app.db.pool import SessionLocal
 from app.ingest.log_config import configure_ingest_logging
-from app.ingest.nfl_odds import BASE_URL, _bookmaker_sets, _odds_params, _provider_key, _remaining_requests
+from app.ingest.nfl_odds import BASE_URL, _bookmaker_sets, _free_remaining, _odds_params, _provider_key, _remaining_requests, credit_gate
 from app.repositories import nba as nba_repo
 
 logger = logging.getLogger("nba_odds_ingest")
@@ -27,17 +27,6 @@ configure_ingest_logging()
 SPORT_KEY = "basketball_nba"
 # NFL's anytime-TD runs stop at 50; stopping NBA at 100 leaves NFL room for its weekly runs.
 DEFAULT_MIN_CREDITS = 100
-
-
-def credit_gate(remaining: int | None, floor: int) -> bool:
-    """Whether a paid call may run; an unknown balance never spends."""
-    return remaining is not None and remaining >= floor
-
-
-async def _free_remaining(client: httpx.AsyncClient, api_key: str) -> int | None:
-    response = await client.get(f"{BASE_URL}/sports", params={"apiKey": api_key}, timeout=30)
-    response.raise_for_status()
-    return _remaining_requests(response.headers)
 
 
 async def _fetch_odds(client: httpx.AsyncClient, api_key: str) -> tuple[list[dict[str, object]], int | None]:

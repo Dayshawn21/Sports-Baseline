@@ -15,11 +15,16 @@ from app.ingest.nflverse_injuries import NflverseInjuryWeek
 from app.ingest.nflverse_rosters import NflverseRosterWeek
 from app.ingest.nflverse_snap_counts import NflverseSnapGame
 from app.ingest.nflverse_team_efficiency import NflverseTeamEfficiency
+from app.core.nfl_baseline import PROJECTION_FIRST_HISTORY_SEASON
 from app.core.nfl_elo import NflEloGame, NflTeamEloRow
 from app.core.nfl_line_grading import settle_line
+from app.core.nfl_projection import NFL_PROJECTION_MODEL_VERSION
+from app.core.nfl_usage_shift import UsageShiftPlayer
 from app.core.nfl_game_line_clv import ClvGame, OddsCandidate
 from app.core.prop_ranking_check import FrozenLine
 from app.core.nfl_game_lines import NflGameLineGame
+from app.core.nfl_kicker_projection import KICKER_REPLAY_MARKETS
+from app.core.nfl_kicking import KICKING_DISTANCE_COLUMNS
 from app.core.nfl_line_only import LINE_ONLY_COLUMNS
 from app.nfl.markets import NflLineOnlyMarket, NflPropMarket
 from app.core.nfl_td_backtest import NflSnapRow
@@ -28,37 +33,8 @@ from app.ingest.nflverse import NflverseGame
 from app.repositories import nfl as nfl_repository
 from app.repositories.nfl import get_current_week, get_environment_fit_games, get_unmatched_slate_lines, get_elo_games, get_gradeable_prop_lines, get_replay_rows, get_game_line_games, get_team_game_position_totals, replace_team_elo, upsert_game
 from app.repositories.nfl import TeamEfficiencyWriteResult, get_slate_team_elo, get_team_efficiency, replace_team_efficiency
-from app.repositories.nfl import SnapCountWriteResult, _attach_snap_history, get_snap_rows, get_weekly_td_rows,replace_snap_counts,PlayerWeekWriteResult,_availability, RedZoneWriteResult, RosterWriteResult, get_team_schedule, replace_weekly_depth_charts, replace_weekly_injuries, _player_teams_cte, get_historical_player_baselines, get_player_candidates, replace_weekly_rosters, _optional_averages, _td_history, _usage, get_slate_lines, get_slate_matchup_context, get_slate_player_history, get_slate_prop_odds, get_upcoming_games_needing_weather, insert_game_weather_snapshot, insert_player_prop_odds_snapshot, upsert_weekly_stat, write_red_zone_usage
-
-
-class _Result:
-    def __init__(self, result_id: int = 0) -> None:
-        self.result_id = result_id
-
-    def mappings(self) -> list[dict[str, object]]:
-        return []
-
-    def fetchall(self) -> list[tuple[object, ...]]:
-        return []
-
-    def scalar_one(self) -> int:
-        return self.result_id
-
-
-class _RecordingSession:
-    def __init__(self) -> None:
-        self.statement = ""
-        self.params: dict[str, object] = {}
-        self.result_id = 0
-
-    async def execute(
-        self,
-        statement: TextClause,
-        params: dict[str, object] | None = None,
-    ) -> _Result:
-        self.statement = str(statement)
-        self.params = params or {}
-        return _Result(self.result_id)
+from app.repositories.nfl import SnapCountWriteResult, _attach_snap_history, get_slate_opponent_position_history, get_snap_rows, get_weekly_td_rows,replace_snap_counts,PlayerWeekWriteResult,_availability, RedZoneWriteResult, RosterWriteResult, get_team_schedule, replace_weekly_depth_charts, replace_weekly_injuries, _player_teams_cte, get_historical_player_baselines, get_player_candidates, replace_weekly_rosters, _optional_averages, _td_history, _usage, get_slate_lines, get_slate_matchup_context, get_slate_player_history, get_slate_prop_odds, get_upcoming_games_needing_weather, insert_game_weather_snapshot, insert_player_prop_odds_snapshot, upsert_weekly_stat, write_red_zone_usage
+from tests.helpers.nfl_repository import _RecordingSession, _Result
 
 
 def test_matchup_team_games_keep_pre_week_nfl_regular_season_filters_and_decode_attempts() -> None:
@@ -92,13 +68,45 @@ def test_slate_inputs_use_one_pre_week_regular_season_cutoff() -> None:
 
     assert asyncio.run(get_slate_lines(cast(AsyncSession, session), 2026, 7)) == []
 
-    assert session.params == {"season": 2026, "week": 7}
+    assert session.params == {"season": 2026, "week": 7, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
     assert session.statement.count("s.season < :season OR (s.season = :season AND s.week < :week)") == 4
     assert session.statement.count("g.game_type = 'REG'") >= 5
     assert "s.opponent_team_id AS defense_team_id" in session.statement
     assert "WHEN pt.team_id = g.home_team_id THEN g.away_team_id" in session.statement
     assert "WHEN pt.team_id = g.away_team_id THEN g.home_team_id" in session.statement
     assert "op.position IS NOT DISTINCT FROM p.position" in session.statement
+
+
+def test_v4_history_ctes_ignore_seasons_before_the_validated_floor() -> None:
+    session = _RecordingSession()
+
+    asyncio.run(get_slate_lines(cast(AsyncSession, session), 2026, 7))
+
+    for cte in ("baselines", "position_baselines", "opponent_position_baselines", "league_position_baselines"):
+        body = _flat(session.statement.split(f"    {cte} AS (", 1)[1].split("\n    )", 1)[0])
+        assert "AND s.season >= :first_history_season AND (s.season < :season" in body, cte
+    assert session.params["first_history_season"] == 2024
+
+
+def test_history_floor_binds_on_every_snap_and_td_query() -> None:
+    rows: list[dict] = [{"player_id": 7, "position": "TE", "baseline_season": 2025}]
+    snaps = _ScriptedSession([], [])
+    asyncio.run(_attach_snap_history(cast(AsyncSession, snaps), 2026, 2, rows))
+    tds = _ScriptedSession([], [])
+    asyncio.run(_td_history(cast(AsyncSession, tds), 2026, 2, [7]))
+
+    for sql, params in snaps.calls + tds.calls:
+        assert "season >= :first_history_season" in sql
+        assert params["first_history_season"] == PROJECTION_FIRST_HISTORY_SEASON
+
+
+def test_opponent_allowed_history_ignores_seasons_before_the_floor() -> None:
+    session = _RecordingSession()
+
+    assert asyncio.run(get_slate_opponent_position_history(cast(AsyncSession, session), 2026, 7)) == {}
+
+    assert "g.season >= :first_history_season AND (g.season < :season" in session.statement
+    assert session.params == {"season": 2026, "week": 7, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
 
 
 def test_backtest_rows_include_historical_game_lines_and_home_side() -> None:
@@ -125,7 +133,7 @@ def test_slate_lines_select_the_latest_snapshot_before_kickoff(consumer: str) ->
     assert asyncio.run(load_lines(cast(AsyncSession, session), 2026, 7)) == []
 
     latest = _flat(session.statement.split("latest_lines AS (", 1)[1].split("\n    )", 1)[0])
-    assert session.params == {"season": 2026, "week": 7}
+    assert (session.params["season"], session.params["week"]) == (2026, 7)
     assert "SELECT DISTINCT ON (l.provider, l.provider_prop_id)" in latest
     assert "JOIN sport_games g ON g.sport = 'nfl' AND g.id = l.game_id" in latest
     assert (
@@ -154,7 +162,8 @@ def test_slate_joins_this_weeks_injury_and_depth_and_an_earlier_depth_row() -> N
     asyncio.run(get_slate_lines(cast(AsyncSession, session), 2026, 7))
 
     statement = _flat(session.statement)
-    assert "FROM nfl_player_injuries WHERE season = :season AND week = :week" in statement
+    assert "FROM injury_reports WHERE season = :season AND week = :week" in statement
+    assert "FULL JOIN nfl_player_espn_injuries e" in statement
     assert "FROM nfl_player_depth_charts WHERE season = :season AND week = :week" in statement
     # Strictly earlier: the slate week's own chart must never count as the "previous" one.
     assert "WHERE season < :season OR (season = :season AND week < :week) ORDER BY player_id, season DESC, week DESC" in statement
@@ -168,6 +177,7 @@ def test_availability_fields_pass_through_and_stay_null_when_absent() -> None:
     present = {
         "injury_status": "Questionable", "practice_status": "Limited Participation in Practice",
         "injury": "Hamstring", "depth_team_id": 7, "depth_position": "WR", "depth_rank": 2,
+        "active_depth_rank": 1, "out_ahead": ["Starter Out"],
         "previous_depth_team_id": 7, "previous_depth_position": "WR", "previous_depth_rank": 1,
     }
 
@@ -184,6 +194,25 @@ def test_projection_players_are_placed_in_games_by_the_as_of_team() -> None:
     assert "r.season < :season OR (r.season = :season AND r.week <= :week)" in statement
     assert "JOIN player_teams pt ON pt.team_id IN (g.home_team_id, g.away_team_id)" in statement
     assert "p.team_id IN" not in statement
+
+
+def test_projection_career_averages_ignore_seasons_before_the_floor() -> None:
+    session = _ScriptedSession([])
+
+    asyncio.run(get_historical_player_baselines(cast(AsyncSession, session), 2026, 7))
+
+    ((sql, params),) = session.calls
+    assert "AND s.season >= :first_history_season AND (s.season < :season" in sql
+    assert params == {"season": 2026, "week": 7, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
+
+
+def test_backtest_td_rows_ignore_seasons_before_the_floor() -> None:
+    session = _RecordingSession()
+
+    assert asyncio.run(get_weekly_td_rows(cast(AsyncSession, session))) == []
+
+    assert "WHERE g.game_type = 'REG' AND s.season >= :first_history_season" in _flat(session.statement)
+    assert session.params == {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
 
 
 def test_link_candidates_carry_the_latest_roster_team_with_no_week_bound() -> None:
@@ -258,7 +287,10 @@ def test_slate_history_is_batched_and_limited_to_completed_pre_week_games() -> N
 
     assert asyncio.run(get_slate_player_history(cast(AsyncSession, session), 2026, 7, [11, 12])) == {}
 
-    assert session.params == {"season": 2026, "week": 7, "player_ids": [11, 12]}
+    assert session.params == {
+        "season": 2026, "week": 7, "player_ids": [11, 12], "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
+    assert "g.season >= :first_history_season" in session.statement
     assert "s.player_id = ANY(CAST(:player_ids AS bigint[]))" in session.statement
     assert "g.status = 'completed'" in session.statement
     assert "g.season < :season OR (g.season = :season AND g.week < :week)" in session.statement
@@ -302,7 +334,7 @@ def test_td_history_uses_the_slate_cutoff_and_regular_season_only() -> None:
 
     assert "g.game_type = 'REG'" in session.statement
     assert "s.season < :season OR (s.season = :season AND s.week < :week)" in session.statement
-    assert session.params == {"season": 2026, "week": 2}
+    assert session.params == {"season": 2026, "week": 2, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
 
 
 def test_td_history_skips_queries_without_players() -> None:
@@ -536,7 +568,9 @@ def test_snap_history_is_pre_week_and_takes_the_position_share_from_the_baseline
         assert "offense_pct IS NOT NULL" in sql
     # Snap-only games count: the player query reads the snap table alone, no weekly-stat join.
     assert "nfl_player_weekly_stats" not in player_sql
-    assert player_params == {"player_ids": [7, 8], "season": 2026, "week": 2}
+    assert player_params == {
+        "player_ids": [7, 8], "season": 2026, "week": 2, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON,
+    }
     assert rows[0]["snap_seasons"] == [{"season": 2025, "games": 12, "share": 0.81}, {"season": 2026, "games": 1, "share": 0.9}]
     assert rows[0]["position_snap_share"] == 0.44
     assert (rows[1]["snap_seasons"], rows[1]["position_snap_share"]) == ([], 0.0)
@@ -552,8 +586,10 @@ def test_backtest_snap_rows_are_regular_season_and_keep_null_shares() -> None:
 
     rows = asyncio.run(get_snap_rows(cast(AsyncSession, session)))
 
-    ((sql, _),) = session.calls
+    ((sql, params),) = session.calls
     assert "FROM nfl_player_snap_counts s" in sql and "WHERE g.game_type = 'REG'" in sql
+    assert "AND s.season >= :first_history_season" in sql
+    assert params == {"first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
     assert rows == [NflSnapRow(1, "TE", 2025, 3, 0.62), NflSnapRow(1, "TE", 2025, 4, None)]
 
 
@@ -604,9 +640,6 @@ def _game(game_id: str = "2025_01_DAL_PHI") -> NflverseGame:
     (lambda db: nfl_repository.upsert_player(db, "00-0033873", "P. Mahomes", "QB", 1),
      "INSERT INTO sport_players (sport, source_player_id, name, position, team_id)",
      "ON CONFLICT (sport, source_player_id)"),
-    (lambda db: nfl_repository.upsert_player_alias(db, "Pat Mahomes", "pat mahomes", 7),
-     "INSERT INTO sport_player_aliases (sport, player_id, alias_name, alias_name_norm, source)",
-     "ON CONFLICT (sport, alias_name_norm)"),
     (lambda db: upsert_game(db, _game(), 1, 2),
      "INSERT INTO sport_games (", "ON CONFLICT (sport, source_game_id)"),
 ])
@@ -621,7 +654,7 @@ def test_shared_table_upserts_write_nfl_rows_on_the_sport_scoped_key(write, inse
     assert "nfl_" not in session.statement
 
 
-def test_game_odds_insert_and_latest_read_stay_on_nfl_rows() -> None:
+def test_game_odds_insert_stays_on_nfl_rows() -> None:
     session = _RecordingSession()
 
     asyncio.run(nfl_repository.insert_game_odds_snapshot(
@@ -629,27 +662,6 @@ def test_game_odds_insert_and_latest_read_stay_on_nfl_rows() -> None:
     ))
     assert "INSERT INTO sport_game_odds (\n                sport, game_id," in session.statement
     assert "'nfl', :game_id" in session.statement
-
-
-class _NoRow:
-    def first(self) -> None:
-        return None
-
-
-class _NoRowSession(_RecordingSession):
-    async def execute(self, statement: TextClause, params: dict[str, object] | None = None) -> "_NoRowSession":
-        await super().execute(statement, params)
-        return self
-
-    def mappings(self) -> _NoRow:
-        return _NoRow()
-
-
-def test_latest_game_odds_read_only_sees_nfl_rows() -> None:
-    session = _NoRowSession()
-
-    assert asyncio.run(nfl_repository.get_latest_game_odds(cast(AsyncSession, session), 9, "draftkings", "spread")) is None
-    assert "FROM sport_game_odds\n            WHERE sport = 'nfl' AND provider = 'the_odds_api_us' AND game_id = :game_id" in session.statement
 
 
 def test_game_line_games_share_the_elo_order_and_carry_nullable_closing_lines() -> None:
@@ -825,6 +837,26 @@ def test_weekly_stat_upsert_writes_kicking_but_leaves_punts_to_the_play_by_play_
     assert "punts" not in session.statement
 
 
+def test_weekly_stat_upsert_writes_and_updates_kicking_by_distance() -> None:
+    session = _RecordingSession()
+    stat = NflversePlayerWeek(
+        player_id="00-0035000", player_name="Kicker", position="K", team="CHI",
+        opponent="DET", game_id="2026_01_DET_CHI", season=2026, week=1,
+        passing_yards=0, passing_attempts=0, passing_completions=0, rushing_yards=0,
+        rushing_attempts=0, receiving_yards=0, receptions=0, targets=None,
+        target_share=None, air_yards_share=None, wopr=None, touchdowns=0, fantasy_points=9.0,
+        fg_made=3, pat_made=2, kicking_by_distance={"fg_made_50_59": 1, "pat_missed": 0},
+    )
+
+    asyncio.run(upsert_weekly_stat(cast(AsyncSession, session), stat, 1, 2, 3, 4))
+
+    assert (session.params["fg_made_50_59"], session.params["pat_missed"]) == (1, 0)
+    assert session.params["fg_made_0_19"] is None
+    for column in KICKING_DISTANCE_COLUMNS:
+        assert f":{column}" in session.statement
+        assert f"{column} = EXCLUDED.{column}" in session.statement
+
+
 def test_weekly_stat_upsert_keeps_usage_values_nullable_and_updates_them() -> None:
     session = _RecordingSession()
     stat = NflversePlayerWeek(
@@ -974,7 +1006,7 @@ def test_frozen_lines_take_the_latest_pre_kickoff_frozen_row_of_each_provider_pr
     [frozen] = asyncio.run(nfl_repository.get_frozen_gradeable_lines(cast(AsyncSession, session), 2026))
 
     [(sql, params)] = session.calls
-    assert params == {"season": 2026}
+    assert params == {"season": 2026, "non_v4_model_versions": ["nfl-volume-v1"]}
     assert "FROM sport_prop_predictions p JOIN sport_prop_lines l ON l.sport = 'nfl' AND l.id = p.prop_line_id" in sql
     assert "DISTINCT ON (l.provider, l.provider_prop_id)" in sql
     assert "l.fetched_at < g.start_utc AND p.generated_at < g.start_utc" in sql
@@ -1015,6 +1047,28 @@ def test_frozen_coverage_counts_27a_full_game_lines_with_any_frozen_row_per_week
     assert "fl.provider = latest.provider AND fl.provider_prop_id = latest.provider_prop_id" in sql
     assert "GROUP BY latest.week" in sql
     assert coverage == {2: (6021, 0), 3: (120, 95)}
+
+
+def test_v4_readers_exclude_the_volume_model_before_picking_the_newest_frozen_row() -> None:
+    assert nfl_repository.NON_V4_MODEL_VERSIONS == ["nfl-volume-v1"]
+    assert NFL_PROJECTION_MODEL_VERSION not in nfl_repository.NON_V4_MODEL_VERSIONS
+
+    session = _MappingSession([])
+    asyncio.run(nfl_repository.get_frozen_gradeable_lines(cast(AsyncSession, session), 2026))
+    [(sql, params)] = session.calls
+    assert params["non_v4_model_versions"] == ["nfl-volume-v1"]
+    where, order = sql.index(nfl_repository.NOT_OTHER_MODEL), sql.index("ORDER BY l.provider, l.provider_prop_id")
+    assert sql.index("WHERE p.sport = 'nfl'") < where < order
+
+
+def test_frozen_coverage_counts_only_v4_rows_as_frozen() -> None:
+    session = _ScriptedSession([])
+    asyncio.run(nfl_repository.get_frozen_coverage(cast(AsyncSession, session), 2026))
+    [(raw_sql, params)] = session.calls
+    sql = " ".join(raw_sql.split())
+    assert params == {"season": 2026, "non_v4_model_versions": ["nfl-volume-v1"]}
+    exists = sql[sql.index("EXISTS ( SELECT 1 FROM sport_prop_lines fl"):]
+    assert nfl_repository.NOT_OTHER_MODEL in exists
 
 
 def test_the_modelled_market_filter_lists_exactly_the_projected_markets() -> None:
@@ -1067,15 +1121,56 @@ def test_a_fantasy_line_settles_on_prizepicks_points_not_nflverse_ppr() -> None:
     assert settle_line(line).outcome == "over"
 
 
+
+def test_kicker_replay_rows_load_only_k_fantasy_and_settle_on_prizepicks_points(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_slate_line_rows(db: object, season: int, week: int, lines_cte: str, params: dict[str, object]) -> list[dict]:
+        captured["params"] = params
+        return [{"player_id": 9, "game_id": 3, "market": "fantasy_points", "position": "K", "opponent_team_id": 5}]
+
+    async def fake_team_game_totals(db: object, season: int, week: int) -> dict:
+        return {}
+
+    monkeypatch.setattr(nfl_repository, "_slate_line_rows", fake_slate_line_rows)
+    monkeypatch.setattr(nfl_repository, "get_team_game_position_totals", fake_team_game_totals)
+    stats = dict.fromkeys(
+        ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts",
+         "receiving_yards", "receptions", "touchdowns"),
+    )
+    session = _MappingSession([
+        {"player_id": 9, "game_id": 3, **stats, "prizepicks_fantasy_points": 11.0, "home_moneyline": None,
+         "away_moneyline": None, "spread_line": None, "total_line": None, "roof": None, "wind": None},
+    ])
+
+    replay = asyncio.run(get_replay_rows(cast(AsyncSession, session), 2025, 4, KICKER_REPLAY_MARKETS))
+
+    assert captured["params"] == {"replay_positions": ["K"], "replay_markets": ["fantasy_points"]}
+    assert [(item.row["position"], item.actual) for item in replay] == [("K", 11.0)]
+
+
+def test_kicker_pat_misses_read_k_regular_season_rows_of_one_season() -> None:
+    session = _MappingSession([{"player_id": 9, "game_id": 3, "pat_missed": 1}])
+
+    misses = asyncio.run(nfl_repository.get_kicker_pat_misses(cast(AsyncSession, session), 2025))
+
+    [(sql, params)] = session.calls
+    assert "p.position = 'K'" in sql and "g.game_type = 'REG'" in sql and "s.pat_missed IS NOT NULL" in sql
+    assert params == {"season": 2025}
+    assert misses == {(9, 3): 1}
+
 def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     async def fake_slate_line_rows(db: object, season: int, week: int, lines_cte: str, params: dict[str, object]) -> list[dict]:
         captured.update(season=season, week=week, lines_cte=" ".join(lines_cte.split()), params=params)
         return [
-            {"player_id": 9, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5},
-            {"player_id": 9, "game_id": 3, "market": "receiving_yards", "position": "WR", "opponent_team_id": 5},
-            {"player_id": 4, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5},  # no stat row: dropped
+            {"player_id": 9, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 6},
+            {"player_id": 9, "game_id": 3, "market": "receiving_yards", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 7},
+            {"player_id": 4, "game_id": 3, "market": "receptions", "position": "WR", "opponent_team_id": 5,
+             "player_team_id": 6},  # no stat row: dropped
         ]
 
     wr_game = NflTeamGameTotals(
@@ -1088,8 +1183,15 @@ def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(mon
         assert (season, week) == (2025, 10)
         return {(5, "WR"): [wr_game]}
 
+    receivers = [UsageShiftPlayer(9, 1, False, True, 0.0, 6.0, 8)]
+
+    async def fake_usage_shift_players(db: object, season: int, week: int) -> dict:
+        assert (season, week) == (2025, 10)
+        return {(6, "WR"): receivers}
+
     monkeypatch.setattr(nfl_repository, "_slate_line_rows", fake_slate_line_rows)
     monkeypatch.setattr(nfl_repository, "get_team_game_position_totals", fake_team_game_totals)
+    monkeypatch.setattr(nfl_repository, "get_usage_shift_players", fake_usage_shift_players)
     stats = dict.fromkeys(
         ("passing_yards", "passing_attempts", "passing_completions", "rushing_yards", "rushing_attempts",
          "receiving_yards", "receptions", "touchdowns", "prizepicks_fantasy_points"),
@@ -1122,6 +1224,9 @@ def test_replay_rows_drive_the_slate_query_from_the_weeks_rated_player_games(mon
     assert replay[0].row["team_game_league_averages"] == opponent
     assert replay[0].row["game_lines"] == {"home_spread_margin": 3.0, "total": 44.5}
     assert "g.spread_line::double precision, g.total_line::double precision, g.roof, g.wind" in outcome_sql
+    # Each row carries its own team-position's usage-shift players, or None when the team has none.
+    assert replay[0].usage_shift_players == tuple(receivers)
+    assert replay[1].usage_shift_players is None
     assert replay[0].row["game_weather"] == {"roof": "outdoors", "wind": 18}
 
 
@@ -1144,7 +1249,8 @@ def test_team_game_totals_group_by_defense_position_and_game_before_the_week() -
     totals = asyncio.run(get_team_game_position_totals(cast(AsyncSession, session), 2025, 10))
 
     [(sql, params)] = session.calls
-    assert params == {"season": 2025, "week": 10}
+    assert params == {"season": 2025, "week": 10, "first_history_season": PROJECTION_FIRST_HISTORY_SEASON}
+    assert "s.season >= :first_history_season" in sql
     assert "GROUP BY s.opponent_team_id, p.position, g.id, g.season, g.week" in sql
     assert "team_code" not in sql
     assert "g.game_type = 'REG' AND g.status = 'completed'" in sql
@@ -1303,7 +1409,7 @@ def test_game_notes_injuries_cover_all_positions_on_the_reporting_team() -> None
     assert "p.position IN" not in statement
     assert "JOIN sport_teams t ON t.sport = 'nfl' AND t.id = i.team_id" in statement
     assert "(i.report_status IS NOT NULL OR i.practice_status IS NOT NULL)" in statement
-    assert "i.primary_injury, p.id, i.updated_at FROM nfl_player_injuries i" in statement
+    assert "i.primary_injury, p.id, i.updated_at FROM injury_reports i" in statement
     assert "JOIN sport_players p ON p.sport = 'nfl'" in statement
 
 
@@ -1331,7 +1437,18 @@ def test_game_notes_depth_rows_pair_this_week_with_a_strictly_earlier_chart() ->
     assert "WHERE season < :season OR (season = :season AND week < :week)" in statement
     assert "FROM week_depth wd" in statement
     assert "LEFT JOIN previous_depth pd ON pd.player_id = wd.player_id" in statement
-    assert "pd.depth_rank, p.id FROM week_depth wd" in statement
+    assert "pd.depth_rank, p.id, wd.active_depth_rank, wd.out_ahead FROM week_depth wd" in statement
+
+
+def test_active_depth_skips_teammates_ahead_who_are_out_and_drops_an_out_player() -> None:
+    session = _RecordingSession()
+
+    asyncio.run(nfl_repository.get_week_depth_rows(cast(AsyncSession, session), 2026, 10))
+
+    statement = _flat(session.statement)
+    assert "CASE WHEN own.report_status = 'Out' THEN NULL ELSE c.depth_rank - cardinality(ahead.names) END AS active_depth_rank" in statement
+    assert "JOIN week_injuries ai ON ai.player_id = a.player_id AND ai.report_status = 'Out'" in statement
+    assert "WHERE a.team_id = c.team_id AND a.position = c.position AND a.depth_rank < c.depth_rank" in statement
 
 
 def test_game_notes_line_movement_is_pre_kickoff_from_one_lowercase_book() -> None:
@@ -1391,8 +1508,10 @@ def test_player_profile_reads_the_roster_team_and_this_weeks_depth_and_injury() 
     [(sql, params)] = session.calls
     assert params == {"player_id": 9, "season": 2026, "week": 4}
     assert "player_teams AS" in sql and "LEFT JOIN player_teams pt ON pt.player_id = p.id" in sql
-    assert "nfl_player_depth_charts d ON d.player_id = p.id AND d.season = :season AND d.week = :week" in sql
-    assert "nfl_player_injuries i ON i.player_id = p.id AND i.season = :season AND i.week = :week" in sql
+    assert "FROM nfl_player_depth_charts WHERE season = :season AND week = :week" in sql
+    assert "LEFT JOIN week_depth d ON d.player_id = p.id" in sql
+    assert "d.active_depth_rank, d.out_ahead" in sql
+    assert "injury_reports i ON i.player_id = p.id AND i.season = :season AND i.week = :week" in sql
     assert profile == {"id": 9, "name": "James Cook", "aliases": ["J. Cook"]}
 
 
@@ -1478,3 +1597,46 @@ def test_week_line_only_props_preserve_sport_week_market_and_snapshot_boundaries
     assert "DISTINCT ON (l.game_id, l.provider, l.provider_prop_id)" in sql
     assert "ORDER BY l.game_id, l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
     assert line["game_id"] == 49 and line["line"] == 1.5
+
+
+def _kicker_row(**overrides: object) -> dict[str, object]:
+    stats: dict[str, object] = {column: 0 for column in nfl_repository.KICKER_SCORING_STAT_COLUMNS}
+    return {
+        "player_id": 9, "game_id": 3, "week": 4,
+        "fantasy_line": Decimal("8.5"), "fantasy_fetched_at": datetime(2026, 10, 4, 15, 0, tzinfo=UTC),
+        "kicking_line": Decimal("7.5"), "kicking_fetched_at": datetime(2026, 10, 4, 16, 0, tzinfo=UTC),
+        "has_stat_row": True, **stats, "fg_made": 2, "pat_made": 3,
+    } | overrides
+
+
+def test_kicker_scoring_rows_pair_each_kickers_two_standard_full_game_lines() -> None:
+    session = _MappingSession([_kicker_row()])
+
+    [row] = asyncio.run(nfl_repository.get_kicker_scoring_rows(cast(AsyncSession, session), 2026, 8))
+
+    [(sql, params)] = session.calls
+    assert params == {"season": 2026, "through_week": 8, "fantasy_market": "fantasy_points", "kicking_market": "kicking_points"}
+    assert "p.position = 'K'" in sql
+    assert "l.odds_type = 'standard' AND l.segment = 'full_game' AND l.fetched_at < g.start_utc" in sql
+    assert "g.game_type = 'REG' AND g.status = 'completed'" in sql
+    assert "g.week <= :through_week" in sql
+    assert "DISTINCT ON (l.provider, l.provider_prop_id)" in sql
+    assert "ORDER BY l.provider, l.provider_prop_id, l.fetched_at DESC, l.id DESC" in sql
+    # A second prop in the same market on one player-game: the later snapshot wins.
+    assert "DISTINCT ON (player_id, game_id, market)" in sql
+    assert "ORDER BY player_id, game_id, market, fetched_at DESC, id DESC" in sql
+    assert "LEFT JOIN per_market f ON" in sql and "LEFT JOIN per_market k ON" in sql
+    assert "LEFT JOIN nfl_player_weekly_stats s ON s.player_id = kg.player_id AND s.game_id = kg.game_id" in sql
+    for column in KICKING_DISTANCE_COLUMNS:
+        assert f"s.{column}" in sql
+    assert (row.fantasy_line, row.kicking_line, row.week) == (8.5, 7.5, 4)
+    assert row.stats is not None and (row.stats["fg_made"], row.stats["pat_made"]) == (2, 3)
+
+
+def test_a_kicker_game_with_one_line_and_no_stat_row_keeps_its_gaps() -> None:
+    session = _MappingSession([_kicker_row(kicking_line=None, kicking_fetched_at=None, has_stat_row=False)])
+
+    [row] = asyncio.run(nfl_repository.get_kicker_scoring_rows(cast(AsyncSession, session), 2026, 8))
+
+    assert row.kicking_line is None and row.kicking_fetched_at is None
+    assert row.stats is None

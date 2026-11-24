@@ -9,13 +9,13 @@ describe('resolveApiBaseUrl', () => {
   })
 
   it('returns a deployed origin trimmed and without a trailing slash', () => {
-    expect(resolveApiBaseUrl('https://sportapp-api.onrender.com')).toBe('https://sportapp-api.onrender.com')
-    expect(resolveApiBaseUrl(' https://sportapp-api.onrender.com/ ')).toBe('https://sportapp-api.onrender.com')
+    expect(resolveApiBaseUrl('https://sportapp-api-ftsf.onrender.com')).toBe('https://sportapp-api-ftsf.onrender.com')
+    expect(resolveApiBaseUrl(' https://sportapp-api-ftsf.onrender.com/ ')).toBe('https://sportapp-api-ftsf.onrender.com')
     expect(resolveApiBaseUrl('http://127.0.0.1:8000//')).toBe('http://127.0.0.1:8000')
   })
 
   it('rejects a value that is not an http(s) origin', () => {
-    expect(() => resolveApiBaseUrl('sportapp-api.onrender.com')).toThrow(/VITE_API_BASE_URL/)
+    expect(() => resolveApiBaseUrl('sportapp-api-ftsf.onrender.com')).toThrow(/VITE_API_BASE_URL/)
     expect(() => resolveApiBaseUrl('ftp://example.com')).toThrow(/VITE_API_BASE_URL/)
     expect(() => resolveApiBaseUrl('https://')).toThrow(/VITE_API_BASE_URL/)
   })

@@ -51,7 +51,7 @@ class PropProbabilities:
         return max(self.p_over, self.p_under) / actionable
 
 
-def _normal_cdf(z: float) -> float:
+def normal_cdf(z: float) -> float:
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
 
 
@@ -59,13 +59,13 @@ def _normal_probs_from_sigma(line: float, expected: float, sigma: float, *, push
     if push_aware and float(line).is_integer():
         lower = (line - 0.5 - expected) / sigma
         upper = (line + 0.5 - expected) / sigma
-        p_under = _normal_cdf(lower)
-        p_push = max(0.0, _normal_cdf(upper) - p_under)
+        p_under = normal_cdf(lower)
+        p_push = max(0.0, normal_cdf(upper) - p_under)
         p_over = max(0.0, 1.0 - p_under - p_push)
         return PropProbabilities(p_over, p_under, p_push)
 
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return PropProbabilities(1.0 - p_under, p_under, 0.0)
 
@@ -85,7 +85,7 @@ def fantasy_score_probs(line: float, expected: float) -> tuple[float, float]:
         math.sqrt(games_sd**2 + sets_sd**2 + misc_sd**2) * _FANTASY_SCORE_SPREAD_CALIBRATION,
     )
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return 1.0 - p_under, p_under
 
@@ -121,7 +121,7 @@ def break_points_probs(line: float, expected: float) -> tuple[float, float]:
     """Approximate break-points-won probabilities with mild overdispersion."""
     sigma = max(1.15, math.sqrt(max(expected, 0.0)) * 1.2)
     z = (line - expected) / sigma
-    p_under = _normal_cdf(z)
+    p_under = normal_cdf(z)
     p_under = max(0.0, min(1.0, p_under))
     return 1.0 - p_under, p_under
 
@@ -261,3 +261,36 @@ def total_games_probs(
         p_under=p2 * short.p_under + p3 * long.p_under,
         p_push=p2 * short.p_push + p3 * long.p_push,
     )
+
+
+_MEAN_SEARCH_HALF_WIDTH = 30.0
+_MEAN_SEARCH_ITERATIONS = 60
+_LINE_P_OVER_MIN = 0.02
+_LINE_P_OVER_MAX = 0.98
+
+
+def total_games_mean_from_line(
+    line: float,
+    p_over: float = 0.5,
+    best_of: int = 3,
+    p_deciding_set: float | None = None,
+) -> float:
+    """The expected total implied by a book total-games line (48a).
+
+    A book line is the point the market prices near 50/50, not the mean. Total
+    games is skewed by the deciding-set mode, so the mean sits above the line.
+    This finds the mean whose set-count mixture gives the line's over price,
+    push excluded. P(over) rises with the mean, so a bounded bisection is exact
+    enough and cannot loop.
+    """
+    target = clamp(float(p_over), _LINE_P_OVER_MIN, _LINE_P_OVER_MAX)
+    low, high = line - _MEAN_SEARCH_HALF_WIDTH, line + _MEAN_SEARCH_HALF_WIDTH
+    for _ in range(_MEAN_SEARCH_ITERATIONS):
+        mid = (low + high) / 2.0
+        probs = total_games_probs(line, mid, p_deciding_set=p_deciding_set, best_of=best_of)
+        decided = max(1e-12, probs.p_over + probs.p_under)
+        if probs.p_over / decided < target:
+            low = mid
+        else:
+            high = mid
+    return (low + high) / 2.0

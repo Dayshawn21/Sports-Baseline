@@ -1,33 +1,8 @@
 /* Tennis slate (build-plan 31b), after prototypes/tennis-slate.html.
-   Scoped to .unified-tennis-page. The head is the shared PageHead (38a); its
-   controls hold the slate's filters (38c1), as NFL's hold season and week. */
+   Scoped to .unified-tennis-page. The head is the shared PageHead (38a) with only
+   the period control; the tour tabs on the table are the one filter (57d). */
 
-/* ── Filters ── */
-
-.unified-tennis-page .unified-filter-button {
-  min-height: 32px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-
-.unified-tennis-page .unified-filters .ant-select-selector,
-.unified-tennis-page .unified-filters .ant-picker {
-  border-radius: 999px;
-}
-
-/* ── Shared bits: section label, tour tag, confidence tier ── */
-
-.tennis-slate-section {
-  margin: 0 0 var(--space-3);
-  color: var(--text-secondary);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
+/* ── Shared bits: tour tag, confidence tier ── */
 
 .tennis-tour-tag {
   display: inline-flex;
@@ -59,9 +34,10 @@
 
 /* ── Digest boxes (38c1): the shared strip, with a priced best bet's EV in green ── */
 
-/* The toolbar already spaces the strip from above; the table follows it directly, so space below. */
-.unified-tennis-page .slate-digest { margin: 0 0 var(--space-5); }
-.tennis-digest__play.is-selected { border-color: rgba(255, 255, 255, 0.35); }
+/* The strip, legend and table keep the game slates' spacing: 22px under the head, 28px above the table. */
+.unified-tennis-page .unified-notices:empty { display: none; }
+.unified-tennis-page .unified-notices:empty + .nfl-slate__legend { margin-top: 22px; }
+.unified-tennis-page .tennis-slate-table { margin-top: 28px; }
 .tennis-digest__ev { color: var(--positive); }
 .tennis-digest__foot { display: flex; align-items: center; gap: var(--space-2); margin-top: 6px; }
 
@@ -84,7 +60,9 @@
   padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
-.tennis-slate-table__head .tennis-slate-section {
+/* The window title of the game slates, its rule running to the tour tabs. */
+.tennis-slate-table__head .tennis-slate-table__title {
+  flex: 1 1 auto;
   margin: 0;
 }
 
@@ -122,9 +100,8 @@
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-card);
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font: 700 11px var(--font-display);
+  letter-spacing: 0.14em;
   text-align: right;
   text-transform: uppercase;
   white-space: nowrap;
@@ -159,8 +136,6 @@
 .tennis-slate-table__row {
   cursor: pointer;
   outline: none;
-  /* A digest pick scrolls its row to the top; keep it clear of the sticky top bar. */
-  scroll-margin-top: calc(var(--nav-height) + 12px);
 }
 
 .tennis-slate-table__row:hover td,
@@ -168,11 +143,7 @@
   background: var(--bg-card-hover);
 }
 
-.tennis-slate-table__row.is-open td {
-  background: var(--bg-raised);
-}
-
-/* Match links and unlinked-prop toggles share the same appearance. */
+/* The match link, and the plain names of a row with no analysis page. */
 .tennis-slate-table__toggle {
   display: block;
   padding: 0;
@@ -193,17 +164,6 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   border-radius: 4px;
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
-}
-
-/* The expansion's cell drops the table's mono, right-aligned, single-line cell styles. */
-.tennis-slate-table__detail > td {
-  padding: 0;
-  border-bottom: 1px solid var(--border-card);
-  background: var(--bg-raised);
-  font-family: var(--font-body);
-  font-size: 14px;
-  text-align: left;
-  white-space: normal;
 }
 
 .tennis-slate-table td.tennis-slate-table__time {
@@ -249,7 +209,7 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
 
 .tennis-slate-table__pick {
   max-width: 200px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 /* The ellipsis lives on the span: overflow: hidden on a collapsed-border cell clips its border. */
@@ -259,13 +219,10 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   text-overflow: ellipsis;
 }
 
-.tennis-slate-table__ev {
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.tennis-slate-table__ev.is-play {
+/* Only a priced best bet carries this; the lean itself stays gray. */
+.tennis-slate-table__pick .tennis-slate-table__lean-ev {
   color: var(--positive);
+  font-weight: 600;
 }
 
 .tennis-slate-table__flags span {
@@ -296,16 +253,49 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
 }
 
 @media (max-width: 768px) {
-  /* Two filters a row, so the six head controls do not push the chips a screen down. */
-  .unified-tennis-page .lf-page-head .unified-filters {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
+  .unified-notices:empty { display: none; }
+  .unified-tennis-page .slate-digest, .unified-tennis-page .slate-no-picks { margin-bottom: var(--space-3); }
+
+  /* Rows, not cards: the match list drops its box, and the tour tabs hold one row. */
+  .unified-tennis-page .tennis-slate-table { margin-top: 16px; }
+
+  .tennis-slate-table {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
 
-  /* Table rows become two lines: time and players, then best pick and EV. */
+  .tennis-slate-table__head { padding: 0; }
+
+  .tennis-slate-table__head .tennis-slate-table__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tennis-slate-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tennis-slate-tabs button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .tennis-slate-table__empty { padding-inline: 0; }
+
+  /* Table rows become two lines: time and players, then the model lean. */
   .tennis-slate-table thead,
-  .tennis-slate-table__row > td:not(.tennis-slate-table__time):not(.tennis-slate-table__players):not(.tennis-slate-table__pick):not(.tennis-slate-table__ev) {
+  .tennis-slate-table__row > td:not(.tennis-slate-table__time):not(.tennis-slate-table__players):not(.tennis-slate-table__pick) {
     display: none;
   }
 
@@ -315,20 +305,20 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
   }
 
   .tennis-slate-table__group,
-  .tennis-slate-table__group td,
-  .tennis-slate-table__detail,
-  .tennis-slate-table__detail > td {
+  .tennis-slate-table__group td {
     display: block;
   }
+
+  .tennis-slate-table__group td { padding-inline: 0; }
 
   .tennis-slate-table__row {
     display: grid;
     grid-template-areas:
-      "time players players"
-      "pick pick ev";
-    grid-template-columns: 92px minmax(0, 1fr) auto;
+      "time players"
+      "pick pick";
+    grid-template-columns: 92px minmax(0, 1fr);
     column-gap: var(--space-3);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--border-subtle);
   }
 
@@ -343,12 +333,7 @@ a.tennis-slate-table__toggle:hover { color: inherit; }
     background: var(--bg-card-hover);
   }
 
-  .tennis-slate-table__row.is-open {
-    background: var(--bg-raised);
-  }
-
   .tennis-slate-table td.tennis-slate-table__time { grid-area: time; }
   .tennis-slate-table td.tennis-slate-table__players { grid-area: players; }
   .tennis-slate-table td.tennis-slate-table__pick { grid-area: pick; max-width: none; padding-top: var(--space-1); }
-  .tennis-slate-table td.tennis-slate-table__ev { grid-area: ev; align-self: end; }
 }

@@ -1,10 +1,22 @@
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.db.pool import get_db
+from app.repositories import report_snapshots
 from app.routers import nba as nba_router
 from app.services.nba import track_record
-from tests.test_nfl_track_record_service import GRADED_AT, _call, _inputs
+from tests.helpers.nfl_track_record_service import GRADED_AT, _call, _inputs
+
+
+@pytest.fixture(autouse=True)
+def no_snapshot_in_dev(monkeypatch):
+    async def no_snapshot(_db, _report, _season):
+        return None
+
+    monkeypatch.setattr(report_snapshots, "get_snapshot", no_snapshot)
+    monkeypatch.setattr(settings, "api_env", "dev")
 
 
 def _client() -> TestClient:
@@ -54,6 +66,15 @@ def test_ranking_route_defaults_to_the_current_nba_season(monkeypatch):
 
     assert res.status_code == 200
     assert graded == [2026] and res.json()["season"] == 2026
+
+
+def test_ranking_route_refuses_an_unknown_season_before_grading(monkeypatch):
+    graded = _serve(monkeypatch, current_season=2026)
+
+    responses = [_client().get("/nba/model/ranking", params={"season": s}) for s in (1999, 9999)]
+
+    assert [r.status_code for r in responses] == [422, 422]
+    assert graded == []
 
 
 def test_ranking_route_404s_with_no_regular_season_game(monkeypatch):

@@ -1,0 +1,69 @@
+.nhl-market-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.nhl-market-grid > div, .nhl-market-probability > div { min-width: 0; padding: 14px 16px; }
+.nhl-market-grid > div + div { border-left: 1px solid var(--border-subtle); }
+.nhl-market-grid dt, .nhl-market-probability dt { margin-bottom: 8px; color: var(--text-secondary); font: 600 12px var(--font-body); }
+.nhl-market-grid dd, .nhl-market-probability dd { display: grid; gap: 6px; margin: 0; overflow-wrap: anywhere; }
+.nhl-market-grid dd strong, .nhl-market-probability dd strong { color: var(--text-primary); font: 500 18px/1.4 var(--font-mono); }
+.nhl-market-grid dd span, .nhl-market-probability dd span { color: var(--text-secondary); font: 400 13px/1.4 var(--font-mono); }
+.nhl-market-grid small, .nhl-market-probability small { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.nhl-market-probability { margin: 0; border-top: 1px solid var(--border-subtle); }
+
+.nhl-props-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
+.nhl-props-heading h2 { margin: 0; color: var(--text-primary); font: 700 22px var(--font-display); }
+.nhl-props-heading p { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.nhl-props-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 660px; margin: 0 0 24px; }
+.nhl-props-counts > div { display: flex; flex-direction: column-reverse; gap: 4px; }
+.nhl-props-counts dt { color: var(--text-secondary); font-size: 12px; }
+.nhl-props-counts dd { margin: 0; color: var(--text-primary); font: 500 22px/1.3 var(--font-mono); }
+.nhl-prop-group { margin: 0 0 20px; padding: 14px 16px 0; border: 1px solid var(--border-card); border-radius: var(--radius-sm); background: var(--bg-card); }
+.nhl-prop-group h3 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; color: var(--text-primary); font: 700 18px var(--font-display); }
+.nhl-prop-group h3 small { color: var(--text-muted); font: 400 11px var(--font-mono); }
+.nhl-prop-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: left; color: var(--text-secondary); font-size: 12px; }
+.nhl-prop-table th { padding: 8px 8px; color: var(--text-muted); font-size: 11px; font-weight: 500; }
+.nhl-prop-table .nhl-prop-col-player { width: 22%; }
+.nhl-prop-table .nhl-prop-col-line { width: 9%; }
+.nhl-prop-table .nhl-prop-col-gap { width: 8%; }
+.nhl-prop-table .nhl-prop-col-pover { width: 12%; }
+.nhl-prop-table th.nhl-prop-updated { width: 14%; }
+.nhl-prop-table td { padding: 10px 8px; border-top: 1px solid var(--border-subtle); overflow-wrap: anywhere; vertical-align: top; }
+.nhl-prop-table td strong { display: block; color: var(--text-primary); font: 600 13px/1.4 var(--font-body); }
+.nhl-prop-table td small, .nhl-prop-table time { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.nhl-prop-table td small { display: block; margin-top: 2px; }
+.nhl-prop-table td.nhl-prop-line { color: var(--text-primary); font: 500 14px/1.4 var(--font-mono); }
+.nhl-prop-table .nhl-prop-updated-mobile, .nhl-prop-table .nhl-prop-alt-mobile { display: none; }
+.nhl-prop-link { color: inherit; text-decoration: underline; text-decoration-color: var(--border-card); text-underline-offset: 3px; }
+.nhl-prop-link:hover, .nhl-prop-link:focus-visible { text-decoration-color: currentColor; }
+
+.nhl-game-context-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nhl-game-context-teams > * { min-width: 0; padding: 14px 16px; }
+.nhl-game-context-teams > * + * { border-left: 1px solid var(--border-subtle); }
+.nhl-game-context h3 { margin: 0 0 10px; color: var(--text-secondary); font: 600 13px/1.5 var(--font-body); }
+.nhl-game-context h3 span { margin-left: 8px; color: var(--text-muted); font-size: 11px; font-weight: 400; }
+.nhl-game-context p { margin: 4px 0 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-body); overflow-wrap: anywhere; }
+.nhl-game-context .nfl-game-note { margin: 0; color: var(--text-muted); font-size: 11px; }
+.nhl-game-context .nhl-game-goalie-name { color: var(--text-primary); font-weight: 600; }
+.nhl-game-context .nhl-game-context-meta, .nhl-game-context-source p { color: var(--text-muted); font-size: 11px; }
+.nhl-game-context-source { padding: 0 16px 14px; }
+.nhl-game-injury-team ul { margin: 0; padding: 0; list-style: none; }
+.nhl-game-injury-team li { padding: 12px 0; border-top: 1px solid var(--border-subtle); }
+.nhl-game-injury-team li:first-child { padding-top: 0; border-top: 0; }
+.nhl-game-injury-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.nhl-game-injury-title strong { min-width: 0; color: var(--text-primary); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .nhl-market-grid { grid-template-columns: minmax(0, 1fr); }
+  .nhl-market-grid > div + div { border-left: 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-game-context-teams { grid-template-columns: minmax(0, 1fr); }
+  .nhl-game-context-teams > * + * { border-left: 0; border-top: 1px solid var(--border-subtle); }
+  .nhl-prop-group { padding-right: 8px; padding-left: 8px; }
+  .nhl-prop-table .nhl-prop-col-player { width: auto; }
+  .nhl-prop-table .nhl-prop-col-line { width: 16%; }
+  .nhl-prop-table .nhl-prop-col-gap { width: 15%; }
+  .nhl-prop-table .nhl-prop-col-pover { width: 17%; }
+  .nhl-prop-table td.nhl-prop-line { font-size: 13px; }
+  .nhl-prop-table .nhl-prop-updated, .nhl-prop-table .nhl-prop-alt { display: none; }
+  .nhl-prop-table .nhl-prop-updated-mobile, .nhl-prop-table .nhl-prop-alt-mobile { display: block; margin-top: 4px; }
+  .nhl-prop-table td, .nhl-prop-table th { padding-right: 4px; padding-left: 4px; }
+}
+
+.nhl-prop-caption { margin: 0 0 8px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }

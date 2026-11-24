@@ -1,5 +1,6 @@
 /** Display labels shared by the NFL slate and the prop-line board. */
 import { fmtTimeCT } from '~/utils/format'
+import { fmtPct } from '~/utils/odds'
 
 export const NFL_SEASON_OPTIONS = [
   { value: 2026, label: '2026' },
@@ -24,22 +25,8 @@ export const SEGMENT_LABELS: Record<string, string> = {
   q1: '1st quarter', q2: '2nd quarter', q3: '3rd quarter', q4: '4th quarter', season: 'Season total',
 }
 
-export const SEGMENT_COLORS: Record<string, string> = {
-  full_game: 'green', first_half: 'blue', second_half: 'blue',
-  q1: 'geekblue', q2: 'geekblue', q3: 'geekblue', q4: 'geekblue', season: 'orange',
-}
-
-// Full game first, then in-game segments, with season totals last: a season line
-// is a different animal from a single-game line and should not lead.
-const SEGMENT_ORDER = ['full_game', 'first_half', 'second_half', 'q1', 'q2', 'q3', 'q4', 'season']
-
 export const ODDS_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', goblin: 'Goblin', demon: 'Demon',
-}
-
-/** Goblin and demon lines are moved off the market price on purpose. */
-export const ODDS_TYPE_COLORS: Record<string, string> = {
-  standard: 'default', goblin: 'gold', demon: 'volcano',
 }
 
 export const FLAG_LABELS: Record<string, string> = {
@@ -50,10 +37,12 @@ export const FLAG_LABELS: Record<string, string> = {
   partial_season_baseline: 'This season is still being played, so the average will move',
   segment_mismatch: 'Whole-game average cannot be compared to this segment',
   non_standard_line: 'Alternate line with an adjusted payout, not the market price',
+  position_not_scored: 'Fantasy scoring for this position is not modelled yet',
   team_not_in_game: "Player's current roster team is not in this game, so opponent and home/away are unknown",
   injury_out: 'Ruled out on this week\'s final injury report',
   injury_doubtful: 'Listed doubtful on this week\'s injury report',
   injury_questionable: 'Listed questionable on this week\'s injury report',
+  role_changed: 'Out, or moved up by an Out teammate, so the projection cannot know this week\'s role: a reference, not a pick',
   depth_promoted: 'Moved up the depth chart since the previous week (display only, not in the model)',
   depth_demoted: 'Moved down the depth chart since the previous week (display only, not in the model)',
   depth_new: 'New team or position on the depth chart, or first listing',
@@ -69,32 +58,12 @@ export const BASELINE_REASON_LABELS: Record<string, string> = {
   current_previous_blend: 'This season and last, weighted by games, last season counted at 0.6',
 }
 
-export function segmentRank(segment: string): number {
-  const index = SEGMENT_ORDER.indexOf(segment)
-  return index === -1 ? SEGMENT_ORDER.length : index
-}
-
 export function segmentLabel(segment: string): string {
   return SEGMENT_LABELS[segment] ?? segment
 }
 
 export function marketLabel(market: string): string {
   return MARKET_LABELS[market] ?? market
-}
-
-export function formatTime(value: string | null): string {
-  const time = value ? Date.parse(value) : Number.NaN
-  if (Number.isNaN(time)) return 'Start time unavailable'
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }).format(time) + ' CT'
 }
 
 /** Compact Central kickoff time for dense board rows. */
@@ -111,7 +80,7 @@ export function formatHistoryValue(market: string, value: number): string {
 /** Anytime TD is a probability; every other market is a raw stat count. */
 export function formatProjection(market: string, value: number | null): string {
   if (value === null) return '--'
-  return market === 'anytime_touchdown' ? `${(value * 100).toFixed(1)}%` : value.toFixed(1)
+  return market === 'anytime_touchdown' ? fmtPct(value) : value.toFixed(1)
 }
 
 // Mirrors TEAM_GAME_DVP_MARKETS in api/app/core/nfl_projection.py: these markets'

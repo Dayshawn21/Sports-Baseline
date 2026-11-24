@@ -4,6 +4,11 @@ on:
   # GitHub pauses schedules after 60 days without a commit. Times are UTC.
   schedule:
     - cron: "30 13 * * *"
+  # Cron starts here run hours late, so the shadow freeze also follows each odds
+  # refresh: the evening one prices tomorrow's early matches before they start.
+  workflow_run:
+    workflows: ["Tennis Game Odds"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       job:
@@ -30,10 +35,10 @@ jobs:
       || (github.event_name == 'schedule' && github.event.schedule == '30 13 * * *')
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -61,7 +66,8 @@ jobs:
     if: |
       always() && !cancelled() && (
         (needs.predictions.result == 'success')
-        || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'tennis-elo-comparison'))
+        || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'tennis-elo-comparison')
+        || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -70,8 +76,8 @@ jobs:
       group: tennis-elo-shadow-freeze
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -82,14 +88,18 @@ jobs:
         id: utc
         run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - name: Restore original daily ELO inputs
-        uses: actions/cache/restore@v4
+        id: elo-inputs
+        uses: actions/cache/restore@v6
         with:
           path: |
             api/data/tennismylife-elo/files
             api/data/tennismylife-elo/manifests
-          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv') }}
+          key: tennis-elo-v1-${{ runner.os }}-${{ steps.utc.outputs.day }}-${{ hashFiles('api/app/core/tennis_elo.py', 'api/app/ingest/tennis_elo.py', 'api/app/ingest/data/tennis_elo_identities.csv', 'api/app/ingest/data/tennis_elo_local_overrides.csv', 'api/app/ingest/data/tennis_elo_identity_amendments.csv') }}
       # Inactive experiments skip cleanly. Active cache misses retain coverage
       # attempts but freeze no pairs. No fallback source and no automatic scoring.
+      # An odds-triggered run before the day's candidate inputs exist skips
+      # instead: its misses would only measure workflow timing, not coverage.
       - name: Freeze reviewed forward experiment
+        if: github.event_name != 'workflow_run' || steps.elo-inputs.outputs.cache-hit == 'true'
         working-directory: api
         run: python -m app.ingest.tennis_elo_comparison --scheduled

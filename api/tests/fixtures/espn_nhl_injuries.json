@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-10-24T16:18:22Z",
+  "status": "success",
+  "injuries": [
+    {
+      "id": "25",
+      "injuries": [
+        {
+          "status": "Injured Reserve",
+          "date": "2026-10-23T21:08Z",
+          "athlete": {
+            "displayName": "Pavel Mintyukov",
+            "links": [
+              {
+                "href": "https://www.espn.com/nhl/player/_/id/5080154"
+              }
+            ],
+            "team": {
+              "id": "25",
+              "abbreviation": "ANA"
+            }
+          },
+          "details": {
+            "fantasyStatus": {
+              "description": "IR",
+              "abbreviation": "IR"
+            },
+            "type": "Lower Body",
+            "returnDate": "2026-10-29"
+          },
+          "shortComment": "Fixture comment."
+        },
+        {
+          "status": "Day-To-Day",
+          "date": "2026-10-23T15:50Z",
+          "athlete": {
+            "displayName": "Jeff Malott",
+            "links": [
+              {
+                "href": "https://www.espn.com/nhl/player/_/id/4895214"
+              }
+            ],
+            "team": {
+              "id": "25",
+              "abbreviation": "ANA"
+            }
+          },
+          "details": {
+            "fantasyStatus": {
+              "description": "Day-To-Day",
+              "abbreviation": "Day-To-Day"
+            },
+            "type": "Illness",
+            "returnDate": "2026-10-24"
+          },
+          "shortComment": "Fixture comment."
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "injuries": [
+        {
+          "status": "Out",
+          "date": "2026-10-20T15:58Z",
+          "athlete": {
+            "displayName": "Esa Lindell",
+            "links": [
+              {
+                "href": "https://www.espn.com/nhl/player/_/id/3069352"
+              }
+            ],
+            "team": {
+              "id": "9",
+              "abbreviation": "DAL"
+            }
+          },
+          "details": {
+            "fantasyStatus": {
+              "description": "OUT",
+              "abbreviation": "OUT"
+            },
+            "type": "Lower Body",
+            "returnDate": "2026-10-27"
+          },
+          "shortComment": "Fixture comment."
+        }
+      ]
+    }
+  ]
+}
