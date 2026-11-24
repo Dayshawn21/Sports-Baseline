@@ -1,7 +1,7 @@
 # Feature: NBA over probability, second method - 2026-27 confirmation
 
 **From build-plan:** feature 44b (parent 44)
-**Status:** spec ready for review; steps 1-4 can be built now, step 5 waits for the gate (about 2026-11-17)
+**Status:** all steps built; the one confirmation ran 2026-11-24 and hid every carried market, so 44c is dropped
 
 ## Goal
 
@@ -127,7 +127,7 @@ was too big, so split it.
   and record its output below (expected `accruing`: weeks 1-4 not finished).
   *Done when:* the output is recorded and shows no box-score load. Also run
   `--score` once to record the `accruing` stop.
-- [ ] **Step 5 - The one scoring run (after the gate opens; separate owner
+- [x] **Step 5 - The one scoring run (after the gate opens; separate owner
   approval)** - once gate mode reads `ready` (about 2026-11-17, after the
   Monday box-score load), the owner approves, then `--score` runs once.
   *Done when:*
@@ -209,4 +209,33 @@ was too big, so split it.
 
   `--score` stopped with "Accruing: nothing scored, no box score read." The
   result module was not written. 2026-27 box-score reads: 0.
-- **Confirmation run (step 5):** _pending_
+- **Confirmation run (step 5, 2026-11-24 16:11 UTC):** the gate read `ready`
+  (weeks 1-4: 43, 49, 54 and 51 `REG` games, all completed). The owner
+  approved in chat, then `--score` ran once against the shared database on the
+  branch as pinned at `dcabc8f5` (master's later changes to the read path only
+  add functions). The drift guard passed. Every carried market reads `hide`:
+
+  | Market | Family | Cases | Pairs | ECE | Worst bin | Brier | Normal | Verdict | Failed on |
+  |---|---|---:|---:|---:|---:|---:|---:|---|---|
+  | points | scaled_normal | 2618 | 13080 | 0.072 | 0.103 | 0.1917 | 0.1919 | hide | ECE, worst gap |
+  | rebounds | negbin | 2618 | 11950 | 0.019 | 0.052 | 0.1931 | 0.1958 | hide | worst gap |
+  | points_rebounds_assists | scaled_normal | 2618 | 13090 | 0.053 | 0.083 | 0.1707 | 0.1707 | hide | ECE, worst gap |
+  | points_rebounds | scaled_normal | 2618 | 13090 | 0.057 | 0.097 | 0.1762 | 0.1763 | hide | ECE, worst gap |
+  | points_assists | scaled_normal | 2618 | 13088 | 0.063 | 0.088 | 0.1815 | 0.1817 | hide | ECE, worst gap |
+  | rebounds_assists | scaled_normal | 2618 | 12991 | 0.037 | 0.063 | 0.1827 | 0.1831 | hide | ECE, worst gap |
+
+  Blocks and threes made stay `not_carried` (44a). Coverage: week 1 3,618
+  cases, week 2 3,966, week 3 4,200, week 4 3,924. Whole-number-line P(push),
+  information only, matched observed within 0.005 in every market (rebounds
+  0.137 predicted, 0.132 observed).
+
+  - **Reading:** the sharpness gain over the normal held (every Brier at or
+    below it), but calibration did not carry from 2024-25 to the 2026-27
+    opening month: five of six markets miss ECE 0.02, and rebounds passes ECE
+    and Brier but misses the 0.05 bin gate by 0.002. Per the spec, no market is
+    retuned on a near miss; a different method is a new item.
+  - **Result module:** `api/app/core/nba_over_probability_v2_confirmation.py`
+    written with `SHOWN_MARKETS = frozenset()`, so **44c is dropped**. The
+    hook refuses an `Edit` of it (exit 2, "written once by its scoring CLI").
+  - **2025-26 holdout reads:** unchanged at 2 (0 cases scored).
+  - **2026-27 sample reads:** 1, now spent.
