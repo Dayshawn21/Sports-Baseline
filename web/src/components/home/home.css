@@ -17,6 +17,11 @@
   text-transform: none;
 }
 
+/* Keeps the refreshed time's space (and the line's wrap) until the first slate loads. */
+.home-status__pending {
+  visibility: hidden;
+}
+
 .home-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -76,8 +81,10 @@
   font: 400 12px var(--font-body);
 }
 
-/* No line clamp: a clamped line still holds its hidden match links in the Tab order. */
+/* No line clamp: a clamped line still holds its hidden match links in the Tab order.
+   Two lines are reserved, the usual loaded height, so a loading card is already that tall. */
 .home-card__next {
+  min-height: calc(12px + 1px + 2lh);
   margin: 14px 0 0;
   padding-top: 12px;
   color: var(--text-secondary);
@@ -497,6 +504,7 @@
 
   .home-card__next {
     grid-area: next;
+    min-height: calc(8px + 1px + 2lh);
     margin: 8px 0 0;
     padding-top: 8px;
     font-size: 12px;

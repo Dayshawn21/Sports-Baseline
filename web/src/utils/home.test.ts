@@ -34,8 +34,12 @@ describe('startLabel', () => {
 
 describe('todayStatus and sportNoun', () => {
   it('leads with the Central date and time, then when the newest slate loaded', () => {
-    expect(todayStatus(NOW, NOW - 30 * 60 * 1000)).toBe('Tue Nov 3 · 11:00 AM CT · slates refreshed 10:30 AM')
-    expect(todayStatus(NOW, null)).toBe('Tue Nov 3 · 11:00 AM CT')
+    expect(todayStatus(NOW, NOW - 30 * 60 * 1000))
+      .toEqual({ when: 'Tue Nov 3 · 11:00 AM CT', refreshed: ' · slates refreshed 10:30 AM', pending: false })
+  })
+
+  it('holds a widest-time placeholder until a slate loads', () => {
+    expect(todayStatus(NOW, null)).toEqual({ when: 'Tue Nov 3 · 11:00 AM CT', refreshed: ' · slates refreshed 12:00 PM', pending: true })
   })
 
   it('takes the newest load time and ignores slates that have not loaded', () => {

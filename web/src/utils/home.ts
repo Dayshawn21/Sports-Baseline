@@ -61,10 +61,20 @@ export function sportNoun(sport: Sport, count: number): string {
   return count === 1 ? NOUN[sport].one : NOUN[sport].many
 }
 
-/** The page head's status line: today's date and time in Central, then when the newest slate loaded. */
-export function todayStatus(now: number, refreshedMs: number | null): string {
+export interface TodayStatus { when: string, refreshed: string, pending: boolean }
+
+// A two-digit hour, so the hidden placeholder is as wide as the widest real time.
+const REFRESHED_PLACEHOLDER = ' · slates refreshed 12:00 PM'
+
+/**
+ * The page head's status line: today's date and time in Central, then when the newest slate loaded.
+ * Until one has, `refreshed` is a placeholder the page keeps hidden, so the line wraps to its final shape on first paint.
+ */
+export function todayStatus(now: number, refreshedMs: number | null): TodayStatus {
   const when = `${WEEKDAY.format(now)} ${MONTH_DAY.format(now)} · ${CLOCK.format(now)} CT`
-  return refreshedMs === null ? when : `${when} · slates refreshed ${CLOCK.format(refreshedMs)}`
+  return refreshedMs === null
+    ? { when, refreshed: REFRESHED_PLACEHOLDER, pending: true }
+    : { when, refreshed: ` · slates refreshed ${CLOCK.format(refreshedMs)}`, pending: false }
 }
 
 /** The newest load time among the slate queries; react-query reports 0 for one that has not loaded. */

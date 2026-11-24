@@ -32,6 +32,7 @@ export const HomeSportCard = memo(function HomeSportCard({ card, onRetry }: { ca
     {card.next && <p className="home-card__next">
       <span>{card.nextSegments.map((segment, index) => <Segment key={index} sport={card.sport} segment={segment} />)}</span>
     </p>}
+    {card.tone === 'loading' && <p className="home-card__next" aria-hidden="true" />}
     <div className="home-card__links">
       {card.links.map(link => <Link key={link.view} to={link.path}>{link.label}</Link>)}
       {card.tone === 'error' && <button type="button" onClick={onRetry}>Retry</button>}

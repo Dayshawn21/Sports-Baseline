@@ -6,11 +6,15 @@ import { HomeSportCard } from '~/components/home/HomeSportCard'
 import ErrorState from '~/components/shared/ErrorState'
 import PageHead from '~/components/shared/PageHead'
 import { useHomeData } from '~/hooks/useHomeData'
-import { gapTabs, gapsBody, parseGapKind, parseGapTab, todayStatus, type GapKind, type GapTabKey } from '~/utils/home'
+import { gapTabs, gapsBody, parseGapKind, parseGapTab, todayStatus, type GapKind, type GapTabKey, type TodayStatus } from '~/utils/home'
 import '~/components/home/home.css'
 
 function Heading({ title, note }: { title: string, note: string }) {
   return <h2 className="home-section-title">{title} <small>{note}</small></h2>
+}
+
+function TodayLine({ status }: { status: TodayStatus }) {
+  return <>{status.when}<span className={status.pending ? 'home-status__pending' : undefined}>{status.refreshed}</span></>
 }
 
 function homeHref(tab: GapTabKey, view: GapKind): string {
@@ -32,7 +36,7 @@ export default function HomePage() {
 
   if (home.failed) return <ErrorState error={new Error('No sport could be loaded.')} onRetry={() => home.sports.forEach(sport => sport.retry())} />
   return <div className="page-shell"><div className="page-container is-wide">
-    <PageHead title="Today" meta={todayStatus(home.now, home.refreshedAt)} />
+    <PageHead title="Today" meta={<TodayLine status={todayStatus(home.now, home.refreshedAt)} />} />
     <h2 className="home-section-title">Slates</h2>
     <div className="home-cards">
       {home.cards.map(card => <HomeSportCard key={card.sport} card={card} onRetry={card.retry} />)}
