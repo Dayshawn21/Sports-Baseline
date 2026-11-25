@@ -3,7 +3,7 @@ import type { NbaSlateGame } from '~/types/nba'
 import type { NflHomeSlate, NflSlateGame } from '~/types/nfl'
 import type { NhlSlateGame } from '~/types/nhl'
 import { isFinalStatus } from '~/utils/gameState'
-import { centralDay, startLabel, weekdayLabel } from '~/utils/home'
+import { GAPS_PER_SPORT, centralDay, startLabel, weekdayLabel } from '~/utils/home'
 import { nbaPlayerPath } from '~/utils/nbaPlayer'
 import { nflPlayerMarketLink } from '~/utils/nflPlayer'
 import { nbaSlateSummary, type NbaSlateDigestItem } from '~/utils/nbaSlate'
@@ -86,8 +86,6 @@ export interface HomeSource {
   /** Games still to come by Central day, in order; filled for the NFL only, whose week spans days. */
   days: HomeDay[]
 }
-
-export const GAPS_PER_SPORT = 10
 
 /** A gap that shows as 0.0 says nothing, so the home gaps list leaves it out; the rest keep their order. */
 export function isZeroGap(gap: string): boolean {

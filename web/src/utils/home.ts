@@ -172,6 +172,11 @@ export type GapTabKey = 'all' | Sport
 
 const SPORT_TAB_ORDER: Sport[] = ['nfl', 'nba', 'nhl', 'tennis']
 
+/** NHL props have no projection, so it never adds gap rows and never holds up the All tab. */
+const GAP_SPORTS: Sport[] = ['nfl', 'nba', 'tennis']
+
+export const GAPS_PER_SPORT = 10
+
 /** A sport's data and source, as the gaps tabs read them. */
 export interface HomeSportView { data: HomeSportData, source: HomeSource }
 
@@ -187,7 +192,8 @@ export interface GapsFooter { label: string, path: string }
 export type GapKind = 'props' | 'ml'
 
 export type GapsBody =
-  | { kind: 'loading' }
+  /** `rows` blank rows hold the loaded table's height; 0 shows a one-line Loading. */
+  | { kind: 'loading', rows: number }
   | { kind: 'error', text: string }
   | { kind: 'rows', rows: HomeGap[], empty: string, footer: GapsFooter | null }
   | { kind: 'moneyline', rows: HomeMoneyline[], empty: string, note: string, footer: GapsFooter | null }
@@ -227,9 +233,18 @@ function footerFor(sport: Sport, view: SportView): GapsFooter {
   return { label: view === 'props' ? `View all ${label} props` : `Open the ${label} slate`, path }
 }
 
-/** NFL rows then NBA rows, each in its own digest order: a share of a reference line and points never share a sort. */
+/**
+ * NFL rows then NBA rows then tennis, each in its own digest order: a share of a reference line and points never share a sort.
+ * The list stops at the first sport still loading, so a late sport's rows only ever land below the rows already shown.
+ */
 export function allGapRows(sports: HomeSportView[]): HomeGap[] {
-  return SPORT_TAB_ORDER.flatMap(sport => sports.find(entry => entry.data.sport === sport)!.source.gaps)
+  const rows: HomeGap[] = []
+  for (const sport of GAP_SPORTS) {
+    const { data, source } = sports.find(entry => entry.data.sport === sport)!
+    if (data.status === 'loading') break
+    rows.push(...source.gaps)
+  }
+  return rows
 }
 
 const NO_WIN_MODEL_INTRO: Partial<Record<Sport, string>> = {
@@ -253,7 +268,7 @@ function moneylineBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
   if (tab === 'all') {
     const feeding = sports.filter(entry => MONEYLINE_SPORTS.includes(entry.data.sport))
     const rows = MONEYLINE_SPORTS.flatMap(sport => feeding.find(entry => entry.data.sport === sport)!.source.moneyline)
-    if (rows.length === 0 && anyLoading(feeding)) return { kind: 'loading' }
+    if (rows.length === 0 && anyLoading(feeding)) return { kind: 'loading', rows: 0 }
     return { kind: 'moneyline', rows, empty: 'No moneyline gaps yet.', note: MONEYLINE_SPORTS.map(sport => MONEYLINE_NOTE[sport]).join(' '), footer: null }
   }
   const { data, source } = sports.find(entry => entry.data.sport === tab)!
@@ -271,7 +286,7 @@ export function gapsBody(tab: GapTabKey, sports: HomeSportView[], kind: GapKind 
   if (kind === 'ml') {
     if (tab !== 'all') {
       const { status } = sports.find(entry => entry.data.sport === tab)!.data
-      if (status === 'loading') return { kind: 'loading' }
+      if (status === 'loading') return { kind: 'loading', rows: 0 }
       if (status === 'error') return { kind: 'error', text: 'Could not load' }
     }
     return moneylineBody(tab, sports)
@@ -282,11 +297,11 @@ export function gapsBody(tab: GapTabKey, sports: HomeSportView[], kind: GapKind 
 function propsBody(tab: GapTabKey, sports: HomeSportView[]): GapsBody {
   if (tab === 'all') {
     const rows = allGapRows(sports)
-    if (rows.length === 0 && anyLoading(sports)) return { kind: 'loading' }
+    if (rows.length === 0 && anyLoading(sports)) return { kind: 'loading', rows: GAPS_PER_SPORT }
     return { kind: 'rows', rows, empty: 'No gap lines yet.', footer: null }
   }
   const { data, source } = sports.find(entry => entry.data.sport === tab)!
-  if (data.status === 'loading') return { kind: 'loading' }
+  if (data.status === 'loading') return { kind: 'loading', rows: GAMES_INTRO[data.sport] === undefined ? GAPS_PER_SPORT : 0 }
   if (data.status === 'error') return { kind: 'error', text: 'Could not load' }
   const sport = data.sport
   const intro = GAMES_INTRO[sport]

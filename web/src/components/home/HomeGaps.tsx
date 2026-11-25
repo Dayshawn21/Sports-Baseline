@@ -75,8 +75,18 @@ function Footer({ footer }: { footer: GapsFooter }) {
   return <p className="home-gaps__footer"><Link to={footer.path}>{footer.label}</Link></p>
 }
 
+/** Blank rows as tall as the loaded table's, so the panel and everything under it stay put when the rows land. */
+function PlaceholderRows({ count }: { count: number }) {
+  return <table className="home-gaps__rows" role="presentation">
+    <thead><tr><th>&nbsp;</th></tr></thead>
+    <tbody>
+      {Array.from({ length: count }, (_, index) => <tr key={index}><td className="is-gray">{index === 0 ? 'Loading' : '\u00a0'}</td></tr>)}
+    </tbody>
+  </table>
+}
+
 function Body({ body, selected }: { body: GapsBody, selected: GapTabKey }) {
-  if (body.kind === 'loading') return <p className="home-gaps__empty">Loading</p>
+  if (body.kind === 'loading') return body.rows > 0 ? <PlaceholderRows count={body.rows} /> : <p className="home-gaps__empty">Loading</p>
   if (body.kind === 'error') return <p className="home-gaps__empty">{body.text}</p>
   if (body.kind === 'games') {
     return <>

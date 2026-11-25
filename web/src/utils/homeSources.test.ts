@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { NflHomeSlate, NflSlateGame } from '~/types/nfl'
 import type { MatchPrediction, PropLine } from '~/types/tennis'
 import type { NhlSlateGame } from '~/types/nhl'
-import { GAPS_PER_SPORT, HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isZeroGap, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { HERO_NEXT_LIMIT, SCHEDULE_LIMIT, isZeroGap, reconciledStart, tennisGapRows, isPricedMatch, nbaSource, nflSource, nhlSource, tennisSource } from '~/utils/homeSources'
+import { GAPS_PER_SPORT } from '~/utils/home'
 import type { NbaSlateDigestItem } from '~/utils/nbaSlate'
 
 const HOUR = 60 * 60 * 1000

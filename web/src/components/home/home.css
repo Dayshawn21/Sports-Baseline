@@ -341,6 +341,13 @@
   line-height: 1.45;
 }
 
+/* Four columns wrap the longer Next lines (an NFL week, tennis names) to three. */
+@media (min-width: 1001px) {
+  .home-card__next {
+    min-height: calc(12px + 1px + 3lh);
+  }
+}
+
 @media (max-width: 1000px) {
   .home-cards {
     grid-template-columns: repeat(2, 1fr);
